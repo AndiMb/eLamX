@@ -1,0 +1,8 @@
+# Reference material only - not part of the eLamX web migration itself,
+# and each is its own separate git checkout (has its own .git/).
+/eLamX2/
+/View3DSuite/
+/eLamX30_Hauptfenster.png
+
+# Claude Code local project config (personal, not project source).
+/.claude/

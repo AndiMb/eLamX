@@ -1,0 +1,105 @@
+/* Design-Tokens (siehe UI-Konzept-Plan §2). Neutraltöne = validierte
+   dataviz-Chrome-Palette, damit Karten und Diagramme nahtlos auf derselben
+   Fläche sitzen; Akzent aus der sequentiellen Blau-Rampe derselben Palette.
+   Dark-Werte doppelt gescoped: prefers-color-scheme als OS-Default, der
+   explizite Theme-Toggle stampft data-theme auf <html> und gewinnt in beide
+   Richtungen (Muster aus der dataviz-Referenz). */
+:root {
+  --page: #f9f9f7;
+  --card: #fcfcfb;
+  --inset: #f0efec;
+  --border: #e1e0d9;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --text-muted: #898781;
+  --accent: #256abf;
+  --accent-hover: #1c5cab;
+  --accent-bg: rgba(42, 120, 214, 0.1);
+  --ok: #006300;
+  --danger: #d03b3b;
+
+  --radius-card: 10px;
+  --radius-control: 6px;
+  --radius-chip: 4px;
+  --touch-min: 44px;
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 14px/1.5 var(--sans);
+  color-scheme: light;
+  color: var(--text);
+  background: var(--page);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --page: #0d0d0d;
+    --card: #1a1a19;
+    --inset: #242423;
+    --border: #2c2c2a;
+    --text: #ffffff;
+    --text-2: #c3c2b7;
+    --text-muted: #898781;
+    --accent: #3987e5;
+    --accent-hover: #5598e7;
+    --accent-bg: rgba(57, 135, 229, 0.16);
+    --ok: #0ca30c;
+    --danger: #e66767;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --page: #0d0d0d;
+  --card: #1a1a19;
+  --inset: #242423;
+  --border: #2c2c2a;
+  --text: #ffffff;
+  --text-2: #c3c2b7;
+  --text-muted: #898781;
+  --accent: #3987e5;
+  --accent-hover: #5598e7;
+  --accent-bg: rgba(57, 135, 229, 0.16);
+  --ok: #0ca30c;
+  --danger: #e66767;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--text);
+  font-weight: 600;
+}
+
+p {
+  margin: 0;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  padding: 2px 6px;
+  border-radius: var(--radius-chip);
+  background: var(--inset);
+  color: var(--text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}

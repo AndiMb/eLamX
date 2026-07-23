@@ -1,0 +1,445 @@
+//! WebAssembly bindings for elamx-core's CLT calculation engine.
+//!
+//! A single JSON request goes in, a single JSON response comes out - see
+//! [`CltRequest`]/[`CltResponse`] (and [`AngleSweepRequest`]/[`AngleSweepResponse`]
+//! for [`compute_angle_sweep`]) for the exact shapes. This keeps the wasm
+//! boundary small and lets the frontend evolve its own request/response
+//! builders without needing bindgen-generated classes for every domain type.
+
+use elamx_core::clt::{
+    determine_values, get_layer_results, CltLaminate, LayerContribution, LayerResult, Loads,
+    MassMoments, Strains,
+};
+use elamx_core::failure::default_criterion_registry;
+use elamx_core::mathtools;
+use elamx_core::model::{Laminate, Material};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use wasm_bindgen::prelude::*;
+
+/// Routes Rust panics to `console.error` instead of an opaque
+/// "unreachable executed" trap, since wasm32 has no default panic output.
+#[wasm_bindgen(start)]
+pub fn init_panic_hook() {
+    console_error_panic_hook::set_once();
+}
+
+#[derive(Deserialize)]
+struct CltRequest {
+    laminate: Laminate,
+    materials: HashMap<String, Material>,
+    loads: Loads,
+    strains: Strains,
+    /// Per-degree-of-freedom flag (order: eps_x, eps_y, gamma_xy, kappa_x,
+    /// kappa_y, kappa_xy): `true` prescribes the strain, `false` the load.
+    use_strain: [bool; 6],
+}
+
+/// All of `CltLaminate`'s engineering-constant getters, bundled for the JSON
+/// boundary. "Simple"/"fixed" = without/with Poisson restraint; "bend" =
+/// derived from bending rather than extensional stiffness.
+#[derive(Serialize)]
+struct EngineeringConstantsDto {
+    ex_simple: f64,
+    ey_simple: f64,
+    g_simple: f64,
+    nuxy_simple: f64,
+    nuyx_simple: f64,
+    ex_fixed: f64,
+    ey_fixed: f64,
+    g_fixed: f64,
+    nuxy_fixed: f64,
+    nuyx_fixed: f64,
+    ex_bend_simple: f64,
+    ey_bend_simple: f64,
+    g_bend_simple: f64,
+    nuxy_bend_simple: f64,
+    nuyx_bend_simple: f64,
+    ex_bend_fixed: f64,
+    ey_bend_fixed: f64,
+    g_bend_fixed: f64,
+    nuxy_bend_fixed: f64,
+    nuyx_bend_fixed: f64,
+    /// Seydel's orthotropy parameter.
+    beta_d: f64,
+    /// Transverse contraction parameter.
+    nu_d: f64,
+    /// Anisotropy parameters (bend-twist coupling).
+    gamma_d: f64,
+    delta_d: f64,
+}
+
+impl From<&CltLaminate> for EngineeringConstantsDto {
+    fn from(clt: &CltLaminate) -> Self {
+        EngineeringConstantsDto {
+            ex_simple: clt.ex_simple(),
+            ey_simple: clt.ey_simple(),
+            g_simple: clt.g_simple(),
+            nuxy_simple: clt.nuxy_simple(),
+            nuyx_simple: clt.nuyx_simple(),
+            ex_fixed: clt.ex_fixed(),
+            ey_fixed: clt.ey_fixed(),
+            g_fixed: clt.g_fixed(),
+            nuxy_fixed: clt.nuxy_fixed(),
+            nuyx_fixed: clt.nuyx_fixed(),
+            ex_bend_simple: clt.ex_bend_simple(),
+            ey_bend_simple: clt.ey_bend_simple(),
+            g_bend_simple: clt.g_bend_simple(),
+            nuxy_bend_simple: clt.nuxy_bend_simple(),
+            nuyx_bend_simple: clt.nuyx_bend_simple(),
+            ex_bend_fixed: clt.ex_bend_fixed(),
+            ey_bend_fixed: clt.ey_bend_fixed(),
+            g_bend_fixed: clt.g_bend_fixed(),
+            nuxy_bend_fixed: clt.nuxy_bend_fixed(),
+            nuyx_bend_fixed: clt.nuyx_bend_fixed(),
+            beta_d: clt.beta_d(),
+            nu_d: clt.nu_d(),
+            gamma_d: clt.gamma_d(),
+            delta_d: clt.delta_d(),
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct MassMomentsDto {
+    i0: f64,
+    i1: f64,
+    i2: f64,
+}
+
+impl From<MassMoments> for MassMomentsDto {
+    fn from(m: MassMoments) -> Self {
+        MassMomentsDto {
+            i0: m.i0,
+            i1: m.i1,
+            i2: m.i2,
+        }
+    }
+}
+
+/// One layer's contribution to the assembled A/B/D matrices - see
+/// [`LayerContribution`] in the core crate for the underlying formula.
+#[derive(Serialize)]
+struct LayerContributionDto {
+    layer_number: usize,
+    angle_deg: f64,
+    thickness: f64,
+    zm: f64,
+    q_global: Vec<Vec<f64>>,
+    a_contribution: Vec<Vec<f64>>,
+    b_contribution: Vec<Vec<f64>>,
+    d_contribution: Vec<Vec<f64>>,
+}
+
+impl From<LayerContribution> for LayerContributionDto {
+    fn from(c: LayerContribution) -> Self {
+        LayerContributionDto {
+            layer_number: c.layer_number,
+            angle_deg: c.angle_deg,
+            thickness: c.thickness,
+            zm: c.zm,
+            q_global: c.q_global,
+            a_contribution: c.a_contribution,
+            b_contribution: c.b_contribution,
+            d_contribution: c.d_contribution,
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct CltResponse {
+    abd: Vec<Vec<f64>>,
+    /// Inverse of `abd` - exposed so a UI can show the "simple" (Poisson-free)
+    /// engineering constants' derivation with real numbers instead of
+    /// re-deriving a 6x6 matrix inverse in TypeScript.
+    abd_inv: Vec<Vec<f64>>,
+    tges: f64,
+    is_symmetric: bool,
+    area_weight: f64,
+    /// `None` unless the laminate is symmetric (matches the Java original).
+    mass_moments: Option<MassMomentsDto>,
+    loads: Loads,
+    strains: Strains,
+    engineering_constants: EngineeringConstantsDto,
+    /// Per-layer A/B/D build-up, in stacking order - lets a UI show how each
+    /// ply adds up to the assembled laminate stiffness.
+    layer_contributions: Vec<LayerContributionDto>,
+    /// Per-layer stresses/strains and reserve factors, evaluated with each
+    /// layer's `criterion_id` (falling back to Puck if unset - see
+    /// `elamx_core::clt::get_layer_results`).
+    layer_results: Vec<LayerResult>,
+}
+
+/// Assembles the ABD matrix for a laminate and solves for whichever loads or
+/// strains aren't prescribed. Both `request_json` and the returned string are
+/// JSON, shaped by [`CltRequest`]/[`CltResponse`].
+///
+/// This is a thin wrapper around [`compute_clt_impl`] that only exists to
+/// convert its plain `Result<String, String>` into the `JsValue` error type
+/// wasm-bindgen requires - `JsValue` can't be constructed outside a wasm32
+/// target, so keeping it out of the actual logic lets that logic run under
+/// plain `cargo test` on the host.
+#[wasm_bindgen]
+pub fn compute_clt(request_json: &str) -> Result<String, JsValue> {
+    compute_clt_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_clt_impl(request_json: &str) -> Result<String, String> {
+    let request: CltRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let clt = CltLaminate::new(&request.laminate, &request.materials)
+        .map_err(|e| e.to_string())?;
+
+    let mut loads = request.loads;
+    let mut strains = request.strains;
+    determine_values(&clt, &mut loads, &mut strains, &request.use_strain);
+
+    let criteria = default_criterion_registry();
+    let layer_results = get_layer_results(&clt, &loads, &strains, &request.materials, &criteria)
+        .map_err(|e| e.to_string())?;
+
+    let response = CltResponse {
+        abd: clt.abd_matrix().clone(),
+        abd_inv: clt.abd_inv_matrix().clone(),
+        tges: clt.tges(),
+        is_symmetric: clt.is_symmetric(),
+        area_weight: clt.area_weight(),
+        mass_moments: clt.mass_moments().map(MassMomentsDto::from),
+        loads,
+        strains,
+        engineering_constants: EngineeringConstantsDto::from(&clt),
+        layer_contributions: clt
+            .layer_contributions()
+            .into_iter()
+            .map(LayerContributionDto::from)
+            .collect(),
+        layer_results,
+    };
+
+    serde_json::to_string(&response).map_err(|e| e.to_string())
+}
+
+#[derive(Deserialize)]
+struct AngleSweepRequest {
+    laminate: Laminate,
+    materials: HashMap<String, Material>,
+}
+
+#[derive(Serialize)]
+struct AngleSweepResponse {
+    angle_deg: Vec<f64>,
+    a11: Vec<f64>,
+    a12: Vec<f64>,
+    a22: Vec<f64>,
+    a66: Vec<f64>,
+}
+
+/// Sweeps the in-plane A-matrix components (A11, A12, A22, A66) as the
+/// coordinate system rotates from 0 to 360 degrees in `delta_angle_deg`
+/// steps - visualizes in-plane stiffness anisotropy. `request_json` only
+/// needs a `laminate` and its `materials` (no loads/strains/criteria).
+#[wasm_bindgen]
+pub fn compute_angle_sweep(request_json: &str, delta_angle_deg: f64) -> Result<String, JsValue> {
+    compute_angle_sweep_impl(request_json, delta_angle_deg).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_angle_sweep_impl(request_json: &str, delta_angle_deg: f64) -> Result<String, String> {
+    let request: AngleSweepRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let clt = CltLaminate::new(&request.laminate, &request.materials)
+        .map_err(|e| e.to_string())?;
+
+    let sweep = mathtools::get_matrix_components_over_angle(clt.a_matrix(), delta_angle_deg);
+
+    let response = AngleSweepResponse {
+        angle_deg: sweep[mathtools::ANGLE_ROW].clone(),
+        a11: sweep[mathtools::A11_ROW].clone(),
+        a12: sweep[mathtools::A12_ROW].clone(),
+        a22: sweep[mathtools::A22_ROW].clone(),
+        a66: sweep[mathtools::A66_ROW].clone(),
+    };
+
+    serde_json::to_string(&response).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_request(n_x: f64, criterion_id: &str) -> String {
+        format!(
+            r#"{{
+                "laminate": {{
+                    "id": "lam", "name": "test",
+                    "layers": [
+                        {{"id":"l0","name":"0","angle":0.0,"thickness":0.2,"material_id":"mat","criterion_id":{criterion_id}}},
+                        {{"id":"l1","name":"90","angle":90.0,"thickness":0.2,"material_id":"mat","criterion_id":{criterion_id}}}
+                    ],
+                    "symmetric": false, "with_middle_layer": false, "invert_z": false, "offset": 0.0
+                }},
+                "materials": {{
+                    "mat": {{
+                        "id":"mat","name":"UD","e_par":140000.0,"e_nor":10000.0,"nue12":0.3,"g":5000.0,
+                        "g13":0.0,"g23":0.0,"rho":1.6e-9,
+                        "alpha_t_par":0.0,"alpha_t_nor":0.0,"beta_par":0.0,"beta_nor":0.0,
+                        "r_par_ten":2000.0,"r_par_com":1200.0,"r_nor_ten":50.0,"r_nor_com":150.0,"r_shear":70.0,
+                        "additional_values":{{}}
+                    }}
+                }},
+                "loads": {{"n_x":{n_x},"n_y":0.0,"n_xy":0.0,"m_x":0.0,"m_y":0.0,"m_xy":0.0,"delta_t":0.0,"delta_h":0.0,"nt_x":0.0,"nt_y":0.0,"nt_xy":0.0,"mt_x":0.0,"mt_y":0.0,"mt_xy":0.0}},
+                "strains": {{"epsilon_x":0.0,"epsilon_y":0.0,"gamma_xy":0.0,"kappa_x":0.0,"kappa_y":0.0,"kappa_xy":0.0}},
+                "use_strain": [false,false,false,false,false,false]
+            }}"#
+        )
+    }
+
+    #[test]
+    fn compute_clt_solves_strain_from_prescribed_load() {
+        let response = compute_clt_impl(&sample_request(1000.0, "\"max_stress\""))
+            .expect("compute_clt_impl should succeed");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+
+        assert!(parsed["strains"]["epsilon_x"].as_f64().unwrap() > 0.0);
+        // Balanced [0/90] cross-ply: A11 == A22.
+        assert_eq!(parsed["abd"][0][0], parsed["abd"][1][1]);
+        assert_eq!(parsed["tges"].as_f64().unwrap(), 0.4);
+        assert!(!parsed["is_symmetric"].as_bool().unwrap());
+    }
+
+    #[test]
+    fn compute_clt_includes_layer_results_with_reserve_factors() {
+        let response = compute_clt_impl(&sample_request(1000.0, "\"max_stress\""))
+            .expect("compute_clt_impl should succeed");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+
+        let layer_results = parsed["layer_results"].as_array().unwrap();
+        assert_eq!(layer_results.len(), 2);
+        assert_eq!(layer_results[0]["layer_number"], 1);
+        assert!(layer_results[0]["rr_lower"]["minimal_reserve_factor"]
+            .as_f64()
+            .unwrap()
+            .is_finite());
+        assert!(layer_results.iter().any(|r| r["failed"] == true));
+    }
+
+    #[test]
+    fn compute_clt_includes_engineering_constants_and_layer_contributions() {
+        let response = compute_clt_impl(&sample_request(1000.0, "\"max_stress\""))
+            .expect("compute_clt_impl should succeed");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+
+        let ec = &parsed["engineering_constants"];
+        assert!(ec["ex_simple"].as_f64().unwrap() > 0.0);
+        assert!(ec["ex_bend_fixed"].as_f64().unwrap() > 0.0);
+
+        let contributions = parsed["layer_contributions"].as_array().unwrap();
+        assert_eq!(contributions.len(), 2);
+        assert_eq!(contributions[0]["layer_number"], 1);
+        assert!(contributions[0]["q_global"].is_array());
+
+        assert!(parsed["area_weight"].as_f64().unwrap() > 0.0);
+        // Not symmetric, so no mass moments.
+        assert!(parsed["mass_moments"].is_null());
+    }
+
+    #[test]
+    fn compute_clt_reports_mass_moments_for_symmetric_laminate() {
+        let mut request: serde_json::Value =
+            serde_json::from_str(&sample_request(0.0, "\"max_stress\"")).unwrap();
+        request["laminate"]["symmetric"] = serde_json::json!(true);
+
+        let response =
+            compute_clt_impl(&request.to_string()).expect("compute_clt_impl should succeed");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+        assert!(parsed["mass_moments"]["i0"].as_f64().unwrap() > 0.0);
+    }
+
+    #[test]
+    fn compute_clt_defaults_to_puck_when_no_criterion_is_assigned() {
+        let mut request: serde_json::Value =
+            serde_json::from_str(&sample_request(10.0, "null")).unwrap();
+        request["materials"]["mat"]["additional_values"] = serde_json::json!({
+            "puck.p_spd": 0.3, "puck.p_spz": 0.35, "puck.a0": 0.5, "puck.lambda_min": 0.5
+        });
+
+        let response = compute_clt_impl(&request.to_string())
+            .expect("compute_clt_impl should succeed with Puck's defaults");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+        assert_eq!(parsed["layer_results"].as_array().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn compute_clt_reports_missing_criterion_as_an_error() {
+        let result = compute_clt_impl(&sample_request(1000.0, "\"not-a-real-criterion\""));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn compute_clt_rejects_malformed_json() {
+        let result = compute_clt_impl("not json");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn compute_clt_reports_missing_material_as_error_not_panic() {
+        // Only rename the material catalog's key, not the layers' `material_id`
+        // references - that's what creates the mismatch under test.
+        let request =
+            sample_request(1000.0, "\"max_stress\"").replacen("\"mat\": {", "\"renamed\": {", 1);
+        let result = compute_clt_impl(&request);
+        assert!(result.is_err());
+    }
+
+    fn sample_angle_sweep_request() -> String {
+        r#"{
+            "laminate": {
+                "id": "lam", "name": "test",
+                "layers": [
+                    {"id":"l0","name":"0","angle":0.0,"thickness":0.2,"material_id":"mat","criterion_id":null},
+                    {"id":"l1","name":"90","angle":90.0,"thickness":0.2,"material_id":"mat","criterion_id":null}
+                ],
+                "symmetric": false, "with_middle_layer": false, "invert_z": false, "offset": 0.0
+            },
+            "materials": {
+                "mat": {
+                    "id":"mat","name":"UD","e_par":140000.0,"e_nor":10000.0,"nue12":0.3,"g":5000.0,
+                    "g13":0.0,"g23":0.0,"rho":1.6e-9,
+                    "alpha_t_par":0.0,"alpha_t_nor":0.0,"beta_par":0.0,"beta_nor":0.0,
+                    "r_par_ten":2000.0,"r_par_com":1200.0,"r_nor_ten":50.0,"r_nor_com":150.0,"r_shear":70.0,
+                    "additional_values":{}
+                }
+            }
+        }"#
+        .to_string()
+    }
+
+    #[test]
+    fn compute_angle_sweep_returns_a_full_revolution() {
+        let response = compute_angle_sweep_impl(&sample_angle_sweep_request(), 90.0)
+            .expect("compute_angle_sweep_impl should succeed");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+
+        let angles = parsed["angle_deg"].as_array().unwrap();
+        assert_eq!(angles.len(), 4);
+        assert_eq!(angles[0].as_f64().unwrap(), 0.0);
+        assert_eq!(angles[1].as_f64().unwrap(), 90.0);
+
+        // The sample laminate is a balanced [0/90] cross-ply, so A11 == A22 at
+        // 0 degrees, and rotating the whole laminate 90 degrees swaps them
+        // back onto themselves (A11(90) == A22(0), A22(90) == A11(0)).
+        let a11_0 = parsed["a11"][0].as_f64().unwrap();
+        let a22_0 = parsed["a22"][0].as_f64().unwrap();
+        let a11_90 = parsed["a11"][1].as_f64().unwrap();
+        let a22_90 = parsed["a22"][1].as_f64().unwrap();
+        assert!(a11_0 > 0.0 && a22_0 > 0.0);
+        assert!((a11_0 - a22_0).abs() < 1e-6);
+        assert!((a11_90 - a22_0).abs() < 1e-6);
+        assert!((a22_90 - a11_0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn compute_angle_sweep_rejects_malformed_json() {
+        let result = compute_angle_sweep_impl("not json", 90.0);
+        assert!(result.is_err());
+    }
+}

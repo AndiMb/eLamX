@@ -1,0 +1,264 @@
+// Mirrors the JSON shapes of elamx-core's Rust structs (see
+// elamx-core/core/src/model/ and elamx-core/wasm/src/lib.rs). Field names
+// must match the Rust `serde` field names exactly (snake_case, no renames).
+
+export interface MaterialDto {
+  id: string;
+  name: string;
+  e_par: number;
+  e_nor: number;
+  nue12: number;
+  g: number;
+  g13: number;
+  g23: number;
+  rho: number;
+  alpha_t_par: number;
+  alpha_t_nor: number;
+  beta_par: number;
+  beta_nor: number;
+  r_par_ten: number;
+  r_par_com: number;
+  r_nor_ten: number;
+  r_nor_com: number;
+  r_shear: number;
+  additional_values: Record<string, number>;
+}
+
+export interface LayerDto {
+  id: string;
+  name: string;
+  angle: number;
+  thickness: number;
+  material_id: string;
+  criterion_id: string | null;
+}
+
+export interface LaminateDto {
+  id: string;
+  name: string;
+  layers: LayerDto[];
+  symmetric: boolean;
+  with_middle_layer: boolean;
+  invert_z: boolean;
+  offset: number;
+}
+
+export interface LoadsDto {
+  n_x: number;
+  n_y: number;
+  n_xy: number;
+  m_x: number;
+  m_y: number;
+  m_xy: number;
+  delta_t: number;
+  delta_h: number;
+  nt_x: number;
+  nt_y: number;
+  nt_xy: number;
+  mt_x: number;
+  mt_y: number;
+  mt_xy: number;
+}
+
+export interface StrainsDto {
+  epsilon_x: number;
+  epsilon_y: number;
+  gamma_xy: number;
+  kappa_x: number;
+  kappa_y: number;
+  kappa_xy: number;
+}
+
+export interface CltRequest {
+  laminate: LaminateDto;
+  materials: Record<string, MaterialDto>;
+  loads: LoadsDto;
+  strains: StrainsDto;
+  use_strain: [boolean, boolean, boolean, boolean, boolean, boolean];
+}
+
+export interface StressStrainStateDto {
+  stress: [number, number, number];
+  strain: [number, number, number];
+}
+
+export type FailureType = "Undamaged" | "FiberFailure" | "MatrixFailure" | "GeneralMaterialFailure";
+
+export interface ReserveFactorDto {
+  failure_name: string;
+  minimal_reserve_factor: number;
+  failure_type: FailureType;
+}
+
+export interface LayerResultDto {
+  layer_number: number;
+  sss_lower: StressStrainStateDto;
+  sss_upper: StressStrainStateDto;
+  sss_lower_global: StressStrainStateDto;
+  sss_upper_global: StressStrainStateDto;
+  rr_lower: ReserveFactorDto;
+  rr_upper: ReserveFactorDto;
+  failed: boolean;
+}
+
+export interface EngineeringConstantsDto {
+  ex_simple: number;
+  ey_simple: number;
+  g_simple: number;
+  nuxy_simple: number;
+  nuyx_simple: number;
+  ex_fixed: number;
+  ey_fixed: number;
+  g_fixed: number;
+  nuxy_fixed: number;
+  nuyx_fixed: number;
+  ex_bend_simple: number;
+  ey_bend_simple: number;
+  g_bend_simple: number;
+  nuxy_bend_simple: number;
+  nuyx_bend_simple: number;
+  ex_bend_fixed: number;
+  ey_bend_fixed: number;
+  g_bend_fixed: number;
+  nuxy_bend_fixed: number;
+  nuyx_bend_fixed: number;
+  beta_d: number;
+  nu_d: number;
+  gamma_d: number;
+  delta_d: number;
+}
+
+export interface MassMomentsDto {
+  i0: number;
+  i1: number;
+  i2: number;
+}
+
+export interface LayerContributionDto {
+  layer_number: number;
+  angle_deg: number;
+  thickness: number;
+  zm: number;
+  q_global: number[][];
+  a_contribution: number[][];
+  b_contribution: number[][];
+  d_contribution: number[][];
+}
+
+export interface CltResponse {
+  abd: number[][];
+  /** Inverse of `abd` - lets the UI show the "simple" engineering constants' derivation with real numbers. */
+  abd_inv: number[][];
+  tges: number;
+  is_symmetric: boolean;
+  area_weight: number;
+  mass_moments: MassMomentsDto | null;
+  loads: LoadsDto;
+  strains: StrainsDto;
+  engineering_constants: EngineeringConstantsDto;
+  layer_contributions: LayerContributionDto[];
+  layer_results: LayerResultDto[];
+}
+
+export interface AngleSweepResponse {
+  angle_deg: number[];
+  a11: number[];
+  a12: number[];
+  a22: number[];
+  a66: number[];
+}
+
+// Criterion ids and their additional-value keys, matching the `pub const`s in
+// elamx-core/core/src/failure/{mod,max_strain,tsai_wu,puck,fmc,ztl}.rs.
+export const CRITERIA = [
+  { id: "max_stress", label: "Max. Spannung" },
+  { id: "tsai_hill", label: "Tsai-Hill" },
+  { id: "hashin", label: "Hashin" },
+  { id: "tsai_wu", label: "Tsai-Wu" },
+  { id: "max_strain", label: "Max. Dehnung" },
+  { id: "puck", label: "Puck" },
+  { id: "christensen", label: "Christensen" },
+  { id: "edge", label: "Edge" },
+  { id: "fibre_failure", label: "Nur Faserbruch" },
+  { id: "fmc", label: "FMC (Cuntze)" },
+  { id: "hoffman", label: "Hoffman" },
+  { id: "mayes", label: "Mayes" },
+  { id: "rotem", label: "Rotem" },
+  { id: "sun", label: "Sun" },
+  { id: "ztl", label: "ZTL" },
+] as const;
+
+export type CriterionId = (typeof CRITERIA)[number]["id"];
+
+export const MAX_STRAIN_KEYS = {
+  epsX: "max_strain.eps_x",
+  epsY: "max_strain.eps_y",
+  gammaXy: "max_strain.gamma_xy",
+  globalLocal: "max_strain.global_local",
+} as const;
+
+export const TSAI_WU_KEYS = {
+  f12Star: "tsai_wu.f12_star",
+} as const;
+
+export const PUCK_KEYS = {
+  pSpd: "puck.p_spd",
+  pSpz: "puck.p_spz",
+  a0: "puck.a0",
+  lambdaMin: "puck.lambda_min",
+} as const;
+
+export const FMC_KEYS = {
+  mueSp: "fmc.mue_sp",
+  m: "fmc.m",
+} as const;
+
+export const ZTL_KEYS = {
+  f12Star: "ztl.f12_star",
+} as const;
+
+// Sensible starting values for every criterion's additional parameters, so a
+// newly created material works with any criterion the user picks without
+// first hitting a "missing additional value" error - the Rust core requires
+// each key to be explicitly present (it never assumes a default), and 0 would
+// be a *wrong* default for some of these (e.g. Puck's p_spd is a divisor).
+export const DEFAULT_ADDITIONAL_VALUES: Record<string, number> = {
+  [MAX_STRAIN_KEYS.epsX]: 0.01,
+  [MAX_STRAIN_KEYS.epsY]: 0.01,
+  [MAX_STRAIN_KEYS.gammaXy]: 0.02,
+  [MAX_STRAIN_KEYS.globalLocal]: 0,
+  [TSAI_WU_KEYS.f12Star]: -0.5,
+  [PUCK_KEYS.pSpd]: 0.3,
+  [PUCK_KEYS.pSpz]: 0.35,
+  [PUCK_KEYS.a0]: 0.5,
+  [PUCK_KEYS.lambdaMin]: 0.5,
+  [FMC_KEYS.mueSp]: 0.3,
+  [FMC_KEYS.m]: 1.5,
+  [ZTL_KEYS.f12Star]: -0.5,
+};
+
+export const emptyLoads = (): LoadsDto => ({
+  n_x: 0,
+  n_y: 0,
+  n_xy: 0,
+  m_x: 0,
+  m_y: 0,
+  m_xy: 0,
+  delta_t: 0,
+  delta_h: 0,
+  nt_x: 0,
+  nt_y: 0,
+  nt_xy: 0,
+  mt_x: 0,
+  mt_y: 0,
+  mt_xy: 0,
+});
+
+export const emptyStrains = (): StrainsDto => ({
+  epsilon_x: 0,
+  epsilon_y: 0,
+  gamma_xy: 0,
+  kappa_x: 0,
+  kappa_y: 0,
+  kappa_xy: 0,
+});

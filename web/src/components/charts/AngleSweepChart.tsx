@@ -1,0 +1,150 @@
+import { memo, useMemo, useState } from "react";
+import { useAtomValue } from "jotai";
+import { loadableAngleSweepFamily } from "../../store/derivedAtoms";
+import { ChartLegend } from "./ChartLegend";
+import { ChartTooltip } from "./ChartTooltip";
+
+const WIDTH = 600;
+const HEIGHT = 220;
+const MARGIN = { top: 10, right: 10, bottom: 24, left: 56 };
+const PLOT_W = WIDTH - MARGIN.left - MARGIN.right;
+const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
+
+const SERIES = [
+  { key: "a11", label: "A11", color: "var(--viz-series-1)" },
+  { key: "a22", label: "A22", color: "var(--viz-series-2)" },
+  { key: "a66", label: "A66", color: "var(--viz-series-3)" },
+] as const;
+
+// See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
+export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { laminateId: string }) {
+  const loadableState = useAtomValue(loadableAngleSweepFamily(laminateId));
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [showTable, setShowTable] = useState(false);
+
+  const data = loadableState.state === "hasData" ? loadableState.data : null;
+
+  const scales = useMemo(() => {
+    if (!data) return null;
+    const allValues = [...data.a11, ...data.a22, ...data.a66];
+    const yMin = Math.min(...allValues, 0);
+    const yMax = Math.max(...allValues);
+    const xScale = (angle: number) => (angle / 360) * PLOT_W;
+    const yScale = (v: number) => PLOT_H - ((v - yMin) / (yMax - yMin || 1)) * PLOT_H;
+    return { xScale, yScale, yMin, yMax };
+  }, [data]);
+
+  if (!data || !scales) return null;
+  const { xScale, yScale } = scales;
+
+  const paths = SERIES.map((s) => ({
+    ...s,
+    d: data.angle_deg.map((angle, i) => `${i === 0 ? "M" : "L"}${xScale(angle)},${yScale(data[s.key][i])}`).join(" "),
+  }));
+
+  const handleMove = (e: React.PointerEvent<SVGRectElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relX = e.clientX - rect.left;
+    const angle = (relX / rect.width) * 360;
+    const idx = Math.round(angle / 5);
+    setHoverIndex(Math.max(0, Math.min(data.angle_deg.length - 1, idx)));
+  };
+
+  const yTicks = [scales.yMin, (scales.yMin + scales.yMax) / 2, scales.yMax];
+
+  return (
+    <div className="chart viz">
+      <p className="chart-title">Winkel-Sweep: A11/A22/A66 über den Drehwinkel</p>
+      <div className="chart-controls">
+        <button type="button" className="chart-table-toggle" onClick={() => setShowTable((v) => !v)}>
+          {showTable ? "Diagramm anzeigen" : "Tabelle anzeigen"}
+        </button>
+      </div>
+      {!showTable && (
+        <>
+          <ChartLegend items={SERIES.map((s) => ({ label: s.label, color: s.color, shape: "line" }))} />
+          <div className="chart-svg-wrap">
+            <svg className="chart-svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" role="img" aria-label="Winkel-Sweep-Diagramm A11, A22, A66">
+              <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
+                {yTicks.map((t) => (
+                  <g key={t}>
+                    <line x1={0} x2={PLOT_W} y1={yScale(t)} y2={yScale(t)} className="chart-gridline" />
+                    <text x={-8} y={yScale(t)} textAnchor="end" dominantBaseline="middle">
+                      {t.toExponential(1)}
+                    </text>
+                  </g>
+                ))}
+                <line x1={0} x2={PLOT_W} y1={PLOT_H} y2={PLOT_H} className="chart-axis" />
+                {[0, 90, 180, 270, 360].map((a) => (
+                  <text key={a} x={xScale(a)} y={PLOT_H + 16} textAnchor="middle">
+                    {a}°
+                  </text>
+                ))}
+                {paths.map((p) => (
+                  <path key={p.key} d={p.d} fill="none" stroke={p.color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+                ))}
+                {hoverIndex !== null && (
+                  <line
+                    x1={xScale(data.angle_deg[hoverIndex])}
+                    x2={xScale(data.angle_deg[hoverIndex])}
+                    y1={0}
+                    y2={PLOT_H}
+                    className="chart-axis"
+                  />
+                )}
+                <rect
+                  x={0}
+                  y={0}
+                  width={PLOT_W}
+                  height={PLOT_H}
+                  fill="transparent"
+                  pointerEvents="all"
+                  onPointerMove={handleMove}
+                  onPointerLeave={() => setHoverIndex(null)}
+                />
+              </g>
+            </svg>
+            {hoverIndex !== null && (
+              <ChartTooltip
+                x={MARGIN.left + xScale(data.angle_deg[hoverIndex]) + 12}
+                y={MARGIN.top + 4}
+              >
+                <div>
+                  <strong>{data.angle_deg[hoverIndex].toFixed(0)}°</strong>
+                </div>
+                {SERIES.map((s) => (
+                  <div className="chart-tooltip-row" key={s.key}>
+                    <span className="chart-legend-swatch line" style={{ background: s.color }} />
+                    {s.label}: {data[s.key][hoverIndex].toExponential(2)}
+                  </div>
+                ))}
+              </ChartTooltip>
+            )}
+          </div>
+        </>
+      )}
+      {showTable && (
+        <table className="chart-table">
+          <thead>
+            <tr>
+              <th>Winkel</th>
+              <th>A11</th>
+              <th>A22</th>
+              <th>A66</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.angle_deg.map((angle, i) => (
+              <tr key={angle}>
+                <td>{angle.toFixed(0)}°</td>
+                <td>{data.a11[i].toExponential(3)}</td>
+                <td>{data.a22[i].toExponential(3)}</td>
+                <td>{data.a66[i].toExponential(3)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+});

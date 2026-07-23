@@ -1,0 +1,6 @@
+[workspace]
+resolver = "2"
+members = ["core", "wasm"]
+
+# Future workspace members (added in later migration phases):
+#   mobile  - uniffi-rs FFI bindings for Android/iOS (Phase 2)

@@ -1,0 +1,1602 @@
+/* Alle Farben/Radien kommen aus den Tokens in index.css (UI-Konzept §2).
+   Ausnahme: der .viz-Block unten behaelt seine eigenen --viz-*-Rollen aus der
+   validierten dataviz-Palette - Diagrammfarben sind bewusst vom UI-Chrome
+   entkoppelt. */
+
+.app {
+  display: flex;
+  align-items: stretch;
+  text-align: left;
+  font-family: var(--sans);
+  min-height: 100svh;
+  flex-direction: column;
+}
+
+.app-body {
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+}
+
+/* Touch targets >=44px on mobile only (see lib/useIsMobile.ts's breakpoint) -
+   desktop doesn't need oversized controls, this is purely a phone-input
+   accommodation. */
+@media (max-width: 640px) {
+  button,
+  select,
+  input[type="checkbox"],
+  .tree-node,
+  a.mobile-row {
+    min-height: var(--touch-min);
+  }
+
+  input[type="checkbox"] {
+    min-width: var(--touch-min);
+  }
+}
+
+/* --- Top-Bar (UI-Konzept §4) --- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.topbar-logo {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+.topbar-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  color: var(--text-2);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Reservierter Slot fuer kuenftige Datei-Aktionen (Neu/Oeffnen/Speichern/
+   Export/Schnappschuss) - kommt mit der Persistenz-Phase. */
+.topbar-file-slot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.student-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-2);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.student-pill.active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* --- Buttons (UI-Konzept §5) --- */
+
+button {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  min-height: 32px;
+  padding: 0 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+button:hover:not(:disabled) {
+  background: var(--inset);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.icon-button {
+  width: 32px;
+  min-width: 32px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  border-radius: var(--radius-control);
+}
+
+.icon-button:hover:not(:disabled) {
+  background: var(--inset);
+  color: var(--text);
+}
+
+.icon-button.danger:hover:not(:disabled) {
+  color: var(--danger);
+}
+
+/* --- Inputs / Selects / Checkboxes --- */
+
+input[type="text"],
+select {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  min-height: 32px;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+}
+
+/* --- Sidebar / Baum (UI-Konzept §4) --- */
+
+.app-body > .sidebar {
+  flex: 0 0 260px;
+  align-self: stretch;
+}
+
+.sidebar {
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  padding: 12px 8px;
+  box-sizing: border-box;
+}
+
+.tree-section {
+  margin-bottom: 20px;
+}
+
+.tree-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  margin-bottom: 4px;
+}
+
+.tree-section-header h3 {
+  flex: 1;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 0;
+  font-weight: 600;
+}
+
+.tree-section-header .icon-button {
+  width: 24px;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.tree-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tree-node-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--radius-control);
+  position: relative;
+}
+
+.tree-node-row:hover {
+  background: var(--inset);
+}
+
+.tree-node-row:has(.tree-node.active) {
+  background: var(--accent-bg);
+}
+
+.tree-node-row:has(.tree-node.active)::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.tree-expand {
+  flex: 0 0 auto;
+  width: 20px;
+  min-width: 20px;
+  min-height: 28px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tree-expand:hover {
+  background: none;
+  color: var(--text);
+}
+
+.tree-node {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: var(--radius-control);
+  text-decoration: none;
+  color: var(--text-2);
+  font-size: 13px;
+  overflow: hidden;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.tree-node svg {
+  flex: 0 0 auto;
+}
+
+.tree-node-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-node.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tree-node-actions {
+  display: none;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.tree-node-row:hover .tree-node-actions,
+.tree-node-row:focus-within .tree-node-actions {
+  display: inline-flex;
+}
+
+.tree-node-actions .icon-button {
+  width: 24px;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.tree-rename-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 24px !important;
+  font-size: 13px;
+  padding: 0 4px;
+}
+
+.tree-children {
+  list-style: none;
+  margin: 0 0 4px 24px;
+  padding: 0;
+}
+
+/* --- Content --- */
+
+.content {
+  flex: 1;
+  min-width: 0;
+  max-width: 1280px;
+  padding: 24px;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+/* --- Karten --- */
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+.panel h2 svg {
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+.panel h3 {
+  font-size: 16px;
+  margin: 14px 0 6px;
+}
+
+.panel h4 {
+  font-size: 13px;
+  margin: 12px 0 4px;
+  color: var(--text-2);
+}
+
+/* --- Formular-Raster --- */
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px 16px;
+  margin-bottom: 10px;
+}
+
+.field-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+/* Wrapping a compound caption (base letter + <sub>/<sup>, e.g. "E<sub>par</sub>")
+   in one span keeps it as a SINGLE flex item under the label's flex-column
+   layout above. Without this wrapper, the bare text node and the <sub>
+   element become two separate flex items and each gets its own row - the
+   subscript visibly wraps onto its own line. */
+.field-label {
+  display: inline-block;
+}
+
+.criterion-params {
+  margin-bottom: 12px;
+}
+
+.criterion-params summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 0;
+  color: var(--text-2);
+}
+
+.criterion-params summary:hover {
+  color: var(--text);
+}
+
+.criterion-params[open] summary {
+  color: var(--text);
+}
+
+.criterion-params .field-grid {
+  margin-top: 6px;
+}
+
+/* .field-grid's own `display: grid` (specificity 0,1,0) otherwise beats the
+   UA stylesheet's `details:not([open]) > *:not(summary) { display: none }"
+   rule, so a closed <details> would still show its body. */
+.criterion-params:not([open]) .field-grid {
+  display: none;
+}
+
+.field-grid input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* --- Stat-Tiles (UI-Konzept §5) --- */
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.stat-tile {
+  background: var(--inset);
+  border-radius: var(--radius-control);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-tile .label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.stat-tile .value {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.stat-tile .value .quantity-unit {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* --- Chips --- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  background: var(--inset);
+  color: var(--text-2);
+}
+
+.chip.ok {
+  color: var(--ok);
+}
+
+.chip.danger {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+/* --- Gleichungs-Panel (Schichtweise Berechnung): mirrors the classic CLT
+   equation's spatial order, {N;M} + {N;M}_temp = [ABD] * {eps;kappa}, so
+   Lasten/Temperaturlasten/ABD-Matrix/Verzerrungen sit left-to-right in that
+   order with "+"/"="/"x" between them - as in the Java original - instead of
+   as disconnected panels stacked in an arbitrary order. --- */
+
+.equation-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .equation-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.equation-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 170px;
+}
+
+.equation-block h3 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 0 0 2px;
+}
+
+.equation-abd {
+  flex: 1 1 auto;
+  min-width: 280px;
+}
+
+.equation-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.equation-label {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.equation-cell input,
+.equation-cell .quantity {
+  width: 100px;
+  box-sizing: border-box;
+}
+
+/* Styled as a muted, borderless "read-only-looking" value - clicking it
+   flips that DOF's prescription (see EquationPanel.tsx), taking over what
+   used to be a separate "Dehnung vorgeben" checkbox column. That column had
+   nowhere sensible to live once Lasten/Verzerrungen moved to opposite ends
+   of the equation row. */
+.equation-computed {
+  width: 100px;
+  box-sizing: border-box;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  background: var(--inset);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+  padding: 4px 8px;
+  cursor: pointer;
+  text-align: right;
+}
+
+.equation-computed:hover,
+.equation-computed:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.equation-op {
+  align-self: center;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+@media (max-width: 1100px) {
+  .equation-op {
+    align-self: flex-start;
+    padding: 4px 0;
+  }
+}
+
+/* --- Tabellen --- */
+
+.layer-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+/* table-layout:fixed: under table-layout:auto, the browser's "distribute
+   leftover space" step is a content-driven heuristic that ignores the
+   widths declared below whenever the row's total differs from the
+   container's width - it was observed inflating the empty checkbox column
+   to 109px while shrinking the Kriterium <select> column to 88px, clipping
+   "Max. Spannung" to "Max. Span". Fixed layout instead scales every column
+   proportionally to its declared width (so the table's own width:100% above
+   still fills the card, but every column keeps the same RATIO the widths
+   below specify, rather than one column absorbing all the slack). */
+.layer-table {
+  table-layout: fixed;
+}
+
+/* Column order: select, Nr., Name, Winkel, Dicke, Material, Kriterium,
+   Aktionen. Every column needs an explicit width under table-layout:fixed -
+   an unspecified column doesn't shrink-to-fit its content the way auto
+   layout does, so leaving one out lets it collapse or balloon unpredictably.
+   Widths below are content-box sizes; add ~12px cell padding per column
+   (~20px for Nr., which has extra padding-right) to get the rendered size. */
+.layer-table th:nth-child(1),
+.layer-table td:nth-child(1) {
+  width: 20px;
+}
+
+/* Extra padding-left (not just the base 6px): the checkbox and the row
+   number otherwise sit close enough to read as one merged "1[ ]" glyph
+   instead of two distinct columns. */
+.layer-table th:nth-child(2),
+.layer-table td:nth-child(2) {
+  width: 24px;
+  padding-left: 12px;
+  padding-right: 14px;
+}
+
+.layer-table th:nth-child(3),
+.layer-table td:nth-child(3) {
+  width: 54px;
+}
+
+/* Explicit widths on the cells themselves (not just the .quantity child) so
+   the .quantity span's own fixed width (125px, see below) always fits inside
+   its cell's content box. */
+.layer-table th:nth-child(4),
+.layer-table td:nth-child(4),
+.layer-table th:nth-child(5),
+.layer-table td:nth-child(5) {
+  width: 125px;
+}
+
+/* 130px comfortably fits the select's own 128px min-width (see below). */
+.layer-table th:nth-child(6),
+.layer-table td:nth-child(6),
+.layer-table th:nth-child(7),
+.layer-table td:nth-child(7) {
+  width: 130px;
+}
+
+.layer-table th:last-child,
+.layer-table td:last-child {
+  width: 104px;
+  white-space: nowrap;
+}
+
+.layer-table td:nth-child(3) input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.layer-table .quantity {
+  width: 125px;
+}
+
+/* min-width (not just max-width): a <select> imposes almost no minimum
+   content width of its own, so without this floor a width-constrained
+   layout would happily size it down toward zero. 128px comfortably fits the
+   longest current label ("Max. Spannung", ~101px) plus the native dropdown
+   arrow. */
+.layer-table select {
+  width: 100%;
+  min-width: 128px;
+  max-width: 160px;
+}
+
+.layer-table th,
+.layer-table td {
+  padding: 4px 6px;
+  text-align: left;
+  font-size: 13px;
+}
+
+.layer-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.layer-table tbody tr {
+  border-top: 1px solid var(--border);
+}
+
+.layer-table tbody tr:hover {
+  background: var(--inset);
+}
+
+/* :not([type="checkbox"]) - this rule targets the numeric Wert/Winkel text
+   inputs; without the exclusion it also stretched the row-select checkboxes
+   to 90px wide, which then painted their native checkbox glyph shifted well
+   into the Nr. column instead of inside their own narrow column. */
+.layer-table input:not([type="checkbox"]) {
+  width: 90px;
+}
+
+/* --- Massenbearbeitung ausgewaehlter Lagen --- */
+
+.bulk-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.bulk-select-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.bulk-angle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bulk-angle .quantity {
+  width: 110px;
+}
+
+.bulk-thickness {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bulk-thickness .quantity {
+  width: 110px;
+}
+
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  opacity: 0;
+}
+
+tr:hover .row-actions,
+tr:focus-within .row-actions,
+.responsive-card .row-actions {
+  opacity: 1;
+}
+
+.row-actions .icon-button {
+  width: 26px;
+  min-width: 26px;
+  min-height: 26px;
+}
+
+@media (max-width: 640px) {
+  .row-actions {
+    opacity: 1;
+  }
+}
+
+/* --- Laminateditor: zweispaltiges Layout (Tabelle links, Werkzeug-Gruppen
+   rechts - Gruppierung nach dem Vorbild des Java-Originals: Vorschau /
+   Aufbau bearbeiten / Symmetrie & Orientierung) --- */
+
+.editor-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* The actual grid item: stacks the Lagenaufbau card and the Module card, so
+   this column's total height keeps pace with the sidebar's instead of
+   leaving a tall dead zone below a short table (see LaminatePage.tsx). */
+.editor-main-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.editor-main-column > .panel {
+  margin-bottom: 0;
+}
+
+/* Sized to its own content (name field + table), not stretched to match the
+   sidebar's height. */
+.editor-main {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 16px;
+}
+
+/* Sticky so the tools - "Lage hinzufügen" above all - stay reachable without
+   scrolling back up once the layer table grows taller than the viewport.
+   Its own max-height + scroll is the backstop for when even the tool column
+   alone would otherwise overflow (e.g. a short/zoomed window). */
+.editor-side {
+  position: sticky;
+  top: 64px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  .editor-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-side {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+.tool-group {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.tool-group-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.tool-group > button {
+  width: 100%;
+  justify-content: flex-start;
+  margin-bottom: 8px;
+}
+
+.tool-group > button:last-child {
+  margin-bottom: 0;
+}
+
+.add-layer-row {
+  margin-bottom: 8px;
+}
+
+.add-layer-row input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.stack-ops {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stack-ops .rotate-field {
+  width: 70px;
+  flex: 0 0 auto;
+}
+
+.stack-ops .rotate-field input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.stack-viz {
+  display: block;
+  margin: 4px 0 8px;
+  max-width: 100%;
+}
+
+.stack-info {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* --- Flags --- */
+
+.flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.flags label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.flags.vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 0;
+}
+
+.flags label:has(input:disabled) {
+  color: var(--text-muted);
+}
+
+.material-name.compact {
+  max-width: 360px;
+}
+
+.error {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* --- ABD-Matrix mit Block-Toenung (UI-Konzept §5) --- */
+
+.results .matrix {
+  border-collapse: collapse;
+  margin-bottom: 16px;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  position: relative;
+}
+
+.results .matrix td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  text-align: right;
+}
+
+.results .matrix th {
+  padding: 4px 8px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 11px;
+}
+
+.results .matrix th[scope="row"] {
+  text-align: right;
+}
+
+.results .matrix td.block-a {
+  background: rgba(227, 73, 72, 0.08);
+}
+
+.results .matrix td.block-b {
+  background: rgba(27, 175, 122, 0.08);
+}
+
+.results .matrix td.block-d {
+  background: rgba(42, 120, 214, 0.09);
+}
+
+:root[data-theme="dark"] .results .matrix td.block-a {
+  background: rgba(230, 103, 103, 0.15);
+}
+
+:root[data-theme="dark"] .results .matrix td.block-b {
+  background: rgba(25, 158, 112, 0.15);
+}
+
+:root[data-theme="dark"] .results .matrix td.block-d {
+  background: rgba(57, 135, 229, 0.16);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .results .matrix td.block-a {
+    background: rgba(230, 103, 103, 0.15);
+  }
+
+  :root:not([data-theme="light"]) .results .matrix td.block-b {
+    background: rgba(25, 158, 112, 0.15);
+  }
+
+  :root:not([data-theme="light"]) .results .matrix td.block-d {
+    background: rgba(57, 135, 229, 0.16);
+  }
+}
+
+.abd-block-legend {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: -10px 0 12px;
+}
+
+.abd-block-legend .swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+
+/* --- Auswahlzeilen --- */
+
+.criterion-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.material-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.material-selector select {
+  flex: 1;
+}
+
+.material-name {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 10px;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: -4px 0 10px;
+}
+
+/* --- Lagenergebnisse --- */
+
+.layer-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.layer-results-table th,
+.layer-results-table td {
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.layer-results-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.layer-results-table tr.failed {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* --- Modul-Liste (LaminatePage, Desktop+Mobile) --- */
+
+.module-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.module-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px;
+  border-radius: var(--radius-control);
+  text-decoration: none;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.module-row:last-child {
+  border-bottom: none;
+}
+
+.module-row:hover {
+  background: var(--inset);
+}
+
+.module-row svg {
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.module-row .module-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.module-row .module-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.module-row .chevron {
+  color: var(--text-muted);
+}
+
+/* --- Empty State --- */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 13px;
+}
+
+.empty-state svg {
+  opacity: 0.5;
+}
+
+/* --- Mobile Shell --- */
+
+.app.mobile .app-body {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.mobile-content {
+  padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+}
+
+.bottom-tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 10;
+}
+
+.bottom-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  text-decoration: none;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.bottom-tab.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--touch-min);
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.mobile-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.mobile-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 6px;
+  text-decoration: none;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.mobile-row svg {
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.mobile-row .chevron {
+  margin-left: auto;
+  color: var(--text-muted);
+}
+
+/* --- dataviz color roles (unveraendert, validierte Palette) --- */
+
+.viz {
+  color-scheme: light;
+  --viz-surface: #fcfcfb;
+  --viz-text-primary: #0b0b0b;
+  --viz-text-secondary: #52514e;
+  --viz-text-muted: #898781;
+  --viz-grid: #e1e0d9;
+  --viz-axis: #c3c2b7;
+
+  --viz-series-1: #2a78d6; /* blue */
+  --viz-series-2: #1baf7a; /* aqua */
+  --viz-series-3: #eda100; /* yellow */
+  --viz-series-5: #4a3aa7; /* violet */
+  --viz-series-6: #e34948; /* red */
+  --viz-series-8: #eb6834; /* orange */
+
+  --viz-diverging-neg: #2a78d6;
+  --viz-diverging-pos: #e34948;
+  --viz-diverging-mid: #f0efec;
+
+  --viz-status-good: #0ca30c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .viz {
+    color-scheme: dark;
+    --viz-surface: #1a1a19;
+    --viz-text-primary: #ffffff;
+    --viz-text-secondary: #c3c2b7;
+    --viz-text-muted: #898781;
+    --viz-grid: #2c2c2a;
+    --viz-axis: #383835;
+
+    --viz-series-1: #3987e5;
+    --viz-series-2: #199e70;
+    --viz-series-3: #c98500;
+    --viz-series-5: #9085e9;
+    --viz-series-6: #e66767;
+    --viz-series-8: #d95926;
+
+    --viz-diverging-neg: #3987e5;
+    --viz-diverging-pos: #e66767;
+    --viz-diverging-mid: #383835;
+
+    --viz-status-good: #0ca30c;
+  }
+}
+
+:root[data-theme="dark"] .viz {
+  color-scheme: dark;
+  --viz-surface: #1a1a19;
+  --viz-text-primary: #ffffff;
+  --viz-text-secondary: #c3c2b7;
+  --viz-text-muted: #898781;
+  --viz-grid: #2c2c2a;
+  --viz-axis: #383835;
+
+  --viz-series-1: #3987e5;
+  --viz-series-2: #199e70;
+  --viz-series-3: #c98500;
+  --viz-series-5: #9085e9;
+  --viz-series-6: #e66767;
+  --viz-series-8: #d95926;
+
+  --viz-diverging-neg: #3987e5;
+  --viz-diverging-pos: #e66767;
+  --viz-diverging-mid: #383835;
+
+  --viz-status-good: #0ca30c;
+}
+
+/* --- Quantity / Zahleneingabe (UI-Konzept §5: Einheit innen) --- */
+
+.quantity {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  min-height: 32px;
+  padding: 0 8px 0 0;
+  box-sizing: border-box;
+}
+
+.quantity:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.quantity input {
+  flex: 1;
+  min-width: 0;
+  border: none !important;
+  background: none;
+  outline: none !important;
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.quantity-unit {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.quantity-display .quantity-unit {
+  margin-left: 2px;
+}
+
+/* --- Format-Einstellungen --- */
+
+.format-settings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.format-settings-table th,
+.format-settings-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.format-settings-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* --- Sonstiges --- */
+
+.render-count {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.how-computed {
+  margin: 10px 0;
+  background: var(--inset);
+  border-radius: var(--radius-control);
+  padding: 8px 10px;
+}
+
+.how-computed-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  min-height: 24px;
+  font-size: 13px;
+  color: var(--text-2);
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.how-computed-toggle:hover {
+  background: none;
+  color: var(--text);
+}
+
+.how-computed-body {
+  margin-top: 8px;
+  font-size: 13px;
+  overflow-x: auto;
+}
+
+.how-computed-body .katex-display {
+  margin: 8px 0;
+}
+
+/* --- ResponsiveTable --- */
+
+.responsive-table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.responsive-table-scroll.matrix th:first-child,
+.responsive-table-scroll.matrix td:first-child,
+.responsive-table-scroll.matrix th[scope="row"] {
+  position: sticky;
+  left: 0;
+  background: var(--card);
+}
+
+.responsive-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.responsive-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 8px 10px;
+}
+
+.responsive-card.failed {
+  border-color: var(--danger);
+}
+
+.responsive-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 3px 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.responsive-card-row:last-child {
+  border-bottom: none;
+}
+
+.responsive-card-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.responsive-card.failed .responsive-card-row {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* --- Charts (Farben aus .viz-Rollen) --- */
+
+.chart {
+  margin: 12px 0;
+}
+
+.chart-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--viz-text-primary);
+  margin: 0 0 6px;
+}
+
+.chart-svg-wrap {
+  position: relative;
+}
+
+.chart-svg text {
+  fill: var(--viz-text-muted);
+  font-size: 10px;
+}
+
+.chart-gridline {
+  stroke: var(--viz-grid);
+  stroke-width: 1;
+}
+
+.chart-axis {
+  stroke: var(--viz-axis);
+  stroke-width: 1;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 6px 0;
+  font-size: 12px;
+  color: var(--viz-text-secondary);
+}
+
+.chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.chart-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+
+.chart-legend-swatch.line {
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--viz-surface);
+  border: 1px solid var(--viz-grid);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--viz-text-secondary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+  z-index: 5;
+}
+
+.chart-tooltip strong {
+  color: var(--viz-text-primary);
+  font-weight: 600;
+}
+
+.chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.chart-table-toggle {
+  font-size: 12px;
+  color: var(--viz-text-secondary);
+  background: none;
+  border: 1px solid var(--viz-grid);
+  border-radius: 4px;
+  padding: 2px 8px;
+  min-height: 24px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.chart-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.chart-table th,
+.chart-table td {
+  padding: 3px 6px;
+  text-align: right;
+  border-bottom: 1px solid var(--viz-grid);
+}
+
+.chart-table th:first-child,
+.chart-table td:first-child {
+  text-align: left;
+}

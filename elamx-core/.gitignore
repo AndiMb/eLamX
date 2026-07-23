@@ -1,0 +1,6 @@
+/target
+Cargo.lock
+
+# wasm-pack build output (regenerate with `wasm-pack build` in wasm/)
+wasm/pkg/
+wasm/pkg-node/

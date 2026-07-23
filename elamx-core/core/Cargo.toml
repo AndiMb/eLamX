@@ -1,0 +1,14 @@
+[package]
+name = "elamx-core"
+version = "0.1.0"
+edition = "2021"
+description = "Classical laminate theory calculation core for eLamX (Rust rewrite of the Java calculation engine)"
+license = "GPL-3.0-only"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde", "js"] }
+
+[dev-dependencies]
+approx = "0.5"

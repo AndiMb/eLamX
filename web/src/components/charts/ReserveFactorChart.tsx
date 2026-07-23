@@ -1,0 +1,135 @@
+import { memo, useMemo, useState } from "react";
+import { useAtomValue } from "jotai";
+import { layerResultsFamily } from "../../store/derivedAtoms";
+import type { FailureType } from "../../lib/types";
+import { ChartLegend } from "./ChartLegend";
+import { ChartTooltip } from "./ChartTooltip";
+
+const WIDTH = 600;
+const HEIGHT = 240;
+const MARGIN = { top: 10, right: 10, bottom: 30, left: 40 };
+const PLOT_W = WIDTH - MARGIN.left - MARGIN.right;
+const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
+const BAR_MAX_W = 20;
+
+// Undamaged is a real state marker (pass), so it wears the status "good"
+// token; the three actual failure modes are identity (which kind of
+// failure), so they wear fixed categorical slots - see the dataviz skill's
+// color-formula.md "collision rule".
+const FAILURE_COLORS: Record<FailureType, string> = {
+  Undamaged: "var(--viz-status-good)",
+  FiberFailure: "var(--viz-series-6)",
+  MatrixFailure: "var(--viz-series-8)",
+  GeneralMaterialFailure: "var(--viz-series-5)",
+};
+
+const FAILURE_LABELS: Record<FailureType, string> = {
+  Undamaged: "unbeschädigt",
+  FiberFailure: "Faserbruch",
+  MatrixFailure: "Zwischenfaserbruch",
+  GeneralMaterialFailure: "allgemeines Materialversagen",
+};
+
+// See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
+export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId }: { laminateId: string }) {
+  const layerResults = useAtomValue(layerResultsFamily(laminateId));
+  const [hover, setHover] = useState<{
+    layerNumber: number;
+    position: "unten" | "oben";
+    value: number;
+    failureType: FailureType;
+    failureName: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const scale = useMemo(() => {
+    if (!layerResults || layerResults.length === 0) return null;
+    const values = layerResults.flatMap((l) => [l.rr_lower.minimal_reserve_factor, l.rr_upper.minimal_reserve_factor]);
+    const vMax = Math.max(...values, 1) * 1.1;
+    return { vMax, yScale: (v: number) => PLOT_H - (Math.min(v, vMax) / vMax) * PLOT_H };
+  }, [layerResults]);
+
+  if (!layerResults || layerResults.length === 0 || !scale) return null;
+  const { vMax, yScale } = scale;
+
+  const usedTypes = Array.from(
+    new Set(layerResults.flatMap((l) => [l.rr_lower.failure_type, l.rr_upper.failure_type])),
+  );
+
+  const groupW = PLOT_W / layerResults.length;
+  const barW = Math.min(BAR_MAX_W, groupW / 2 - 4);
+
+  return (
+    <div className="chart viz">
+      <p className="chart-title">Reservefaktoren pro Lage</p>
+      <ChartLegend items={usedTypes.map((t) => ({ label: FAILURE_LABELS[t], color: FAILURE_COLORS[t] }))} />
+      <div className="chart-svg-wrap">
+        <svg className="chart-svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" role="img" aria-label="Reservefaktoren pro Lage">
+          <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
+            {[0, 1, vMax].map((v) => (
+              <g key={v}>
+                <line x1={0} x2={PLOT_W} y1={yScale(v)} y2={yScale(v)} className={v === 1 ? "chart-axis" : "chart-gridline"} />
+                <text x={-8} y={yScale(v)} textAnchor="end" dominantBaseline="middle">
+                  {v.toFixed(1)}
+                </text>
+              </g>
+            ))}
+            {layerResults.map((l, i) => {
+              const groupX = i * groupW + groupW / 2;
+              const bars: { position: "unten" | "oben"; rf: typeof l.rr_lower; x: number }[] = [
+                { position: "unten", rf: l.rr_lower, x: groupX - barW - 2 },
+                { position: "oben", rf: l.rr_upper, x: groupX + 2 },
+              ];
+              return (
+                <g key={l.layer_number}>
+                  <text x={groupX} y={PLOT_H + 16} textAnchor="middle">
+                    {l.layer_number}
+                  </text>
+                  {bars.map((b) => (
+                    <rect
+                      key={b.position}
+                      x={b.x}
+                      y={yScale(b.rf.minimal_reserve_factor)}
+                      width={barW}
+                      height={Math.max(1, PLOT_H - yScale(b.rf.minimal_reserve_factor))}
+                      rx={2}
+                      fill={FAILURE_COLORS[b.rf.failure_type]}
+                      onPointerMove={(e) => {
+                        const rect = e.currentTarget.ownerSVGElement!.getBoundingClientRect();
+                        setHover({
+                          layerNumber: l.layer_number,
+                          position: b.position,
+                          value: b.rf.minimal_reserve_factor,
+                          failureType: b.rf.failure_type,
+                          failureName: b.rf.failure_name,
+                          x: e.clientX - rect.left + 12,
+                          y: e.clientY - rect.top + 12,
+                        });
+                      }}
+                      onPointerLeave={() => setHover((h) => (h?.layerNumber === l.layer_number && h?.position === b.position ? null : h))}
+                    />
+                  ))}
+                </g>
+              );
+            })}
+          </g>
+        </svg>
+        {hover && (
+          <ChartTooltip x={hover.x} y={hover.y}>
+            <div>
+              <strong>
+                Lage {hover.layerNumber} ({hover.position})
+              </strong>
+            </div>
+            <div>RF: {hover.value.toFixed(3)}</div>
+            <div>
+              {FAILURE_LABELS[hover.failureType]}
+              {hover.failureName ? ` (${hover.failureName})` : ""}
+            </div>
+          </ChartTooltip>
+        )}
+      </div>
+    </div>
+  );
+});

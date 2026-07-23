@@ -1,0 +1,16 @@
+[package]
+name = "elamx-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "WebAssembly bindings for elamx-core, exposing CLT calculations to the browser/PWA frontend"
+license = "GPL-3.0-only"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+elamx-core = { path = "../core" }
+wasm-bindgen = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+console_error_panic_hook = "0.1"
