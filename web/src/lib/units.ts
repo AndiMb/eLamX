@@ -13,6 +13,8 @@
 // category below, and inventing new ones wasn't part of the approved plan -
 // those fields use SafeNumberInput instead of Quantity (see MaterialPage,
 // CltModuleContent).
+import type { MessageKey } from "../i18n";
+
 export type QuantityCategory =
   | "stiffness"
   | "poissonRatio"
@@ -24,24 +26,38 @@ export type QuantityCategory =
   | "strain"
   | "temperature"
   | "temperatureDelta"
+  | "thermalExpansion"
+  | "hygralExpansion"
   | "reserveFactor"
   | "percent";
 
+// Unit SYMBOLS ("MPa", "kg/mm³", "°") are not translated - they are SI/ISO
+// notation, identical in every language, and translating them would be an
+// error rather than a service. Only the two labels that are actual words get
+// a message key: the category names ("Steifigkeit"/"Stiffness") and the one
+// unit whose "symbol" is a word, `fraction` ("Anteil").
 export interface UnitOption {
   id: string;
+  /** A unit symbol; language-independent unless `labelKey` overrides it. */
   label: string;
+  labelKey?: MessageKey;
   toCanonical: (displayValue: number) => number;
   fromCanonical: (canonicalValue: number) => number;
 }
 
 export interface CategoryDefinition {
   category: QuantityCategory;
-  label: string;
+  labelKey: MessageKey;
   /** null => genuinely dimensionless: no unit selector, just decimals/notation. */
   units: UnitOption[] | null;
   defaultUnitId: string | null;
   defaultDecimals: number;
   defaultNotation: "fixed" | "scientific";
+}
+
+/** Resolves a unit's display label, translating the rare word-valued ones. */
+export function unitLabel(unit: UnitOption, t: (key: MessageKey) => string): string {
+  return unit.labelKey ? t(unit.labelKey) : unit.label;
 }
 
 const identity = (id: string, label: string): UnitOption => ({
@@ -113,18 +129,35 @@ const temperatureDeltaUnits: UnitOption[] = [
 // delta_h (a moisture-content change fed straight into a linear hygral
 // strain term, beta * delta_h - the core is unit-agnostic, purely
 // multiplicative). "%" is kept as the identity unit so existing values are
-// unaffected; "‰" and "Anteil" are offered as convenience alternates defined
+// unaffected; "‰" and the fraction unit are offered as convenience alternates defined
 // relative to that same baseline.
 const percentUnits: UnitOption[] = [
   identity("pct", "%"),
   scaling("permille", "‰", 0.1),
-  scaling("fraction", "Anteil", 100),
+  { ...scaling("fraction", "fraction", 100), labelKey: "unit.fraction" },
+];
+
+// alpha_t: canonical 1/K. Typical CFRP values are ~1e-6, so the default
+// display unit is 10^-6/K ("ppm/K") - entering "28" beats entering "0.000028".
+const thermalExpansionUnits: UnitOption[] = [
+  identity("per_K", "1/K"),
+  scaling("ppm_K", "10⁻⁶/K", 1e-6),
+  scaling("ppm_F", "10⁻⁶/°F", 1e-6 * (9 / 5)),
+];
+
+// beta: canonical 1/%, i.e. the reciprocal of whatever unit delta_h is given
+// in. The core only ever forms beta * delta_h, so the two must share a unit
+// convention - see percentUnits, whose identity unit is likewise "%".
+const hygralExpansionUnits: UnitOption[] = [
+  identity("per_pct", "1/%"),
+  scaling("per_permille", "1/‰", 10),
+  { ...scaling("per_fraction", "per fraction", 0.01), labelKey: "unit.perFraction" },
 ];
 
 export const CATEGORY_DEFINITIONS: Record<QuantityCategory, CategoryDefinition> = {
   stiffness: {
     category: "stiffness",
-    label: "Steifigkeit",
+    labelKey: "quantity.stiffness",
     units: stressLikeUnits,
     defaultUnitId: "MPa",
     defaultDecimals: 0,
@@ -132,7 +165,7 @@ export const CATEGORY_DEFINITIONS: Record<QuantityCategory, CategoryDefinition> 
   },
   stress: {
     category: "stress",
-    label: "Spannung / Festigkeit",
+    labelKey: "quantity.stress",
     units: stressLikeUnits,
     defaultUnitId: "MPa",
     defaultDecimals: 1,
@@ -140,7 +173,7 @@ export const CATEGORY_DEFINITIONS: Record<QuantityCategory, CategoryDefinition> 
   },
   poissonRatio: {
     category: "poissonRatio",
-    label: "Querkontraktionszahl",
+    labelKey: "quantity.poissonRatio",
     units: null,
     defaultUnitId: null,
     defaultDecimals: 4,
@@ -148,7 +181,7 @@ export const CATEGORY_DEFINITIONS: Record<QuantityCategory, CategoryDefinition> 
   },
   thickness: {
     category: "thickness",
-    label: "Dicke",
+    labelKey: "quantity.thickness",
     units: thicknessUnits,
     defaultUnitId: "mm",
     defaultDecimals: 2,
@@ -156,7 +189,7 @@ export const CATEGORY_DEFINITIONS: Record<QuantityCategory, CategoryDefinition> 
   },
   angle: {
     category: "angle",
-    label: "Winkel",
+    labelKey: "quantity.angle",
     units: angleUnits,
     defaultUnitId: "deg",
     defaultDecimals: 1,
@@ -164,7 +197,7 @@ export const CATEGORY_DEFINITIONS: Record<QuantityCategory, CategoryDefinition> 
   },
   density: {
     category: "density",
-    label: "Dichte",
+    labelKey: "quantity.density",
     units: densityUnits,
     defaultUnitId: "g_cm3",
     defaultDecimals: 3,
@@ -172,7 +205,7 @@ export const CATEGORY_DEFINITIONS: Record<QuantityCategory, CategoryDefinition> 
   },
   force: {
     category: "force",
-    label: "Kraft",
+    labelKey: "quantity.force",
     units: forceUnits,
     defaultUnitId: "N",
     defaultDecimals: 1,
@@ -180,7 +213,7 @@ export const CATEGORY_DEFINITIONS: Record<QuantityCategory, CategoryDefinition> 
   },
   strain: {
     category: "strain",
-    label: "Dehnung",
+    labelKey: "quantity.strain",
     units: null,
     defaultUnitId: null,
     defaultDecimals: 4,
@@ -188,7 +221,7 @@ export const CATEGORY_DEFINITIONS: Record<QuantityCategory, CategoryDefinition> 
   },
   temperature: {
     category: "temperature",
-    label: "Temperatur",
+    labelKey: "quantity.temperature",
     units: temperatureUnits,
     defaultUnitId: "C",
     defaultDecimals: 1,
@@ -196,15 +229,31 @@ export const CATEGORY_DEFINITIONS: Record<QuantityCategory, CategoryDefinition> 
   },
   temperatureDelta: {
     category: "temperatureDelta",
-    label: "Temperaturänderung",
+    labelKey: "quantity.temperatureDelta",
     units: temperatureDeltaUnits,
     defaultUnitId: "dC",
     defaultDecimals: 1,
     defaultNotation: "fixed",
   },
+  thermalExpansion: {
+    category: "thermalExpansion",
+    labelKey: "quantity.thermalExpansion",
+    units: thermalExpansionUnits,
+    defaultUnitId: "ppm_K",
+    defaultDecimals: 2,
+    defaultNotation: "fixed",
+  },
+  hygralExpansion: {
+    category: "hygralExpansion",
+    labelKey: "quantity.hygralExpansion",
+    units: hygralExpansionUnits,
+    defaultUnitId: "per_pct",
+    defaultDecimals: 4,
+    defaultNotation: "fixed",
+  },
   reserveFactor: {
     category: "reserveFactor",
-    label: "Reservefaktor",
+    labelKey: "quantity.reserveFactor",
     units: null,
     defaultUnitId: null,
     defaultDecimals: 3,
@@ -212,7 +261,7 @@ export const CATEGORY_DEFINITIONS: Record<QuantityCategory, CategoryDefinition> 
   },
   percent: {
     category: "percent",
-    label: "Feuchteänderung",
+    labelKey: "quantity.percent",
     units: percentUnits,
     defaultUnitId: "pct",
     defaultDecimals: 1,

@@ -3,6 +3,8 @@ import { useAtomValue } from "jotai";
 import { abdMatrixFamily } from "../store/derivedAtoms";
 import { useRenderCount } from "../lib/useRenderCount";
 import { ResponsiveTable } from "./ResponsiveTable";
+import { isFiniteResult, NO_VALUE } from "../lib/numberFormat";
+import { useT } from "../i18n";
 
 // Matches the heatmap's AXIS_LABELS convention (A/D block indices 1,2,6).
 const AXIS_LABELS = ["1", "2", "6", "1", "2", "6"];
@@ -25,6 +27,7 @@ const blockClass = (i: number, j: number) => {
 // selectAtom deep-equal optimization behind React's default "always re-render
 // children" behavior.
 export const AbdMatrixPanel = memo(function AbdMatrixPanel({ laminateId }: { laminateId: string }) {
+  const t = useT();
   const abd = useAtomValue(abdMatrixFamily(laminateId));
   const renderCount = useRenderCount();
 
@@ -33,7 +36,7 @@ export const AbdMatrixPanel = memo(function AbdMatrixPanel({ laminateId }: { lam
   return (
     <>
       <h3>
-        ABD-Matrix <span className="render-count">(Renders: {renderCount})</span>
+        {t("abd.title")} <span className="render-count">{t("common.renders", { count: renderCount })}</span>
       </h3>
       <ResponsiveTable variant="matrix">
         <table className="matrix">
@@ -51,7 +54,7 @@ export const AbdMatrixPanel = memo(function AbdMatrixPanel({ laminateId }: { lam
                 <th scope="row">{AXIS_LABELS[i]}</th>
                 {row.map((value, j) => (
                   <td key={`cell-${i}-${j}`} className={blockClass(i, j)}>
-                    {value.toExponential(3)}
+                    {isFiniteResult(value) ? value.toExponential(3) : NO_VALUE}
                   </td>
                 ))}
               </tr>
@@ -62,15 +65,15 @@ export const AbdMatrixPanel = memo(function AbdMatrixPanel({ laminateId }: { lam
       <div className="abd-block-legend">
         <span>
           <span className="swatch" style={{ background: "rgba(227,73,72,0.35)" }} />
-          A (Scheibe)
+          {t("abd.legend.a")}
         </span>
         <span>
           <span className="swatch" style={{ background: "rgba(27,175,122,0.35)" }} />
-          B (Kopplung)
+          {t("abd.legend.b")}
         </span>
         <span>
           <span className="swatch" style={{ background: "rgba(42,120,214,0.35)" }} />
-          D (Platte)
+          {t("abd.legend.d")}
         </span>
       </div>
     </>

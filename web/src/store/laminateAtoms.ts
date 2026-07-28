@@ -12,6 +12,7 @@ import { atom } from "jotai";
 import { atomFamily } from "jotai-family";
 import { defaultLayers, type LayerRow } from "../lib/constants";
 import { DEFAULT_MATERIAL_ID } from "./materialsAtoms";
+import { t } from "../i18n";
 
 export interface LaminateConfig {
   id: string;
@@ -50,14 +51,14 @@ export const laminateIdsAtom = atom<string[]>([initialLaminateId]);
 export const laminateConfigFamily = atomFamily((id: string) =>
   atom<LaminateConfig>(
     id === initialLaminateId
-      ? defaultLaminateConfig(id, "Laminat 1", DEFAULT_MATERIAL_ID)
-      : defaultLaminateConfig(id, "Neues Laminat", ""),
+      ? defaultLaminateConfig(id, t("default.laminateName", { nr: 1 }), DEFAULT_MATERIAL_ID)
+      : defaultLaminateConfig(id, t("default.newLaminate"), ""),
   ),
 );
 
 export const addLaminateAtom = atom(null, (get, set, materialId: string) => {
   const id = crypto.randomUUID();
-  const name = `Laminat ${get(laminateIdsAtom).length + 1}`;
+  const name = t("default.laminateName", { nr: get(laminateIdsAtom).length + 1 });
   set(laminateConfigFamily(id), defaultLaminateConfig(id, name, materialId));
   set(laminateIdsAtom, (ids) => [...ids, id]);
   return id;
@@ -68,15 +69,15 @@ export const removeLaminateAtom = atom(null, (_get, set, id: string) => {
   laminateConfigFamily.remove(id);
 });
 
-// "Laminat kopieren" like the Java original: deep copy with a "Kopie" name
-// suffix; layers get fresh ids so later per-layer edits can't alias.
+// "Laminat kopieren" like the Java original: deep copy with a "Kopie"/"copy"
+// name suffix; layers get fresh ids so later per-layer edits can't alias.
 export const duplicateLaminateAtom = atom(null, (get, set, sourceId: string) => {
   const source = get(laminateConfigFamily(sourceId));
   const id = crypto.randomUUID();
   set(laminateConfigFamily(id), {
     ...source,
     id,
-    name: `${source.name} Kopie`,
+    name: t("default.copy", { name: source.name }),
     layers: source.layers.map((l) => ({ ...l, id: crypto.randomUUID() })),
     dofValues: [...source.dofValues],
     useStrain: [...source.useStrain],

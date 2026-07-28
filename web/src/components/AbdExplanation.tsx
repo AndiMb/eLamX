@@ -2,8 +2,9 @@ import { useAtomValue } from "jotai";
 import { abdMatrixFamily, layerContributionsFamily } from "../store/derivedAtoms";
 import { laminateConfigFamily } from "../store/laminateAtoms";
 import { materialsAtom } from "../store/materialsAtoms";
-import { localQMatrix, fmt } from "../lib/cltFormulas";
+import { localQMatrix, useFmt } from "../lib/cltFormulas";
 import { HowWasThisComputed } from "./HowWasThisComputed";
+import { useT } from "../i18n";
 
 // A worked example for the FIRST layer only (rather than every layer, which
 // would be overwhelming) - explains local Q -> global Q-bar -> A11. Kept as
@@ -13,6 +14,8 @@ import { HowWasThisComputed } from "./HowWasThisComputed";
 // count verification) - this is exposition content, opened on demand, not a
 // live numeric result that needs the same re-render discipline.
 export function AbdExplanation({ laminateId }: { laminateId: string }) {
+  const t = useT();
+  const fmt = useFmt();
   const abd = useAtomValue(abdMatrixFamily(laminateId));
   const contributions = useAtomValue(layerContributionsFamily(laminateId));
   const config = useAtomValue(laminateConfigFamily(laminateId));
@@ -53,7 +56,7 @@ Q_{66} &= G = ${fmt(localQ.q66, 1)}\\ \\text{MPa}
   const qBarSubstituted = `\\begin{aligned}
 \\theta &= ${fmt(firstLayer.angle_deg, 1)}^\\circ, \\quad c = ${fmt(c, 3)}, \\quad s = ${fmt(s, 3)} \\\\
 \\bar Q_{11} &= ${fmt(c ** 4, 3)}\\cdot ${fmt(localQ.q11, 1)} + 2\\cdot ${fmt(c2s2, 3)}\\cdot ${fmt(localQ.q12, 1)} + ${fmt(s ** 4, 3)}\\cdot ${fmt(localQ.q22, 1)} + 4\\cdot ${fmt(c2s2, 3)}\\cdot ${fmt(localQ.q66, 1)} \\\\
-&= ${fmt(firstLayer.q_global[0][0], 1)}\\ \\text{MPa} \\quad (\\text{tatsächlicher Wert aus der Berechnung})
+&= ${fmt(firstLayer.q_global[0][0], 1)}\\ \\text{MPa} \\quad (\\text{${t("abdExplanation.qBar.actualValue")}})
 \\end{aligned}`;
 
   const abdFormula = "A_{11} = \\sum_k \\bar Q_{11,k} \\cdot t_k";
@@ -62,20 +65,26 @@ Q_{66} &= G = ${fmt(localQ.q66, 1)}\\ \\text{MPa}
 
   return (
     <>
-      <HowWasThisComputed title="lokale Steifigkeit Q (Lage 1)" formula={localQFormula} substituted={localQSubstituted}>
-        <p className="hint">
-          Aus den Werkstoffkennwerten (E&#8741;, E&perp;, &nu;12, G) von &bdquo;{material.name}&ldquo; - siehe Materialseite.
-        </p>
+      <HowWasThisComputed
+        title={t("abdExplanation.localQ.title")}
+        formula={localQFormula}
+        substituted={localQSubstituted}
+      >
+        <p className="hint">{t("abdExplanation.localQ.hint", { material: material.name })}</p>
       </HowWasThisComputed>
       <HowWasThisComputed
-        title="Drehung ins Laminat-Koordinatensystem (Q&#772;, Lage 1)"
+        title={t("abdExplanation.qBar.title")}
         formula={qBarFormula}
         substituted={qBarSubstituted}
       >
-        <p className="hint">Analog für Q&#772;12, Q&#772;16, Q&#772;22, Q&#772;26, Q&#772;66.</p>
+        <p className="hint">{t("abdExplanation.qBar.hint")}</p>
       </HowWasThisComputed>
-      <HowWasThisComputed title="Aufbau der A-Matrix (A11)" formula={abdFormula} substituted={abdSubstituted}>
-        <p className="hint">Jeder Summand ist der A-Beitrag einer Lage (Q&#772;11 der Lage mal ihrer Dicke t).</p>
+      <HowWasThisComputed
+        title={t("abdExplanation.aMatrix.title")}
+        formula={abdFormula}
+        substituted={abdSubstituted}
+      >
+        <p className="hint">{t("abdExplanation.aMatrix.hint")}</p>
       </HowWasThisComputed>
     </>
   );

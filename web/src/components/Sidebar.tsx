@@ -14,10 +14,12 @@ import { materialsAtom } from "../store/materialsAtoms";
 import { expandedLaminateIdsAtom } from "../store/uiAtoms";
 import { defaultMaterial } from "../lib/constants";
 import { MODULE_LIST } from "../lib/moduleRegistry";
+import { useT } from "../i18n";
 
 // Inline rename on double-click (UI-Konzept §4/§6): Enter commits, Escape
 // reverts, blur commits. Shared by laminate and material nodes.
 function RenameableLabel({ name, onRename }: { name: string; onRename: (name: string) => void }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
 
@@ -30,7 +32,7 @@ function RenameableLabel({ name, onRename }: { name: string; onRename: (name: st
           setDraft(name);
           setEditing(true);
         }}
-        title={`${name} (Doppelklick zum Umbenennen)`}
+        title={t("tree.renameHint", { name })}
       >
         {name}
       </span>
@@ -56,12 +58,13 @@ function RenameableLabel({ name, onRename }: { name: string; onRename: (name: st
         if (e.key === "Escape") setEditing(false);
       }}
       onClick={(e) => e.preventDefault()}
-      aria-label="Umbenennen"
+      aria-label={t("tree.rename")}
     />
   );
 }
 
 function LaminateTreeItem({ id }: { id: string }) {
+  const t = useT();
   const [config, setConfig] = useAtom(laminateConfigFamily(id));
   const [expandedIds, setExpandedIds] = useAtom(expandedLaminateIdsAtom);
   const removeLaminate = useSetAtom(removeLaminateAtom);
@@ -100,7 +103,7 @@ function LaminateTreeItem({ id }: { id: string }) {
           type="button"
           className="tree-expand"
           onClick={toggleExpanded}
-          aria-label={expanded ? "Zuklappen" : "Aufklappen"}
+          aria-label={expanded ? t("tree.collapse") : t("tree.expand")}
         >
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
@@ -113,8 +116,8 @@ function LaminateTreeItem({ id }: { id: string }) {
             type="button"
             className="icon-button"
             onClick={handleDuplicate}
-            aria-label="Laminat duplizieren"
-            title="Laminat duplizieren"
+            aria-label={t("laminate.duplicate")}
+            title={t("laminate.duplicate")}
           >
             <Copy size={14} />
           </button>
@@ -122,8 +125,8 @@ function LaminateTreeItem({ id }: { id: string }) {
             type="button"
             className="icon-button danger"
             onClick={handleRemove}
-            aria-label="Laminat löschen"
-            title="Laminat löschen"
+            aria-label={t("laminate.delete")}
+            title={t("laminate.delete")}
           >
             <Trash2 size={14} />
           </button>
@@ -141,7 +144,7 @@ function LaminateTreeItem({ id }: { id: string }) {
                     className={({ isActive }) => `tree-node${isActive ? " active" : ""}`}
                   >
                     <Icon size={16} strokeWidth={1.75} />
-                    <span className="tree-node-label">{mod.label}</span>
+                    <span className="tree-node-label">{t(mod.labelKey)}</span>
                   </NavLink>
                 </div>
               </li>
@@ -154,6 +157,7 @@ function LaminateTreeItem({ id }: { id: string }) {
 }
 
 export function Sidebar() {
+  const t = useT();
   const laminateIds = useAtomValue(laminateIdsAtom);
   const [materials, setMaterials] = useAtom(materialsAtom);
   const usedMaterialIds = useAtomValue(usedMaterialIdsAtom);
@@ -166,7 +170,7 @@ export function Sidebar() {
   };
 
   const handleAddMaterial = () => {
-    const newMaterial = { ...defaultMaterial(), name: `Material ${materials.length + 1}` };
+    const newMaterial = { ...defaultMaterial(), name: t("default.materialName", { nr: materials.length + 1 }) };
     setMaterials((ms) => [...ms, newMaterial]);
     navigate(`/materials/${newMaterial.id}`);
   };
@@ -177,7 +181,7 @@ export function Sidebar() {
     const copy = {
       ...source,
       id: crypto.randomUUID(),
-      name: `${source.name} Kopie`,
+      name: t("default.copy", { name: source.name }),
       additional_values: { ...source.additional_values },
     };
     setMaterials((ms) => {
@@ -201,13 +205,13 @@ export function Sidebar() {
     <nav className="sidebar">
       <section className="tree-section">
         <div className="tree-section-header">
-          <h3>Laminate</h3>
+          <h3>{t("nav.laminates")}</h3>
           <button
             type="button"
             className="icon-button"
             onClick={handleAddLaminate}
-            aria-label="Laminat hinzufügen"
-            title="Laminat hinzufügen"
+            aria-label={t("laminate.add")}
+            title={t("laminate.add")}
           >
             <Plus size={16} />
           </button>
@@ -221,13 +225,13 @@ export function Sidebar() {
 
       <section className="tree-section">
         <div className="tree-section-header">
-          <h3>Materialien</h3>
+          <h3>{t("nav.materials")}</h3>
           <button
             type="button"
             className="icon-button"
             onClick={handleAddMaterial}
-            aria-label="Material hinzufügen"
-            title="Material hinzufügen"
+            aria-label={t("material.add")}
+            title={t("material.add")}
           >
             <Plus size={16} />
           </button>
@@ -251,8 +255,8 @@ export function Sidebar() {
                       type="button"
                       className="icon-button"
                       onClick={() => handleDuplicateMaterial(m.id)}
-                      aria-label="Material duplizieren"
-                      title="Material duplizieren"
+                      aria-label={t("material.duplicate")}
+                      title={t("material.duplicate")}
                     >
                       <Copy size={14} />
                     </button>
@@ -261,13 +265,13 @@ export function Sidebar() {
                       className="icon-button danger"
                       onClick={() => handleRemoveMaterial(m.id)}
                       disabled={isLast || inUse}
-                      aria-label="Material löschen"
+                      aria-label={t("material.delete")}
                       title={
                         inUse
-                          ? "Material wird von einem Laminat verwendet"
+                          ? t("material.delete.inUse")
                           : isLast
-                            ? "Das letzte Material kann nicht gelöscht werden"
-                            : "Material löschen"
+                            ? t("material.delete.last")
+                            : t("material.delete")
                       }
                     >
                       <Trash2 size={14} />
@@ -282,14 +286,14 @@ export function Sidebar() {
 
       <section className="tree-section">
         <div className="tree-section-header">
-          <h3>Einstellungen</h3>
+          <h3>{t("nav.settings")}</h3>
         </div>
         <ul className="tree-list">
           <li>
             <div className="tree-node-row">
               <NavLink to="/settings/format" className={({ isActive }) => `tree-node${isActive ? " active" : ""}`}>
                 <Ruler size={16} strokeWidth={1.75} />
-                <span className="tree-node-label">Zahlenformate &amp; Einheiten</span>
+                <span className="tree-node-label">{t("nav.formatSettings")}</span>
               </NavLink>
             </div>
           </li>

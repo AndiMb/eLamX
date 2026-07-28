@@ -1,6 +1,7 @@
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { useIsMobile } from "./lib/useIsMobile";
 import { useApplyTheme } from "./lib/useApplyTheme";
+import { useApplyLocale } from "./i18n/useApplyLocale";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { BottomTabs } from "./components/BottomTabs";
@@ -32,6 +33,7 @@ function AppRoutes() {
 function Shell() {
   const isMobile = useIsMobile();
   useApplyTheme();
+  useApplyLocale();
 
   if (isMobile) {
     return (

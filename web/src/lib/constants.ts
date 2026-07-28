@@ -1,4 +1,5 @@
 import { DEFAULT_ADDITIONAL_VALUES, type CriterionId, type MaterialDto } from "./types";
+import { t } from "../i18n";
 
 // Failure criterion is per-LAYER (matches the Java original's layup editor,
 // and elamx-core's own LayerDto/CltLayer, which already carry their own
@@ -25,6 +26,12 @@ export const DOF_NAMES = [
 ] as const;
 
 export const LOAD_FIELDS = ["n_x", "n_y", "n_xy", "m_x", "m_y", "m_xy"] as const;
+
+// The hygrothermal force/moment vector the core computes from dT/dH and each
+// layer's alpha/beta (Loads::set_hygrothermal_forces_vector). Same DOF order as
+// LOAD_FIELDS - it is the second summand of the CLT equation, never an input.
+export const HYGROTHERMAL_FIELDS = ["nt_x", "nt_y", "nt_xy", "mt_x", "mt_y", "mt_xy"] as const;
+
 export const STRAIN_FIELDS = [
   "epsilon_x",
   "epsilon_y",
@@ -34,10 +41,15 @@ export const STRAIN_FIELDS = [
   "kappa_xy",
 ] as const;
 
+// Names produced here (and by defaultLayers below) are user DATA, not UI
+// labels: they are written once, in whatever language is active at creation
+// time, and the user can rename them freely afterwards. Hence the plain t()
+// rather than the reactive useT() - re-translating a name on every language
+// switch would overwrite whatever the user had renamed it to.
 export function defaultMaterial(): MaterialDto {
   return {
     id: crypto.randomUUID(),
-    name: "UD-CFK",
+    name: t("default.material.udCfrp"),
     e_par: 140000,
     e_nor: 10000,
     nue12: 0.3,
@@ -59,8 +71,12 @@ export function defaultMaterial(): MaterialDto {
 }
 
 export function defaultLayers(materialId: string): LayerRow[] {
-  return [
-    { id: crypto.randomUUID(), name: "Lage 1", angle: 0, thickness: 0.2, materialId, criterionId: DEFAULT_CRITERION_ID },
-    { id: crypto.randomUUID(), name: "Lage 2", angle: 90, thickness: 0.2, materialId, criterionId: DEFAULT_CRITERION_ID },
-  ];
+  return [0, 90].map((angle, i) => ({
+    id: crypto.randomUUID(),
+    name: t("default.layerName", { nr: i + 1 }),
+    angle,
+    thickness: 0.2,
+    materialId,
+    criterionId: DEFAULT_CRITERION_ID,
+  }));
 }

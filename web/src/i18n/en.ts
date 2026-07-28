@@ -1,0 +1,290 @@
+// The English catalog is the SINGLE SOURCE OF TRUTH for the message-key set:
+// `MessageKey` is derived from it (see ./index.ts), so every other catalog is
+// typed as `Messages` and a forgotten or misspelled key is a compile error,
+// not a silent runtime fallback. English (not German) holds that role for the
+// same reason the Java original does: eLamX2's NetBeans bundles use
+// `Bundle.properties` (English) as the default and `Bundle_de.properties` as
+// the overlay, so English is the language a missing translation degrades to.
+//
+// Terminology is deliberately taken from the Java original's own bundles
+// wherever one exists (e.g. LaminatEditor/Bundle.properties: "Stacking
+// Sequence", "Edit Stack", "with middle layer"; AdditionalFailureCriteria/
+// Bundle.properties: the failure-mode names) so users moving between the
+// desktop and the web version meet the same words.
+//
+// Placeholders are `{name}` and are substituted by t()/tx().
+export const en = {
+  // --- App shell -----------------------------------------------------------
+  "app.title": "eLamX – Classical laminate theory",
+
+  "topbar.studentMode": "Student mode",
+  "topbar.studentMode.hint": "Expand explanation panels by default",
+  "topbar.theme.light": "Light theme",
+  "topbar.theme.dark": "Dark theme",
+  "topbar.language": "Language",
+
+  "nav.laminates": "Laminates",
+  "nav.laminate": "Laminate",
+  "nav.materials": "Materials",
+  "nav.settings": "Settings",
+  "nav.formatSettings": "Number formats & units",
+
+  // --- Shared vocabulary ---------------------------------------------------
+  "common.name": "Name",
+  "common.yes": "yes",
+  "common.no": "no",
+  "common.local": "local",
+  "common.global": "global",
+  "common.top": "top",
+  "common.bottom": "bottom",
+  "common.renders": "(renders: {count})",
+
+  // --- Sidebar tree --------------------------------------------------------
+  "tree.rename": "Rename",
+  "tree.renameHint": "{name} (double-click to rename)",
+  "tree.expand": "Expand",
+  "tree.collapse": "Collapse",
+
+  // --- Laminates -----------------------------------------------------------
+  "laminate.add": "Add laminate",
+  "laminate.duplicate": "Duplicate laminate",
+  "laminate.delete": "Delete laminate",
+
+  // --- Materials -----------------------------------------------------------
+  "material.add": "Add material",
+  "material.duplicate": "Duplicate material",
+  "material.delete": "Delete material",
+  "material.delete.inUse": "Material is used by a laminate",
+  "material.delete.last": "The last material cannot be deleted",
+  "material.notFound": "Material not found.",
+  "material.properties": "Material properties",
+  "material.strengths": "Strengths",
+  "material.hygrothermal": "Hygrothermal coefficients",
+  "material.hygrothermal.hint": "Thermal (α) and hygral (β) expansion coefficients, parallel and transverse to the fibre. They are what turns a temperature or moisture change into the hygrothermal load vector — leave them at 0 and ΔT/ΔH have no effect.",
+  "material.criterionParams": "Additional parameters per failure criterion",
+  "material.criterionParams.hint":
+    "These apply material-wide to every laminate using this material – depending on which criterion each layer selects. Collapsed by default: only needed if a layer actually uses that criterion.",
+  "material.maxStrain.useGlobal": "global (instead of local)",
+  // Subscript letters on the material symbols. The base notation (R∥, R⊥, ε)
+  // is international, but these three subscripts are abbreviated WORDS and
+  // are language-specific - German writes R∥,z / R∥,d for Zug/Druck, English
+  // R∥,t / R∥,c for tension/compression. (eLamX2 localizes the same symbols,
+  // see File_View/.../Bundle*.properties.)
+  "material.sym.tension": "t",
+  "material.sym.compression": "c",
+  "material.sym.critical": "crit",
+
+  // --- Welcome screen ------------------------------------------------------
+  "welcome.title": "Welcome to eLamX",
+  "welcome.body":
+    "Select a laminate or a material on the left, or create a new one with the {plus} buttons in the tree. All results update live as you type.",
+
+  // --- Layup editor --------------------------------------------------------
+  "layers.title": "Stacking sequence",
+  "layers.empty": "No layers yet — add the first one below.",
+  "layers.selectAll": "Select all",
+  "layers.selected.one": "{count} layer selected",
+  "layers.selected.other": "{count} layers selected",
+  "layers.select": "Select {name}",
+  "layers.bulk.setAngle": "Set angle for selected layers",
+  "layers.bulk.setThickness": "Set thickness for selected layers",
+  "layers.bulk.setMaterial": "Set material for selected layers",
+  "layers.bulk.setCriterion": "Set failure criterion for selected layers",
+  "layers.bulk.materialPlaceholder": "Set material…",
+  "layers.bulk.criterionPlaceholder": "Set criterion…",
+  "layers.bulk.delete": "Delete selected layers",
+  "layers.column.nr": "No.",
+  "layers.column.angle": "Angle",
+  "layers.column.thickness": "Thickness",
+  "layers.column.material": "Material",
+  "layers.column.criterion": "Criterion",
+  "layers.moveUp": "Move layer up",
+  "layers.moveDown": "Move layer down",
+  "layers.duplicate": "Duplicate layer",
+  "layers.delete": "Delete layer",
+  "layers.add.title": "Add layer",
+  "layers.add.placeholder": "Angles, e.g. 0/45/-45/90",
+  "layers.add.aria": "Angles of the new layers",
+  "layers.add.button": "Add layer(s)",
+  "layers.add.hint":
+    "Several angles separated by / create several layers (thickness, material and criterion are inherited from the last layer).",
+  "layers.preview": "Preview",
+  "layers.viz.aria": "Stacking sequence, drawn to scale by thickness",
+  "layers.totalThickness": "Total thickness",
+  "layers.count.one": "layer",
+  "layers.count.other": "layers",
+  "layers.mirrorNote": " (incl. mirrored half)",
+  "layers.editStack": "Edit stack",
+  "layers.invert": "Invert",
+  "layers.rotateBy": "Rotate by",
+  "layers.symmetryGroup": "Symmetry & orientation",
+  "layers.symmetric": "symmetric",
+  "layers.withMiddleLayer": "with middle layer",
+  "layers.invertZ": "invert z-axis",
+
+  // --- Modules -------------------------------------------------------------
+  "modules.title": "Modules",
+  "modules.unknown": "Unknown module.",
+  "module.clt.label": "Layer-by-layer analysis",
+  "module.clt.description": "Loads/strains, ABD matrix, stresses and failure check per layer",
+  "clt.criterionHint": "Failure criterion and layer names are set in the {link}.",
+  "clt.criterionHint.link": "stacking sequence",
+
+  // --- CLT equation panel --------------------------------------------------
+  "equation.title": "Equation",
+  "equation.loads": "Mechanical loads",
+  "equation.hygrothermalLoads": "Hygrothermal loads",
+  "equation.hygrothermalLoads.hint": "The hygrothermal force/moment vector is computed from ΔT/ΔH and each layer's thermal and hygral expansion coefficients — it cannot be entered directly.",
+  "equation.hygrothermalState": "Temperature and moisture change",
+  "equation.hygrothermalState.hint": "Not operands of the equation: these two values are what the hygrothermal load vector is derived from.",
+  "equation.strains": "Strains",
+  "equation.prescribe": "Prescribe {name} instead",
+  "equation.prescribe.title": "Prescribe {name} instead (currently computed)",
+
+  // --- Results -------------------------------------------------------------
+  "results.error": "Error: {message}",
+  "results.computing": "Computing…",
+  "results.abdVisualization": "ABD matrix – visualization",
+
+  "abd.title": "ABD matrix",
+  "abd.legend.a": "A (membrane)",
+  "abd.legend.b": "B (coupling)",
+  "abd.legend.d": "D (bending)",
+
+  "summary.title": "Key figures",
+  "summary.symmetric": "symmetric (B≈0)",
+  "summary.areaWeight": "Area weight",
+  "summary.ex.title": "Engineering constant E_x (Poisson-free, “simple”)",
+  "summary.ex.hint":
+    "(ABD⁻¹) is the inverse of the full 6×6 ABD matrix – it also accounts for the coupling between strain and curvature (B block). Analogous for E_y, G and ν_yx.",
+  "summary.nuxy.title": "Poisson's ratio ν_xy",
+
+  "howComputed.toggle": "How was this computed? {title}",
+  "howComputed.withValues": "With this laminate's current values:",
+
+  "abdExplanation.localQ.title": "local stiffness Q (layer 1)",
+  "abdExplanation.localQ.hint":
+    "From the material properties (E∥, E⊥, ν12, G) of “{material}” – see the material page.",
+  "abdExplanation.qBar.title": "Rotation into the laminate coordinate system (Q̄, layer 1)",
+  "abdExplanation.qBar.hint": "Analogous for Q̄12, Q̄16, Q̄22, Q̄26, Q̄66.",
+  "abdExplanation.qBar.actualValue": "actual value from the computation",
+  "abdExplanation.aMatrix.title": "Assembly of the A matrix (A11)",
+  "abdExplanation.aMatrix.hint":
+    "Each summand is one layer's contribution to A (that layer's Q̄11 times its thickness t).",
+
+  "layerResults.title": "Layer results",
+  "layerResults.rfLower": "RF bottom",
+  "layerResults.rfUpper": "RF top",
+  "layerResults.modeLower": "Mode bottom",
+  "layerResults.modeUpper": "Mode top",
+  "layerResults.status": "Status",
+  "layerResults.failed": "failed",
+  "layerResults.passed": "passed",
+
+  // --- Charts --------------------------------------------------------------
+  "chart.showTable": "Show table",
+  "chart.showChart": "Show chart",
+  "chart.layer": "Layer {nr}",
+  "chart.abdHeatmap.title": "ABD matrix by magnitude (each A/B/D block normalized separately)",
+  "chart.abdHeatmap.aria": "ABD matrix heatmap",
+  "chart.angleSweep.title": "Angle sweep: A11/A22/A66 over the rotation angle",
+  "chart.angleSweep.aria": "Angle sweep chart for A11, A22 and A66",
+  "chart.angleSweep.column.angle": "Angle",
+  "chart.reserveFactor.title": "Reserve factors per layer",
+  "chart.reserveFactor.aria": "Reserve factors per layer",
+  "chart.throughThickness.title": "Through-thickness distribution: stress / strain",
+  "chart.throughThickness.aria": "Through-thickness distribution of {component}",
+  "chart.throughThickness.column.layer": "Layer",
+  "chart.throughThickness.column.zLower": "z bottom",
+  "chart.throughThickness.column.zUpper": "z top",
+  "chart.throughThickness.column.valueLower": "Value bottom",
+  "chart.throughThickness.column.valueUpper": "Value top",
+
+  // --- Failure types (elamx-core's FailureType enum) -----------------------
+  "failureType.Undamaged": "undamaged",
+  "failureType.FiberFailure": "fibre failure",
+  "failureType.MatrixFailure": "inter-fibre failure",
+  "failureType.GeneralMaterialFailure": "general material failure",
+
+  // --- Failure modes -------------------------------------------------------
+  // Keys are the raw `failure_name` strings elamx-core emits (see
+  // core/src/failure/*.rs). The core mixes the "Fiber"/"Fibre" spellings
+  // between criteria, so both variants are listed verbatim rather than
+  // normalized here - a key that matches the core exactly is far easier to
+  // audit against the Rust source than a clever transformation, and an
+  // unknown name falls back to the raw string anyway (see failureModeLabel).
+  "failureMode.Failure": "Failure",
+  "failureMode.FiberFailure": "Fiber Failure",
+  "failureMode.FiberFailureTension": "Fiber Failure Tension",
+  "failureMode.FiberFailureCompression": "Fiber Failure Compression",
+  "failureMode.FibreFailureTension": "Fibre Failure Tension",
+  "failureMode.FibreFailureCompression": "Fibre Failure Compression",
+  "failureMode.FibreShearFailure": "Fibre Shear Failure",
+  "failureMode.MatrixFailure": "Matrix Failure",
+  "failureMode.MatrixFailureTension": "Matrix Failure Tension",
+  "failureMode.MatrixFailureCompression": "Matrix Failure Compression",
+  "failureMode.MatrixFailureShear": "Matrix Failure Shear",
+  "failureMode.MatrixShearFailure": "Matrix Shear Failure",
+  "failureMode.MatrixFailureModusA": "Matrix Failure Mode A",
+  "failureMode.MatrixFailureModusB": "Matrix Failure Mode B",
+  "failureMode.MatrixFailureModusC": "Matrix Failure Mode C",
+  "failureMode.ShearFailure": "Shear Failure",
+
+  // --- Failure criteria ----------------------------------------------------
+  "criterion.max_stress": "Max. stress",
+  "criterion.tsai_hill": "Tsai-Hill",
+  "criterion.hashin": "Hashin",
+  "criterion.tsai_wu": "Tsai-Wu",
+  "criterion.max_strain": "Max. strain",
+  "criterion.puck": "Puck",
+  "criterion.christensen": "Christensen",
+  "criterion.edge": "Edge",
+  "criterion.fibre_failure": "Fibre failure only",
+  "criterion.fmc": "FMC (Cuntze)",
+  "criterion.hoffman": "Hoffman",
+  "criterion.mayes": "Mayes",
+  "criterion.rotem": "Rotem",
+  "criterion.sun": "Sun",
+  "criterion.ztl": "ZTL",
+
+  // --- Quantity categories & units (lib/units.ts) -------------------------
+  "quantity.stiffness": "Stiffness",
+  "quantity.stress": "Stress / strength",
+  "quantity.poissonRatio": "Poisson's ratio",
+  "quantity.thickness": "Thickness",
+  "quantity.angle": "Angle",
+  "quantity.density": "Density",
+  "quantity.force": "Force",
+  "quantity.strain": "Strain",
+  "quantity.temperature": "Temperature",
+  "quantity.temperatureDelta": "Temperature change",
+  "quantity.thermalExpansion": "Thermal expansion coefficient",
+  "quantity.hygralExpansion": "Hygral expansion coefficient",
+  "quantity.reserveFactor": "Reserve factor",
+  "quantity.percent": "Moisture change",
+  "unit.fraction": "fraction",
+  "unit.perFraction": "per fraction",
+
+  // --- Format settings page ------------------------------------------------
+  "format.hint":
+    "Changes take effect immediately in every display and input field – nothing to save. Internal calculations always use the canonical unit system (MPa, mm, °) regardless of this selection.",
+  "format.column.quantity": "Quantity",
+  "format.column.unit": "Unit",
+  "format.column.decimals": "Decimals",
+  "format.column.notation": "Notation",
+  "format.dimensionless": "dimensionless",
+  "format.notation.fixed": "Fixed-point",
+  "format.notation.scientific": "Scientific",
+
+  // --- Default names for newly created objects ----------------------------
+  // These become user DATA the moment they are created (the user can rename
+  // them), so they are resolved once at creation time in the language then
+  // active - deliberately NOT re-translated afterwards, which would silently
+  // rewrite names the user may have kept or referred to.
+  "default.laminateName": "Laminate {nr}",
+  "default.newLaminate": "New laminate",
+  "default.layerName": "Layer {nr}",
+  "default.materialName": "Material {nr}",
+  "default.material.udCfrp": "UD-CFRP",
+  "default.copy": "{name} copy",
+} as const;

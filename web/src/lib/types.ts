@@ -1,6 +1,7 @@
 // Mirrors the JSON shapes of elamx-core's Rust structs (see
 // elamx-core/core/src/model/ and elamx-core/wasm/src/lib.rs). Field names
 // must match the Rust `serde` field names exactly (snake_case, no renames).
+import type { MessageKey } from "../i18n";
 
 export interface MaterialDto {
   id: string;
@@ -170,23 +171,27 @@ export interface AngleSweepResponse {
 
 // Criterion ids and their additional-value keys, matching the `pub const`s in
 // elamx-core/core/src/failure/{mod,max_strain,tsai_wu,puck,fmc,ztl}.rs.
+// Most criterion names are proper nouns and read identically in every
+// language ("Puck", "Tsai-Wu"), but a few are descriptive ("Max. Spannung" /
+// "Max. stress"), so all of them go through the catalog uniformly rather than
+// splitting the list into translated and untranslated halves.
 export const CRITERIA = [
-  { id: "max_stress", label: "Max. Spannung" },
-  { id: "tsai_hill", label: "Tsai-Hill" },
-  { id: "hashin", label: "Hashin" },
-  { id: "tsai_wu", label: "Tsai-Wu" },
-  { id: "max_strain", label: "Max. Dehnung" },
-  { id: "puck", label: "Puck" },
-  { id: "christensen", label: "Christensen" },
-  { id: "edge", label: "Edge" },
-  { id: "fibre_failure", label: "Nur Faserbruch" },
-  { id: "fmc", label: "FMC (Cuntze)" },
-  { id: "hoffman", label: "Hoffman" },
-  { id: "mayes", label: "Mayes" },
-  { id: "rotem", label: "Rotem" },
-  { id: "sun", label: "Sun" },
-  { id: "ztl", label: "ZTL" },
-] as const;
+  { id: "max_stress", labelKey: "criterion.max_stress" },
+  { id: "tsai_hill", labelKey: "criterion.tsai_hill" },
+  { id: "hashin", labelKey: "criterion.hashin" },
+  { id: "tsai_wu", labelKey: "criterion.tsai_wu" },
+  { id: "max_strain", labelKey: "criterion.max_strain" },
+  { id: "puck", labelKey: "criterion.puck" },
+  { id: "christensen", labelKey: "criterion.christensen" },
+  { id: "edge", labelKey: "criterion.edge" },
+  { id: "fibre_failure", labelKey: "criterion.fibre_failure" },
+  { id: "fmc", labelKey: "criterion.fmc" },
+  { id: "hoffman", labelKey: "criterion.hoffman" },
+  { id: "mayes", labelKey: "criterion.mayes" },
+  { id: "rotem", labelKey: "criterion.rotem" },
+  { id: "sun", labelKey: "criterion.sun" },
+  { id: "ztl", labelKey: "criterion.ztl" },
+] as const satisfies readonly { id: string; labelKey: MessageKey }[];
 
 export type CriterionId = (typeof CRITERIA)[number]["id"];
 

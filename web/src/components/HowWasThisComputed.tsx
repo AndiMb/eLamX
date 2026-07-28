@@ -3,6 +3,7 @@ import { useAtomValue } from "jotai";
 import { ChevronDown, ChevronRight, GraduationCap } from "lucide-react";
 import { BlockMath } from "./Math";
 import { studentModeAtom } from "../store/settingsAtoms";
+import { useT } from "../i18n";
 
 interface HowWasThisComputedProps {
   title: string;
@@ -10,7 +11,7 @@ interface HowWasThisComputedProps {
   formula: string;
   /** The same formula with the laminate's actual current numbers plugged in. */
   substituted?: string;
-  /** Extra prose, or a pointer to where the raw data lives (e.g. "siehe Tabelle oben"). */
+  /** Extra prose, or a pointer to where the raw data lives (e.g. "see the table above"). */
   children?: ReactNode;
 }
 
@@ -21,6 +22,7 @@ interface HowWasThisComputedProps {
 // or -closed panel to the new default; a panel the user has individually
 // toggled since then keeps that override until the global switch flips again.
 export function HowWasThisComputed({ title, formula, substituted, children }: HowWasThisComputedProps) {
+  const t = useT();
   const studentMode = useAtomValue(studentModeAtom);
   const [open, setOpen] = useState(studentMode);
 
@@ -33,14 +35,14 @@ export function HowWasThisComputed({ title, formula, substituted, children }: Ho
       <button type="button" className="how-computed-toggle" onClick={() => setOpen((o) => !o)}>
         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         <GraduationCap size={14} strokeWidth={1.75} />
-        Wie wurde das berechnet? {title}
+        {t("howComputed.toggle", { title })}
       </button>
       {open && (
         <div className="how-computed-body">
           <BlockMath math={formula} />
           {substituted && (
             <>
-              <p className="hint">Mit den aktuellen Werten dieses Laminats:</p>
+              <p className="hint">{t("howComputed.withValues")}</p>
               <BlockMath math={substituted} />
             </>
           )}

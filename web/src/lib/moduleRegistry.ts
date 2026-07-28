@@ -10,23 +10,24 @@
 // no UI changes beyond its own page (see UI-Konzept §7).
 import type { LucideIcon } from "lucide-react";
 import { Calculator } from "lucide-react";
+import type { MessageKey } from "../i18n";
 
 export type ModuleType = "clt";
 
 export interface ModuleDefinition {
   id: ModuleType;
-  label: string;
+  labelKey: MessageKey;
   icon: LucideIcon;
   /** One-line beginner-facing description, shown in the module list. */
-  description: string;
+  descriptionKey: MessageKey;
 }
 
 export const MODULE_REGISTRY: Record<ModuleType, ModuleDefinition> = {
   clt: {
     id: "clt",
-    label: "Schichtweise Berechnung",
+    labelKey: "module.clt.label",
     icon: Calculator,
-    description: "Lasten/Verzerrungen, ABD-Matrix, Spannungen und Versagensnachweis je Lage",
+    descriptionKey: "module.clt.description",
   },
 };
 

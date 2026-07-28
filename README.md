@@ -35,6 +35,33 @@ npm run dev
 
 Other useful commands (run from `web/`): `npm run build` (typecheck + production build), `npm run lint` (Oxlint).
 
+## Languages
+
+The UI ships in English and German, switchable at runtime via the picker in the
+top bar (the choice is remembered in `localStorage`; on first visit the browser's
+`navigator.languages` decides, falling back to English).
+
+Translations live in `web/src/i18n/`:
+
+- `en.ts` — the English catalog. It is the **source of truth**: `MessageKey` is
+  derived from its keys, so every other catalog is typed as
+  `Record<MessageKey, string>` and a missing or misspelled key is a compile
+  error, not a runtime hole. (English holds this role because the original Java
+  eLamX did the same — NetBeans `Bundle.properties` is English, with
+  `Bundle_de.properties` as the German overlay.)
+- `de.ts` — the German catalog.
+- `index.tsx` — the runtime: `useT()` in components, `t()` for non-React call
+  sites, `useTx()` when a placeholder is a React node, plus
+  `failureModeLabel()` for the failure-mode identifiers coming out of the Rust
+  core (which stay language-neutral on that side).
+
+To add a language, create `xx.ts` typed as `Messages`, register it in
+`CATALOGS`, and add an entry to `LOCALES`. TypeScript then lists every key you
+still have to translate.
+
+Note that numbers are formatted per locale (`1,234.5` vs `1.234,5`); parsing
+accepts both decimal separators regardless of language.
+
 ### Run the Rust tests
 
 ```sh

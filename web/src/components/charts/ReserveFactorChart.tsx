@@ -4,6 +4,8 @@ import { layerResultsFamily } from "../../store/derivedAtoms";
 import type { FailureType } from "../../lib/types";
 import { ChartLegend } from "./ChartLegend";
 import { ChartTooltip } from "./ChartTooltip";
+import { failureModeLabel, useLocale, useT } from "../../i18n";
+import type { MessageKey } from "../../i18n";
 
 const WIDTH = 600;
 const HEIGHT = 240;
@@ -23,19 +25,24 @@ const FAILURE_COLORS: Record<FailureType, string> = {
   GeneralMaterialFailure: "var(--viz-series-5)",
 };
 
-const FAILURE_LABELS: Record<FailureType, string> = {
-  Undamaged: "unbeschädigt",
-  FiberFailure: "Faserbruch",
-  MatrixFailure: "Zwischenfaserbruch",
-  GeneralMaterialFailure: "allgemeines Materialversagen",
+// The FailureType enum values double as message keys ("failureType.<variant>"),
+// so a new variant in the Rust core surfaces as a missing-key compile error
+// here rather than as an untranslated label at runtime.
+const FAILURE_LABEL_KEYS: Record<FailureType, MessageKey> = {
+  Undamaged: "failureType.Undamaged",
+  FiberFailure: "failureType.FiberFailure",
+  MatrixFailure: "failureType.MatrixFailure",
+  GeneralMaterialFailure: "failureType.GeneralMaterialFailure",
 };
 
 // See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
 export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId }: { laminateId: string }) {
+  const t = useT();
+  const locale = useLocale();
   const layerResults = useAtomValue(layerResultsFamily(laminateId));
   const [hover, setHover] = useState<{
     layerNumber: number;
-    position: "unten" | "oben";
+    position: "lower" | "upper";
     value: number;
     failureType: FailureType;
     failureName: string;
@@ -62,13 +69,15 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
 
   return (
     <div className="chart viz">
-      <p className="chart-title">Reservefaktoren pro Lage</p>
-      <ChartLegend items={usedTypes.map((t) => ({ label: FAILURE_LABELS[t], color: FAILURE_COLORS[t] }))} />
+      <p className="chart-title">{t("chart.reserveFactor.title")}</p>
+      <ChartLegend items={usedTypes.map((ft) => ({ label: t(FAILURE_LABEL_KEYS[ft]), color: FAILURE_COLORS[ft] }))} />
       <div className="chart-svg-wrap">
-        <svg className="chart-svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" role="img" aria-label="Reservefaktoren pro Lage">
+        <svg className="chart-svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" role="img" aria-label={t("chart.reserveFactor.aria")}>
           <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-            {[0, 1, vMax].map((v) => (
-              <g key={v}>
+            {/* Keyed by position: vMax collapses onto 1 whenever no layer has
+                a reserve factor above 1. */}
+            {[0, 1, vMax].map((v, tickIndex) => (
+              <g key={tickIndex}>
                 <line x1={0} x2={PLOT_W} y1={yScale(v)} y2={yScale(v)} className={v === 1 ? "chart-axis" : "chart-gridline"} />
                 <text x={-8} y={yScale(v)} textAnchor="end" dominantBaseline="middle">
                   {v.toFixed(1)}
@@ -77,9 +86,9 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
             ))}
             {layerResults.map((l, i) => {
               const groupX = i * groupW + groupW / 2;
-              const bars: { position: "unten" | "oben"; rf: typeof l.rr_lower; x: number }[] = [
-                { position: "unten", rf: l.rr_lower, x: groupX - barW - 2 },
-                { position: "oben", rf: l.rr_upper, x: groupX + 2 },
+              const bars: { position: "lower" | "upper"; rf: typeof l.rr_lower; x: number }[] = [
+                { position: "lower", rf: l.rr_lower, x: groupX - barW - 2 },
+                { position: "upper", rf: l.rr_upper, x: groupX + 2 },
               ];
               return (
                 <g key={l.layer_number}>
@@ -119,13 +128,13 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
           <ChartTooltip x={hover.x} y={hover.y}>
             <div>
               <strong>
-                Lage {hover.layerNumber} ({hover.position})
+                {t("chart.layer", { nr: hover.layerNumber })} ({t(hover.position === "lower" ? "common.bottom" : "common.top")})
               </strong>
             </div>
             <div>RF: {hover.value.toFixed(3)}</div>
             <div>
-              {FAILURE_LABELS[hover.failureType]}
-              {hover.failureName ? ` (${hover.failureName})` : ""}
+              {t(FAILURE_LABEL_KEYS[hover.failureType])}
+              {hover.failureName ? ` (${failureModeLabel(locale, hover.failureName)})` : ""}
             </div>
           </ChartTooltip>
         )}

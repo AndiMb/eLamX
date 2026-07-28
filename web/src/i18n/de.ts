@@ -1,0 +1,269 @@
+// German catalog. Typed as `Messages` (derived from ./en.ts), so a key that
+// is missing, misspelled or left over after an English-side rename fails the
+// build rather than silently falling back at runtime.
+//
+// German is the language the UI was originally written in, so most strings
+// here are the app's existing wording verbatim; the failure-mode and
+// stacking-editor terms match eLamX2's own Bundle_de.properties files
+// ("Faserbruch Zug", "Zwischenfaserbruch Modus A", "Aufbau bearbeiten", ...).
+import type { Messages } from "./index";
+
+export const de: Messages = {
+  // --- App shell -----------------------------------------------------------
+  "app.title": "eLamX – Klassische Laminattheorie",
+
+  "topbar.studentMode": "Studierenden-Modus",
+  "topbar.studentMode.hint": "Erklär-Panels standardmäßig aufklappen",
+  "topbar.theme.light": "Helles Design",
+  "topbar.theme.dark": "Dunkles Design",
+  "topbar.language": "Sprache",
+
+  "nav.laminates": "Laminate",
+  "nav.laminate": "Laminat",
+  "nav.materials": "Materialien",
+  "nav.settings": "Einstellungen",
+  "nav.formatSettings": "Zahlenformate & Einheiten",
+
+  // --- Shared vocabulary ---------------------------------------------------
+  "common.name": "Name",
+  "common.yes": "ja",
+  "common.no": "nein",
+  "common.local": "lokal",
+  "common.global": "global",
+  "common.top": "oben",
+  "common.bottom": "unten",
+  "common.renders": "(Renders: {count})",
+
+  // --- Sidebar tree --------------------------------------------------------
+  "tree.rename": "Umbenennen",
+  "tree.renameHint": "{name} (Doppelklick zum Umbenennen)",
+  "tree.expand": "Aufklappen",
+  "tree.collapse": "Zuklappen",
+
+  // --- Laminates -----------------------------------------------------------
+  "laminate.add": "Laminat hinzufügen",
+  "laminate.duplicate": "Laminat duplizieren",
+  "laminate.delete": "Laminat löschen",
+
+  // --- Materials -----------------------------------------------------------
+  "material.add": "Material hinzufügen",
+  "material.duplicate": "Material duplizieren",
+  "material.delete": "Material löschen",
+  "material.delete.inUse": "Material wird von einem Laminat verwendet",
+  "material.delete.last": "Das letzte Material kann nicht gelöscht werden",
+  "material.notFound": "Material nicht gefunden.",
+  "material.properties": "Werkstoffkennwerte",
+  "material.strengths": "Festigkeiten",
+  "material.hygrothermal": "Hygrothermale Koeffizienten",
+  "material.hygrothermal.hint": "Thermische (α) und hygrische (β) Ausdehnungskoeffizienten, parallel und quer zur Faser. Erst sie machen aus einer Temperatur- oder Feuchteänderung einen hygrothermalen Lastvektor — bleiben sie 0, bleiben ΔT/ΔH wirkungslos.",
+  "material.criterionParams": "Zusatzparameter je Versagenskriterium",
+  "material.criterionParams.hint":
+    "Gelten materialweit für jedes Laminat, das dieses Material verwendet – abhängig davon, welches Kriterium die jeweilige Lage auswählt. Standardmäßig eingeklappt: nur nötig, wenn eine Lage tatsächlich dieses Kriterium verwendet.",
+  "material.maxStrain.useGlobal": "global (statt lokal)",
+  "material.sym.tension": "z",
+  "material.sym.compression": "d",
+  "material.sym.critical": "krit",
+
+  // --- Welcome screen ------------------------------------------------------
+  "welcome.title": "Willkommen bei eLamX",
+  "welcome.body":
+    "Wähle links ein Laminat oder ein Material aus, oder lege über die {plus}-Schaltflächen im Baum ein neues an. Alle Ergebnisse aktualisieren sich live bei jeder Eingabe.",
+
+  // --- Layup editor --------------------------------------------------------
+  "layers.title": "Lagenaufbau",
+  "layers.empty": "Noch keine Lagen — füge unten die erste hinzu.",
+  "layers.selectAll": "Alle auswählen",
+  "layers.selected.one": "{count} Lage ausgewählt",
+  "layers.selected.other": "{count} Lagen ausgewählt",
+  "layers.select": "{name} auswählen",
+  "layers.bulk.setAngle": "Winkel für ausgewählte Lagen setzen",
+  "layers.bulk.setThickness": "Dicke für ausgewählte Lagen setzen",
+  "layers.bulk.setMaterial": "Material für ausgewählte Lagen setzen",
+  "layers.bulk.setCriterion": "Versagenskriterium für ausgewählte Lagen setzen",
+  "layers.bulk.materialPlaceholder": "Material setzen…",
+  "layers.bulk.criterionPlaceholder": "Kriterium setzen…",
+  "layers.bulk.delete": "Ausgewählte Lagen löschen",
+  "layers.column.nr": "Nr.",
+  "layers.column.angle": "Winkel",
+  "layers.column.thickness": "Dicke",
+  "layers.column.material": "Material",
+  "layers.column.criterion": "Kriterium",
+  "layers.moveUp": "Lage nach oben",
+  "layers.moveDown": "Lage nach unten",
+  "layers.duplicate": "Lage duplizieren",
+  "layers.delete": "Lage löschen",
+  "layers.add.title": "Lage hinzufügen",
+  "layers.add.placeholder": "Winkel, z. B. 0/45/-45/90",
+  "layers.add.aria": "Winkel neuer Lagen",
+  "layers.add.button": "Lage(n) hinzufügen",
+  "layers.add.hint":
+    "Mehrere Winkel mit / getrennt legen mehrere Lagen an (Dicke, Material und Kriterium der letzten Lage werden übernommen).",
+  "layers.preview": "Vorschau",
+  "layers.viz.aria": "Lagenaufbau, maßstäblich nach Dicke",
+  "layers.totalThickness": "Gesamtdicke",
+  "layers.count.one": "Lage",
+  "layers.count.other": "Lagen",
+  "layers.mirrorNote": " (inkl. Spiegelung)",
+  "layers.editStack": "Aufbau bearbeiten",
+  "layers.invert": "Invertieren",
+  "layers.rotateBy": "Rotieren um",
+  "layers.symmetryGroup": "Symmetrie & Orientierung",
+  "layers.symmetric": "symmetrisch",
+  "layers.withMiddleLayer": "mit Mittellage",
+  "layers.invertZ": "z-Achse umkehren",
+
+  // --- Modules -------------------------------------------------------------
+  "modules.title": "Module",
+  "modules.unknown": "Unbekanntes Modul.",
+  "module.clt.label": "Schichtweise Berechnung",
+  "module.clt.description": "Lasten/Verzerrungen, ABD-Matrix, Spannungen und Versagensnachweis je Lage",
+  "clt.criterionHint": "Versagenskriterium und Name je Lage werden im {link} festgelegt.",
+  "clt.criterionHint.link": "Lagenaufbau",
+
+  // --- CLT equation panel --------------------------------------------------
+  "equation.title": "Gleichung",
+  "equation.loads": "Mechanische Lasten",
+  "equation.hygrothermalLoads": "Hygrothermale Lasten",
+  "equation.hygrothermalLoads.hint": "Der hygrothermale Kraft-/Momentenvektor wird aus ΔT/ΔH und den thermischen bzw. hygrischen Ausdehnungskoeffizienten der einzelnen Schichten berechnet — er kann nicht direkt eingegeben werden.",
+  "equation.hygrothermalState": "Temperatur- und Feuchteänderung",
+  "equation.hygrothermalState.hint": "Keine Operanden der Gleichung: aus diesen beiden Werten wird der hygrothermale Lastvektor erst berechnet.",
+  "equation.strains": "Verzerrungen",
+  "equation.prescribe": "{name} stattdessen vorgeben",
+  "equation.prescribe.title": "{name} stattdessen vorgeben (aktuell berechnet)",
+
+  // --- Results -------------------------------------------------------------
+  "results.error": "Fehler: {message}",
+  "results.computing": "Berechne…",
+  "results.abdVisualization": "ABD-Matrix – Visualisierung",
+
+  "abd.title": "ABD-Matrix",
+  "abd.legend.a": "A (Scheibe)",
+  "abd.legend.b": "B (Kopplung)",
+  "abd.legend.d": "D (Platte)",
+
+  "summary.title": "Kennzahlen",
+  "summary.symmetric": "symmetrisch (B≈0)",
+  "summary.areaWeight": "Flächengewicht",
+  "summary.ex.title": "Ingenieurskonstante E_x (Poisson-frei, „simple“)",
+  "summary.ex.hint":
+    "(ABD⁻¹) ist die Inverse der vollen 6×6-ABD-Matrix – sie berücksichtigt auch die Kopplung zwischen Dehnung und Krümmung (B-Block). Analog für E_y, G und ν_yx.",
+  "summary.nuxy.title": "Querkontraktionszahl ν_xy",
+
+  "howComputed.toggle": "Wie wurde das berechnet? {title}",
+  "howComputed.withValues": "Mit den aktuellen Werten dieses Laminats:",
+
+  "abdExplanation.localQ.title": "lokale Steifigkeit Q (Lage 1)",
+  "abdExplanation.localQ.hint":
+    "Aus den Werkstoffkennwerten (E∥, E⊥, ν12, G) von „{material}“ – siehe Materialseite.",
+  "abdExplanation.qBar.title": "Drehung ins Laminat-Koordinatensystem (Q̄, Lage 1)",
+  "abdExplanation.qBar.hint": "Analog für Q̄12, Q̄16, Q̄22, Q̄26, Q̄66.",
+  "abdExplanation.qBar.actualValue": "tatsächlicher Wert aus der Berechnung",
+  "abdExplanation.aMatrix.title": "Aufbau der A-Matrix (A11)",
+  "abdExplanation.aMatrix.hint": "Jeder Summand ist der A-Beitrag einer Lage (Q̄11 der Lage mal ihrer Dicke t).",
+
+  "layerResults.title": "Lagenergebnisse",
+  "layerResults.rfLower": "RF unten",
+  "layerResults.rfUpper": "RF oben",
+  "layerResults.modeLower": "Modus unten",
+  "layerResults.modeUpper": "Modus oben",
+  "layerResults.status": "Status",
+  "layerResults.failed": "versagt",
+  "layerResults.passed": "bestanden",
+
+  // --- Charts --------------------------------------------------------------
+  "chart.showTable": "Tabelle anzeigen",
+  "chart.showChart": "Diagramm anzeigen",
+  "chart.layer": "Lage {nr}",
+  "chart.abdHeatmap.title": "ABD-Matrix als Größenübersicht (je Block A/B/D separat normiert)",
+  "chart.abdHeatmap.aria": "ABD-Matrix Heatmap",
+  "chart.angleSweep.title": "Winkel-Sweep: A11/A22/A66 über den Drehwinkel",
+  "chart.angleSweep.aria": "Winkel-Sweep-Diagramm A11, A22, A66",
+  "chart.angleSweep.column.angle": "Winkel",
+  "chart.reserveFactor.title": "Reservefaktoren pro Lage",
+  "chart.reserveFactor.aria": "Reservefaktoren pro Lage",
+  "chart.throughThickness.title": "Dickenverlauf: Spannung / Dehnung",
+  "chart.throughThickness.aria": "Dickenverlauf {component}",
+  "chart.throughThickness.column.layer": "Lage",
+  "chart.throughThickness.column.zLower": "z unten",
+  "chart.throughThickness.column.zUpper": "z oben",
+  "chart.throughThickness.column.valueLower": "Wert unten",
+  "chart.throughThickness.column.valueUpper": "Wert oben",
+
+  // --- Failure types (elamx-core's FailureType enum) -----------------------
+  "failureType.Undamaged": "unbeschädigt",
+  "failureType.FiberFailure": "Faserbruch",
+  "failureType.MatrixFailure": "Zwischenfaserbruch",
+  "failureType.GeneralMaterialFailure": "allgemeines Materialversagen",
+
+  // --- Failure modes (see en.ts on why both spellings are listed) ----------
+  "failureMode.Failure": "Versagen",
+  "failureMode.FiberFailure": "Faserbruch",
+  "failureMode.FiberFailureTension": "Faserbruch Zug",
+  "failureMode.FiberFailureCompression": "Faserbruch Druck",
+  "failureMode.FibreFailureTension": "Faserbruch Zug",
+  "failureMode.FibreFailureCompression": "Faserbruch Druck",
+  "failureMode.FibreShearFailure": "Faserbruch Schub",
+  "failureMode.MatrixFailure": "Zwischenfaserbruch",
+  "failureMode.MatrixFailureTension": "Zwischenfaserbruch Zug",
+  "failureMode.MatrixFailureCompression": "Zwischenfaserbruch Druck",
+  "failureMode.MatrixFailureShear": "Zwischenfaserbruch Schub",
+  "failureMode.MatrixShearFailure": "Zwischenfaserbruch Schub",
+  "failureMode.MatrixFailureModusA": "Zwischenfaserbruch Modus A",
+  "failureMode.MatrixFailureModusB": "Zwischenfaserbruch Modus B",
+  "failureMode.MatrixFailureModusC": "Zwischenfaserbruch Modus C",
+  "failureMode.ShearFailure": "Schubversagen",
+
+  // --- Failure criteria ----------------------------------------------------
+  "criterion.max_stress": "Max. Spannung",
+  "criterion.tsai_hill": "Tsai-Hill",
+  "criterion.hashin": "Hashin",
+  "criterion.tsai_wu": "Tsai-Wu",
+  "criterion.max_strain": "Max. Dehnung",
+  "criterion.puck": "Puck",
+  "criterion.christensen": "Christensen",
+  "criterion.edge": "Edge",
+  "criterion.fibre_failure": "Nur Faserbruch",
+  "criterion.fmc": "FMC (Cuntze)",
+  "criterion.hoffman": "Hoffman",
+  "criterion.mayes": "Mayes",
+  "criterion.rotem": "Rotem",
+  "criterion.sun": "Sun",
+  "criterion.ztl": "ZTL",
+
+  // --- Quantity categories & units (lib/units.ts) -------------------------
+  "quantity.stiffness": "Steifigkeit",
+  "quantity.stress": "Spannung / Festigkeit",
+  "quantity.poissonRatio": "Querkontraktionszahl",
+  "quantity.thickness": "Dicke",
+  "quantity.angle": "Winkel",
+  "quantity.density": "Dichte",
+  "quantity.force": "Kraft",
+  "quantity.strain": "Dehnung",
+  "quantity.temperature": "Temperatur",
+  "quantity.temperatureDelta": "Temperaturänderung",
+  "quantity.thermalExpansion": "Thermischer Ausdehnungskoeffizient",
+  "quantity.hygralExpansion": "Hygrischer Ausdehnungskoeffizient",
+  "quantity.reserveFactor": "Reservefaktor",
+  "quantity.percent": "Feuchteänderung",
+  "unit.fraction": "Anteil",
+  "unit.perFraction": "je Anteil",
+
+  // --- Format settings page ------------------------------------------------
+  "format.hint":
+    "Änderungen wirken sofort auf alle Anzeigen und Eingabefelder – kein Speichern nötig. Interne Berechnungen verwenden immer das kanonische Einheitensystem (MPa, mm, °) unabhängig von dieser Auswahl.",
+  "format.column.quantity": "Größe",
+  "format.column.unit": "Einheit",
+  "format.column.decimals": "Nachkommastellen",
+  "format.column.notation": "Notation",
+  "format.dimensionless": "dimensionslos",
+  "format.notation.fixed": "Festkomma",
+  "format.notation.scientific": "Wissenschaftlich",
+
+  // --- Default names for newly created objects ----------------------------
+  "default.laminateName": "Laminat {nr}",
+  "default.newLaminate": "Neues Laminat",
+  "default.layerName": "Lage {nr}",
+  "default.materialName": "Material {nr}",
+  "default.material.udCfrp": "UD-CFK",
+  "default.copy": "{name} Kopie",
+};

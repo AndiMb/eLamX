@@ -109,6 +109,38 @@
   color: var(--accent);
 }
 
+/* Sprachumschalter: Icon + kompakter nativer Select ("DE"/"EN"), damit die
+   Top-Bar auch auf schmalen Telefonen noch alle drei Aktionen traegt. */
+.language-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+}
+
+.language-picker select {
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.language-picker select:hover {
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  /* Nur der Text weicht - das Icon bleibt als Affordanz stehen. */
+  .student-pill-text {
+    display: none;
+  }
+
+  .student-pill {
+    padding: 0 10px;
+  }
+}
+
 /* --- Buttons (UI-Konzept §5) --- */
 
 button {
@@ -516,28 +548,31 @@ input[type="checkbox"] {
 }
 
 /* --- Gleichungs-Panel (Schichtweise Berechnung): mirrors the classic CLT
-   equation's spatial order, {N;M} + {N;M}_temp = [ABD] * {eps;kappa}, so
-   Lasten/Temperaturlasten/ABD-Matrix/Verzerrungen sit left-to-right in that
-   order with "+"/"="/"x" between them - as in the Java original - instead of
-   as disconnected panels stacked in an arbitrary order. --- */
+   equation's spatial order,
+     {n;m}_mech + {n;m}_hygrotherm = [ABD] * {eps;kappa},
+   so the four operands sit left-to-right in that order with "+"/"="/"x"
+   between them - as in the Java original's CalculationPanel - instead of as
+   disconnected panels stacked in an arbitrary order.
+
+   The whole block runs on one vertical rhythm so that DOF i of every operand
+   lands on the same baseline as row i of the ABD matrix. That only holds if
+   NOTHING in the column is free to size itself, hence the fixed --eq-*
+   heights below (and the .equation-head-spacer standing in for the matrix's
+   column-index header row in the three vector columns). --eq-row-h must stay
+   >= the 32px min-height of the number controls. --- */
 
 .equation-row {
+  --eq-row-h: 34px;
+  --eq-head-h: 18px;
+  --eq-head-gap: 8px;
   display: flex;
   align-items: flex-start;
   gap: 16px;
 }
 
-@media (max-width: 1100px) {
-  .equation-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
 .equation-block {
   display: flex;
   flex-direction: column;
-  gap: 6px;
   min-width: 170px;
 }
 
@@ -545,7 +580,17 @@ input[type="checkbox"] {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
-  margin: 0 0 2px;
+  height: var(--eq-head-h);
+  line-height: var(--eq-head-h);
+  margin: 0 0 var(--eq-head-gap);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.equation-head-spacer {
+  height: var(--eq-row-h);
+  flex: 0 0 auto;
 }
 
 .equation-abd {
@@ -558,6 +603,55 @@ input[type="checkbox"] {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  height: var(--eq-row-h);
+  flex: 0 0 auto;
+}
+
+/* dT/dH: inputs the hygrothermal vector is derived FROM, not operands of the
+   equation - so they get their own strip above the equation row rather than a
+   column inside it (see EquationPanel.tsx). */
+.equation-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 4px;
+}
+
+.equation-state-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.equation-state-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.equation-state-field .quantity {
+  width: 140px;
+}
+
+.equation-state-hint {
+  margin: 0 0 16px;
+}
+
+.equation-hygro-hint {
+  margin: 12px 0 0;
+}
+
+/* Derived, not prescribable: same numeric alignment as .equation-computed but
+   flat and non-interactive, because there is no "prescribe this instead"
+   counterpart to flip to. */
+.equation-derived {
+  width: 100px;
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  text-align: right;
 }
 
 .equation-label {
@@ -596,17 +690,43 @@ input[type="checkbox"] {
   color: var(--text);
 }
 
+/* Centered on the middle of the six DOF rows, NOT on the flex line: the ABD
+   column is the tallest item (it carries the A/B/D legend underneath), so
+   align-self:center would push every operator visibly below the matrix's own
+   centre. The offset walks the same rhythm the columns do - heading, heading
+   gap, the column-index row, then 3 of the 6 value rows. */
 .equation-op {
-  align-self: center;
+  align-self: flex-start;
+  margin-top: calc(var(--eq-head-h) + var(--eq-head-gap) + 3.5 * var(--eq-row-h));
+  height: var(--eq-row-h);
+  line-height: var(--eq-row-h);
   font-size: 20px;
   font-weight: 600;
   color: var(--text-muted);
   padding: 0 4px;
 }
 
+/* Stacked: the columns no longer sit side by side, so there is nothing left
+   to align and the spacer rows would just be dead space. */
 @media (max-width: 1100px) {
+  .equation-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .equation-head-spacer {
+    display: none;
+  }
+
+  .equation-block {
+    gap: 6px;
+  }
+
   .equation-op {
     align-self: flex-start;
+    margin-top: 0;
+    height: auto;
+    line-height: 1;
     padding: 4px 0;
   }
 }
@@ -954,9 +1074,15 @@ tr:focus-within .row-actions,
   font-weight: 600;
 }
 
-/* --- ABD-Matrix mit Block-Toenung (UI-Konzept §5) --- */
+/* --- ABD-Matrix mit Block-Toenung (UI-Konzept §5) ---
+   These used to be scoped to a `.results` ancestor. That wrapper disappeared
+   when the ABD matrix moved into the equation row as its "=" operand, which
+   silently killed the block tints (and the cell borders) everywhere - the
+   selectors matched nothing at all. Scoped to `table.matrix` now: the class
+   also sits on ResponsiveTable's scroll wrapper, so an element-qualified
+   selector is what keeps these off that div. */
 
-.results .matrix {
+table.matrix {
   border-collapse: collapse;
   margin-bottom: 16px;
   font-variant-numeric: tabular-nums;
@@ -964,58 +1090,65 @@ tr:focus-within .row-actions,
   position: relative;
 }
 
-.results .matrix td {
+/* Fixed row height rather than vertical padding: the matrix has to keep step
+   with the equation columns beside it (see --eq-row-h). */
+table.matrix td,
+table.matrix th {
+  height: var(--eq-row-h, 34px);
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
+table.matrix td {
   border: 1px solid var(--border);
-  padding: 4px 8px;
   text-align: right;
 }
 
-.results .matrix th {
-  padding: 4px 8px;
+table.matrix th {
   font-weight: 600;
   color: var(--text-muted);
   text-align: center;
   font-size: 11px;
 }
 
-.results .matrix th[scope="row"] {
+table.matrix th[scope="row"] {
   text-align: right;
 }
 
-.results .matrix td.block-a {
+table.matrix td.block-a {
   background: rgba(227, 73, 72, 0.08);
 }
 
-.results .matrix td.block-b {
+table.matrix td.block-b {
   background: rgba(27, 175, 122, 0.08);
 }
 
-.results .matrix td.block-d {
+table.matrix td.block-d {
   background: rgba(42, 120, 214, 0.09);
 }
 
-:root[data-theme="dark"] .results .matrix td.block-a {
+:root[data-theme="dark"] table.matrix td.block-a {
   background: rgba(230, 103, 103, 0.15);
 }
 
-:root[data-theme="dark"] .results .matrix td.block-b {
+:root[data-theme="dark"] table.matrix td.block-b {
   background: rgba(25, 158, 112, 0.15);
 }
 
-:root[data-theme="dark"] .results .matrix td.block-d {
+:root[data-theme="dark"] table.matrix td.block-d {
   background: rgba(57, 135, 229, 0.16);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .results .matrix td.block-a {
+  :root:not([data-theme="light"]) table.matrix td.block-a {
     background: rgba(230, 103, 103, 0.15);
   }
 
-  :root:not([data-theme="light"]) .results .matrix td.block-b {
+  :root:not([data-theme="light"]) table.matrix td.block-b {
     background: rgba(25, 158, 112, 0.15);
   }
 
-  :root:not([data-theme="light"]) .results .matrix td.block-d {
+  :root:not([data-theme="light"]) table.matrix td.block-d {
     background: rgba(57, 135, 229, 0.16);
   }
 }

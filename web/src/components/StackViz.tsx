@@ -1,6 +1,7 @@
 import { useAtomValue } from "jotai";
 import { materialsAtom } from "../store/materialsAtoms";
 import type { LayerRow } from "../lib/constants";
+import { useT } from "../i18n";
 
 const WIDTH = 320;
 const MAX_HEIGHT = 150;
@@ -31,6 +32,7 @@ export function StackViz({
   symmetric: boolean;
   withMiddleLayer: boolean;
 }) {
+  const t = useT();
   const materials = useAtomValue(materialsAtom);
   if (layers.length === 0) return null;
 
@@ -80,7 +82,7 @@ export function StackViz({
       width="100%"
       style={{ maxWidth: 320 }}
       role="img"
-      aria-label="Lagenaufbau, maßstäblich nach Dicke"
+      aria-label={t("layers.viz.aria")}
     >
       {bars}
       {midY !== null && (

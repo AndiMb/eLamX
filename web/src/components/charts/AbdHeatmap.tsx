@@ -3,6 +3,7 @@ import { useAtomValue } from "jotai";
 import { abdMatrixFamily } from "../../store/derivedAtoms";
 import { ChartTooltip } from "./ChartTooltip";
 import { useChartColors } from "../../lib/chartColors";
+import { useT } from "../../i18n";
 
 const CELL = 40;
 const GAP = 2;
@@ -38,6 +39,7 @@ function cellColor(value: number, blockMax: number, neg: string, mid: string, po
 // The raw ABD values are already shown as an exact table in AbdMatrixPanel
 // right above this chart, so every value here is reachable without hovering.
 export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId: string }) {
+  const t = useT();
   const abd = useAtomValue(abdMatrixFamily(laminateId));
   const [hover, setHover] = useState<{ i: number; j: number; x: number; y: number } | null>(null);
   const colors = useChartColors();
@@ -67,14 +69,14 @@ export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId:
 
   return (
     <div className="chart viz">
-      <p className="chart-title">ABD-Matrix als Größenübersicht (je Block A/B/D separat normiert)</p>
+      <p className="chart-title">{t("chart.abdHeatmap.title")}</p>
       <div className="chart-svg-wrap">
         <svg
           className="chart-svg"
           viewBox={`0 0 ${size} ${size}`}
           width={Math.min(size, 320)}
           role="img"
-          aria-label="ABD-Matrix Heatmap"
+          aria-label={t("chart.abdHeatmap.aria")}
         >
           {abd.map((row, i) =>
             row.map((value, j) => {

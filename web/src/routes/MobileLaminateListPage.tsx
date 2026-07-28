@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ChevronRight, Layers, Plus } from "lucide-react";
 import { addLaminateAtom, laminateConfigFamily, laminateIdsAtom } from "../store/laminateAtoms";
 import { materialsAtom } from "../store/materialsAtoms";
+import { useT } from "../i18n";
 
 function LaminateRow({ id }: { id: string }) {
   const config = useAtomValue(laminateConfigFamily(id));
@@ -18,6 +19,7 @@ function LaminateRow({ id }: { id: string }) {
 // The mobile "Laminate" tab's landing screen - stands in for the desktop
 // sidebar tree's laminate section, since that tree isn't shown on mobile.
 export function MobileLaminateListPage() {
+  const t = useT();
   const laminateIds = useAtomValue(laminateIdsAtom);
   const materials = useAtomValue(materialsAtom);
   const addLaminate = useSetAtom(addLaminateAtom);
@@ -32,7 +34,7 @@ export function MobileLaminateListPage() {
     <section className="panel">
       <h2>
         <Layers size={16} strokeWidth={1.75} />
-        Laminate
+        {t("nav.laminates")}
       </h2>
       <ul className="mobile-list">
         {laminateIds.map((id) => (
@@ -42,7 +44,7 @@ export function MobileLaminateListPage() {
         ))}
       </ul>
       <button type="button" onClick={handleAdd}>
-        <Plus size={16} /> Laminat
+        <Plus size={16} /> {t("laminate.add")}
       </button>
     </section>
   );

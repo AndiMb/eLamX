@@ -4,8 +4,10 @@ import { summaryFamily } from "../store/derivedAtoms";
 import { useRenderCount } from "../lib/useRenderCount";
 import { QuantityDisplay } from "./QuantityDisplay";
 import { HowWasThisComputed } from "./HowWasThisComputed";
-import { fmt, fmtExp } from "../lib/cltFormulas";
+import { useFmt, fmtExp } from "../lib/cltFormulas";
+import { isFiniteResult, NO_VALUE } from "../lib/numberFormat";
 import type { QuantityCategory } from "../lib/units";
+import { useT } from "../i18n";
 
 function StatTile({ label, category, value }: { label: string; category: QuantityCategory; value: number }) {
   return (
@@ -20,6 +22,8 @@ function StatTile({ label, category, value }: { label: string; category: Quantit
 
 // See AbdMatrixPanel.tsx for why memo() is required here.
 export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminateId: string }) {
+  const t = useT();
+  const fmt = useFmt();
   const summary = useAtomValue(summaryFamily(laminateId));
   const renderCount = useRenderCount();
 
@@ -36,14 +40,16 @@ export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminat
   return (
     <>
       <h3>
-        Kennzahlen <span className="render-count">(Renders: {renderCount})</span>
+        {t("summary.title")} <span className="render-count">{t("common.renders", { count: renderCount })}</span>
       </h3>
       <div className="stat-tiles">
         <StatTile label="t_ges" category="thickness" value={summary.tges} />
         <div className="stat-tile">
-          <span className="label">symmetrisch (B≈0)</span>
+          <span className="label">{t("summary.symmetric")}</span>
           <span className="value">
-            <span className={`chip ${summary.isSymmetric ? "ok" : ""}`}>{summary.isSymmetric ? "ja" : "nein"}</span>
+            <span className={`chip ${summary.isSymmetric ? "ok" : ""}`}>
+              {t(summary.isSymmetric ? "common.yes" : "common.no")}
+            </span>
           </span>
         </div>
         <StatTile label="E_x" category="stiffness" value={ec.ex_simple} />
@@ -52,21 +58,16 @@ export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminat
         <StatTile label="ν_xy" category="poissonRatio" value={ec.nuxy_simple} />
         <StatTile label="ν_yx" category="poissonRatio" value={ec.nuyx_simple} />
         <div className="stat-tile">
-          <span className="label">Flächengewicht</span>
-          <span className="value">{summary.areaWeight.toExponential(3)}</span>
+          <span className="label">{t("summary.areaWeight")}</span>
+          <span className="value">
+            {isFiniteResult(summary.areaWeight) ? summary.areaWeight.toExponential(3) : NO_VALUE}
+          </span>
         </div>
       </div>
-      <HowWasThisComputed
-        title="Ingenieurskonstante E_x (Poisson-frei, „simple“)"
-        formula={exFormula}
-        substituted={exSubstituted}
-      >
-        <p className="hint">
-          (ABD<sup>-1</sup>) ist die Inverse der vollen 6&times;6-ABD-Matrix - sie berücksichtigt auch die
-          Kopplung zwischen Dehnung und Krümmung (B-Block). Analog für E_y, G und &nu;yx.
-        </p>
+      <HowWasThisComputed title={t("summary.ex.title")} formula={exFormula} substituted={exSubstituted}>
+        <p className="hint">{t("summary.ex.hint")}</p>
       </HowWasThisComputed>
-      <HowWasThisComputed title="Querkontraktionszahl &nu;xy" formula={nuxyFormula} substituted={nuxySubstituted} />
+      <HowWasThisComputed title={t("summary.nuxy.title")} formula={nuxyFormula} substituted={nuxySubstituted} />
     </>
   );
 });

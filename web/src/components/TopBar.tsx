@@ -1,6 +1,7 @@
 import { useAtom } from "jotai";
-import { GraduationCap, Moon, Sun } from "lucide-react";
+import { GraduationCap, Languages, Moon, Sun } from "lucide-react";
 import { studentModeAtom, themeAtom } from "../store/settingsAtoms";
+import { LOCALES, useLocale, useSetLocale, useT, type Locale } from "../i18n";
 
 // Stylized layer stack as the logo mark - inline SVG, no asset. Staggered
 // parallelograms (not equal full-width bars, which would read as a hamburger
@@ -17,11 +18,40 @@ function LogoMark() {
   );
 }
 
+// A native <select> rather than a custom dropdown: it is the one control that
+// must be usable BEFORE the user can read the UI (they may be looking at a
+// language they don't speak), and the platform picker is the widget every
+// user already recognizes - on mobile it also opens as a native wheel/sheet.
+// The options name themselves ("Deutsch", "English"), never "German".
+function LanguagePicker() {
+  const t = useT();
+  const locale = useLocale();
+  const setLocale = useSetLocale();
+
+  return (
+    <label className="language-picker" title={t("topbar.language")}>
+      <Languages size={16} strokeWidth={1.75} aria-hidden="true" />
+      <select
+        value={locale}
+        onChange={(e) => setLocale(e.target.value as Locale)}
+        aria-label={t("topbar.language")}
+      >
+        {LOCALES.map((l) => (
+          <option key={l.id} value={l.id}>
+            {l.short}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 // Slim app bar (UI-Konzept §4). The empty .topbar-file-slot is the reserved
 // home for future file actions (Neu/Oeffnen/Speichern/Export/Schnappschuss)
 // once the persistence phase lands - deliberately kept in the DOM so the
 // layout doesn't shift when they arrive.
 export function TopBar({ title }: { title?: string }) {
+  const t = useT();
   const [studentMode, setStudentMode] = useAtom(studentModeAtom);
   const [theme, setTheme] = useAtom(themeAtom);
 
@@ -44,17 +74,22 @@ export function TopBar({ title }: { title?: string }) {
           type="button"
           className={`student-pill${studentMode ? " active" : ""}`}
           onClick={() => setStudentMode((v) => !v)}
-          title="Erklär-Panels standardmäßig aufklappen"
+          title={t("topbar.studentMode.hint")}
+          aria-label={t("topbar.studentMode")}
         >
           <GraduationCap size={16} strokeWidth={1.75} />
-          Studierenden-Modus
+          {/* Label collapses to the icon alone on narrow phones - the top bar
+              gained a third control and "Studierenden-Modus" is the longest
+              string competing for that row. */}
+          <span className="student-pill-text">{t("topbar.studentMode")}</span>
         </button>
+        <LanguagePicker />
         <button
           type="button"
           className="icon-button"
           onClick={() => setTheme(effectiveDark ? "light" : "dark")}
-          aria-label={effectiveDark ? "Helles Design" : "Dunkles Design"}
-          title={effectiveDark ? "Helles Design" : "Dunkles Design"}
+          aria-label={effectiveDark ? t("topbar.theme.light") : t("topbar.theme.dark")}
+          title={effectiveDark ? t("topbar.theme.light") : t("topbar.theme.dark")}
         >
           {effectiveDark ? <Sun size={18} /> : <Moon size={18} />}
         </button>

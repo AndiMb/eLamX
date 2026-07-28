@@ -3,6 +3,7 @@ import { useAtomValue } from "jotai";
 import { loadableAngleSweepFamily } from "../../store/derivedAtoms";
 import { ChartLegend } from "./ChartLegend";
 import { ChartTooltip } from "./ChartTooltip";
+import { useT } from "../../i18n";
 
 const WIDTH = 600;
 const HEIGHT = 220;
@@ -18,6 +19,7 @@ const SERIES = [
 
 // See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
 export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { laminateId: string }) {
+  const t = useT();
   const loadableState = useAtomValue(loadableAngleSweepFamily(laminateId));
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
@@ -54,23 +56,26 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
 
   return (
     <div className="chart viz">
-      <p className="chart-title">Winkel-Sweep: A11/A22/A66 über den Drehwinkel</p>
+      <p className="chart-title">{t("chart.angleSweep.title")}</p>
       <div className="chart-controls">
         <button type="button" className="chart-table-toggle" onClick={() => setShowTable((v) => !v)}>
-          {showTable ? "Diagramm anzeigen" : "Tabelle anzeigen"}
+          {t(showTable ? "chart.showChart" : "chart.showTable")}
         </button>
       </div>
       {!showTable && (
         <>
           <ChartLegend items={SERIES.map((s) => ({ label: s.label, color: s.color, shape: "line" }))} />
           <div className="chart-svg-wrap">
-            <svg className="chart-svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" role="img" aria-label="Winkel-Sweep-Diagramm A11, A22, A66">
+            <svg className="chart-svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" role="img" aria-label={t("chart.angleSweep.aria")}>
               <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-                {yTicks.map((t) => (
-                  <g key={t}>
-                    <line x1={0} x2={PLOT_W} y1={yScale(t)} y2={yScale(t)} className="chart-gridline" />
-                    <text x={-8} y={yScale(t)} textAnchor="end" dominantBaseline="middle">
-                      {t.toExponential(1)}
+                {/* Keyed by tick POSITION, not value: a degenerate laminate
+                    (no layers, zero thickness) collapses min/mid/max onto the
+                    same number, and value keys would then collide. */}
+                {yTicks.map((tick, tickIndex) => (
+                  <g key={tickIndex}>
+                    <line x1={0} x2={PLOT_W} y1={yScale(tick)} y2={yScale(tick)} className="chart-gridline" />
+                    <text x={-8} y={yScale(tick)} textAnchor="end" dominantBaseline="middle">
+                      {tick.toExponential(1)}
                     </text>
                   </g>
                 ))}
@@ -127,7 +132,7 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
         <table className="chart-table">
           <thead>
             <tr>
-              <th>Winkel</th>
+              <th>{t("chart.angleSweep.column.angle")}</th>
               <th>A11</th>
               <th>A22</th>
               <th>A66</th>

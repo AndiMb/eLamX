@@ -6,14 +6,16 @@ import { MAX_STRAIN_KEYS, TSAI_WU_KEYS, PUCK_KEYS, FMC_KEYS, ZTL_KEYS, type Mate
 import { Quantity } from "../components/Quantity";
 import { SafeNumberInput } from "../components/SafeNumberInput";
 import { BackLink } from "../components/BackLink";
+import { useT } from "../i18n";
 
 export function MaterialPage() {
+  const t = useT();
   const { materialId } = useParams<{ materialId: string }>();
   const [materials, setMaterials] = useAtom(materialsAtom);
   const material = materials.find((m) => m.id === materialId);
 
   if (!material) {
-    return <p className="hint">Material nicht gefunden.</p>;
+    return <p className="hint">{t("material.notFound")}</p>;
   }
 
   const update = (key: keyof MaterialDto, value: number) => {
@@ -32,15 +34,15 @@ export function MaterialPage() {
 
   return (
     <section className="panel">
-      <BackLink to="/materials" label="Materialien" />
+      <BackLink to="/materials" label={t("nav.materials")} />
       <label className="material-name">
-        Name
+        {t("common.name")}
         <input type="text" value={material.name} onChange={(e) => updateName(e.target.value)} />
       </label>
 
       <h2>
         <Diamond size={16} strokeWidth={1.75} />
-        Werkstoffkennwerte
+        {t("material.properties")}
       </h2>
       <div className="field-grid">
         <label>
@@ -67,29 +69,69 @@ export function MaterialPage() {
         </label>
       </div>
 
-      <h3>Festigkeiten</h3>
+      {/* Without these the hygrothermal load vector in the equation panel is
+          identically zero no matter what dT/dH the user enters - alpha and
+          beta are the only things that turn a state change into a load. */}
+      <h3>{t("material.hygrothermal")}</h3>
+      <p className="hint">{t("material.hygrothermal.hint")}</p>
       <div className="field-grid">
         <label>
           <span className="field-label">
-            R<sub>&#8741;,z</sub>
+            &alpha;<sub>T,&#8741;</sub>
+          </span>
+          <Quantity
+            category="thermalExpansion"
+            value={material.alpha_t_par}
+            onChange={(v) => update("alpha_t_par", v)}
+          />
+        </label>
+        <label>
+          <span className="field-label">
+            &alpha;<sub>T,&perp;</sub>
+          </span>
+          <Quantity
+            category="thermalExpansion"
+            value={material.alpha_t_nor}
+            onChange={(v) => update("alpha_t_nor", v)}
+          />
+        </label>
+        <label>
+          <span className="field-label">
+            &beta;<sub>&#8741;</sub>
+          </span>
+          <Quantity category="hygralExpansion" value={material.beta_par} onChange={(v) => update("beta_par", v)} />
+        </label>
+        <label>
+          <span className="field-label">
+            &beta;<sub>&perp;</sub>
+          </span>
+          <Quantity category="hygralExpansion" value={material.beta_nor} onChange={(v) => update("beta_nor", v)} />
+        </label>
+      </div>
+
+      <h3>{t("material.strengths")}</h3>
+      <div className="field-grid">
+        <label>
+          <span className="field-label">
+            R<sub>&#8741;,{t("material.sym.tension")}</sub>
           </span>
           <Quantity category="stress" value={material.r_par_ten} onChange={(v) => update("r_par_ten", v)} />
         </label>
         <label>
           <span className="field-label">
-            R<sub>&#8741;,d</sub>
+            R<sub>&#8741;,{t("material.sym.compression")}</sub>
           </span>
           <Quantity category="stress" value={material.r_par_com} onChange={(v) => update("r_par_com", v)} />
         </label>
         <label>
           <span className="field-label">
-            R<sub>&perp;,z</sub>
+            R<sub>&perp;,{t("material.sym.tension")}</sub>
           </span>
           <Quantity category="stress" value={material.r_nor_ten} onChange={(v) => update("r_nor_ten", v)} />
         </label>
         <label>
           <span className="field-label">
-            R<sub>&perp;,d</sub>
+            R<sub>&perp;,{t("material.sym.compression")}</sub>
           </span>
           <Quantity category="stress" value={material.r_nor_com} onChange={(v) => update("r_nor_com", v)} />
         </label>
@@ -101,19 +143,15 @@ export function MaterialPage() {
         </label>
       </div>
 
-      <h3>Zusatzparameter je Versagenskriterium</h3>
-      <p className="hint">
-        Gelten materialweit für jedes Laminat, das dieses Material verwendet - abhängig davon, welches Kriterium die
-        jeweilige Lage auswählt. Standardmäßig eingeklappt: nur nötig, wenn eine Lage tatsächlich dieses Kriterium
-        verwendet.
-      </p>
+      <h3>{t("material.criterionParams")}</h3>
+      <p className="hint">{t("material.criterionParams.hint")}</p>
 
       <details className="criterion-params">
-        <summary>Max. Dehnung</summary>
+        <summary>{t("criterion.max_strain")}</summary>
         <div className="field-grid">
           <label>
             <span className="field-label">
-              &epsilon;<sub>x,krit</sub>
+              &epsilon;<sub>x,{t("material.sym.critical")}</sub>
             </span>
             <Quantity
               category="strain"
@@ -123,7 +161,7 @@ export function MaterialPage() {
           </label>
           <label>
             <span className="field-label">
-              &epsilon;<sub>y,krit</sub>
+              &epsilon;<sub>y,{t("material.sym.critical")}</sub>
             </span>
             <Quantity
               category="strain"
@@ -133,7 +171,7 @@ export function MaterialPage() {
           </label>
           <label>
             <span className="field-label">
-              &gamma;<sub>xy,krit</sub>
+              &gamma;<sub>xy,{t("material.sym.critical")}</sub>
             </span>
             <Quantity
               category="strain"
@@ -147,13 +185,13 @@ export function MaterialPage() {
               checked={(material.additional_values[MAX_STRAIN_KEYS.globalLocal] ?? 0) > 0.5}
               onChange={(e) => updateAdditionalValue(MAX_STRAIN_KEYS.globalLocal, e.target.checked ? 1 : 0)}
             />
-            global (statt lokal)
+            {t("material.maxStrain.useGlobal")}
           </label>
         </div>
       </details>
 
       <details className="criterion-params">
-        <summary>Tsai-Wu</summary>
+        <summary>{t("criterion.tsai_wu")}</summary>
         <div className="field-grid">
           <label>
             <span className="field-label">
@@ -169,7 +207,7 @@ export function MaterialPage() {
       </details>
 
       <details className="criterion-params">
-        <summary>Puck</summary>
+        <summary>{t("criterion.puck")}</summary>
         <div className="field-grid">
           <label>
             <span className="field-label">
@@ -211,7 +249,7 @@ export function MaterialPage() {
       </details>
 
       <details className="criterion-params">
-        <summary>FMC (Cuntze)</summary>
+        <summary>{t("criterion.fmc")}</summary>
         <div className="field-grid">
           <label>
             <span className="field-label">
@@ -233,7 +271,7 @@ export function MaterialPage() {
       </details>
 
       <details className="criterion-params">
-        <summary>ZTL</summary>
+        <summary>{t("criterion.ztl")}</summary>
         <div className="field-grid">
           <label>
             <span className="field-label">

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { MODULE_LIST } from "../lib/moduleRegistry";
+import { useT } from "../i18n";
 
 // Module rows rendered from MODULE_REGISTRY, shown on the laminate page on
 // BOTH desktop and mobile (UI-Konzept §7): on mobile it is the only way to
@@ -8,9 +9,10 @@ import { MODULE_LIST } from "../lib/moduleRegistry";
 // for beginners who don't know the tree yet. A new module registered in
 // MODULE_REGISTRY appears here automatically.
 export function ModuleList({ laminateId }: { laminateId: string }) {
+  const t = useT();
   return (
     <>
-      <h3>Module</h3>
+      <h3>{t("modules.title")}</h3>
       <ul className="module-list">
         {MODULE_LIST.map((mod) => {
           const Icon = mod.icon;
@@ -19,8 +21,8 @@ export function ModuleList({ laminateId }: { laminateId: string }) {
               <Link className="module-row" to={`/laminates/${laminateId}/modules/${mod.id}`}>
                 <Icon size={20} strokeWidth={1.75} />
                 <span className="module-text">
-                  <div>{mod.label}</div>
-                  <div className="module-desc">{mod.description}</div>
+                  <div>{t(mod.labelKey)}</div>
+                  <div className="module-desc">{t(mod.descriptionKey)}</div>
                 </span>
                 <ChevronRight size={16} className="chevron" />
               </Link>

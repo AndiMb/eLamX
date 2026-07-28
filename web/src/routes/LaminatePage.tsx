@@ -14,8 +14,10 @@ import { normalizeLayerAngle, parseAngleStack } from "../lib/angleStack";
 import { QuantityDisplay } from "../components/QuantityDisplay";
 import { DEFAULT_CRITERION_ID, type LayerRow } from "../lib/constants";
 import { CRITERIA, type CriterionId, type MaterialDto } from "../lib/types";
+import { useT } from "../i18n";
 
 export function LaminatePage() {
+  const t = useT();
   const { laminateId } = useParams<{ laminateId: string }>();
   const id = laminateId!;
   const [config, setConfig] = useAtom(laminateConfigFamily(id));
@@ -56,7 +58,7 @@ export function LaminatePage() {
           ...c.layers,
           ...angles.map((angle, i) => ({
             id: crypto.randomUUID(),
-            name: `Lage ${startNr + i}`,
+            name: t("default.layerName", { nr: startNr + i }),
             angle: normalizeLayerAngle(angle),
             thickness,
             materialId,
@@ -82,7 +84,11 @@ export function LaminatePage() {
     setConfig((c) => {
       const at = c.layers.findIndex((l) => l.id === layerId);
       if (at < 0) return c;
-      const copy = { ...c.layers[at], id: crypto.randomUUID(), name: `${c.layers[at].name} Kopie` };
+      const copy = {
+        ...c.layers[at],
+        id: crypto.randomUUID(),
+        name: t("default.copy", { name: c.layers[at].name }),
+      };
       return { ...c, layers: [...c.layers.slice(0, at + 1), copy, ...c.layers.slice(at + 1)] };
     });
   };
@@ -111,11 +117,11 @@ export function LaminatePage() {
     }));
   };
 
-  // Bulk edit of selected layers ("Massenbearbeitung"): change material or
-  // failure criterion for every currently-checked row at once. Selection is
-  // intersected with the CURRENT layer list everywhere (rather than trusted
-  // as-is) so a layer removed via its own row action can't leave a stale,
-  // inflated "N ausgewählt" count behind.
+  // Bulk edit of selected layers: change material or failure criterion for
+  // every currently-checked row at once. Selection is intersected with the
+  // CURRENT layer list everywhere (rather than trusted as-is) so a layer
+  // removed via its own row action can't leave a stale, inflated
+  // "N selected" count behind.
   const selectedLayerIds = config.layers.filter((l) => selectedIds.has(l.id)).map((l) => l.id);
   const selectedCount = selectedLayerIds.length;
   const allSelected = config.layers.length > 0 && selectedCount === config.layers.length;
@@ -207,35 +213,35 @@ export function LaminatePage() {
           type="checkbox"
           checked={selectedIds.has(l.id)}
           onChange={() => toggleSelected(l.id)}
-          aria-label={`${l.name} auswählen`}
+          aria-label={t("layers.select", { name: l.name })}
         />
       ),
     },
-    { key: "nr", label: "Nr.", render: (l) => l.index + 1 },
+    { key: "nr", label: t("layers.column.nr"), render: (l) => l.index + 1 },
     {
       key: "name",
-      label: "Name",
+      label: t("common.name"),
       render: (l) => (
         <input type="text" value={l.name} onChange={(e) => updateLayerField(l.id, "name", e.target.value)} />
       ),
     },
     {
       key: "angle",
-      label: "Winkel",
+      label: t("layers.column.angle"),
       render: (l) => (
         <Quantity category="angle" value={l.angle} onChange={(v) => updateLayerField(l.id, "angle", v)} />
       ),
     },
     {
       key: "thickness",
-      label: "Dicke",
+      label: t("layers.column.thickness"),
       render: (l) => (
         <Quantity category="thickness" value={l.thickness} onChange={(v) => updateLayerField(l.id, "thickness", v)} />
       ),
     },
     {
       key: "material",
-      label: "Material",
+      label: t("layers.column.material"),
       render: (l) => (
         <select value={l.materialId} onChange={(e) => updateLayerField(l.id, "materialId", e.target.value)}>
           {materials.map((m: MaterialDto) => (
@@ -248,7 +254,7 @@ export function LaminatePage() {
     },
     {
       key: "criterion",
-      label: "Kriterium",
+      label: t("layers.column.criterion"),
       render: (l) => (
         <select
           value={l.criterionId}
@@ -256,7 +262,7 @@ export function LaminatePage() {
         >
           {CRITERIA.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.label}
+              {t(c.labelKey)}
             </option>
           ))}
         </select>
@@ -272,8 +278,8 @@ export function LaminatePage() {
             className="icon-button"
             onClick={() => moveLayer(l.id, -1)}
             disabled={l.index === 0}
-            aria-label="Lage nach oben"
-            title="Lage nach oben"
+            aria-label={t("layers.moveUp")}
+            title={t("layers.moveUp")}
           >
             <ArrowUp size={14} />
           </button>
@@ -282,8 +288,8 @@ export function LaminatePage() {
             className="icon-button"
             onClick={() => moveLayer(l.id, 1)}
             disabled={l.index === config.layers.length - 1}
-            aria-label="Lage nach unten"
-            title="Lage nach unten"
+            aria-label={t("layers.moveDown")}
+            title={t("layers.moveDown")}
           >
             <ArrowDown size={14} />
           </button>
@@ -291,8 +297,8 @@ export function LaminatePage() {
             type="button"
             className="icon-button"
             onClick={() => duplicateLayer(l.id)}
-            aria-label="Lage duplizieren"
-            title="Lage duplizieren"
+            aria-label={t("layers.duplicate")}
+            title={t("layers.duplicate")}
           >
             <Copy size={14} />
           </button>
@@ -300,8 +306,8 @@ export function LaminatePage() {
             type="button"
             className="icon-button danger"
             onClick={() => removeLayer(l.id)}
-            aria-label="Lage löschen"
-            title="Lage löschen"
+            aria-label={t("layers.delete")}
+            title={t("layers.delete")}
           >
             <Trash2 size={14} />
           </button>
@@ -312,7 +318,7 @@ export function LaminatePage() {
 
   return (
     <>
-      <BackLink to="/" label="Laminate" />
+      <BackLink to="/" label={t("nav.laminates")} />
       <div className="editor-layout">
         {/* Both cards stacked in one column, sized to their own content - the
             module list sits directly under the table (rather than as a
@@ -323,10 +329,10 @@ export function LaminatePage() {
           <section className="editor-main">
             <h2>
               <Layers size={16} strokeWidth={1.75} />
-              Lagenaufbau
+              {t("layers.title")}
             </h2>
             <label className="material-name compact">
-              Name
+              {t("common.name")}
               <input
                 type="text"
                 value={config.name}
@@ -337,26 +343,31 @@ export function LaminatePage() {
             {config.layers.length === 0 ? (
               <div className="empty-state">
                 <Layers size={32} strokeWidth={1.25} />
-                <p>Noch keine Lagen — füge unten die erste hinzu.</p>
+                <p>{t("layers.empty")}</p>
               </div>
             ) : (
               <>
                 <div className="bulk-toolbar">
                   <label className="bulk-select-all">
                     <input type="checkbox" checked={allSelected} onChange={toggleAll} />
-                    Alle auswählen
+                    {t("layers.selectAll")}
                   </label>
                   {selectedCount > 0 && (
                     <>
                       <span className="hint" style={{ margin: 0 }}>
-                        {selectedCount} {selectedCount === 1 ? "Lage" : "Lagen"} ausgewählt
+                        {/* Both catalog languages have exactly two plural
+                            forms, so an explicit one/other key pair beats
+                            pulling in Intl.PluralRules machinery here. */}
+                        {t(selectedCount === 1 ? "layers.selected.one" : "layers.selected.other", {
+                          count: selectedCount,
+                        })}
                       </span>
                       <span className="bulk-angle">
                         <Quantity
                           category="angle"
                           value={bulkAngle}
                           onChange={bulkSetAngle}
-                          aria-label="Winkel für ausgewählte Lagen setzen"
+                          aria-label={t("layers.bulk.setAngle")}
                         />
                       </span>
                       <span className="bulk-thickness">
@@ -364,7 +375,7 @@ export function LaminatePage() {
                           category="thickness"
                           value={bulkThickness}
                           onChange={bulkSetThickness}
-                          aria-label="Dicke für ausgewählte Lagen setzen"
+                          aria-label={t("layers.bulk.setThickness")}
                         />
                       </span>
                       <select
@@ -374,10 +385,10 @@ export function LaminatePage() {
                           setBulkMaterialChoice("");
                           if (value) bulkSetMaterial(value);
                         }}
-                        aria-label="Material für ausgewählte Lagen setzen"
+                        aria-label={t("layers.bulk.setMaterial")}
                       >
                         <option value="" disabled>
-                          Material setzen…
+                          {t("layers.bulk.materialPlaceholder")}
                         </option>
                         {materials.map((m: MaterialDto) => (
                           <option key={m.id} value={m.id}>
@@ -392,14 +403,14 @@ export function LaminatePage() {
                           setBulkCriterionChoice("");
                           if (value) bulkSetCriterion(value as CriterionId);
                         }}
-                        aria-label="Versagenskriterium für ausgewählte Lagen setzen"
+                        aria-label={t("layers.bulk.setCriterion")}
                       >
                         <option value="" disabled>
-                          Kriterium setzen…
+                          {t("layers.bulk.criterionPlaceholder")}
                         </option>
                         {CRITERIA.map((c) => (
                           <option key={c.id} value={c.id}>
-                            {c.label}
+                            {t(c.labelKey)}
                           </option>
                         ))}
                       </select>
@@ -407,8 +418,8 @@ export function LaminatePage() {
                         type="button"
                         className="icon-button danger"
                         onClick={bulkDelete}
-                        aria-label="Ausgewählte Lagen löschen"
-                        title="Ausgewählte Lagen löschen"
+                        aria-label={t("layers.bulk.delete")}
+                        title={t("layers.bulk.delete")}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -433,22 +444,22 @@ export function LaminatePage() {
 
         {/* Sticky (desktop only, see App.css breakpoint): with many layers the
             table can grow far taller than the viewport, so the tools -
-            above all "Lage hinzufügen", the most-used action - must stay
+            above all "add layer", the most-used action - must stay
             reachable without scrolling back up to them every time. */}
         <aside className="editor-side">
           <div className="tool-group">
-            <div className="tool-group-title">Lage hinzufügen</div>
+            <div className="tool-group-title">{t("layers.add.title")}</div>
             <div className="add-layer-row">
               <input
                 type="text"
                 inputMode="decimal"
-                placeholder="Winkel, z. B. 0/45/-45/90"
+                placeholder={t("layers.add.placeholder")}
                 value={angleStackText}
                 onChange={(e) => setAngleStackText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") addLayers();
                 }}
-                aria-label="Winkel neuer Lagen"
+                aria-label={t("layers.add.aria")}
               />
             </div>
             <button
@@ -456,32 +467,29 @@ export function LaminatePage() {
               onClick={addLayers}
               disabled={angleStackText !== "" && !parseAngleStack(angleStackText)}
             >
-              <Plus size={16} /> Lage(n) hinzufügen
+              <Plus size={16} /> {t("layers.add.button")}
             </button>
-            <p className="hint">
-              Mehrere Winkel mit / getrennt legen mehrere Lagen an (Dicke, Material und Kriterium der letzten Lage
-              werden übernommen).
-            </p>
+            <p className="hint">{t("layers.add.hint")}</p>
           </div>
 
           <div className="tool-group">
-            <div className="tool-group-title">Vorschau</div>
+            <div className="tool-group-title">{t("layers.preview")}</div>
             <StackViz layers={config.layers} symmetric={config.symmetric} withMiddleLayer={config.withMiddleLayer} />
             <p className="stack-info">
-              Gesamtdicke: <QuantityDisplay category="thickness" value={totalThickness} /> · {totalLayers}{" "}
-              {totalLayers === 1 ? "Lage" : "Lagen"}
-              {config.symmetric ? " (inkl. Spiegelung)" : ""}
+              {t("layers.totalThickness")}: <QuantityDisplay category="thickness" value={totalThickness} /> ·{" "}
+              {totalLayers} {t(totalLayers === 1 ? "layers.count.one" : "layers.count.other")}
+              {config.symmetric ? t("layers.mirrorNote") : ""}
             </p>
           </div>
 
           <div className="tool-group">
-            <div className="tool-group-title">Aufbau bearbeiten</div>
+            <div className="tool-group-title">{t("layers.editStack")}</div>
             <button type="button" onClick={invertStack} disabled={config.layers.length < 2}>
-              <ArrowUpDown size={16} /> Invertieren
+              <ArrowUpDown size={16} /> {t("layers.invert")}
             </button>
             <div className="stack-ops">
               <button type="button" onClick={rotateStack} disabled={config.layers.length === 0 || rotateDelta === 0}>
-                <RotateCw size={16} /> Rotieren um
+                <RotateCw size={16} /> {t("layers.rotateBy")}
               </button>
               <span className="rotate-field">
                 <SafeNumberInput value={rotateDelta} onChange={setRotateDelta} />
@@ -493,7 +501,7 @@ export function LaminatePage() {
           </div>
 
           <div className="tool-group">
-            <div className="tool-group-title">Symmetrie &amp; Orientierung</div>
+            <div className="tool-group-title">{t("layers.symmetryGroup")}</div>
             <div className="flags vertical">
               <label>
                 <input
@@ -507,7 +515,7 @@ export function LaminatePage() {
                     }))
                   }
                 />
-                symmetrisch
+                {t("layers.symmetric")}
               </label>
               <label>
                 <input
@@ -516,7 +524,7 @@ export function LaminatePage() {
                   disabled={!config.symmetric}
                   onChange={(e) => setConfig((c) => ({ ...c, withMiddleLayer: e.target.checked }))}
                 />
-                mit Mittellage
+                {t("layers.withMiddleLayer")}
               </label>
               <label>
                 <input
@@ -524,7 +532,7 @@ export function LaminatePage() {
                   checked={config.invertZ}
                   onChange={(e) => setConfig((c) => ({ ...c, invertZ: e.target.checked }))}
                 />
-                z-Achse umkehren
+                {t("layers.invertZ")}
               </label>
             </div>
           </div>
