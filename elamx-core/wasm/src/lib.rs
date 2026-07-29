@@ -13,6 +13,7 @@ use elamx_core::clt::{
 use elamx_core::failure::default_criterion_registry;
 use elamx_core::mathtools;
 use elamx_core::model::{Laminate, Material};
+use elamx_core::plate::{calculate_buckling, mode_surface, BucklingInput};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
@@ -262,6 +263,87 @@ fn compute_angle_sweep_impl(request_json: &str, delta_angle_deg: f64) -> Result<
     serde_json::to_string(&response).map_err(|e| e.to_string())
 }
 
+#[derive(Deserialize)]
+struct BucklingRequest {
+    laminate: Laminate,
+    materials: HashMap<String, Material>,
+    input: BucklingInput,
+    /// Grid resolution for the returned mode-shape surfaces. 0 skips the
+    /// surfaces entirely, which is what a caller that only needs the critical
+    /// load should ask for - sampling every mode is the expensive part.
+    #[serde(default)]
+    surface_samples: usize,
+    /// How many modes to return surfaces for, lowest load factor first.
+    #[serde(default)]
+    surface_modes: usize,
+}
+
+#[derive(Serialize)]
+struct BucklingModeDto {
+    eigenvalue: f64,
+    /// Modal amplitudes a_ij (m rows of n).
+    shape: Vec<Vec<f64>>,
+    /// w(x, y) sampled on a grid, normalised to a peak of 1, rows along y.
+    /// Present only for the first `surface_modes` modes.
+    surface: Option<Vec<Vec<f64>>>,
+}
+
+#[derive(Serialize)]
+struct BucklingResponse {
+    critical_factor: Option<f64>,
+    n_crit: Option<[f64; 3]>,
+    modes: Vec<BucklingModeDto>,
+    /// True when the selected D-matrix idealisation assumes a symmetric
+    /// laminate but this laminate is not one.
+    symmetry_warning: bool,
+}
+
+/// Solves the buckling eigenvalue problem for a rectangular plate made of
+/// `laminate`, under the in-plane load flows and edge conditions in `input`.
+///
+/// Both `request_json` and the returned string are JSON, shaped by
+/// [`BucklingRequest`]/[`BucklingResponse`].
+#[wasm_bindgen]
+pub fn compute_buckling(request_json: &str) -> Result<String, JsValue> {
+    compute_buckling_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_buckling_impl(request_json: &str) -> Result<String, String> {
+    let request: BucklingRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let clt = CltLaminate::new(&request.laminate, &request.materials)
+        .map_err(|e| e.to_string())?;
+
+    let result = calculate_buckling(&clt, &request.input).map_err(|e| e.to_string())?;
+
+    let samples = request.surface_samples;
+    let with_surface = if samples > 1 { request.surface_modes } else { 0 };
+
+    let modes = result
+        .modes
+        .iter()
+        .enumerate()
+        .map(|(i, m)| BucklingModeDto {
+            eigenvalue: m.eigenvalue,
+            shape: m.shape.clone(),
+            surface: if i < with_surface {
+                Some(mode_surface(m, &request.input, samples, samples))
+            } else {
+                None
+            },
+        })
+        .collect();
+
+    let response = BucklingResponse {
+        critical_factor: result.critical_factor,
+        n_crit: result.n_crit,
+        modes,
+        symmetry_warning: result.symmetry_warning,
+    };
+
+    serde_json::to_string(&response).map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -441,5 +523,83 @@ mod tests {
     fn compute_angle_sweep_rejects_malformed_json() {
         let result = compute_angle_sweep_impl("not json", 90.0);
         assert!(result.is_err());
+    }
+
+    /// The buckling request reuses the laminate/materials shape above and adds
+    /// an `input` block; `surface_samples`/`surface_modes` are optional.
+    fn buckling_request(extra_input: &str, tail: &str) -> String {
+        let base = sample_request(0.0, "null");
+        // Splice the plate input in beside the existing laminate/materials.
+        let without_clt_fields = base
+            .rsplit_once("\"loads\"")
+            .map(|(head, _)| head.to_string())
+            .unwrap();
+        format!(
+            r#"{without_clt_fields}"input": {{
+                "length": 400.0, "width": 400.0,
+                "n_x": -1.0, "n_y": 0.0, "n_xy": 0.0,
+                "bc_x": "SS", "bc_y": "SS",
+                "m": 6, "n": 6, "d_matrix": "d_tilde"{extra_input}
+            }}{tail}}}"#
+        )
+    }
+
+    #[test]
+    fn compute_buckling_returns_a_positive_critical_factor_under_compression() {
+        let response = compute_buckling_impl(&buckling_request("", ""))
+            .expect("compute_buckling_impl should succeed");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+
+        let factor = parsed["critical_factor"].as_f64().unwrap();
+        assert!(factor > 0.0, "critical factor {factor}");
+        // n_crit is the applied load scaled by the factor; n_x was -1.
+        assert!((parsed["n_crit"][0].as_f64().unwrap() + factor).abs() < 1e-9);
+        assert_eq!(parsed["n_crit"][1].as_f64().unwrap(), 0.0);
+        // 6x6 Ritz terms => 36 modes, each shape 6 rows of 6.
+        let modes = parsed["modes"].as_array().unwrap();
+        assert_eq!(modes.len(), 36);
+        assert_eq!(modes[0]["shape"].as_array().unwrap().len(), 6);
+        assert_eq!(modes[0]["shape"][0].as_array().unwrap().len(), 6);
+        // No surfaces unless asked for.
+        assert!(modes[0]["surface"].is_null());
+    }
+
+    #[test]
+    fn compute_buckling_samples_surfaces_only_for_the_requested_modes() {
+        let response =
+            compute_buckling_impl(&buckling_request("", r#", "surface_samples": 11, "surface_modes": 2"#))
+                .expect("compute_buckling_impl should succeed");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+        let modes = parsed["modes"].as_array().unwrap();
+
+        let surface = modes[0]["surface"].as_array().unwrap();
+        assert_eq!(surface.len(), 11);
+        assert_eq!(surface[0].as_array().unwrap().len(), 11);
+        assert!(modes[1]["surface"].is_array());
+        assert!(modes[2]["surface"].is_null());
+    }
+
+    #[test]
+    fn compute_buckling_flags_an_unsymmetric_laminate_for_a_symmetric_only_idealisation() {
+        // The [0/90] sample laminate is not symmetric.
+        let d_tilde = compute_buckling_impl(&buckling_request("", "")).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&d_tilde).unwrap();
+        assert!(!parsed["symmetry_warning"].as_bool().unwrap());
+
+        let standard = buckling_request("", "").replace("\"d_tilde\"", "\"standard\"");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&compute_buckling_impl(&standard).unwrap()).unwrap();
+        assert!(parsed["symmetry_warning"].as_bool().unwrap());
+    }
+
+    #[test]
+    fn compute_buckling_reports_degenerate_input_as_an_error() {
+        let no_load = buckling_request("", "").replace("\"n_x\": -1.0", "\"n_x\": 0.0");
+        assert!(compute_buckling_impl(&no_load).is_err());
+
+        let too_many_terms = buckling_request("", "").replace("\"m\": 6", "\"m\": 25");
+        assert!(compute_buckling_impl(&too_many_terms).is_err());
+
+        assert!(compute_buckling_impl("not json").is_err());
     }
 }

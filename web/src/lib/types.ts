@@ -267,3 +267,59 @@ export const emptyStrains = (): StrainsDto => ({
   kappa_y: 0,
   kappa_xy: 0,
 });
+
+// --- Plate buckling (elamx-core::plate) -------------------------------------
+// Mirrors BucklingRequest/BucklingResponse in elamx-core/wasm/src/lib.rs.
+
+/** Edge condition of one pair of opposite edges: S(imply supported), C(lamped), F(ree). */
+export type BoundaryConditionId = "SS" | "CC" | "CF" | "FF" | "SC" | "SF";
+
+export const BOUNDARY_CONDITIONS = [
+  "SS",
+  "CC",
+  "CF",
+  "FF",
+  "SC",
+  "SF",
+] as const satisfies readonly BoundaryConditionId[];
+
+/** Which bending stiffness idealisation the plate is analysed with. */
+export type DMatrixKindId = "standard" | "special_orthotropic" | "d_tilde";
+
+export const D_MATRIX_KINDS = [
+  { id: "standard", labelKey: "buckling.dMatrix.standard" },
+  { id: "special_orthotropic", labelKey: "buckling.dMatrix.specialOrthotropic" },
+  { id: "d_tilde", labelKey: "buckling.dMatrix.dTilde" },
+] as const satisfies readonly { id: DMatrixKindId; labelKey: MessageKey }[];
+
+/** eLamX2 caps the Ritz term counts here, and so do the ported integral tables. */
+export const MAX_RITZ_TERMS = 20;
+
+export interface BucklingInputDto {
+  length: number;
+  width: number;
+  n_x: number;
+  n_y: number;
+  n_xy: number;
+  bc_x: BoundaryConditionId;
+  bc_y: BoundaryConditionId;
+  m: number;
+  n: number;
+  d_matrix: DMatrixKindId;
+}
+
+export interface BucklingModeDto {
+  /** Load factor: the applied load flows times this buckle the plate. */
+  eigenvalue: number;
+  /** Modal amplitudes a_ij, m rows of n. */
+  shape: number[][];
+  /** w(x,y) on a square grid, rows along y, peak normalised to 1. */
+  surface: number[][] | null;
+}
+
+export interface BucklingResponse {
+  critical_factor: number | null;
+  n_crit: [number, number, number] | null;
+  modes: BucklingModeDto[];
+  symmetry_warning: boolean;
+}

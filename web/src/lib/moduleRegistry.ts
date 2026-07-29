@@ -2,17 +2,17 @@
 // small, known set of calculation modules (unlike Java eLamX's
 // Lookup/NetBeans-module plugin mechanism, which existed to let separately
 // deployed .nbm files register new module types at runtime - not a
-// constraint this app has). New module types (e.g. buckling "Beulen" ->
-// Waves, pressure vessel "Drucktank" -> Cylinder, Spring-In -> TriangleRight,
-// optimization -> Target, once the Rust core supports them) are added here as
-// a new entry - the sidebar tree, the module list on the laminate page and
-// the mobile navigation all render from this registry, so a new module needs
-// no UI changes beyond its own page (see UI-Konzept §7).
+// constraint this app has). New module types (e.g. pressure vessel
+// "Drucktank" -> Cylinder, Spring-In -> TriangleRight, optimization ->
+// Target, once the Rust core supports them) are added here as a new entry -
+// the sidebar tree, the module list on the laminate page and the mobile
+// navigation all render from this registry, so a new module needs no UI
+// changes beyond its own page (see UI-Konzept §7).
 import type { LucideIcon } from "lucide-react";
-import { Calculator } from "lucide-react";
+import { Calculator, Waves } from "lucide-react";
 import type { MessageKey } from "../i18n";
 
-export type ModuleType = "clt";
+export type ModuleType = "clt" | "buckling";
 
 export interface ModuleDefinition {
   id: ModuleType;
@@ -28,6 +28,12 @@ export const MODULE_REGISTRY: Record<ModuleType, ModuleDefinition> = {
     labelKey: "module.clt.label",
     icon: Calculator,
     descriptionKey: "module.clt.description",
+  },
+  buckling: {
+    id: "buckling",
+    labelKey: "module.buckling.label",
+    icon: Waves,
+    descriptionKey: "module.buckling.description",
   },
 };
 

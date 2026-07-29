@@ -5,7 +5,7 @@ A from-scratch web reimplementation of [eLamX](https://www.tu-dresden.de/ing/mas
 ## Structure
 
 - **`elamx-core/`** — Rust workspace.
-  - `core/` — the CLT calculation engine itself (materials, layers, laminates, ABD-matrix assembly, failure criteria, reserve factors).
+  - `core/` — the CLT calculation engine itself (materials, layers, laminates, ABD-matrix assembly, failure criteria, reserve factors), plus `plate/` for rectangular-plate analyses on top of a laminate (buckling; vibration, deformation, cutouts and stiffeners are not ported yet).
   - `wasm/` — thin `wasm-bindgen` bindings exposing `core` to the browser (JSON in, JSON out).
 - **`web/`** — React + TypeScript + Vite frontend. State is managed with Jotai (one reactive atom family per laminate/material), all calculations run client-side via the WASM module.
 

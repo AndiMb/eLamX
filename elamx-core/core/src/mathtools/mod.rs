@@ -1,13 +1,20 @@
 //! Matrix solvers (Cholesky, LU, Gauss-elimination-based pivot exchange).
 //! Reference: eLamX2/MathTools/src/de/elamx/mathtools/MatrixTools.java
 //!
-//! The Jacobi eigenvalue solver (`getEigenValues` in the Java original) is ported
-//! alongside the Plate/Buckling module instead of here, since that is its only caller.
+//! The Jacobi eigenvalue solver (`getEigenValues` in the Java original) lives in
+//! `eigen`, matching where the Java keeps it. An earlier note here planned to put
+//! it with the plate module on the grounds that buckling would be its only caller;
+//! that no longer holds - plate vibration solves the same generalised symmetric
+//! problem against the mass matrix, so it belongs with the other shared solvers.
 
 // These solvers read and write several matrix indices per loop body (e.g. `l[i][j]`
 // alongside `l[j][...]`), so index-based loops stay closer to the underlying linear
 // algebra than the iterator-chain rewrites clippy suggests.
 #![allow(clippy::needless_range_loop)]
+
+pub mod eigen;
+
+pub use eigen::{generalized_symmetric_eigen, EigenError, EigenSolution};
 
 /// A dense row-major matrix, mirroring the Java `double[][]` used throughout the original code.
 pub type Matrix = Vec<Vec<f64>>;
