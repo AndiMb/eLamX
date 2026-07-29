@@ -3,6 +3,7 @@ import { useAtomValue } from "jotai";
 import { throughThicknessFamily, type ThroughThicknessLayer } from "../../store/derivedAtoms";
 import { ChartTooltip } from "./ChartTooltip";
 import { useT } from "../../i18n";
+import { symText, type SymbolSpec } from "../../lib/symbols";
 
 // WIDTH matches AngleSweepChart/ReserveFactorChart (both 600) so all three
 // charts share the same viewBox-to-rendered-width scale factor when placed
@@ -21,19 +22,24 @@ type FieldKey = "stressLocal" | "stressGlobal" | "strainLocal" | "strainGlobal";
 // translatable - the symbols themselves are notation and stay as-is. The
 // component list is kept at module scope in this symbol+frame form and the
 // user-visible label is assembled per language inside the component.
-const COMPONENTS: { key: string; field: FieldKey; idx: 0 | 1 | 2; symbol: string; frame: "local" | "global"; unit: string }[] = [
-  { key: "sl0", field: "stressLocal", idx: 0, symbol: "σ₁", frame: "local", unit: "MPa" },
-  { key: "sl1", field: "stressLocal", idx: 1, symbol: "σ₂", frame: "local", unit: "MPa" },
-  { key: "sl2", field: "stressLocal", idx: 2, symbol: "τ₁₂", frame: "local", unit: "MPa" },
-  { key: "sg0", field: "stressGlobal", idx: 0, symbol: "σx", frame: "global", unit: "MPa" },
-  { key: "sg1", field: "stressGlobal", idx: 1, symbol: "σy", frame: "global", unit: "MPa" },
-  { key: "sg2", field: "stressGlobal", idx: 2, symbol: "τxy", frame: "global", unit: "MPa" },
-  { key: "el0", field: "strainLocal", idx: 0, symbol: "ε₁", frame: "local", unit: "" },
-  { key: "el1", field: "strainLocal", idx: 1, symbol: "ε₂", frame: "local", unit: "" },
-  { key: "el2", field: "strainLocal", idx: 2, symbol: "γ₁₂", frame: "local", unit: "" },
-  { key: "eg0", field: "strainGlobal", idx: 0, symbol: "εx", frame: "global", unit: "" },
-  { key: "eg1", field: "strainGlobal", idx: 1, symbol: "εy", frame: "global", unit: "" },
-  { key: "eg2", field: "strainGlobal", idx: 2, symbol: "γxy", frame: "global", unit: "" },
+//
+// These labels are consumed by <option> content and an aria-label, both of
+// which are plain-text-only slots, so they go through symText() rather than
+// <Sym> - the indices used to be a mix of Unicode subscripts (σ₁, τ₁₂) and
+// bare adjacency (σx, τxy); see lib/symbols.ts for why adjacency won.
+const COMPONENTS: { key: string; field: FieldKey; idx: 0 | 1 | 2; sym: SymbolSpec; frame: "local" | "global"; unit: string }[] = [
+  { key: "sl0", field: "stressLocal", idx: 0, sym: { base: "σ", sub: "1" }, frame: "local", unit: "MPa" },
+  { key: "sl1", field: "stressLocal", idx: 1, sym: { base: "σ", sub: "2" }, frame: "local", unit: "MPa" },
+  { key: "sl2", field: "stressLocal", idx: 2, sym: { base: "τ", sub: "12" }, frame: "local", unit: "MPa" },
+  { key: "sg0", field: "stressGlobal", idx: 0, sym: { base: "σ", sub: "x" }, frame: "global", unit: "MPa" },
+  { key: "sg1", field: "stressGlobal", idx: 1, sym: { base: "σ", sub: "y" }, frame: "global", unit: "MPa" },
+  { key: "sg2", field: "stressGlobal", idx: 2, sym: { base: "τ", sub: "xy" }, frame: "global", unit: "MPa" },
+  { key: "el0", field: "strainLocal", idx: 0, sym: { base: "ε", sub: "1" }, frame: "local", unit: "" },
+  { key: "el1", field: "strainLocal", idx: 1, sym: { base: "ε", sub: "2" }, frame: "local", unit: "" },
+  { key: "el2", field: "strainLocal", idx: 2, sym: { base: "γ", sub: "12" }, frame: "local", unit: "" },
+  { key: "eg0", field: "strainGlobal", idx: 0, sym: { base: "ε", sub: "x" }, frame: "global", unit: "" },
+  { key: "eg1", field: "strainGlobal", idx: 1, sym: { base: "ε", sub: "y" }, frame: "global", unit: "" },
+  { key: "eg2", field: "strainGlobal", idx: 2, sym: { base: "γ", sub: "xy" }, frame: "global", unit: "" },
 ];
 
 function valueOf(layer: ThroughThicknessLayer, field: FieldKey, idx: 0 | 1 | 2, which: "lower" | "upper") {
@@ -52,7 +58,7 @@ export const ThroughThicknessChart = memo(function ThroughThicknessChart({ lamin
     () =>
       COMPONENTS.map((c) => ({
         ...c,
-        label: `${c.symbol} (${t(c.frame === "local" ? "common.local" : "common.global")})`,
+        label: `${symText(c.sym)} (${t(c.frame === "local" ? "common.local" : "common.global")})`,
       })),
     [t],
   );

@@ -90,6 +90,28 @@ p {
   margin: 0;
 }
 
+/* Every indexed symbol in the UI renders as <sub> (see lib/symbols.ts), so
+   this is a hot path, not an edge case. The browser default pairs
+   `font-size: smaller` with `vertical-align: sub`, and the latter grows the
+   line box - which would silently break the fixed row heights the equation
+   panel aligns its four operands on. Offsetting with position/bottom instead
+   keeps the glyph exactly where it belongs and the line box untouched. */
+sub,
+sup {
+  font-size: 0.75em;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+sub {
+  bottom: -0.25em;
+}
+
+sup {
+  top: -0.4em;
+}
+
 code {
   font-family: var(--mono);
   font-size: 0.9em;

@@ -70,7 +70,9 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
   return (
     <div className="chart viz">
       <p className="chart-title">{t("chart.reserveFactor.title")}</p>
-      <ChartLegend items={usedTypes.map((ft) => ({ label: t(FAILURE_LABEL_KEYS[ft]), color: FAILURE_COLORS[ft] }))} />
+      <ChartLegend
+        items={usedTypes.map((ft) => ({ key: ft, label: t(FAILURE_LABEL_KEYS[ft]), color: FAILURE_COLORS[ft] }))}
+      />
       <div className="chart-svg-wrap">
         <svg className="chart-svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" role="img" aria-label={t("chart.reserveFactor.aria")}>
           <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>

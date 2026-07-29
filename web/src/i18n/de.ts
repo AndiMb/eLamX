@@ -144,10 +144,10 @@ export const de: Messages = {
   "summary.title": "Kennzahlen",
   "summary.symmetric": "symmetrisch (B≈0)",
   "summary.areaWeight": "Flächengewicht",
-  "summary.ex.title": "Ingenieurskonstante E_x (Poisson-frei, „simple“)",
+  "summary.ex.title": "Ingenieurskonstante Ex (Poisson-frei, „simple“)",
   "summary.ex.hint":
-    "(ABD⁻¹) ist die Inverse der vollen 6×6-ABD-Matrix – sie berücksichtigt auch die Kopplung zwischen Dehnung und Krümmung (B-Block). Analog für E_y, G und ν_yx.",
-  "summary.nuxy.title": "Querkontraktionszahl ν_xy",
+    "(ABD⁻¹) ist die Inverse der vollen 6×6-ABD-Matrix – sie berücksichtigt auch die Kopplung zwischen Dehnung und Krümmung (B-Block). Analog für Ey, G und νyx.",
+  "summary.nuxy.title": "Querkontraktionszahl νxy",
 
   "howComputed.toggle": "Wie wurde das berechnet? {title}",
   "howComputed.withValues": "Mit den aktuellen Werten dieses Laminats:",

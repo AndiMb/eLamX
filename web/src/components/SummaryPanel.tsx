@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import { useAtomValue } from "jotai";
 import { summaryFamily } from "../store/derivedAtoms";
 import { useRenderCount } from "../lib/useRenderCount";
@@ -6,10 +6,11 @@ import { QuantityDisplay } from "./QuantityDisplay";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { useFmt, fmtExp } from "../lib/cltFormulas";
 import { isFiniteResult, NO_VALUE } from "../lib/numberFormat";
+import { Sym } from "./Sym";
 import type { QuantityCategory } from "../lib/units";
 import { useT } from "../i18n";
 
-function StatTile({ label, category, value }: { label: string; category: QuantityCategory; value: number }) {
+function StatTile({ label, category, value }: { label: ReactNode; category: QuantityCategory; value: number }) {
   return (
     <div className="stat-tile">
       <span className="label">{label}</span>
@@ -43,7 +44,7 @@ export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminat
         {t("summary.title")} <span className="render-count">{t("common.renders", { count: renderCount })}</span>
       </h3>
       <div className="stat-tiles">
-        <StatTile label="t_ges" category="thickness" value={summary.tges} />
+        <StatTile label={<Sym base="t" sub="ges" />} category="thickness" value={summary.tges} />
         <div className="stat-tile">
           <span className="label">{t("summary.symmetric")}</span>
           <span className="value">
@@ -52,11 +53,11 @@ export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminat
             </span>
           </span>
         </div>
-        <StatTile label="E_x" category="stiffness" value={ec.ex_simple} />
-        <StatTile label="E_y" category="stiffness" value={ec.ey_simple} />
-        <StatTile label="G" category="stiffness" value={ec.g_simple} />
-        <StatTile label="ν_xy" category="poissonRatio" value={ec.nuxy_simple} />
-        <StatTile label="ν_yx" category="poissonRatio" value={ec.nuyx_simple} />
+        <StatTile label={<Sym base="E" sub="x" />} category="stiffness" value={ec.ex_simple} />
+        <StatTile label={<Sym base="E" sub="y" />} category="stiffness" value={ec.ey_simple} />
+        <StatTile label={<Sym base="G" />} category="stiffness" value={ec.g_simple} />
+        <StatTile label={<Sym base="ν" sub="xy" />} category="poissonRatio" value={ec.nuxy_simple} />
+        <StatTile label={<Sym base="ν" sub="yx" />} category="poissonRatio" value={ec.nuyx_simple} />
         <div className="stat-tile">
           <span className="label">{t("summary.areaWeight")}</span>
           <span className="value">

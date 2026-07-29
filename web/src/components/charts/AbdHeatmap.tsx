@@ -4,6 +4,8 @@ import { abdMatrixFamily } from "../../store/derivedAtoms";
 import { ChartTooltip } from "./ChartTooltip";
 import { useChartColors } from "../../lib/chartColors";
 import { useT } from "../../i18n";
+import type { SymbolSpec } from "../../lib/symbols";
+import { Sym } from "../Sym";
 
 const CELL = 40;
 const GAP = 2;
@@ -59,12 +61,13 @@ export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId:
 
   const posFor = (index: number) => index * (CELL + GAP) + (index >= 3 ? BLOCK_GAP : 0);
 
-  const blockLabel = (i: number, j: number) => {
+  const blockSymbol = (i: number, j: number): SymbolSpec => {
     const rowBlock = BLOCK_OF(i);
     const colBlock = BLOCK_OF(j);
-    if (rowBlock === "A" && colBlock === "A") return `A${AXIS_LABELS[i]}${AXIS_LABELS[j]}`;
-    if (rowBlock === "D" && colBlock === "D") return `D${AXIS_LABELS[i]}${AXIS_LABELS[j]}`;
-    return `B${AXIS_LABELS[i]}${AXIS_LABELS[j]}`;
+    const sub = `${AXIS_LABELS[i]}${AXIS_LABELS[j]}`;
+    if (rowBlock === "A" && colBlock === "A") return { base: "A", sub };
+    if (rowBlock === "D" && colBlock === "D") return { base: "D", sub };
+    return { base: "B", sub };
   };
 
   return (
@@ -104,7 +107,10 @@ export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId:
         </svg>
         {hover && (
           <ChartTooltip x={hover.x} y={hover.y}>
-            <strong>{blockLabel(hover.i, hover.j)}</strong>: {abd[hover.i][hover.j].toExponential(3)}
+            <strong>
+              <Sym {...blockSymbol(hover.i, hover.j)} />
+            </strong>
+            : {abd[hover.i][hover.j].toExponential(3)}
           </ChartTooltip>
         )}
       </div>

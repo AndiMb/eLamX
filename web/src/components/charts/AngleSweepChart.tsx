@@ -4,6 +4,8 @@ import { loadableAngleSweepFamily } from "../../store/derivedAtoms";
 import { ChartLegend } from "./ChartLegend";
 import { ChartTooltip } from "./ChartTooltip";
 import { useT } from "../../i18n";
+import type { SymbolSpec } from "../../lib/symbols";
+import { Sym } from "../Sym";
 
 const WIDTH = 600;
 const HEIGHT = 220;
@@ -12,10 +14,10 @@ const PLOT_W = WIDTH - MARGIN.left - MARGIN.right;
 const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 
 const SERIES = [
-  { key: "a11", label: "A11", color: "var(--viz-series-1)" },
-  { key: "a22", label: "A22", color: "var(--viz-series-2)" },
-  { key: "a66", label: "A66", color: "var(--viz-series-3)" },
-] as const;
+  { key: "a11", sym: { base: "A", sub: "11" }, color: "var(--viz-series-1)" },
+  { key: "a22", sym: { base: "A", sub: "22" }, color: "var(--viz-series-2)" },
+  { key: "a66", sym: { base: "A", sub: "66" }, color: "var(--viz-series-3)" },
+] as const satisfies readonly { key: string; sym: SymbolSpec; color: string }[];
 
 // See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
 export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { laminateId: string }) {
@@ -64,7 +66,9 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
       </div>
       {!showTable && (
         <>
-          <ChartLegend items={SERIES.map((s) => ({ label: s.label, color: s.color, shape: "line" }))} />
+          <ChartLegend
+            items={SERIES.map((s) => ({ key: s.key, label: <Sym {...s.sym} />, color: s.color, shape: "line" }))}
+          />
           <div className="chart-svg-wrap">
             <svg className="chart-svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" role="img" aria-label={t("chart.angleSweep.aria")}>
               <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
@@ -120,7 +124,7 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
                 {SERIES.map((s) => (
                   <div className="chart-tooltip-row" key={s.key}>
                     <span className="chart-legend-swatch line" style={{ background: s.color }} />
-                    {s.label}: {data[s.key][hoverIndex].toExponential(2)}
+                    <Sym {...s.sym} />: {data[s.key][hoverIndex].toExponential(2)}
                   </div>
                 ))}
               </ChartTooltip>
@@ -133,9 +137,11 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
           <thead>
             <tr>
               <th>{t("chart.angleSweep.column.angle")}</th>
-              <th>A11</th>
-              <th>A22</th>
-              <th>A66</th>
+              {SERIES.map((s) => (
+                <th key={s.key}>
+                  <Sym {...s.sym} />
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>

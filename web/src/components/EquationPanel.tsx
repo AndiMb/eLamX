@@ -6,6 +6,8 @@ import { SafeNumberInput } from "./SafeNumberInput";
 import { Quantity } from "./Quantity";
 import { AbdMatrixPanel } from "./AbdMatrixPanel";
 import { useRenderCount } from "../lib/useRenderCount";
+import { symText } from "../lib/symbols";
+import { Sym } from "./Sym";
 import { isFiniteResult, NO_VALUE } from "../lib/numberFormat";
 import { useT } from "../i18n";
 
@@ -82,8 +84,8 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
           {DOF_NAMES.map((names, i) => {
             const editable = !config.useStrain[i];
             return (
-              <div className="equation-cell" key={names.load}>
-                <span className="equation-label">{names.load}</span>
+              <div className="equation-cell" key={symText(names.load)}>
+                <span className="equation-label"><Sym {...names.load} /></span>
                 {editable ? (
                   <SafeNumberInput value={config.dofValues[i]} onChange={(v) => updateDofValue(i, v)} />
                 ) : (
@@ -91,8 +93,8 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
                     type="button"
                     className="equation-computed"
                     onClick={() => setPrescribed(i, false)}
-                    aria-label={t("equation.prescribe", { name: names.load })}
-                    title={t("equation.prescribe.title", { name: names.load })}
+                    aria-label={t("equation.prescribe", { name: symText(names.load) })}
+                    title={t("equation.prescribe.title", { name: symText(names.load) })}
                   >
                     {!loads ? "…" : isFiniteResult(loads[LOAD_FIELDS[i]]) ? loads[LOAD_FIELDS[i]].toFixed(3) : NO_VALUE}
                   </button>
@@ -111,8 +113,8 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
           <h3>{t("equation.hygrothermalLoads")}</h3>
           <div className="equation-head-spacer" aria-hidden="true" />
           {DOF_NAMES.map((names, i) => (
-            <div className="equation-cell" key={names.load}>
-              <span className="equation-label">{names.load}</span>
+            <div className="equation-cell" key={symText(names.load)}>
+              <span className="equation-label"><Sym {...names.load} /></span>
               <span className="equation-derived">
                 {!loads
                   ? "…"
@@ -138,8 +140,8 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
           {DOF_NAMES.map((names, i) => {
             const editable = config.useStrain[i];
             return (
-              <div className="equation-cell" key={names.strain}>
-                <span className="equation-label">{names.strain}</span>
+              <div className="equation-cell" key={symText(names.strain)}>
+                <span className="equation-label"><Sym {...names.strain} /></span>
                 {editable ? (
                   <SafeNumberInput value={config.dofValues[i]} onChange={(v) => updateDofValue(i, v)} />
                 ) : (
@@ -147,8 +149,8 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
                     type="button"
                     className="equation-computed"
                     onClick={() => setPrescribed(i, true)}
-                    aria-label={t("equation.prescribe", { name: names.strain })}
-                    title={t("equation.prescribe.title", { name: names.strain })}
+                    aria-label={t("equation.prescribe", { name: symText(names.strain) })}
+                    title={t("equation.prescribe.title", { name: symText(names.strain) })}
                   >
                     {!strains
                       ? "…"

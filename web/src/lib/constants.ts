@@ -1,4 +1,5 @@
 import { DEFAULT_ADDITIONAL_VALUES, type CriterionId, type MaterialDto } from "./types";
+import type { SymbolSpec } from "./symbols";
 import { t } from "../i18n";
 
 // Failure criterion is per-LAYER (matches the Java original's layup editor,
@@ -16,14 +17,16 @@ export interface LayerRow {
   criterionId: CriterionId;
 }
 
+// Base/index pairs rather than pre-rendered strings so each call site can pick
+// the right form for its slot - see lib/symbols.ts for the notation rule.
 export const DOF_NAMES = [
-  { load: "N_x", strain: "ε_x" },
-  { load: "N_y", strain: "ε_y" },
-  { load: "N_xy", strain: "γ_xy" },
-  { load: "M_x", strain: "κ_x" },
-  { load: "M_y", strain: "κ_y" },
-  { load: "M_xy", strain: "κ_xy" },
-] as const;
+  { load: { base: "N", sub: "x" }, strain: { base: "ε", sub: "x" } },
+  { load: { base: "N", sub: "y" }, strain: { base: "ε", sub: "y" } },
+  { load: { base: "N", sub: "xy" }, strain: { base: "γ", sub: "xy" } },
+  { load: { base: "M", sub: "x" }, strain: { base: "κ", sub: "x" } },
+  { load: { base: "M", sub: "y" }, strain: { base: "κ", sub: "y" } },
+  { load: { base: "M", sub: "xy" }, strain: { base: "κ", sub: "xy" } },
+] as const satisfies readonly { load: SymbolSpec; strain: SymbolSpec }[];
 
 export const LOAD_FIELDS = ["n_x", "n_y", "n_xy", "m_x", "m_y", "m_xy"] as const;
 

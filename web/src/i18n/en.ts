@@ -154,10 +154,10 @@ export const en = {
   "summary.title": "Key figures",
   "summary.symmetric": "symmetric (B≈0)",
   "summary.areaWeight": "Area weight",
-  "summary.ex.title": "Engineering constant E_x (Poisson-free, “simple”)",
+  "summary.ex.title": "Engineering constant Ex (Poisson-free, “simple”)",
   "summary.ex.hint":
-    "(ABD⁻¹) is the inverse of the full 6×6 ABD matrix – it also accounts for the coupling between strain and curvature (B block). Analogous for E_y, G and ν_yx.",
-  "summary.nuxy.title": "Poisson's ratio ν_xy",
+    "(ABD⁻¹) is the inverse of the full 6×6 ABD matrix – it also accounts for the coupling between strain and curvature (B block). Analogous for Ey, G and νyx.",
+  "summary.nuxy.title": "Poisson's ratio νxy",
 
   "howComputed.toggle": "How was this computed? {title}",
   "howComputed.withValues": "With this laminate's current values:",
