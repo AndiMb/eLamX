@@ -268,24 +268,28 @@ struct BucklingRequest {
     laminate: Laminate,
     materials: HashMap<String, Material>,
     input: BucklingInput,
-    /// Grid resolution for the returned mode-shape surfaces. 0 skips the
-    /// surfaces entirely, which is what a caller that only needs the critical
-    /// load should ask for - sampling every mode is the expensive part.
-    #[serde(default)]
-    surface_samples: usize,
-    /// How many modes to return surfaces for, lowest load factor first.
-    #[serde(default)]
-    surface_modes: usize,
 }
 
 #[derive(Serialize)]
 struct BucklingModeDto {
     eigenvalue: f64,
-    /// Modal amplitudes a_ij (m rows of n).
+    /// Modal amplitudes a_ij (m rows of n). Feed these back into
+    /// [`compute_buckling_surface`] to get a plottable displacement field.
     shape: Vec<Vec<f64>>,
-    /// w(x, y) sampled on a grid, normalised to a peak of 1, rows along y.
-    /// Present only for the first `surface_modes` modes.
-    surface: Option<Vec<Vec<f64>>>,
+}
+
+/// Sampling a mode surface needs only the modal amplitudes and the plate
+/// input - not the laminate - so it is its own entry point. That keeps the
+/// eigenvalue solve (which the UI runs on every input change) from carrying
+/// grid data for modes nobody is looking at, and lets the user switch the
+/// displayed mode without re-solving.
+#[derive(Deserialize)]
+struct BucklingSurfaceRequest {
+    input: BucklingInput,
+    /// One mode's amplitudes, as returned in `BucklingModeDto::shape`.
+    shape: Vec<Vec<f64>>,
+    /// Grid resolution per direction.
+    samples: usize,
 }
 
 #[derive(Serialize)]
@@ -316,21 +320,12 @@ fn compute_buckling_impl(request_json: &str) -> Result<String, String> {
 
     let result = calculate_buckling(&clt, &request.input).map_err(|e| e.to_string())?;
 
-    let samples = request.surface_samples;
-    let with_surface = if samples > 1 { request.surface_modes } else { 0 };
-
     let modes = result
         .modes
         .iter()
-        .enumerate()
-        .map(|(i, m)| BucklingModeDto {
+        .map(|m| BucklingModeDto {
             eigenvalue: m.eigenvalue,
             shape: m.shape.clone(),
-            surface: if i < with_surface {
-                Some(mode_surface(m, &request.input, samples, samples))
-            } else {
-                None
-            },
         })
         .collect();
 
@@ -342,6 +337,39 @@ fn compute_buckling_impl(request_json: &str) -> Result<String, String> {
     };
 
     serde_json::to_string(&response).map_err(|e| e.to_string())
+}
+
+/// Samples one buckling mode's displacement field w(x, y) on a square grid,
+/// normalised to a peak of 1. Rows run along y.
+///
+/// Shaped by [`BucklingSurfaceRequest`]; the `shape` comes straight from a
+/// mode in [`compute_buckling`]'s response.
+#[wasm_bindgen]
+pub fn compute_buckling_surface(request_json: &str) -> Result<String, JsValue> {
+    compute_buckling_surface_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_buckling_surface_impl(request_json: &str) -> Result<String, String> {
+    let request: BucklingSurfaceRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+
+    if request.samples < 2 {
+        return Err("samples must be at least 2".to_string());
+    }
+    if request.shape.len() != request.input.m
+        || request.shape.iter().any(|row| row.len() != request.input.n)
+    {
+        return Err(format!(
+            "mode shape is {}x{}, but the input declares m={}, n={}",
+            request.shape.len(),
+            request.shape.first().map_or(0, |r| r.len()),
+            request.input.m,
+            request.input.n
+        ));
+    }
+
+    let surface = mode_surface(&request.shape, &request.input, request.samples, request.samples);
+    serde_json::to_string(&surface).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -560,23 +588,55 @@ mod tests {
         assert_eq!(modes.len(), 36);
         assert_eq!(modes[0]["shape"].as_array().unwrap().len(), 6);
         assert_eq!(modes[0]["shape"][0].as_array().unwrap().len(), 6);
-        // No surfaces unless asked for.
-        assert!(modes[0]["surface"].is_null());
+    }
+
+    /// The surface entry point takes a mode's amplitudes straight back, so a
+    /// round trip through both calls is what a caller actually does.
+    #[test]
+    fn compute_buckling_surface_samples_any_mode_from_its_amplitudes() {
+        let solved: serde_json::Value =
+            serde_json::from_str(&compute_buckling_impl(&buckling_request("", "")).unwrap()).unwrap();
+
+        for mode_index in [0usize, 3, 11] {
+            let shape = &solved["modes"][mode_index]["shape"];
+            let request = format!(
+                r#"{{"input": {{"length":400.0,"width":400.0,"n_x":-1.0,"n_y":0.0,"n_xy":0.0,
+                    "bc_x":"SS","bc_y":"SS","m":6,"n":6,"d_matrix":"d_tilde"}},
+                    "shape": {shape}, "samples": 11}}"#
+            );
+            let surface: Vec<Vec<f64>> =
+                serde_json::from_str(&compute_buckling_surface_impl(&request).unwrap()).unwrap();
+
+            assert_eq!(surface.len(), 11);
+            assert_eq!(surface[0].len(), 11);
+            // Normalised to a peak of exactly 1.
+            let peak = surface
+                .iter()
+                .flat_map(|r| r.iter())
+                .fold(0.0f64, |a, v| a.max(v.abs()));
+            assert!((peak - 1.0).abs() < 1e-9, "mode {mode_index} peak {peak}");
+            // Simply supported all round: every edge stays put.
+            for s in 0..11 {
+                assert!(surface[0][s].abs() < 1e-6);
+                assert!(surface[10][s].abs() < 1e-6);
+                assert!(surface[s][0].abs() < 1e-6);
+                assert!(surface[s][10].abs() < 1e-6);
+            }
+        }
     }
 
     #[test]
-    fn compute_buckling_samples_surfaces_only_for_the_requested_modes() {
-        let response =
-            compute_buckling_impl(&buckling_request("", r#", "surface_samples": 11, "surface_modes": 2"#))
-                .expect("compute_buckling_impl should succeed");
-        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
-        let modes = parsed["modes"].as_array().unwrap();
+    fn compute_buckling_surface_rejects_a_shape_that_does_not_match_the_input() {
+        // 2x2 amplitudes against an m=n=6 input.
+        let request = r#"{"input": {"length":400.0,"width":400.0,"n_x":-1.0,"n_y":0.0,"n_xy":0.0,
+            "bc_x":"SS","bc_y":"SS","m":6,"n":6,"d_matrix":"standard"},
+            "shape": [[1.0,0.0],[0.0,0.0]], "samples": 11}"#;
+        assert!(compute_buckling_surface_impl(request).is_err());
 
-        let surface = modes[0]["surface"].as_array().unwrap();
-        assert_eq!(surface.len(), 11);
-        assert_eq!(surface[0].as_array().unwrap().len(), 11);
-        assert!(modes[1]["surface"].is_array());
-        assert!(modes[2]["surface"].is_null());
+        let too_coarse = r#"{"input": {"length":400.0,"width":400.0,"n_x":-1.0,"n_y":0.0,"n_xy":0.0,
+            "bc_x":"SS","bc_y":"SS","m":1,"n":1,"d_matrix":"standard"},
+            "shape": [[1.0]], "samples": 1}"#;
+        assert!(compute_buckling_surface_impl(too_coarse).is_err());
     }
 
     #[test]

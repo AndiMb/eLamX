@@ -258,12 +258,18 @@ pub fn calculate(laminate: &CltLaminate, input: &BucklingInput) -> Result<Buckli
 /// Samples a mode's displacement surface on a `nx_samples` x `ny_samples`
 /// grid, normalised so the largest absolute deflection is 1.
 ///
-/// The modal amplitudes alone are not plottable - turning them back into
-/// w(x, y) needs the shape functions, which live in the core. Doing it here
-/// rather than in the frontend also keeps the shape-function definitions in
-/// exactly one place.
+/// Takes the modal amplitudes rather than a whole `BucklingMode` so a caller
+/// that kept only the amplitudes (the web frontend does - the eigenvalue list
+/// travels without surfaces, and one gets sampled on demand when the user
+/// picks a mode) can ask for a surface without reassembling the mode.
+///
+/// The amplitudes alone are not plottable: turning them back into w(x, y)
+/// needs the shape functions, which live here. Sampling in the core rather
+/// than the frontend also keeps the shape-function definitions in exactly one
+/// place. Note the accuracy caveat on `Boundary::wx` - it applies to this
+/// surface, not to any eigenvalue.
 pub fn mode_surface(
-    mode: &BucklingMode,
+    shape: &[Vec<f64>],
     input: &BucklingInput,
     nx_samples: usize,
     ny_samples: usize,
@@ -298,7 +304,7 @@ pub fn mode_surface(
     let mut surface = vec![vec![0.0f64; nx_samples]; ny_samples];
     for (i, xrow) in xs.iter().enumerate() {
         for (j, yrow) in ys.iter().enumerate() {
-            let a = mode.shape[i][j];
+            let a = shape[i][j];
             if a == 0.0 {
                 continue;
             }
@@ -576,7 +582,7 @@ mod tests {
             .iter()
             .find(|m| m.eigenvalue >= 0.0)
             .expect("a positive mode");
-        let surface = mode_surface(critical, &input, 21, 21);
+        let surface = mode_surface(&critical.shape, &input, 21, 21);
 
         assert_eq!(surface.len(), 21);
         assert_eq!(surface[0].len(), 21);

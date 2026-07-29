@@ -7,6 +7,7 @@ import {
   bucklingModeListFamily,
   bucklingSummaryFamily,
   loadableBucklingFamily,
+  selectedBucklingModeFamily,
 } from "../store/bucklingAtoms";
 import {
   BOUNDARY_CONDITIONS,
@@ -21,7 +22,7 @@ import { QuantityDisplay } from "./QuantityDisplay";
 import { SafeNumberInput } from "./SafeNumberInput";
 import { BackLink } from "./BackLink";
 import { Sym } from "./Sym";
-import { BucklingShapeChart } from "./charts/BucklingShapeChart";
+import { BucklingShapeView } from "./charts/BucklingShapeView";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { isFiniteResult, NO_VALUE } from "../lib/numberFormat";
 import { useT } from "../i18n";
@@ -41,6 +42,10 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
   const modes = useAtomValue(bucklingModeListFamily(laminateId));
   const error = useAtomValue(bucklingErrorFamily(laminateId));
   const loadableState = useAtomValue(loadableBucklingFamily(laminateId));
+  const [selectedMode, setSelectedMode] = useAtom(selectedBucklingModeFamily(laminateId));
+  // The list shortens when the term count drops, so the stored index can fall
+  // past its end - see selectedBucklingModeFamily on why it is not reset.
+  const activeMode = modes ? Math.min(selectedMode, modes.length - 1) : 0;
 
   const update = <K extends keyof BucklingInputDto>(key: K, value: BucklingInputDto[K]) => {
     setInput((c) => ({ ...c, [key]: value }));
@@ -227,11 +232,13 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
         <section className="panel">
           <h2>{t("buckling.modes.title")}</h2>
           <div className="grid">
-            <BucklingShapeChart laminateId={laminateId} />
+            <BucklingShapeView laminateId={laminateId} />
             {modes && modes.length > 1 && (
               <div className="chart">
                 <p className="chart-title">{t("buckling.modes.list")}</p>
-                <table className="chart-table">
+                {/* Rows double as a mode picker, so the table and the 3D
+                    view's dropdown drive the same selection. */}
+                <table className="chart-table selectable-rows">
                   <thead>
                     <tr>
                       <th>{t("buckling.modes.column.nr")}</th>
@@ -240,11 +247,16 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {modes.map((value, i) => (
-                      <tr key={i}>
+                    {modes.map((mode, i) => (
+                      <tr
+                        key={mode.index}
+                        className={i === activeMode ? "selected" : undefined}
+                        aria-selected={i === activeMode}
+                        onClick={() => setSelectedMode(i)}
+                      >
                         <td>{i + 1}</td>
-                        <td>{value.toPrecision(5)}</td>
-                        <td>{(value / modes[0]).toFixed(2)}</td>
+                        <td>{mode.eigenvalue.toPrecision(5)}</td>
+                        <td>{(mode.eigenvalue / modes[0].eigenvalue).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>

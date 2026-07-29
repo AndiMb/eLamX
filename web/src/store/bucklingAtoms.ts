@@ -14,10 +14,15 @@ import type { BucklingInputDto, BucklingResponse } from "../lib/types";
 import { loadElamxWasm } from "../lib/wasm";
 import { cltRequestFamily } from "./derivedAtoms";
 
-/** Grid resolution of the returned mode-shape surface. */
+/** Grid resolution of the sampled mode-shape surface. */
 const SURFACE_SAMPLES = 41;
-/** How many mode shapes to sample. Only the critical one is plotted today. */
-const SURFACE_MODES = 1;
+
+/**
+ * How many buckling modes to offer for display. All m*n eigenvalues are
+ * solved for, but only the lowest few are physically interesting - past those
+ * the Ritz series is describing its own truncation more than the plate.
+ */
+const SELECTABLE_MODES = 12;
 
 // Mirrors elamx-core's BucklingInput::default, which in turn mirrors the Java
 // BucklingInput no-arg constructor.
@@ -51,15 +56,7 @@ export const bucklingResponseFamily = atomFamily((laminateId: string) =>
     const { laminate, materials } = get(cltRequestFamily(laminateId));
     const input = get(bucklingInputFamily(laminateId));
     const wasm = await loadElamxWasm();
-    const json = wasm.compute_buckling(
-      JSON.stringify({
-        laminate,
-        materials,
-        input,
-        surface_samples: SURFACE_SAMPLES,
-        surface_modes: SURFACE_MODES,
-      }),
-    );
+    const json = wasm.compute_buckling(JSON.stringify({ laminate, materials, input }));
     return JSON.parse(json) as BucklingResponse;
   }),
 );
@@ -85,24 +82,51 @@ export const bucklingSummaryFamily = atomFamily((laminateId: string) =>
   })),
 );
 
-/** The critical mode's sampled surface, or null if nothing buckled. */
-export const bucklingShapeFamily = atomFamily((laminateId: string) =>
-  selectFromBuckling(laminateId, (r) => r.modes.find((m) => m.surface != null)?.surface ?? null),
-);
-
 /**
- * The lowest few positive load factors, for the "further modes" list. Negative
- * eigenvalues correspond to buckling under the REVERSED load and are dropped -
- * showing them next to the critical one invites reading them as a lower
- * margin than they are.
+ * The selectable modes: the lowest positive load factors with their modal
+ * amplitudes. Negative eigenvalues correspond to buckling under the REVERSED
+ * load and are dropped - listing them beside the critical one invites reading
+ * them as a smaller margin than they are.
  */
 export const bucklingModeListFamily = atomFamily((laminateId: string) =>
   selectFromBuckling(laminateId, (r) =>
     r.modes
-      .map((m) => m.eigenvalue)
-      .filter((v) => v >= 0 && Number.isFinite(v))
-      .slice(0, 6),
+      .filter((m) => m.eigenvalue >= 0 && Number.isFinite(m.eigenvalue))
+      .slice(0, SELECTABLE_MODES)
+      .map((m, index) => ({ index, eigenvalue: m.eigenvalue, shape: m.shape })),
   ),
+);
+
+/**
+ * Which mode the 3D view shows, as an index into bucklingModeListFamily.
+ * Deliberately NOT reset when the input changes: someone comparing mode 3
+ * across two plate widths wants to stay on mode 3. It is clamped at the point
+ * of use instead, since the list can get shorter.
+ */
+export const selectedBucklingModeFamily = atomFamily((_laminateId: string) => atom(0));
+
+/**
+ * The selected mode's displacement field, sampled by the core. Split from the
+ * eigenvalue solve so switching the displayed mode re-samples a grid instead
+ * of re-solving the whole problem, and so the solve's response does not carry
+ * grid data for modes nobody is looking at.
+ */
+export const bucklingSurfaceFamily = atomFamily((laminateId: string) =>
+  atom<Promise<number[][] | null>>(async (get) => {
+    const modes = get(bucklingModeListFamily(laminateId));
+    if (!modes || modes.length === 0) return null;
+    const selected = Math.min(get(selectedBucklingModeFamily(laminateId)), modes.length - 1);
+    const input = get(bucklingInputFamily(laminateId));
+    const wasm = await loadElamxWasm();
+    const json = wasm.compute_buckling_surface(
+      JSON.stringify({ input, shape: modes[selected].shape, samples: SURFACE_SAMPLES }),
+    );
+    return JSON.parse(json) as number[][];
+  }),
+);
+
+export const loadableBucklingSurfaceFamily = atomFamily((laminateId: string) =>
+  loadableWithLastValue(bucklingSurfaceFamily(laminateId)),
 );
 
 export const bucklingErrorFamily = atomFamily((laminateId: string) =>
