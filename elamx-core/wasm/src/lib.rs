@@ -13,6 +13,7 @@ use elamx_core::clt::{
 use elamx_core::failure::default_criterion_registry;
 use elamx_core::mathtools;
 use elamx_core::model::{Laminate, Material};
+use elamx_core::project::{read_elamx, write_elamx, Project};
 use elamx_core::plate::{calculate_buckling, mode_surface, BucklingInput};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -372,6 +373,37 @@ fn compute_buckling_surface_impl(request_json: &str) -> Result<String, String> {
     serde_json::to_string(&surface).map_err(|e| e.to_string())
 }
 
+/// Parses an `.elamx` project file into the JSON shape of
+/// [`elamx_core::project::Project`].
+///
+/// Stricter than the Java original on purpose: an unresolvable failure
+/// criterion or bending-stiffness idealisation is reported instead of being
+/// silently replaced by a default (see the `project::read` module). Module
+/// data this crate cannot calculate is preserved in the returned project and
+/// written back unchanged by [`export_elamx`], so an open/save cycle in the
+/// browser does not discard what the desktop application put there.
+#[wasm_bindgen]
+pub fn import_elamx(xml: &str) -> Result<String, JsValue> {
+    import_elamx_impl(xml).map_err(|e| JsValue::from_str(&e))
+}
+
+fn import_elamx_impl(xml: &str) -> Result<String, String> {
+    let project = read_elamx(xml).map_err(|e| e.to_string())?;
+    serde_json::to_string(&project).map_err(|e| e.to_string())
+}
+
+/// Serialises a project back to `.elamx` XML, in the element order and number
+/// formatting eLamX 3.x itself uses, so the file opens there unchanged.
+#[wasm_bindgen]
+pub fn export_elamx(project_json: &str) -> Result<String, JsValue> {
+    export_elamx_impl(project_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn export_elamx_impl(project_json: &str) -> Result<String, String> {
+    let project: Project = serde_json::from_str(project_json).map_err(|e| e.to_string())?;
+    Ok(write_elamx(&project))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -661,5 +693,51 @@ mod tests {
         assert!(compute_buckling_impl(&too_many_terms).is_err());
 
         assert!(compute_buckling_impl("not json").is_err());
+    }
+
+    const SMALL_PROJECT: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<elamx version="1">
+    <laminates>
+        <laminate invert_z="false" name="L" offset="0.0" symmetric="false" uuid="lam" with_middle_layer="false">
+            <layer name="Lage 1" uuid="l1">
+                <thickness>0.125</thickness>
+                <angle>0.0</angle>
+                <material>mat</material>
+                <criterion>de.elamx.laminate.failure.Puck</criterion>
+            </layer>
+            <lastplyfailure name="LPF"><n_x>1.0</n_x></lastplyfailure>
+        </laminate>
+    </laminates>
+    <materials>
+        <material class="de.elamx.laminate.DefaultMaterial" name="M" uuid="mat">
+            <Epar>141000.0</Epar><Enor>9340.0</Enor><nue12>0.35</nue12><G>4500.0</G>
+        </material>
+    </materials>
+</elamx>"#;
+
+    #[test]
+    fn import_elamx_returns_the_project_as_json() {
+        let json = import_elamx_impl(SMALL_PROJECT).expect("import_elamx_impl should succeed");
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["materials"].as_array().unwrap().len(), 1);
+        assert_eq!(parsed["laminates"][0]["laminate"]["layers"].as_array().unwrap().len(), 1);
+        assert_eq!(parsed["laminates"][0]["laminate"]["layers"][0]["criterion_id"], "puck");
+    }
+
+    #[test]
+    fn export_elamx_round_trips_through_the_json_boundary() {
+        let json = import_elamx_impl(SMALL_PROJECT).unwrap();
+        let xml = export_elamx_impl(&json).expect("export_elamx_impl should succeed");
+        assert!(xml.contains("<criterion>de.elamx.laminate.failure.Puck</criterion>"));
+        // Module data the core cannot calculate survives the browser round trip.
+        assert!(xml.contains("<lastplyfailure name=\"LPF\">"));
+        assert_eq!(import_elamx_impl(&xml).unwrap(), json);
+    }
+
+    #[test]
+    fn import_elamx_reports_a_bad_file_instead_of_panicking() {
+        assert!(import_elamx_impl("<nope").is_err());
+        assert!(import_elamx_impl("<other/>").is_err());
+        assert!(export_elamx_impl("not json").is_err());
     }
 }

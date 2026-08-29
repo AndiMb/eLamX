@@ -98,6 +98,27 @@ cargo test --test golden_master
 git checkout -- ../../src/failure/puck.rs
 ```
 
+## Also a fixture for the `.elamx` reader and writer
+
+`tests/project_file.rs` reads `reference.elamx` and checks the result against
+`reference.input.json` - two files a *different* generator wrote from the same
+definition, so the reader has to reproduce something it did not produce itself.
+
+The strongest check on the writer is not in the test suite, because it needs
+the Java program. Run it after changing `project::write`:
+
+```sh
+# Read the reference file and write it back out through elamx-core, then let
+# eLamX calculate from the rewritten file and compare against reference.txt.
+# (A small program calling read_elamx + write_elamx does the middle step.)
+"<eLamX>/bin/elamx64.exe" --locale en     --input="$(pwd)/rewritten.elamx" --output="$(pwd)/rewritten.txt"
+diff <(tail -n +12 reference.txt) <(tail -n +12 rewritten.txt)
+```
+
+The first 11 lines carry a timestamp, the input path and its MD5 sum, so they
+differ by construction; everything after them must be identical. Both
+`reference.elamx` and eLamX's own `Example_Files/batchexample1.elamx` pass.
+
 ## Quirks of the batch output worth knowing
 
 Three things in the Java writers cost time if you meet them unprepared, and the

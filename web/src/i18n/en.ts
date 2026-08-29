@@ -22,6 +22,13 @@ export const en = {
   "topbar.theme.light": "Light theme",
   "topbar.theme.dark": "Dark theme",
   "topbar.language": "Language",
+  "topbar.open": "Open",
+  "topbar.open.hint": "Open an .elamx project file",
+  "topbar.save": "Save",
+  "topbar.save.hint": "Save the project as an .elamx file",
+  "project.readError": "{message}",
+  "project.readError.title": "This file could not be opened",
+  "project.dismiss": "Dismiss",
 
   "nav.laminates": "Laminates",
   "nav.laminate": "Laminate",

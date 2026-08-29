@@ -7,7 +7,7 @@
 // materials stay a single source of truth.
 import { atom } from "jotai";
 import { atomFamily } from "jotai-family";
-import { selectAtom } from "jotai/utils";
+import { atomWithStorage, createJSONStorage, selectAtom } from "jotai/utils";
 import equal from "fast-deep-equal";
 import { loadableWithLastValue } from "../lib/loadable";
 import type { BucklingInputDto, BucklingResponse } from "../lib/types";
@@ -41,8 +41,19 @@ export function defaultBucklingInput(): BucklingInputDto {
   };
 }
 
-export const bucklingInputFamily = atomFamily((_laminateId: string) =>
-  atom<BucklingInputDto>(defaultBucklingInput()),
+const storage = createJSONStorage<BucklingInputDto>(() => localStorage);
+
+export const bucklingStorageKey = (laminateId: string) => `elamx.buckling.${laminateId}`;
+
+// Persisted per laminate, like the laminate itself: a plate geometry and its
+// edge conditions are user input, and losing them on reload is losing work.
+export const bucklingInputFamily = atomFamily((laminateId: string) =>
+  atomWithStorage<BucklingInputDto>(
+    bucklingStorageKey(laminateId),
+    defaultBucklingInput(),
+    storage,
+    { getOnInit: true },
+  ),
 );
 
 // Async like cltResponseFamily, and for the same reason: only the very first

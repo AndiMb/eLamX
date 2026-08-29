@@ -17,6 +17,13 @@ export const de: Messages = {
   "topbar.theme.light": "Helles Design",
   "topbar.theme.dark": "Dunkles Design",
   "topbar.language": "Sprache",
+  "topbar.open": "Öffnen",
+  "topbar.open.hint": ".elamx-Projektdatei öffnen",
+  "topbar.save": "Speichern",
+  "topbar.save.hint": "Projekt als .elamx-Datei speichern",
+  "project.readError": "{message}",
+  "project.readError.title": "Diese Datei konnte nicht geöffnet werden",
+  "project.dismiss": "Schließen",
 
   "nav.laminates": "Laminate",
   "nav.laminate": "Laminat",

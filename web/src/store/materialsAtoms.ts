@@ -2,12 +2,12 @@
 // layers - not owned by a single laminate, so (unlike layers/criterion/dof
 // values, see laminateAtoms.ts) they stay a single global atom rather than an
 // atomFamily.
-import { atom } from "jotai";
-import { defaultMaterial } from "../lib/constants";
+import { atomWithStorage } from "jotai/utils";
+import { DEFAULT_MATERIAL_ID, defaultMaterial } from "../lib/constants";
 import type { MaterialDto } from "../lib/types";
 
-const initialMaterial = defaultMaterial();
+export { DEFAULT_MATERIAL_ID };
 
-export const DEFAULT_MATERIAL_ID = initialMaterial.id;
-
-export const materialsAtom = atom<MaterialDto[]>([initialMaterial]);
+// Persisted, unlike in the first version: a tool that loses the whole session
+// on a reload cannot replace the spreadsheet it is meant to replace.
+export const materialsAtom = atomWithStorage<MaterialDto[]>("elamx.materials", [defaultMaterial()]);

@@ -49,9 +49,16 @@ export const STRAIN_FIELDS = [
 // time, and the user can rename them freely afterwards. Hence the plain t()
 // rather than the reactive useT() - re-translating a name on every language
 // switch would overwrite whatever the user had renamed it to.
+// Fixed rather than random: the default material and laminate are restored
+// from browser storage on every reload, and a fresh id each time would orphan
+// every layer that references them - and break the URL of the laminate the
+// user had open. See store/laminateAtoms.ts.
+export const DEFAULT_MATERIAL_ID = "material-1";
+export const DEFAULT_LAMINATE_ID = "laminat-1";
+
 export function defaultMaterial(): MaterialDto {
   return {
-    id: crypto.randomUUID(),
+    id: DEFAULT_MATERIAL_ID,
     name: t("default.material.udCfrp"),
     e_par: 140000,
     e_nor: 10000,

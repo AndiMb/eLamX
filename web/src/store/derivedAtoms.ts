@@ -52,7 +52,7 @@ export const cltRequestFamily = atomFamily((laminateId: string) =>
       symmetric: config.symmetric,
       with_middle_layer: config.withMiddleLayer,
       invert_z: config.invertZ,
-      offset: 0,
+      offset: config.offset,
     };
 
     const loads = emptyLoads();

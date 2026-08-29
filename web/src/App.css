@@ -89,6 +89,39 @@
   gap: 4px;
 }
 
+/* Opening a file can fail for a reason worth reading (the core names the
+   offending element), so the message gets a persistent banner under the top
+   bar rather than a toast that disappears before it is understood. */
+.project-error {
+  position: fixed;
+  top: calc(var(--topbar-height, 48px) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: min(560px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--danger, #b3261e);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 18%);
+  font-size: 0.9rem;
+}
+
+.project-error strong {
+  color: var(--danger, #b3261e);
+}
+
+.project-error span {
+  word-break: break-word;
+}
+
+.project-error button {
+  align-self: flex-end;
+}
+
 .student-pill {
   display: inline-flex;
   align-items: center;

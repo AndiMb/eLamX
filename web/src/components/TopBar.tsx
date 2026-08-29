@@ -2,6 +2,7 @@ import { useAtom } from "jotai";
 import { GraduationCap, Languages, Moon, Sun } from "lucide-react";
 import { studentModeAtom, themeAtom } from "../store/settingsAtoms";
 import { LOCALES, useLocale, useSetLocale, useT, type Locale } from "../i18n";
+import { ProjectActions } from "./ProjectActions";
 
 // Stylized layer stack as the logo mark - inline SVG, no asset. Staggered
 // parallelograms (not equal full-width bars, which would read as a hamburger
@@ -46,10 +47,9 @@ function LanguagePicker() {
   );
 }
 
-// Slim app bar (UI-Konzept §4). The empty .topbar-file-slot is the reserved
-// home for future file actions (Neu/Oeffnen/Speichern/Export/Schnappschuss)
-// once the persistence phase lands - deliberately kept in the DOM so the
-// layout doesn't shift when they arrive.
+// Slim app bar. The file slot holds opening and saving of .elamx projects;
+// everything else in the session persists itself to browser storage, so the
+// file actions are for moving work OUT of the browser, not for keeping it.
 export function TopBar({ title }: { title?: string }) {
   const t = useT();
   const [studentMode, setStudentMode] = useAtom(studentModeAtom);
@@ -69,7 +69,7 @@ export function TopBar({ title }: { title?: string }) {
       </span>
       {title && <span className="topbar-title">{title}</span>}
       <div className="topbar-actions">
-        <div className="topbar-file-slot" />
+        <ProjectActions />
         <button
           type="button"
           className={`student-pill${studentMode ? " active" : ""}`}
