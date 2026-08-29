@@ -524,6 +524,53 @@ input[type="checkbox"] {
   }
 }
 
+/* --- Vergleichsflaeche --- */
+
+.compare-table th[scope="row"] {
+  text-align: left;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.compare-table thead th {
+  vertical-align: top;
+  min-width: 140px;
+}
+
+.compare-column-title {
+  display: block;
+  font-weight: 600;
+}
+
+.compare-column-sub {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Group headers break the table into Aufbau / Steifigkeit / Lastfall /
+   Ergebnis, so a long column of numbers stays readable. */
+.compare-table tr.compare-group th {
+  text-align: left;
+  padding-top: 14px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: none;
+}
+
+/* The whole point of the surface: what is NOT the same as the first column. */
+.compare-table td.compare-differs {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-weight: 600;
+}
+
+.compare-picker .field-grid {
+  align-items: end;
+}
+
 /* --- Lastfaelle --- */
 
 .load-case-bar {

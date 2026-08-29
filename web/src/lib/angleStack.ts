@@ -65,17 +65,21 @@ export function shortStackNotation(
     else groups.push({ angle, count: 1 });
   }
 
-  const body = groups
-    .map((g) => {
-      // A middle layer is shared with the mirrored half, so it is written with
-      // an overbar in the literature; a plain marker keeps it copy-pasteable.
-      const angle = formatAngle(g.angle);
-      return g.count > 1 ? `${angle}${subscript(g.count)}` : angle;
-    })
-    .join("/");
+  const parts = groups.map((g) => {
+    const angle = formatAngle(g.angle);
+    return g.count > 1 ? `${angle}${subscript(g.count)}` : angle;
+  });
 
-  if (!symmetric) return `[${body}]`;
-  return withMiddleLayer ? `[${body}]\u0304s` : `[${body}]s`;
+  // A middle layer is shared with the mirrored half rather than repeated, and
+  // carries an overbar - over the ANGLE, which is what the bar refers to, not
+  // after the closing bracket.
+  if (symmetric && withMiddleLayer && parts.length > 0) {
+    // U+0304 COMBINING MACRON: it renders as a bar over the angle before it.
+    parts[parts.length - 1] += "̄";
+  }
+
+  const body = parts.join("/");
+  return symmetric ? `[${body}]s` : `[${body}]`;
 }
 
 // Angles are data, not measurements: -45 stays "-45", 22.5 stays "22.5". No

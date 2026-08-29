@@ -30,7 +30,12 @@ import {
   type LaminateDto,
 } from "../lib/types";
 import { loadElamxWasm } from "../lib/wasm";
-import { activeLoadCaseFamily, laminateConfigFamily } from "./laminateAtoms";
+import {
+  activeLoadCaseFamily,
+  laminateConfigFamily,
+  loadCasesOf,
+  type LoadCase,
+} from "./laminateAtoms";
 import { materialsAtom } from "./materialsAtoms";
 
 /** The laminate and its materials, without any load case.
@@ -64,31 +69,73 @@ export const laminateRequestFamily = atomFamily((laminateId: string) =>
   }),
 );
 
+/** Puts a laminate and one load case together into a core request.
+ *
+ *  A load case prescribes either the load or the strain per degree of freedom,
+ *  so each stored value lands in whichever of the two vectors its flag selects.
+ *  Pure, because the comparison surface needs the same request for a load case
+ *  that is not the active one. */
+export function buildCltRequest(
+  laminate: LaminateDto,
+  materials: CltRequest["materials"],
+  loadCase: LoadCase,
+): CltRequest {
+  const loads = emptyLoads();
+  const strains = emptyStrains();
+  loadCase.dofValues.forEach((value, i) => {
+    if (loadCase.useStrain[i]) {
+      strains[STRAIN_FIELDS[i]] = value;
+    } else {
+      loads[LOAD_FIELDS[i]] = value;
+    }
+  });
+  loads.delta_t = loadCase.deltaT;
+  loads.delta_h = loadCase.deltaH;
+
+  return {
+    laminate,
+    materials,
+    loads,
+    strains,
+    use_strain: loadCase.useStrain as CltRequest["use_strain"],
+  };
+}
+
 export const cltRequestFamily = atomFamily((laminateId: string) =>
   atom<CltRequest>((get) => {
     const { laminate, materials } = get(laminateRequestFamily(laminateId));
-    const loadCase = get(activeLoadCaseFamily(laminateId));
-
-    const loads = emptyLoads();
-    const strains = emptyStrains();
-    loadCase.dofValues.forEach((value, i) => {
-      if (loadCase.useStrain[i]) {
-        strains[STRAIN_FIELDS[i]] = value;
-      } else {
-        loads[LOAD_FIELDS[i]] = value;
-      }
-    });
-    loads.delta_t = loadCase.deltaT;
-    loads.delta_h = loadCase.deltaH;
-
-    return {
-      laminate,
-      materials,
-      loads,
-      strains,
-      use_strain: loadCase.useStrain as CltRequest["use_strain"],
-    };
+    return buildCltRequest(laminate, materials, get(activeLoadCaseFamily(laminateId)));
   }),
+);
+
+/** `${laminateId}|${loadCaseId}` - the comparison surface's variant key. */
+export const variantKey = (laminateId: string, loadCaseId: string) =>
+  `${laminateId}|${loadCaseId}`;
+
+/** A CLT result for ANY of a laminate's load cases, not just the active one.
+ *
+ *  Separate from `cltResponseFamily` on purpose: the module pages follow the
+ *  active case and must not recompute when a comparison column is added, and
+ *  the comparison columns must not change under the user because someone
+ *  switched the active case in another tab of the app. */
+export const variantResponseFamily = atomFamily((key: string) =>
+  atom<Promise<CltResponse | null>>(async (get) => {
+    const [laminateId, loadCaseId] = key.split("|");
+    const config = get(laminateConfigFamily(laminateId));
+    const loadCase = loadCasesOf(config).find((c) => c.id === loadCaseId);
+    if (!loadCase) return null;
+
+    const { laminate, materials } = get(laminateRequestFamily(laminateId));
+    const wasm = await loadElamxWasm();
+    const json = wasm.compute_clt(
+      JSON.stringify(buildCltRequest(laminate, materials, loadCase)),
+    );
+    return JSON.parse(json) as CltResponse;
+  }),
+);
+
+export const loadableVariantFamily = atomFamily((key: string) =>
+  loadableWithLastValue(variantResponseFamily(key)),
 );
 
 // Calls into the WASM core. Async only because loading the wasm module the

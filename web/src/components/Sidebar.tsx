@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { NavLink, useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronRight, Copy, Diamond, Layers, Plus, Ruler, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Columns3, Copy, Diamond, Layers, Plus, Ruler, Trash2 } from "lucide-react";
 import {
   addLaminateAtom,
   duplicateLaminateAtom,
@@ -281,6 +281,24 @@ export function Sidebar() {
               </li>
             );
           })}
+        </ul>
+      </section>
+
+      {/* The comparison surface belongs to the project, not to one laminate -
+          it is the one place that looks at several at once. */}
+      <section className="tree-section">
+        <div className="tree-section-header">
+          <h3>{t("nav.project")}</h3>
+        </div>
+        <ul className="tree-list">
+          <li>
+            <div className="tree-node-row">
+              <NavLink to="/compare" className={({ isActive }) => `tree-node${isActive ? " active" : ""}`}>
+                <Columns3 size={16} strokeWidth={1.75} />
+                <span className="tree-node-label">{t("nav.compare")}</span>
+              </NavLink>
+            </div>
+          </li>
         </ul>
       </section>
 
