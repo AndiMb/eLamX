@@ -4,14 +4,16 @@
 //! Reference: eLamX2/Laminate/src/de/elamx/laminate/failure/{Criterion,ReserveFactor}.java,
 //! eLamX2/AdditionalFailureCriteria/src/de/elamx/laminate/addFailureCriteria/*.java
 //!
-//! 3D failure-envelope mesh generation (`getAsMesh` in the Java original) is
-//! not ported: that's a rendering concern for the future Three.js-based
-//! visualization, not this calculation core. The FEA-specific criterion
+//! The 3D failure envelope (`getAsMesh` in the Java original) lives in
+//! `envelope`: the sampling is the criterion's own arithmetic and belongs
+//! here, while turning the sampled grid into pixels is the frontend's job.
+//! The FEA-specific criterion
 //! variants (LS-DYNA/ANSYS/Abaqus/Autodesk modules) and the metal criteria
 //! (von Mises, Tresca) aren't ported yet either; they follow the same pattern.
 
 mod christensen;
 mod edge;
+mod envelope;
 mod fibre_failure;
 mod fmc;
 mod hashin;
@@ -29,6 +31,7 @@ mod ztl;
 
 pub use christensen::Christensen;
 pub use edge::Edge;
+pub use envelope::{failure_envelope, FailureEnvelope, DEFAULT_QUALITY};
 pub use fibre_failure::FibreFailure;
 pub use fmc::{Fmc, M as FMC_M, MUE_SP as FMC_MUE_SP};
 pub use hashin::Hashin;

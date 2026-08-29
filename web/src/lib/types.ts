@@ -140,6 +140,10 @@ export interface LayerContributionDto {
   angle_deg: number;
   thickness: number;
   zm: number;
+  /** Of the EXPANDED ply - the mirrored half of a symmetric laminate exists
+   *  only in the core's expansion, so this is where its material comes from. */
+  material_id: string;
+  criterion_id: string | null;
   q_global: number[][];
   a_contribution: number[][];
   b_contribution: number[][];
@@ -322,6 +326,17 @@ export interface BucklingResponse {
   n_crit: [number, number, number] | null;
   modes: BucklingModeDto[];
   symmetry_warning: boolean;
+}
+
+// --- Failure body (elamx-core::failure::envelope) ---------------------------
+// Mirrors FailureEnvelope in elamx-core/wasm/src/lib.rs.
+
+export interface FailureEnvelopeResponse {
+  /** Surface grid in the ply's local stress space, [sigma_par, sigma_nor, tau].
+   *  `null` is a direction the criterion could not evaluate. */
+  points: ([number, number, number] | null)[][];
+  polar_samples: number;
+  azimuth_samples: number;
 }
 
 // --- Last ply failure (elamx-core::clt::last_ply_failure) -------------------

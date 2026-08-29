@@ -1926,16 +1926,36 @@ table.matrix td.block-d {
   white-space: nowrap;
 }
 
-/* Mode rows pick the displayed mode - see BucklingModuleContent. */
-.chart-table.selectable-rows tbody tr {
+/* Mode rows pick the displayed mode - see BucklingModuleContent. Ply rows do
+   the same for the failure body - see LayerResultsPanel. */
+.chart-table.selectable-rows tbody tr,
+.layer-results-table.selectable-rows tbody tr,
+.responsive-card.selectable-rows {
   cursor: pointer;
 }
 
-.chart-table.selectable-rows tbody tr:hover td {
+.chart-table.selectable-rows tbody tr:hover td,
+.layer-results-table.selectable-rows tbody tr:hover td {
   background: var(--inset);
 }
 
-.chart-table.selectable-rows tbody tr.selected td {
+.chart-table.selectable-rows tbody tr.selected td,
+.layer-results-table.selectable-rows tbody tr.selected td {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   font-weight: 600;
+}
+
+/* The ply detail sits INSIDE the results panel, so it is nested one level
+   deeper than a normal panel and marks itself as belonging to the row above. */
+.layer-detail {
+  margin-top: 12px;
+  border-left: 3px solid var(--accent);
+}
+
+.layer-detail h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 0;
 }

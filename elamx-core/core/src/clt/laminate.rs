@@ -47,6 +47,11 @@ pub struct LayerContribution {
     pub angle_deg: f64,
     pub thickness: f64,
     pub zm: f64,
+    /// Material and failure criterion of this ply, so a consumer can look up
+    /// what the ply is made of without re-deriving the symmetry expansion -
+    /// the expanded stack exists only in here.
+    pub material_id: String,
+    pub criterion_id: Option<String>,
     pub q_global: Matrix,
     pub a_contribution: Matrix,
     pub b_contribution: Matrix,
@@ -385,6 +390,8 @@ impl CltLaminate {
                     angle_deg: layer.angle_deg,
                     thickness: layer.thickness,
                     zm: layer.zm,
+                    material_id: layer.material_id().to_string(),
+                    criterion_id: layer.criterion_id().map(str::to_string),
                     q_global,
                     a_contribution,
                     b_contribution,

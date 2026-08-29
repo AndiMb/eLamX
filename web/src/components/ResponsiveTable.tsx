@@ -21,6 +21,9 @@ type ResponsiveTableProps<T> =
       rows: T[];
       rowKey: (row: T) => string | number;
       rowClassName?: (row: T) => string | undefined;
+      /** Makes rows act as buttons - both in the table and in the mobile
+       *  cards, so a detail view is reachable on either. */
+      onRowClick?: (row: T) => void;
       className?: string;
     };
 
@@ -31,13 +34,17 @@ export function ResponsiveTable<T>(props: ResponsiveTableProps<T>) {
     return <div className={`responsive-table-scroll matrix${props.className ? ` ${props.className}` : ""}`}>{props.children}</div>;
   }
 
-  const { columns, rows, rowKey, rowClassName, className } = props;
+  const { columns, rows, rowKey, rowClassName, onRowClick, className } = props;
 
   if (isMobile) {
     return (
       <div className="responsive-cards">
         {rows.map((row) => (
-          <div className={`responsive-card${rowClassName?.(row) ? ` ${rowClassName(row)}` : ""}`} key={rowKey(row)}>
+          <div
+            className={`responsive-card${rowClassName?.(row) ? ` ${rowClassName(row)}` : ""}`}
+            key={rowKey(row)}
+            onClick={onRowClick ? () => onRowClick(row) : undefined}
+          >
             {columns.map((col) => (
               <div className="responsive-card-row" key={col.key}>
                 <span className="responsive-card-label">{col.label}</span>
@@ -62,7 +69,11 @@ export function ResponsiveTable<T>(props: ResponsiveTableProps<T>) {
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={rowKey(row)} className={rowClassName?.(row)}>
+            <tr
+              key={rowKey(row)}
+              className={rowClassName?.(row)}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+            >
               {columns.map((col) => (
                 <td key={col.key}>{col.render(row)}</td>
               ))}

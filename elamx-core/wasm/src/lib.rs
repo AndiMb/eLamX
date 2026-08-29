@@ -11,7 +11,9 @@ use elamx_core::clt::{
     LastPlyFailureInput, LastPlyFailureResult, LayerContribution, LayerResult, Loads, MassMoments,
     Strains,
 };
-use elamx_core::failure::default_criterion_registry;
+use elamx_core::failure::{
+    default_criterion_registry, failure_envelope, FailureEnvelope, DEFAULT_QUALITY,
+};
 use elamx_core::mathtools;
 use elamx_core::model::{Laminate, Material};
 use elamx_core::project::{read_elamx, write_elamx, Project};
@@ -128,6 +130,11 @@ struct LayerContributionDto {
     angle_deg: f64,
     thickness: f64,
     zm: f64,
+    /// Which material and criterion this expanded ply carries - the mirrored
+    /// half of a symmetric laminate exists only here, so a UI that wants a
+    /// ply's material must not re-derive the expansion itself.
+    material_id: String,
+    criterion_id: Option<String>,
     q_global: Vec<Vec<f64>>,
     a_contribution: Vec<Vec<f64>>,
     b_contribution: Vec<Vec<f64>>,
@@ -141,6 +148,8 @@ impl From<LayerContribution> for LayerContributionDto {
             angle_deg: c.angle_deg,
             thickness: c.thickness,
             zm: c.zm,
+            material_id: c.material_id,
+            criterion_id: c.criterion_id,
             q_global: c.q_global,
             a_contribution: c.a_contribution,
             b_contribution: c.b_contribution,
@@ -413,6 +422,48 @@ fn compute_last_ply_failure_impl(request_json: &str) -> Result<String, String> {
     serde_json::to_string(&result).map_err(|e| e.to_string())
 }
 
+#[derive(Deserialize)]
+struct FailureEnvelopeRequest {
+    material: Material,
+    /// Criterion id, as on a layer (`puck`, `max_stress`, ...).
+    criterion_id: String,
+    /// Sample density; 1.0 matches the Java view's default slider position.
+    #[serde(default = "default_envelope_quality")]
+    quality: f64,
+}
+
+fn default_envelope_quality() -> f64 {
+    DEFAULT_QUALITY
+}
+
+/// Samples a failure criterion's failure surface in the ply's own stress space
+/// (sigma_par, sigma_nor, tau), as a grid of points that all have a reserve
+/// factor of exactly 1.
+///
+/// The response is [`FailureEnvelope`] as JSON. A `null` point marks a
+/// direction the criterion cannot evaluate; the surface has a hole there
+/// rather than the whole body being refused.
+#[wasm_bindgen]
+pub fn compute_failure_envelope(request_json: &str) -> Result<String, JsValue> {
+    compute_failure_envelope_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_failure_envelope_impl(request_json: &str) -> Result<String, String> {
+    let request: FailureEnvelopeRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+
+    let criteria = default_criterion_registry();
+    let criterion = criteria
+        .get(&request.criterion_id)
+        .ok_or_else(|| format!("failure criterion '{}' not found in the registry", request.criterion_id))?;
+
+    let envelope: FailureEnvelope =
+        failure_envelope(criterion.as_ref(), &request.material, request.quality)
+            .map_err(|e| e.to_string())?;
+
+    serde_json::to_string(&envelope).map_err(|e| e.to_string())
+}
+
 /// Parses an `.elamx` project file into the JSON shape of
 /// [`elamx_core::project::Project`].
 ///
@@ -623,6 +674,54 @@ mod tests {
     fn compute_angle_sweep_rejects_malformed_json() {
         let result = compute_angle_sweep_impl("not json", 90.0);
         assert!(result.is_err());
+    }
+
+    fn envelope_request(criterion_id: &str, quality: f64) -> String {
+        format!(
+            r#"{{
+                "material": {{
+                    "id":"mat","name":"UD","e_par":140000.0,"e_nor":10000.0,"nue12":0.3,"g":5000.0,
+                    "g13":0.0,"g23":0.0,"rho":1.6e-9,
+                    "alpha_t_par":0.0,"alpha_t_nor":0.0,"beta_par":0.0,"beta_nor":0.0,
+                    "r_par_ten":2000.0,"r_par_com":1200.0,"r_nor_ten":50.0,"r_nor_com":150.0,"r_shear":70.0,
+                    "additional_values":{{}}
+                }},
+                "criterion_id": "{criterion_id}",
+                "quality": {quality}
+            }}"#
+        )
+    }
+
+    #[test]
+    fn compute_failure_envelope_returns_a_grid_of_surface_points() {
+        let response = compute_failure_envelope_impl(&envelope_request("max_stress", 0.4))
+            .expect("compute_failure_envelope_impl should succeed");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+
+        let polar = parsed["polar_samples"].as_u64().unwrap() as usize;
+        let azimuth = parsed["azimuth_samples"].as_u64().unwrap() as usize;
+        assert_eq!(polar, 2 * azimuth);
+
+        let points = parsed["points"].as_array().unwrap();
+        assert_eq!(points.len(), polar);
+        assert_eq!(points[0].as_array().unwrap().len(), azimuth);
+
+        // The tension pole is the fibre tensile strength.
+        let pole = points[0].as_array().unwrap()[0].as_array().unwrap();
+        assert!((pole[0].as_f64().unwrap() - 2000.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn compute_failure_envelope_reports_an_unknown_criterion() {
+        assert!(compute_failure_envelope_impl(&envelope_request("nope", 0.4)).is_err());
+    }
+
+    /// Puck needs its parameters; a material without them must produce an
+    /// error rather than a body computed from whatever happened to be there.
+    #[test]
+    fn compute_failure_envelope_reports_a_material_missing_criterion_parameters() {
+        let request = envelope_request("puck", 0.4);
+        assert!(compute_failure_envelope_impl(&request).is_err());
     }
 
     /// Same splice as `buckling_request`, with the last-ply-failure input.
