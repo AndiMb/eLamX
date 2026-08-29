@@ -1,0 +1,1028 @@
+{
+  "materials": {
+    "m-cfk": {
+      "id": "m-cfk",
+      "name": "GM-CFK-UD",
+      "e_par": 141000,
+      "e_nor": 9340,
+      "nue12": 0.35,
+      "g": 4500,
+      "g13": 4500,
+      "g23": 3000,
+      "rho": 1.7e-9,
+      "alpha_t_par": 0.000001,
+      "alpha_t_nor": 0.000035,
+      "beta_par": 0.01,
+      "beta_nor": 0.38,
+      "r_par_ten": 2000,
+      "r_par_com": 1200,
+      "r_nor_ten": 60,
+      "r_nor_com": 200,
+      "r_shear": 90,
+      "additional_values": {
+        "puck.p_spd": 0.3,
+        "puck.p_spz": 0.35,
+        "puck.a0": 0.5,
+        "puck.lambda_min": 0.5,
+        "tsai_wu.f12_star": -0.5,
+        "ztl.f12_star": -0.5,
+        "max_strain.eps_x": 0.003,
+        "max_strain.eps_y": 0.003,
+        "max_strain.gamma_xy": 0.006,
+        "max_strain.global_local": 0.3,
+        "fmc.m": 3.1,
+        "fmc.mue_sp": 0.15
+      }
+    },
+    "m-gfk": {
+      "id": "m-gfk",
+      "name": "GM-GFK-UD",
+      "e_par": 45000,
+      "e_nor": 12000,
+      "nue12": 0.3,
+      "g": 5500,
+      "g13": 5500,
+      "g23": 4000,
+      "rho": 2e-9,
+      "alpha_t_par": 0.000006,
+      "alpha_t_nor": 0.000028,
+      "beta_par": 0.005,
+      "beta_nor": 0.3,
+      "r_par_ten": 1100,
+      "r_par_com": 700,
+      "r_nor_ten": 40,
+      "r_nor_com": 130,
+      "r_shear": 60,
+      "additional_values": {
+        "puck.p_spd": 0.3,
+        "puck.p_spz": 0.35,
+        "puck.a0": 0.5,
+        "puck.lambda_min": 0.5,
+        "tsai_wu.f12_star": -0.5,
+        "ztl.f12_star": -0.5,
+        "max_strain.eps_x": 0.003,
+        "max_strain.eps_y": 0.003,
+        "max_strain.gamma_xy": 0.006,
+        "max_strain.global_local": 1,
+        "fmc.m": 3.1,
+        "fmc.mue_sp": 0.15
+      }
+    }
+  },
+  "laminates": [
+    {
+      "laminate": {
+        "id": "00000000-0000-4000-8000-00000000000a",
+        "name": "GM-Kriterien",
+        "layers": [
+          {
+            "id": "00000000-0000-4000-8000-00000000000b",
+            "name": "Lage 1",
+            "angle": 0,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "max_stress"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000001b",
+            "name": "Lage 2",
+            "angle": 15,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "max_strain"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000002b",
+            "name": "Lage 3",
+            "angle": 30,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "tsai_hill"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000003b",
+            "name": "Lage 4",
+            "angle": 45,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "tsai_wu"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000004b",
+            "name": "Lage 5",
+            "angle": 60,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "hashin"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000005b",
+            "name": "Lage 6",
+            "angle": 75,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "puck"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000006b",
+            "name": "Lage 7",
+            "angle": 90,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "christensen"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000007b",
+            "name": "Lage 8",
+            "angle": -15,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "edge"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000008b",
+            "name": "Lage 9",
+            "angle": -30,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "fibre_failure"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000009b",
+            "name": "Lage 10",
+            "angle": -45,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "fmc"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000010b",
+            "name": "Lage 11",
+            "angle": -60,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "hoffman"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000011b",
+            "name": "Lage 12",
+            "angle": -75,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "mayes"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000012b",
+            "name": "Lage 13",
+            "angle": 20,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "rotem"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000013b",
+            "name": "Lage 14",
+            "angle": -20,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "sun"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000014b",
+            "name": "Lage 15",
+            "angle": 10,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "ztl"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000015b",
+            "name": "Lage 16",
+            "angle": -10,
+            "thickness": 0.125,
+            "material_id": "m-gfk",
+            "criterion_id": "max_strain"
+          }
+        ],
+        "symmetric": false,
+        "with_middle_layer": false,
+        "invert_z": false,
+        "offset": 0
+      },
+      "criterion_display_names": [
+        "maximum Stress",
+        "maximum Strain",
+        "Tsai-Hill",
+        "TsaiWu",
+        "Hashin",
+        "Puck",
+        "Christensen",
+        "Edge",
+        "Fibre Failure",
+        "FMC",
+        "Hoffman",
+        "Mayes",
+        "Rotem",
+        "Sun",
+        "ZTL",
+        "maximum Strain"
+      ],
+      "calculations": [
+        {
+          "name": "GM-Krit-Zug",
+          "loads": {
+            "n_x": 400,
+            "n_y": 0,
+            "n_xy": 0,
+            "m_x": 0,
+            "m_y": 0,
+            "m_xy": 0,
+            "delta_t": 0,
+            "delta_h": 0,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "GM-Krit-Druck",
+          "loads": {
+            "n_x": -400,
+            "n_y": 0,
+            "n_xy": 0,
+            "m_x": 0,
+            "m_y": 0,
+            "m_xy": 0,
+            "delta_t": 0,
+            "delta_h": 0,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "GM-Krit-Schub",
+          "loads": {
+            "n_x": 0,
+            "n_y": 0,
+            "n_xy": 250,
+            "m_x": 0,
+            "m_y": 0,
+            "m_xy": 0,
+            "delta_t": 0,
+            "delta_h": 0,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "GM-Krit-Biegung",
+          "loads": {
+            "n_x": 0,
+            "n_y": 0,
+            "n_xy": 0,
+            "m_x": 40,
+            "m_y": 0,
+            "m_xy": 0,
+            "delta_t": 0,
+            "delta_h": 0,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "GM-Krit-Kombiniert",
+          "loads": {
+            "n_x": 200,
+            "n_y": -150,
+            "n_xy": 120,
+            "m_x": 0,
+            "m_y": 25,
+            "m_xy": 0,
+            "delta_t": 0,
+            "delta_h": 0,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "laminate": {
+        "id": "00000000-0000-4000-8000-00000000001a",
+        "name": "GM-SymMittellage",
+        "layers": [
+          {
+            "id": "00000000-0000-4000-8000-00000000100b",
+            "name": "Lage 1",
+            "angle": 0,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "puck"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000101b",
+            "name": "Lage 2",
+            "angle": 45,
+            "thickness": 0.2,
+            "material_id": "m-gfk",
+            "criterion_id": "tsai_wu"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000102b",
+            "name": "Lage 3",
+            "angle": -45,
+            "thickness": 0.2,
+            "material_id": "m-cfk",
+            "criterion_id": "hashin"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000103b",
+            "name": "Lage 4",
+            "angle": 90,
+            "thickness": 0.15,
+            "material_id": "m-gfk",
+            "criterion_id": "max_stress"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000104b",
+            "name": "Lage 5",
+            "angle": 0,
+            "thickness": 0.3,
+            "material_id": "m-cfk",
+            "criterion_id": "christensen"
+          }
+        ],
+        "symmetric": true,
+        "with_middle_layer": true,
+        "invert_z": false,
+        "offset": 0
+      },
+      "criterion_display_names": [
+        "Puck",
+        "TsaiWu",
+        "Hashin",
+        "maximum Stress",
+        "Christensen"
+      ],
+      "calculations": [
+        {
+          "name": "GM-Sym-Zug",
+          "loads": {
+            "n_x": 500,
+            "n_y": 100,
+            "n_xy": 0,
+            "m_x": 0,
+            "m_y": 0,
+            "m_xy": 0,
+            "delta_t": 0,
+            "delta_h": 0,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "GM-Sym-Thermo",
+          "loads": {
+            "n_x": 0,
+            "n_y": 0,
+            "n_xy": 0,
+            "m_x": 0,
+            "m_y": 0,
+            "m_xy": 0,
+            "delta_t": -120,
+            "delta_h": 0.6,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "laminate": {
+        "id": "00000000-0000-4000-8000-00000000002a",
+        "name": "GM-SymOffset",
+        "layers": [
+          {
+            "id": "00000000-0000-4000-8000-00000000200b",
+            "name": "Lage 1",
+            "angle": 0,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "puck"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000201b",
+            "name": "Lage 2",
+            "angle": 90,
+            "thickness": 0.25,
+            "material_id": "m-cfk",
+            "criterion_id": "tsai_hill"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000202b",
+            "name": "Lage 3",
+            "angle": 30,
+            "thickness": 0.125,
+            "material_id": "m-gfk",
+            "criterion_id": "hoffman"
+          }
+        ],
+        "symmetric": true,
+        "with_middle_layer": false,
+        "invert_z": false,
+        "offset": 0.35
+      },
+      "criterion_display_names": [
+        "Puck",
+        "Tsai-Hill",
+        "Hoffman"
+      ],
+      "calculations": [
+        {
+          "name": "GM-Offset-Zug",
+          "loads": {
+            "n_x": 300,
+            "n_y": 0,
+            "n_xy": 0,
+            "m_x": 15,
+            "m_y": 0,
+            "m_xy": 0,
+            "delta_t": 0,
+            "delta_h": 0,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "laminate": {
+        "id": "00000000-0000-4000-8000-00000000003a",
+        "name": "GM-InvertZ",
+        "layers": [
+          {
+            "id": "00000000-0000-4000-8000-00000000300b",
+            "name": "Lage 1",
+            "angle": 0,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "puck"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000301b",
+            "name": "Lage 2",
+            "angle": 30,
+            "thickness": 0.15,
+            "material_id": "m-cfk",
+            "criterion_id": "mayes"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000302b",
+            "name": "Lage 3",
+            "angle": 60,
+            "thickness": 0.175,
+            "material_id": "m-gfk",
+            "criterion_id": "sun"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000303b",
+            "name": "Lage 4",
+            "angle": 90,
+            "thickness": 0.2,
+            "material_id": "m-cfk",
+            "criterion_id": "edge"
+          }
+        ],
+        "symmetric": false,
+        "with_middle_layer": false,
+        "invert_z": true,
+        "offset": 0
+      },
+      "criterion_display_names": [
+        "Edge",
+        "Sun",
+        "Mayes",
+        "Puck"
+      ],
+      "calculations": [
+        {
+          "name": "GM-Invert-Biegung",
+          "loads": {
+            "n_x": 0,
+            "n_y": 0,
+            "n_xy": 0,
+            "m_x": 30,
+            "m_y": 0,
+            "m_xy": 12,
+            "delta_t": 0,
+            "delta_h": 0,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "laminate": {
+        "id": "00000000-0000-4000-8000-00000000004a",
+        "name": "GM-Hygrothermisch",
+        "layers": [
+          {
+            "id": "00000000-0000-4000-8000-00000000400b",
+            "name": "Lage 1",
+            "angle": 0,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "puck"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000401b",
+            "name": "Lage 2",
+            "angle": 90,
+            "thickness": 0.125,
+            "material_id": "m-gfk",
+            "criterion_id": "fmc"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000402b",
+            "name": "Lage 3",
+            "angle": 45,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "rotem"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000403b",
+            "name": "Lage 4",
+            "angle": -45,
+            "thickness": 0.125,
+            "material_id": "m-gfk",
+            "criterion_id": "ztl"
+          }
+        ],
+        "symmetric": false,
+        "with_middle_layer": false,
+        "invert_z": false,
+        "offset": 0
+      },
+      "criterion_display_names": [
+        "Puck",
+        "FMC",
+        "Rotem",
+        "ZTL"
+      ],
+      "calculations": [
+        {
+          "name": "GM-Hygro-Rein",
+          "loads": {
+            "n_x": 0,
+            "n_y": 0,
+            "n_xy": 0,
+            "m_x": 0,
+            "m_y": 0,
+            "m_xy": 0,
+            "delta_t": -150,
+            "delta_h": 1.2,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "GM-Hygro-Mechanisch",
+          "loads": {
+            "n_x": 150,
+            "n_y": 0,
+            "n_xy": 0,
+            "m_x": 0,
+            "m_y": 0,
+            "m_xy": 0,
+            "delta_t": -150,
+            "delta_h": 1.2,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "laminate": {
+        "id": "00000000-0000-4000-8000-00000000005a",
+        "name": "GM-Winkelnormierung",
+        "layers": [
+          {
+            "id": "00000000-0000-4000-8000-00000000500b",
+            "name": "Lage 1",
+            "angle": 100,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "puck"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000501b",
+            "name": "Lage 2",
+            "angle": -100,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "max_stress"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000502b",
+            "name": "Lage 3",
+            "angle": 200,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "tsai_wu"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000503b",
+            "name": "Lage 4",
+            "angle": 91,
+            "thickness": 0.125,
+            "material_id": "m-gfk",
+            "criterion_id": "hashin"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000504b",
+            "name": "Lage 5",
+            "angle": -91,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "tsai_hill"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000505b",
+            "name": "Lage 6",
+            "angle": 270,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "hoffman"
+          }
+        ],
+        "symmetric": false,
+        "with_middle_layer": false,
+        "invert_z": false,
+        "offset": 0
+      },
+      "criterion_display_names": [
+        "Puck",
+        "maximum Stress",
+        "TsaiWu",
+        "Hashin",
+        "Tsai-Hill",
+        "Hoffman"
+      ],
+      "calculations": [
+        {
+          "name": "GM-Winkel-Kombiniert",
+          "loads": {
+            "n_x": 250,
+            "n_y": 0,
+            "n_xy": 90,
+            "m_x": 0,
+            "m_y": 18,
+            "m_xy": 0,
+            "delta_t": 0,
+            "delta_h": 0,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "laminate": {
+        "id": "00000000-0000-4000-8000-00000000006a",
+        "name": "GM-DehnungVorgegeben",
+        "layers": [
+          {
+            "id": "00000000-0000-4000-8000-00000000600b",
+            "name": "Lage 1",
+            "angle": 0,
+            "thickness": 0.15,
+            "material_id": "m-cfk",
+            "criterion_id": "puck"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000601b",
+            "name": "Lage 2",
+            "angle": 45,
+            "thickness": 0.15,
+            "material_id": "m-cfk",
+            "criterion_id": "fibre_failure"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000602b",
+            "name": "Lage 3",
+            "angle": 90,
+            "thickness": 0.15,
+            "material_id": "m-gfk",
+            "criterion_id": "max_strain"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000603b",
+            "name": "Lage 4",
+            "angle": -45,
+            "thickness": 0.15,
+            "material_id": "m-cfk",
+            "criterion_id": "tsai_wu"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000604b",
+            "name": "Lage 5",
+            "angle": 0,
+            "thickness": 0.15,
+            "material_id": "m-cfk",
+            "criterion_id": "hashin"
+          }
+        ],
+        "symmetric": false,
+        "with_middle_layer": false,
+        "invert_z": false,
+        "offset": 0
+      },
+      "criterion_display_names": [
+        "Puck",
+        "Fibre Failure",
+        "maximum Strain",
+        "TsaiWu",
+        "Hashin"
+      ],
+      "calculations": [
+        {
+          "name": "GM-Dehnung-Gemischt",
+          "loads": {
+            "n_x": 0,
+            "n_y": 80,
+            "n_xy": 0,
+            "m_x": 10,
+            "m_y": 5,
+            "m_xy": 3,
+            "delta_t": 0,
+            "delta_h": 0,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0.002,
+            "epsilon_y": 0,
+            "gamma_xy": 0.001,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            true,
+            false,
+            true,
+            false,
+            false,
+            false
+          ]
+        }
+      ]
+    }
+  ]
+}

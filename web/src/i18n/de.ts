@@ -189,7 +189,7 @@ export const de: Messages = {
   "summary.title": "Kennzahlen",
   "summary.symmetric": "symmetrisch (B≈0)",
   "summary.areaWeight": "Flächengewicht",
-  "summary.ex.title": "Ingenieurskonstante Ex (Poisson-frei, „simple“)",
+  "summary.ex.title": "Ingenieurskonstante Ex (mit Querkontraktion, „simple“)",
   "summary.ex.hint":
     "(ABD⁻¹) ist die Inverse der vollen 6×6-ABD-Matrix – sie berücksichtigt auch die Kopplung zwischen Dehnung und Krümmung (B-Block). Analog für Ey, G und νyx.",
   "summary.nuxy.title": "Querkontraktionszahl νxy",

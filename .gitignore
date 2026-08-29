@@ -4,5 +4,9 @@
 /View3DSuite/
 /eLamX30_Hauptfenster.png
 
+# Binary eLamX 3.x distribution (~180 MB incl. a bundled JRE), used to generate
+# the golden-master reference data - see elamx-core/core/tests/golden/README.md.
+/elamx/
+
 # Claude Code local project config (personal, not project source).
 /.claude/
