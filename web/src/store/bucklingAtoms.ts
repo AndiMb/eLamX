@@ -3,7 +3,7 @@
 // Kept in its own family rather than inside laminateConfigFamily: the buckling
 // input is module-specific (plate geometry, edge conditions, Ritz term counts)
 // and editing it must not invalidate the CLT chain, which knows nothing about
-// plates. The laminate itself is read from cltRequestFamily so the layup and
+// plates. The laminate itself is read from laminateRequestFamily so the layup and
 // materials stay a single source of truth.
 import { atom } from "jotai";
 import { atomFamily } from "jotai-family";
@@ -12,7 +12,7 @@ import equal from "fast-deep-equal";
 import { loadableWithLastValue } from "../lib/loadable";
 import type { BucklingInputDto, BucklingResponse } from "../lib/types";
 import { loadElamxWasm } from "../lib/wasm";
-import { cltRequestFamily } from "./derivedAtoms";
+import { laminateRequestFamily } from "./derivedAtoms";
 
 /** Grid resolution of the sampled mode-shape surface. */
 const SURFACE_SAMPLES = 41;
@@ -64,7 +64,7 @@ export const bucklingInputFamily = atomFamily((laminateId: string) =>
 // loadable shape means that change would not touch any call site.
 export const bucklingResponseFamily = atomFamily((laminateId: string) =>
   atom<Promise<BucklingResponse>>(async (get) => {
-    const { laminate, materials } = get(cltRequestFamily(laminateId));
+    const { laminate, materials } = get(laminateRequestFamily(laminateId));
     const input = get(bucklingInputFamily(laminateId));
     const wasm = await loadElamxWasm();
     const json = wasm.compute_buckling(JSON.stringify({ laminate, materials, input }));

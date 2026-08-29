@@ -7,10 +7,11 @@
 // formatting live - this file only maps the resulting Project structure onto
 // the atoms the UI edits.
 //
-// Two things this app does not model yet are carried through untouched rather
-// than dropped: analyses beyond the first of each kind, and modules with no web
-// counterpart (cutouts, pressure vessel, spring-in). See `CarryOver` in
-// store/laminateAtoms.ts.
+// What this app does not model yet is carried through untouched rather than
+// dropped: buckling and last-ply-failure analyses beyond the first, and modules
+// with no web counterpart (cutouts, pressure vessel, spring-in). Load cases are
+// no longer among them - every <calculation> in the file becomes a real load
+// case. See `CarryOver` in store/laminateAtoms.ts.
 
 import { loadElamxWasm } from "./wasm";
 import { DEFAULT_CRITERION_ID, LOAD_FIELDS, STRAIN_FIELDS, type LayerRow } from "./constants";
@@ -21,7 +22,12 @@ import {
   type LastPlyFailureInputDto,
   type MaterialDto,
 } from "./types";
-import { defaultLaminateConfig, type LaminateConfig } from "../store/laminateAtoms";
+import {
+  defaultLaminateConfig,
+  defaultLoadCase,
+  type LaminateConfig,
+  type LoadCase,
+} from "../store/laminateAtoms";
 
 /** The shape elamx-core's `project::Project` serialises to. Only the parts
  *  this app reads are typed; the rest travels as `unknown` and is written
@@ -107,9 +113,21 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
   const lastPlyFailures: Record<string, LastPlyFailureInputDto> = {};
   const laminates = project.laminates.map((entry) => {
     const dto = entry.laminate;
-    const [calculation, ...extraCalculations] = entry.calculations;
     const [buckling, ...extraBucklings] = entry.bucklings;
     const [lastPlyFailure, ...extraLastPlyFailures] = entry.last_ply_failures ?? [];
+
+    // Every <calculation> becomes a load case, in file order. A file with none
+    // still opens - it gets the default case, the same one a new laminate has.
+    const loadCases: LoadCase[] = entry.calculations.map((calculation, i) => ({
+      id: crypto.randomUUID(),
+      name: calculation.name || `${i + 1}`,
+      dofValues: calculation.use_strain.map((useStrain, k) =>
+        useStrain ? calculation.strains[STRAIN_FIELDS[k]] : calculation.loads[LOAD_FIELDS[k]],
+      ),
+      useStrain: [...calculation.use_strain],
+      deltaT: calculation.loads.delta_t ?? 0,
+      deltaH: calculation.loads.delta_h ?? 0,
+    }));
 
     const config: LaminateConfig = {
       ...defaultLaminateConfig(dto.id, dto.name, ""),
@@ -129,20 +147,11 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
       offset: dto.offset,
       // A file's load case may prescribe strains for some degrees of freedom
       // and loads for the others, so the stored value per DOF comes from
-      // whichever of the two that flag selects.
-      dofValues: calculation
-        ? calculation.use_strain.map((useStrain, i) =>
-            useStrain ? calculation.strains[STRAIN_FIELDS[i]] : calculation.loads[LOAD_FIELDS[i]],
-          )
-        : defaultLaminateConfig(dto.id, dto.name, "").dofValues,
-      useStrain: calculation ? [...calculation.use_strain] : [false, false, false, false, false, false],
-      deltaT: calculation?.loads.delta_t ?? 0,
-      deltaH: calculation?.loads.delta_h ?? 0,
+      // whichever of the two that flag selects (see loadCases above).
+      loadCases: loadCases.length > 0 ? loadCases : [defaultLoadCase("1")],
       carryOver: {
-        calculationName: calculation?.name,
         bucklingName: buckling?.name,
         lastPlyFailureName: lastPlyFailure?.name,
-        extraCalculations,
         extraBucklings,
         extraLastPlyFailures,
         unsupportedModules: entry.unsupported_modules ?? [],
@@ -172,17 +181,21 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
     materials: snapshot.materials,
     laminates: snapshot.laminates.map((config) => {
       const carry = config.carryOver ?? {};
-      const loads: Record<string, number> = {
-        n_x: 0, n_y: 0, n_xy: 0, m_x: 0, m_y: 0, m_xy: 0,
-        delta_t: config.deltaT, delta_h: config.deltaH,
-        nt_x: 0, nt_y: 0, nt_xy: 0, mt_x: 0, mt_y: 0, mt_xy: 0,
-      };
-      const strains: Record<string, number> = {
-        epsilon_x: 0, epsilon_y: 0, gamma_xy: 0, kappa_x: 0, kappa_y: 0, kappa_xy: 0,
-      };
-      config.dofValues.forEach((value, i) => {
-        if (config.useStrain[i]) strains[STRAIN_FIELDS[i]] = value;
-        else loads[LOAD_FIELDS[i]] = value;
+
+      const calculations: CalculationDto[] = config.loadCases.map((loadCase) => {
+        const loads: Record<string, number> = {
+          n_x: 0, n_y: 0, n_xy: 0, m_x: 0, m_y: 0, m_xy: 0,
+          delta_t: loadCase.deltaT, delta_h: loadCase.deltaH,
+          nt_x: 0, nt_y: 0, nt_xy: 0, mt_x: 0, mt_y: 0, mt_xy: 0,
+        };
+        const strains: Record<string, number> = {
+          epsilon_x: 0, epsilon_y: 0, gamma_xy: 0, kappa_x: 0, kappa_y: 0, kappa_xy: 0,
+        };
+        loadCase.dofValues.forEach((value, i) => {
+          if (loadCase.useStrain[i]) strains[STRAIN_FIELDS[i]] = value;
+          else loads[LOAD_FIELDS[i]] = value;
+        });
+        return { name: loadCase.name, loads, strains, use_strain: [...loadCase.useStrain] };
       });
 
       const buckling = snapshot.bucklings[config.id];
@@ -205,15 +218,7 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
           invert_z: config.invertZ,
           offset: config.offset,
         },
-        calculations: [
-          {
-            name: carry.calculationName ?? "Berechnung",
-            loads,
-            strains,
-            use_strain: [...config.useStrain],
-          },
-          ...((carry.extraCalculations ?? []) as CalculationDto[]),
-        ],
+        calculations,
         bucklings: [
           ...(buckling
             ? [{ name: carry.bucklingName ?? "Plattenbeulen", input: buckling }]

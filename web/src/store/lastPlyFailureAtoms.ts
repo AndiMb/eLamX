@@ -1,7 +1,7 @@
 // Last-ply-failure state and results, one instance per laminate.
 //
 // Same shape as bucklingAtoms: module-specific input in its own persisted
-// family, the laminate itself read from cltRequestFamily so the layup and
+// family, the laminate itself read from laminateRequestFamily so the layup and
 // materials stay a single source of truth.
 //
 // Note that the analysis ignores three parts of that shared state on purpose,
@@ -16,7 +16,7 @@ import equal from "fast-deep-equal";
 import { loadableWithLastValue } from "../lib/loadable";
 import { emptyLoads, type LastPlyFailureInputDto, type LastPlyFailureResponse } from "../lib/types";
 import { loadElamxWasm } from "../lib/wasm";
-import { cltRequestFamily } from "./derivedAtoms";
+import { laminateRequestFamily } from "./derivedAtoms";
 
 // The degradation parameters mirror elamx-core's LastPlyFailureInput::default,
 // which in turn mirrors the Java LastPlyFailureInput field initialisers. The
@@ -52,7 +52,7 @@ export const lastPlyFailureInputFamily = atomFamily((laminateId: string) =>
 // 2n CLT solves, which is cheap next to the buckling eigenvalue problem.
 export const lastPlyFailureResponseFamily = atomFamily((laminateId: string) =>
   atom<Promise<LastPlyFailureResponse>>(async (get) => {
-    const { laminate, materials } = get(cltRequestFamily(laminateId));
+    const { laminate, materials } = get(laminateRequestFamily(laminateId));
     const input = get(lastPlyFailureInputFamily(laminateId));
     const wasm = await loadElamxWasm();
     const json = wasm.compute_last_ply_failure(JSON.stringify({ laminate, materials, input }));

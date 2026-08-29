@@ -242,6 +242,11 @@ export const en = {
   "layerDetail.error": "Failure body could not be computed: {message}",
   "failureBody.aria": "Rotatable 3D view of the failure body with the ply's stress state",
 
+  "loadCase.label": "Load case",
+  "loadCase.add": "Add load case (copies the current one)",
+  "loadCase.remove": "Delete this load case",
+  "default.loadCaseName": "Load case {nr}",
+
   "results.error": "Error: {message}",
   "results.computing": "Computing…",
   "results.abdVisualization": "ABD matrix – visualization",

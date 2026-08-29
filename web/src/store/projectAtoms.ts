@@ -24,6 +24,23 @@ export const projectVersionAtom = atom<string>("1");
 /** Name suggested when saving; taken from the opened file. */
 export const projectNameAtom = atom<string>("eLamX");
 
+/** Whether a laminate has a stored input for a module.
+ *
+ *  A module's input atom answers with its default whether or not the laminate
+ *  ever had that analysis, so asking the atom would write a plate-buckling
+ *  analysis into every laminate of a saved file - including the ones the user
+ *  never opened the module for. Storage answers the real question: a value is
+ *  written when the module is edited, and when a file that had one was opened.
+ */
+function hasStoredInput(key: string): boolean {
+  try {
+    return localStorage.getItem(key) !== null;
+  } catch {
+    // Blocked site data: nothing is stored, so nothing was configured.
+    return false;
+  }
+}
+
 /** Everything needed to write the current session out as `.elamx`. */
 export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
   const ids = get(laminateIdsAtom);
@@ -31,8 +48,12 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
   const bucklings: Record<string, BucklingInputDto> = {};
   const lastPlyFailures: Record<string, LastPlyFailureInputDto> = {};
   for (const id of ids) {
-    bucklings[id] = get(bucklingInputFamily(id));
-    lastPlyFailures[id] = get(lastPlyFailureInputFamily(id));
+    if (hasStoredInput(bucklingStorageKey(id))) {
+      bucklings[id] = get(bucklingInputFamily(id));
+    }
+    if (hasStoredInput(lastPlyFailureStorageKey(id))) {
+      lastPlyFailures[id] = get(lastPlyFailureInputFamily(id));
+    }
   }
   return {
     materials: get(materialsAtom),

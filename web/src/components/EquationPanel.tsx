@@ -1,5 +1,9 @@
-import { useAtom, useAtomValue } from "jotai";
-import { laminateConfigFamily } from "../store/laminateAtoms";
+import { useAtomValue, useSetAtom } from "jotai";
+import {
+  activeLoadCaseFamily,
+  updateActiveLoadCaseAtom,
+  type LoadCase,
+} from "../store/laminateAtoms";
 import { solvedLoadsFamily, solvedStrainsFamily } from "../store/derivedAtoms";
 import { DOF_NAMES, HYGROTHERMAL_FIELDS, LOAD_FIELDS, STRAIN_FIELDS } from "../lib/constants";
 import { SafeNumberInput } from "./SafeNumberInput";
@@ -35,10 +39,16 @@ import { useLocale, useT } from "../i18n";
 export function EquationPanel({ laminateId }: { laminateId: string }) {
   const t = useT();
   const locale = useLocale();
-  const [config, setConfig] = useAtom(laminateConfigFamily(laminateId));
+  // Every edit here goes into the ACTIVE load case, not into the laminate:
+  // the laminate is the stack, a load case is one thing done to it.
+  const config = useAtomValue(activeLoadCaseFamily(laminateId));
+  const updateLoadCase = useSetAtom(updateActiveLoadCaseAtom);
   const loads = useAtomValue(solvedLoadsFamily(laminateId));
   const strains = useAtomValue(solvedStrainsFamily(laminateId));
   const renderCount = useRenderCount();
+
+  const setConfig = (update: (loadCase: LoadCase) => LoadCase) =>
+    updateLoadCase({ laminateId, update });
 
   const updateDofValue = (index: number, value: number) => {
     setConfig((c) => ({ ...c, dofValues: c.dofValues.map((v, i) => (i === index ? value : v)) }));

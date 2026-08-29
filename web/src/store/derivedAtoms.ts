@@ -30,11 +30,16 @@ import {
   type LaminateDto,
 } from "../lib/types";
 import { loadElamxWasm } from "../lib/wasm";
-import { laminateConfigFamily } from "./laminateAtoms";
+import { activeLoadCaseFamily, laminateConfigFamily } from "./laminateAtoms";
 import { materialsAtom } from "./materialsAtoms";
 
-export const cltRequestFamily = atomFamily((laminateId: string) =>
-  atom<CltRequest>((get) => {
+/** The laminate and its materials, without any load case.
+ *
+ *  Split out because the plate modules need exactly this and nothing else:
+ *  reading the full CLT request there would make a buckling analysis recompute
+ *  whenever a load case is edited, which has no bearing on it. */
+export const laminateRequestFamily = atomFamily((laminateId: string) =>
+  atom((get) => {
     const config = get(laminateConfigFamily(laminateId));
     const materials = get(materialsAtom);
 
@@ -55,24 +60,33 @@ export const cltRequestFamily = atomFamily((laminateId: string) =>
       offset: config.offset,
     };
 
+    return { laminate, materials: Object.fromEntries(materials.map((m) => [m.id, m])) };
+  }),
+);
+
+export const cltRequestFamily = atomFamily((laminateId: string) =>
+  atom<CltRequest>((get) => {
+    const { laminate, materials } = get(laminateRequestFamily(laminateId));
+    const loadCase = get(activeLoadCaseFamily(laminateId));
+
     const loads = emptyLoads();
     const strains = emptyStrains();
-    config.dofValues.forEach((value, i) => {
-      if (config.useStrain[i]) {
+    loadCase.dofValues.forEach((value, i) => {
+      if (loadCase.useStrain[i]) {
         strains[STRAIN_FIELDS[i]] = value;
       } else {
         loads[LOAD_FIELDS[i]] = value;
       }
     });
-    loads.delta_t = config.deltaT;
-    loads.delta_h = config.deltaH;
+    loads.delta_t = loadCase.deltaT;
+    loads.delta_h = loadCase.deltaH;
 
     return {
       laminate,
-      materials: Object.fromEntries(materials.map((m) => [m.id, m])),
+      materials,
       loads,
       strains,
-      use_strain: config.useStrain as CltRequest["use_strain"],
+      use_strain: loadCase.useStrain as CltRequest["use_strain"],
     };
   }),
 );

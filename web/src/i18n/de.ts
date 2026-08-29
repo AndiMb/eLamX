@@ -232,6 +232,11 @@ export const de: Messages = {
   "layerDetail.error": "Versagenskörper nicht berechenbar: {message}",
   "failureBody.aria": "Drehbare 3D-Ansicht des Versagenskörpers mit dem Spannungszustand der Lage",
 
+  "loadCase.label": "Lastfall",
+  "loadCase.add": "Lastfall hinzufügen (kopiert den aktuellen)",
+  "loadCase.remove": "Diesen Lastfall löschen",
+  "default.loadCaseName": "Lastfall {nr}",
+
   "results.error": "Fehler: {message}",
   "results.computing": "Berechne…",
   "results.abdVisualization": "ABD-Matrix – Visualisierung",

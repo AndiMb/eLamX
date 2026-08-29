@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
-import { laminateConfigFamily } from "../store/laminateAtoms";
+import { activeLoadCaseFamily, laminateConfigFamily } from "../store/laminateAtoms";
 import { expandedStack, shortStackNotation } from "../lib/angleStack";
 import { StackViz } from "./StackViz";
 import { QuantityDisplay } from "./QuantityDisplay";
@@ -17,6 +17,7 @@ import { useT } from "../i18n";
 export function ModuleContextBar({ laminateId }: { laminateId: string }) {
   const t = useT();
   const config = useAtomValue(laminateConfigFamily(laminateId));
+  const loadCase = useAtomValue(activeLoadCaseFamily(laminateId));
 
   const notation = shortStackNotation(
     config.layers.map((l) => l.angle),
@@ -49,6 +50,7 @@ export function ModuleContextBar({ laminateId }: { laminateId: string }) {
         {notation}
       </span>
       <span className="context-facts">
+        <span className="context-load-case">{loadCase.name}</span>
         <span>{t("context.plies", { count: plies })}</span>
         <span>
           t<sub>ges</sub> = <QuantityDisplay category="thickness" value={thickness} />

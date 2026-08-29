@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ResultsSection } from "./ResultsSection";
 import { EquationPanel } from "./EquationPanel";
+import { LoadCaseBar } from "./LoadCaseBar";
 import { BackLink } from "./BackLink";
 import { useT, useTx } from "../i18n";
 
@@ -19,6 +20,7 @@ export function CltModuleContent({ laminateId }: { laminateId: string }) {
           link: <Link to={`/laminates/${laminateId}`}>{t("clt.criterionHint.link")}</Link>,
         })}
       </p>
+      <LoadCaseBar laminateId={laminateId} />
       <EquationPanel laminateId={laminateId} />
       <ResultsSection laminateId={laminateId} />
     </>

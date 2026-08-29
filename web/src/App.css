@@ -524,6 +524,68 @@ input[type="checkbox"] {
   }
 }
 
+/* --- Lastfaelle --- */
+
+.load-case-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.load-case-bar .load-case-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-right: 2px;
+}
+
+.load-case-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 2px 0 4px;
+  background: var(--card);
+}
+
+.load-case-pill.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.load-case-pill button {
+  border: none;
+  background: none;
+  padding: 3px 8px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.load-case-pill .load-case-remove {
+  display: inline-flex;
+  padding: 3px 5px;
+  color: var(--text-muted);
+}
+
+.load-case-pill .load-case-remove:hover {
+  color: var(--danger);
+}
+
+.load-case-pill input {
+  width: 10ch;
+  padding: 2px 6px;
+  font: inherit;
+}
+
+/* The active load case belongs with the laminate's own facts in the context
+   bar - it is the other half of "what am I looking at". */
+.module-context-bar .context-load-case {
+  color: var(--text-2);
+}
+
 /* --- Eingabe steht, Ergebnis scrollt --- */
 
 /* Ab 1024 px stehen Eingabepanel und Ergebnisse nebeneinander, das Eingabe-
