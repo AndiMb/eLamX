@@ -7,8 +7,9 @@
 //! builders without needing bindgen-generated classes for every domain type.
 
 use elamx_core::clt::{
-    determine_values, get_layer_results, CltLaminate, LayerContribution, LayerResult, Loads,
-    MassMoments, Strains,
+    calculate_last_ply_failure, determine_values, get_layer_results, CltLaminate,
+    LastPlyFailureInput, LastPlyFailureResult, LayerContribution, LayerResult, Loads, MassMoments,
+    Strains,
 };
 use elamx_core::failure::default_criterion_registry;
 use elamx_core::mathtools;
@@ -373,6 +374,45 @@ fn compute_buckling_surface_impl(request_json: &str) -> Result<String, String> {
     serde_json::to_string(&surface).map_err(|e| e.to_string())
 }
 
+#[derive(Deserialize)]
+struct LastPlyFailureRequest {
+    laminate: Laminate,
+    materials: HashMap<String, Material>,
+    input: LastPlyFailureInput,
+}
+
+/// Runs the last-ply-failure analysis: the laminate's weakest ply is degraded,
+/// everything recomputed, and so on until no ply is left to take stiffness
+/// from. The response is [`LastPlyFailureResult`] as JSON - the load factors of
+/// the first fibre/inter-fibre failure and of final failure, plus the full
+/// degradation path with every ply's state at every step.
+///
+/// Note that the analysis deliberately ignores parts of its own input, exactly
+/// as eLamX 3.x does: the criterion parameters stored on the materials, their
+/// expansion coefficients, and the laminate's reference-plane offset. See
+/// `elamx_core::clt::last_ply_failure` - a UI showing these results should say
+/// so rather than let a user wonder why a changed p_spd changes nothing.
+#[wasm_bindgen]
+pub fn compute_last_ply_failure(request_json: &str) -> Result<String, JsValue> {
+    compute_last_ply_failure_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_last_ply_failure_impl(request_json: &str) -> Result<String, String> {
+    let request: LastPlyFailureRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+
+    let criteria = default_criterion_registry();
+    let result: LastPlyFailureResult = calculate_last_ply_failure(
+        &request.laminate,
+        &request.materials,
+        &criteria,
+        &request.input,
+    )
+    .map_err(|e| e.to_string())?;
+
+    serde_json::to_string(&result).map_err(|e| e.to_string())
+}
+
 /// Parses an `.elamx` project file into the JSON shape of
 /// [`elamx_core::project::Project`].
 ///
@@ -585,6 +625,71 @@ mod tests {
         assert!(result.is_err());
     }
 
+    /// Same splice as `buckling_request`, with the last-ply-failure input.
+    /// The material carries no additional values, which is exactly what the
+    /// analysis needs: it supplies the criteria's defaults itself.
+    fn last_ply_failure_request(n_x: f64, extra_input: &str) -> String {
+        let base = sample_request(0.0, "\"max_stress\"");
+        let head = base.rsplit_once("\"loads\"").map(|(h, _)| h.to_string()).unwrap();
+        format!(
+            r#"{head}"input": {{
+                "loads": {{"n_x":{n_x},"n_y":0.0,"n_xy":0.0,"m_x":0.0,"m_y":0.0,"m_xy":0.0,
+                           "delta_t":0.0,"delta_h":0.0,
+                           "nt_x":0.0,"nt_y":0.0,"nt_xy":0.0,"mt_x":0.0,"mt_y":0.0,"mt_xy":0.0}},
+                "degradation_factor": 0.000001,
+                "epsilon_crit": 0.003,
+                "j_a": 1.0,
+                "degrade_all_on_fibre_failure": true{extra_input}
+            }}}}"#
+        )
+    }
+
+    #[test]
+    fn compute_last_ply_failure_returns_the_whole_degradation_path() {
+        let response = compute_last_ply_failure_impl(&last_ply_failure_request(1000.0, ""))
+            .expect("compute_last_ply_failure_impl should succeed");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+
+        let iterations = parsed["iterations"].as_array().unwrap();
+        assert!(!iterations.is_empty());
+        // Two plies, so at most two degradation steps each.
+        assert!(iterations.len() <= 4);
+
+        let first = &iterations[0];
+        assert!(first["layer_number"].as_u64().unwrap() >= 1);
+        assert_eq!(first["layer_results"].as_array().unwrap().len(), 2);
+        assert_eq!(first["matrix_failed"].as_array().unwrap().len(), 2);
+        assert!(first["failure_type"].is_string());
+        assert!(first["reserve_factor"].as_f64().unwrap() > 0.0);
+
+        // The laminate survives past its first failed ply.
+        let ef = parsed["exceedance_factor"]["reserve_factor"].as_f64().unwrap();
+        assert!(ef >= first["reserve_factor"].as_f64().unwrap());
+    }
+
+    #[test]
+    fn compute_last_ply_failure_reports_events_that_never_happened_as_null() {
+        let response = compute_last_ply_failure_impl(&last_ply_failure_request(1000.0, ""))
+            .expect("compute_last_ply_failure_impl should succeed");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+
+        // Each of these is either an object with a reserve factor and an
+        // iteration, or null - the frontend has to handle both.
+        for key in ["first_fibre_failure", "first_matrix_failure", "first_epsilon"] {
+            let value = &parsed[key];
+            assert!(
+                value.is_null() || value["iteration"].is_number(),
+                "{key}: {value}"
+            );
+        }
+    }
+
+    #[test]
+    fn compute_last_ply_failure_reports_a_missing_material_as_an_error() {
+        let request = last_ply_failure_request(1000.0, "").replace("\"mat\":", "\"other\":");
+        assert!(compute_last_ply_failure_impl(&request).is_err());
+    }
+
     /// The buckling request reuses the laminate/materials shape above and adds
     /// an `input` block; `surface_samples`/`surface_modes` are optional.
     fn buckling_request(extra_input: &str, tail: &str) -> String {
@@ -705,7 +810,15 @@ mod tests {
                 <material>mat</material>
                 <criterion>de.elamx.laminate.failure.Puck</criterion>
             </layer>
-            <lastplyfailure name="LPF"><n_x>1.0</n_x></lastplyfailure>
+            <lastplyfailure name="LPF">
+                <n_x>1.0</n_x><n_y>0.0</n_y><n_xy>0.0</n_xy>
+                <m_x>0.0</m_x><m_y>0.0</m_y><m_xy>0.0</m_xy>
+                <degradationFactor>1.0E-6</degradationFactor>
+                <degradeAllOnFibreFailure>true</degradeAllOnFibreFailure>
+                <epsilon_crit>0.003</epsilon_crit>
+                <j_a>1.0</j_a>
+            </lastplyfailure>
+            <pressurevessel name="Kessel"><pressure>0.5</pressure></pressurevessel>
         </laminate>
     </laminates>
     <materials>
@@ -722,6 +835,11 @@ mod tests {
         assert_eq!(parsed["materials"].as_array().unwrap().len(), 1);
         assert_eq!(parsed["laminates"][0]["laminate"]["layers"].as_array().unwrap().len(), 1);
         assert_eq!(parsed["laminates"][0]["laminate"]["layers"][0]["criterion_id"], "puck");
+        assert_eq!(parsed["laminates"][0]["last_ply_failures"][0]["name"], "LPF");
+        assert_eq!(
+            parsed["laminates"][0]["last_ply_failures"][0]["input"]["loads"]["n_x"],
+            1.0
+        );
     }
 
     #[test]
@@ -729,8 +847,9 @@ mod tests {
         let json = import_elamx_impl(SMALL_PROJECT).unwrap();
         let xml = export_elamx_impl(&json).expect("export_elamx_impl should succeed");
         assert!(xml.contains("<criterion>de.elamx.laminate.failure.Puck</criterion>"));
-        // Module data the core cannot calculate survives the browser round trip.
         assert!(xml.contains("<lastplyfailure name=\"LPF\">"));
+        // Module data the core cannot calculate survives the browser round trip.
+        assert!(xml.contains("<pressurevessel name=\"Kessel\">"));
         assert_eq!(import_elamx_impl(&xml).unwrap(), json);
     }
 

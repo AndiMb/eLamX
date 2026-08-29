@@ -232,6 +232,18 @@
                 <n>10</n>
                 <dmatrixservice>de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl</dmatrixservice>
             </buckling>
+            <lastplyfailure name="GM-LPF-Krit">
+                <n_x>400.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <degradationFactor>0.000001</degradationFactor>
+                <degradeAllOnFibreFailure>true</degradeAllOnFibreFailure>
+                <epsilon_crit>0.003</epsilon_crit>
+                <j_a>1.0</j_a>
+            </lastplyfailure>
         </laminate>
         <laminate invert_z="false" name="GM-SymMittellage" offset="0.0" symmetric="true" uuid="00000000-0000-4000-8000-00000000001a" with_middle_layer="true">
             <layer name="Lage 1" uuid="00000000-0000-4000-8000-00000000100b">
@@ -356,6 +368,30 @@
                 <n>10</n>
                 <dmatrixservice>de.elamx.clt.plate.dmatrix.SpecialOrthotropicDMatrixServiceImpl</dmatrixservice>
             </buckling>
+            <lastplyfailure name="GM-LPF-Sym">
+                <n_x>300.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>60.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <degradationFactor>0.000001</degradationFactor>
+                <degradeAllOnFibreFailure>true</degradeAllOnFibreFailure>
+                <epsilon_crit>0.003</epsilon_crit>
+                <j_a>0.75</j_a>
+            </lastplyfailure>
+            <lastplyfailure name="GM-LPF-SymUeberlast">
+                <n_x>4000.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <degradationFactor>0.000001</degradationFactor>
+                <degradeAllOnFibreFailure>true</degradeAllOnFibreFailure>
+                <epsilon_crit>0.005</epsilon_crit>
+                <j_a>1.0</j_a>
+            </lastplyfailure>
         </laminate>
         <laminate invert_z="false" name="GM-SymOffset" offset="0.35" symmetric="true" uuid="00000000-0000-4000-8000-00000000002a" with_middle_layer="false">
             <layer name="Lage 1" uuid="00000000-0000-4000-8000-00000000200b">
@@ -410,6 +446,18 @@
                 <n>9</n>
                 <dmatrixservice>de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl</dmatrixservice>
             </buckling>
+            <lastplyfailure name="GM-LPF-Offset">
+                <n_x>250.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <m_x>12.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <degradationFactor>0.000001</degradationFactor>
+                <degradeAllOnFibreFailure>true</degradeAllOnFibreFailure>
+                <epsilon_crit>0.003</epsilon_crit>
+                <j_a>0.8</j_a>
+            </lastplyfailure>
         </laminate>
         <laminate invert_z="true" name="GM-InvertZ" offset="0.0" symmetric="false" uuid="00000000-0000-4000-8000-00000000003a" with_middle_layer="false">
             <layer name="Lage 1" uuid="00000000-0000-4000-8000-00000000300b">
@@ -470,6 +518,18 @@
                 <n>7</n>
                 <dmatrixservice>de.elamx.clt.plate.dmatrix.DtildeDMatrixServiceImpl</dmatrixservice>
             </buckling>
+            <lastplyfailure name="GM-LPF-Invert">
+                <n_x>0.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <m_x>30.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>12.0</m_xy>
+                <degradationFactor>0.000001</degradationFactor>
+                <degradeAllOnFibreFailure>false</degradeAllOnFibreFailure>
+                <epsilon_crit>0.003</epsilon_crit>
+                <j_a>1.0</j_a>
+            </lastplyfailure>
         </laminate>
         <laminate invert_z="false" name="GM-Hygrothermisch" offset="0.0" symmetric="false" uuid="00000000-0000-4000-8000-00000000004a" with_middle_layer="false">
             <layer name="Lage 1" uuid="00000000-0000-4000-8000-00000000400b">
@@ -552,6 +612,18 @@
                 <n>10</n>
                 <dmatrixservice>de.elamx.clt.plate.dmatrix.DtildeDMatrixServiceImpl</dmatrixservice>
             </buckling>
+            <lastplyfailure name="GM-LPF-Schub">
+                <n_x>0.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>200.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <degradationFactor>0.01</degradationFactor>
+                <degradeAllOnFibreFailure>true</degradeAllOnFibreFailure>
+                <epsilon_crit>0.003</epsilon_crit>
+                <j_a>1.0</j_a>
+            </lastplyfailure>
         </laminate>
         <laminate invert_z="false" name="GM-Winkelnormierung" offset="0.0" symmetric="false" uuid="00000000-0000-4000-8000-00000000005a" with_middle_layer="false">
             <layer name="Lage 1" uuid="00000000-0000-4000-8000-00000000500b">

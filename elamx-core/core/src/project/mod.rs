@@ -9,12 +9,13 @@
 //! LaminateLoadSaveImpl,DefaultMaterialLoadSaveImpl}.java plus one
 //! `LoadSaveLaminateHook` per calculation module.
 //!
-//! What is covered: materials, laminates with their layers, CLT calculations
-//! and buckling analyses - everything the ported calculation modules need.
-//! Module data this crate cannot calculate yet (last-ply-failure, cutouts,
-//! pressure vessels, spring-in, optimisation, stiffeners) is **preserved
-//! verbatim** on read and written back unchanged, so opening and saving a file
-//! in the web version does not silently destroy what the desktop put there.
+//! What is covered: materials, laminates with their layers, CLT calculations,
+//! buckling analyses and last-ply-failure analyses - everything the ported
+//! calculation modules need. Module data this crate cannot calculate yet
+//! (cutouts, pressure vessels, spring-in, optimisation, stiffeners) is
+//! **preserved verbatim** on read and written back unchanged, so opening and
+//! saving a file in the web version does not silently destroy what the desktop
+//! put there.
 
 pub mod naming;
 mod read;
@@ -23,7 +24,7 @@ mod write;
 pub use read::{read_elamx, ReadError};
 pub use write::write_elamx;
 
-use crate::clt::{Loads, Strains};
+use crate::clt::{LastPlyFailureInput, Loads, Strains};
 use crate::model::{Laminate, Material};
 use crate::plate::BucklingInput;
 use serde::{Deserialize, Serialize};
@@ -47,6 +48,8 @@ pub struct ProjectLaminate {
     pub laminate: Laminate,
     pub calculations: Vec<NamedCalculation>,
     pub bucklings: Vec<NamedBuckling>,
+    #[serde(default)]
+    pub last_ply_failures: Vec<NamedLastPlyFailure>,
     /// Module data from modules this crate does not implement, kept as raw XML
     /// so a read/write cycle is lossless. Order is the order in the file.
     #[serde(default)]
@@ -70,10 +73,17 @@ pub struct NamedBuckling {
     pub input: BucklingInput,
 }
 
+/// One last-ply-failure analysis.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NamedLastPlyFailure {
+    pub name: String,
+    pub input: LastPlyFailureInput,
+}
+
 /// An element under `<laminate>` that this crate does not interpret.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RawModule {
-    /// Element name, e.g. `lastplyfailure`.
+    /// Element name, e.g. `pressurevessel`.
     pub tag: String,
     /// The element serialised back to XML, including its own tag.
     pub xml: String,

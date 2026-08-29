@@ -8,13 +8,19 @@
 // the atoms the UI edits.
 //
 // Two things this app does not model yet are carried through untouched rather
-// than dropped: load cases beyond the first, and modules with no web
-// counterpart (last-ply-failure, cutouts, pressure vessel, spring-in). See
-// `CarryOver` in store/laminateAtoms.ts.
+// than dropped: analyses beyond the first of each kind, and modules with no web
+// counterpart (cutouts, pressure vessel, spring-in). See `CarryOver` in
+// store/laminateAtoms.ts.
 
 import { loadElamxWasm } from "./wasm";
 import { DEFAULT_CRITERION_ID, LOAD_FIELDS, STRAIN_FIELDS, type LayerRow } from "./constants";
-import { CRITERIA, type BucklingInputDto, type CriterionId, type MaterialDto } from "./types";
+import {
+  CRITERIA,
+  type BucklingInputDto,
+  type CriterionId,
+  type LastPlyFailureInputDto,
+  type MaterialDto,
+} from "./types";
 import { defaultLaminateConfig, type LaminateConfig } from "../store/laminateAtoms";
 
 /** The shape elamx-core's `project::Project` serialises to. Only the parts
@@ -30,6 +36,7 @@ interface ProjectLaminateDto {
   laminate: LaminateDto;
   calculations: CalculationDto[];
   bucklings: BucklingEntryDto[];
+  last_ply_failures: LastPlyFailureEntryDto[];
   unsupported_modules?: unknown[];
 }
 
@@ -64,6 +71,11 @@ interface BucklingEntryDto {
   input: BucklingInputDto;
 }
 
+interface LastPlyFailureEntryDto {
+  name: string;
+  input: LastPlyFailureInputDto;
+}
+
 /** A whole session: what a file turns into on open, and what a save turns
  *  back into a file. The same shape in both directions on purpose - anything
  *  that survives one has to survive the other. */
@@ -71,6 +83,7 @@ export interface ProjectSnapshot {
   materials: MaterialDto[];
   laminates: LaminateConfig[];
   bucklings: Record<string, BucklingInputDto>;
+  lastPlyFailures: Record<string, LastPlyFailureInputDto>;
   version: string;
 }
 
@@ -91,10 +104,12 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
   const project: ProjectDto = JSON.parse(wasm.import_elamx(xml));
 
   const bucklings: Record<string, BucklingInputDto> = {};
+  const lastPlyFailures: Record<string, LastPlyFailureInputDto> = {};
   const laminates = project.laminates.map((entry) => {
     const dto = entry.laminate;
     const [calculation, ...extraCalculations] = entry.calculations;
     const [buckling, ...extraBucklings] = entry.bucklings;
+    const [lastPlyFailure, ...extraLastPlyFailures] = entry.last_ply_failures ?? [];
 
     const config: LaminateConfig = {
       ...defaultLaminateConfig(dto.id, dto.name, ""),
@@ -126,17 +141,26 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
       carryOver: {
         calculationName: calculation?.name,
         bucklingName: buckling?.name,
+        lastPlyFailureName: lastPlyFailure?.name,
         extraCalculations,
         extraBucklings,
+        extraLastPlyFailures,
         unsupportedModules: entry.unsupported_modules ?? [],
       },
     };
 
     if (buckling) bucklings[dto.id] = buckling.input;
+    if (lastPlyFailure) lastPlyFailures[dto.id] = lastPlyFailure.input;
     return config;
   });
 
-  return { materials: project.materials, laminates, bucklings, version: project.version };
+  return {
+    materials: project.materials,
+    laminates,
+    bucklings,
+    lastPlyFailures,
+    version: project.version,
+  };
 }
 
 /** Serialises the app's state to `.elamx` XML. */
@@ -162,6 +186,7 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
       });
 
       const buckling = snapshot.bucklings[config.id];
+      const lastPlyFailure = snapshot.lastPlyFailures[config.id];
 
       return {
         laminate: {
@@ -194,6 +219,12 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
             ? [{ name: carry.bucklingName ?? "Plattenbeulen", input: buckling }]
             : []),
           ...((carry.extraBucklings ?? []) as BucklingEntryDto[]),
+        ],
+        last_ply_failures: [
+          ...(lastPlyFailure
+            ? [{ name: carry.lastPlyFailureName ?? "Last Ply Failure", input: lastPlyFailure }]
+            : []),
+          ...((carry.extraLastPlyFailures ?? []) as LastPlyFailureEntryDto[]),
         ],
         unsupported_modules: carry.unsupportedModules ?? [],
       };

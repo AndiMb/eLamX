@@ -154,6 +154,48 @@ fn reads_the_reference_file_as_the_generator_wrote_it() {
                 buck.name
             );
         }
+
+        let expected_lpf = e["last_ply_failures"].as_array().unwrap();
+        assert_eq!(
+            entry.last_ply_failures.len(),
+            expected_lpf.len(),
+            "{}: Last-Ply-Failure-Analysen",
+            lam.name
+        );
+        for (analysis, el) in entry.last_ply_failures.iter().zip(expected_lpf) {
+            assert_eq!(analysis.name, el["name"].as_str().unwrap());
+            let ei = &el["input"];
+            let loads = &ei["loads"];
+            for (field, value) in [
+                ("n_x", analysis.input.loads.n_x),
+                ("n_y", analysis.input.loads.n_y),
+                ("n_xy", analysis.input.loads.n_xy),
+                ("m_x", analysis.input.loads.m_x),
+                ("m_y", analysis.input.loads.m_y),
+                ("m_xy", analysis.input.loads.m_xy),
+            ] {
+                assert_eq!(value, loads[field].as_f64().unwrap(), "{}: {field}", analysis.name);
+            }
+            assert_eq!(
+                analysis.input.degradation_factor,
+                ei["degradation_factor"].as_f64().unwrap(),
+                "{}: Degradationsfaktor",
+                analysis.name
+            );
+            assert_eq!(
+                analysis.input.epsilon_crit,
+                ei["epsilon_crit"].as_f64().unwrap(),
+                "{}: Grenzdehnung",
+                analysis.name
+            );
+            assert_eq!(analysis.input.j_a, ei["j_a"].as_f64().unwrap(), "{}: jA", analysis.name);
+            assert_eq!(
+                analysis.input.degrade_all_on_fibre_failure,
+                ei["degrade_all_on_fibre_failure"].as_bool().unwrap(),
+                "{}: degradeAllOnFibreFailure",
+                analysis.name
+            );
+        }
     }
 }
 
@@ -194,6 +236,11 @@ fn written_file_uses_the_original_element_names() {
         "<deltat>",
         "<buckling name=",
         "<dmatrixservice>de.elamx.clt.plate.dmatrix.DtildeDMatrixServiceImpl</dmatrixservice>",
+        "<lastplyfailure name=",
+        "<degradationFactor>",
+        "<degradeAllOnFibreFailure>",
+        "<epsilon_crit>",
+        "<j_a>",
         "<material class=\"de.elamx.laminate.DefaultMaterial\"",
         "<Epar>",
         "<de.elamx.laminate.failure.Puck.pspd>",
@@ -212,11 +259,11 @@ const MINIMAL: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
                 <material>mat</material>
                 <criterion>CRITERION</criterion>
             </layer>
-            <lastplyfailure name="LPF">
-                <n_x>1.0</n_x>
-                <degradationFactor>1.0E-6</degradationFactor>
-                <degradeAllOnFibreFailure>false</degradeAllOnFibreFailure>
-            </lastplyfailure>
+            <pressurevessel name="Kessel">
+                <pressure>0.5</pressure>
+                <radius>250.0</radius>
+                <radiustype>1</radiustype>
+            </pressurevessel>
         </laminate>
     </laminates>
     <materials>
@@ -243,12 +290,12 @@ fn keeps_module_data_it_cannot_interpret() {
     let project = read_elamx(&minimal_with("de.elamx.laminate.failure.Puck")).unwrap();
     let kept = &project.laminates[0].unsupported_modules;
     assert_eq!(kept.len(), 1);
-    assert_eq!(kept[0].tag, "lastplyfailure");
+    assert_eq!(kept[0].tag, "pressurevessel");
 
     let xml = write_elamx(&project);
-    assert!(xml.contains("<lastplyfailure name=\"LPF\">"));
-    assert!(xml.contains("<degradationFactor>1.0E-6</degradationFactor>"));
-    assert!(xml.contains("<degradeAllOnFibreFailure>false</degradeAllOnFibreFailure>"));
+    assert!(xml.contains("<pressurevessel name=\"Kessel\">"));
+    assert!(xml.contains("<pressure>0.5</pressure>"));
+    assert!(xml.contains("<radiustype>1</radiustype>"));
 }
 
 /// Likewise for material parameters belonging to criteria this crate has not
@@ -259,6 +306,41 @@ fn keeps_material_parameters_of_unported_criteria() {
     let key = "de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0";
     assert_eq!(project.materials[0].additional_values.get(key), Some(&53.0));
     assert!(write_elamx(&project).contains(&format!("<{key}>53.0</{key}>")));
+}
+
+/// The last-ply-failure element is the one place the format stores a boolean.
+/// Java reads it with `Boolean.parseBoolean`, where anything that is not the
+/// word "true" - including a missing element - means false; this reader has to
+/// agree, or a project would come back with a different analysis than it was
+/// saved with.
+#[test]
+fn reads_the_last_ply_failure_flag_the_way_java_parses_it() {
+    let with_flag = |value: &str| {
+        MINIMAL
+            .replace("CRITERION", "de.elamx.laminate.failure.Puck")
+            .replace(
+                "<pressurevessel name=\"Kessel\">\n                <pressure>0.5</pressure>\n                <radius>250.0</radius>\n                <radiustype>1</radiustype>\n            </pressurevessel>",
+                &format!(
+                    "<lastplyfailure name=\"LPF\">\n                <n_x>1.0</n_x>\n                <n_y>0.0</n_y>\n                <n_xy>0.0</n_xy>\n                <m_x>0.0</m_x>\n                <m_y>0.0</m_y>\n                <m_xy>0.0</m_xy>\n                <degradationFactor>1.0E-6</degradationFactor>\n                {value}\n                <epsilon_crit>0.003</epsilon_crit>\n                <j_a>1.0</j_a>\n            </lastplyfailure>"
+                ),
+            )
+    };
+
+    for (element, expected) in [
+        ("<degradeAllOnFibreFailure>true</degradeAllOnFibreFailure>", true),
+        ("<degradeAllOnFibreFailure>false</degradeAllOnFibreFailure>", false),
+        ("<degradeAllOnFibreFailure>ja</degradeAllOnFibreFailure>", false),
+        ("", false),
+    ] {
+        let project = read_elamx(&with_flag(element)).unwrap_or_else(|e| panic!("{element:?}: {e}"));
+        let analysis = &project.laminates[0].last_ply_failures[0];
+        assert_eq!(
+            analysis.input.degrade_all_on_fibre_failure, expected,
+            "{element:?}"
+        );
+        assert_eq!(analysis.input.loads.n_x, 1.0);
+        assert_eq!(analysis.input.loads.delta_t, 0.0, "die Analyse kennt keine Temperaturlast");
+    }
 }
 
 /// The Java loader substitutes Puck for a criterion it cannot resolve, without

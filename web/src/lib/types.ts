@@ -323,3 +323,45 @@ export interface BucklingResponse {
   modes: BucklingModeDto[];
   symmetry_warning: boolean;
 }
+
+// --- Last ply failure (elamx-core::clt::last_ply_failure) -------------------
+// Mirrors LastPlyFailureRequest / LastPlyFailureResult in
+// elamx-core/wasm/src/lib.rs.
+
+export interface LastPlyFailureInputDto {
+  loads: LoadsDto;
+  /** Factor a degraded ply's stiffness is multiplied by. */
+  degradation_factor: number;
+  /** Fibre-direction strain treated as the allowable one. */
+  epsilon_crit: number;
+  /** Knock-down on the reserve factor of an inter-fibre failure. */
+  j_a: number;
+  degrade_all_on_fibre_failure: boolean;
+}
+
+/** A reserve factor together with the degradation step it belongs to. */
+export interface LastPlyFailureEventDto {
+  reserve_factor: number;
+  iteration: number;
+}
+
+export interface LastPlyFailureIterationDto {
+  layer_results: LayerResultDto[];
+  /** Per ply, in stacking order, after this step. */
+  matrix_failed: boolean[];
+  fibre_failed: boolean[];
+  /** 1-based stacking position of the ply degraded in this step. */
+  layer_number: number;
+  reserve_factor: number;
+  failure_name: string;
+  failure_type: FailureType;
+}
+
+export interface LastPlyFailureResponse {
+  iterations: LastPlyFailureIterationDto[];
+  first_fibre_failure: LastPlyFailureEventDto | null;
+  first_matrix_failure: LastPlyFailureEventDto | null;
+  first_epsilon: LastPlyFailureEventDto | null;
+  exceedance_factor: LastPlyFailureEventDto | null;
+  fibre_before_matrix_failure: boolean;
+}

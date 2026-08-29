@@ -5,9 +5,10 @@
 // half: moving a project in and out as an `.elamx` file, so work can leave the
 // browser and be opened in eLamX on the desktop.
 import { atom } from "jotai";
-import type { BucklingInputDto } from "../lib/types";
+import type { BucklingInputDto, LastPlyFailureInputDto } from "../lib/types";
 import type { ProjectSnapshot } from "../lib/projectFile";
 import { bucklingInputFamily, bucklingStorageKey } from "./bucklingAtoms";
+import { lastPlyFailureInputFamily, lastPlyFailureStorageKey } from "./lastPlyFailureAtoms";
 import {
   forgetStoredLaminate,
   laminateConfigFamily,
@@ -28,13 +29,16 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
   const ids = get(laminateIdsAtom);
   const laminates: LaminateConfig[] = ids.map((id) => get(laminateConfigFamily(id)));
   const bucklings: Record<string, BucklingInputDto> = {};
+  const lastPlyFailures: Record<string, LastPlyFailureInputDto> = {};
   for (const id of ids) {
     bucklings[id] = get(bucklingInputFamily(id));
+    lastPlyFailures[id] = get(lastPlyFailureInputFamily(id));
   }
   return {
     materials: get(materialsAtom),
     laminates,
     bucklings,
+    lastPlyFailures,
     version: get(projectVersionAtom),
   };
 });
@@ -48,8 +52,10 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
   for (const id of get(laminateIdsAtom)) {
     laminateConfigFamily.remove(id);
     bucklingInputFamily.remove(id);
+    lastPlyFailureInputFamily.remove(id);
     forgetStoredLaminate(id);
-    forgetStoredBuckling(id);
+    forgetStored(bucklingStorageKey(id));
+    forgetStored(lastPlyFailureStorageKey(id));
   }
 
   set(materialsAtom, project.materials);
@@ -59,6 +65,8 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
     set(laminateConfigFamily(config.id), config);
     const buckling = project.bucklings[config.id];
     if (buckling) set(bucklingInputFamily(config.id), buckling);
+    const lastPlyFailure = project.lastPlyFailures[config.id];
+    if (lastPlyFailure) set(lastPlyFailureInputFamily(config.id), lastPlyFailure);
   }
   set(
     laminateIdsAtom,
@@ -66,9 +74,9 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
   );
 });
 
-function forgetStoredBuckling(id: string) {
+function forgetStored(key: string) {
   try {
-    localStorage.removeItem(bucklingStorageKey(id));
+    localStorage.removeItem(key);
   } catch {
     // Blocked site data: nothing stored, nothing to clean up.
   }

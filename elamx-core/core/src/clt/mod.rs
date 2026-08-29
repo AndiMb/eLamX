@@ -1,8 +1,5 @@
 //! ABD-matrix assembly and load/strain resolution.
 //! Reference: eLamX2/Classical_Laminated_Plate_Theory/src/de/elamx/clt/{CLT_Calculator,CLT_Laminate,CLT_Layer,CLT_LayerResult,Loads,Strains}.java
-//!
-//! `determineValuesLastPlyFailure` (iterative progressive-failure degradation)
-//! is deferred; see `clt::calculator` for details.
 
 // These solvers read and write several matrix indices per loop body, so
 // index-based loops stay closer to the underlying linear algebra than the
@@ -11,6 +8,7 @@
 
 pub mod calculator;
 pub mod laminate;
+pub mod last_ply_failure;
 pub mod layer;
 pub mod loads;
 pub mod strains;
@@ -20,6 +18,10 @@ pub use calculator::{
     hygro_thermal_forces, LayerResult, LayerResultError,
 };
 pub use laminate::{CltLaminate, LayerContribution, MassMoments, MissingMaterialError};
+pub use last_ply_failure::{
+    calculate as calculate_last_ply_failure, LastPlyFailureError, LastPlyFailureEvent,
+    LastPlyFailureInput, LastPlyFailureIteration, LastPlyFailureResult,
+};
 pub use layer::{CltLayer, LayerPosition};
 pub use loads::Loads;
 pub use strains::Strains;

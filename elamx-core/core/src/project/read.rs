@@ -8,8 +8,10 @@
 //! like a right one.
 
 use super::naming;
-use super::{NamedBuckling, NamedCalculation, Project, ProjectLaminate, RawModule};
-use crate::clt::{Loads, Strains};
+use super::{
+    NamedBuckling, NamedCalculation, NamedLastPlyFailure, Project, ProjectLaminate, RawModule,
+};
+use crate::clt::{LastPlyFailureInput, Loads, Strains};
 use crate::model::{Laminate, Layer, Material};
 use crate::plate::BucklingInput;
 use roxmltree::{Document, Node};
@@ -168,6 +170,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
 
     let mut calculations = Vec::new();
     let mut bucklings = Vec::new();
+    let mut last_ply_failures = Vec::new();
     let mut unsupported_modules = Vec::new();
 
     for element in node.children().filter(|n| n.is_element()) {
@@ -175,6 +178,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
             "layer" => laminate.layers.push(read_layer(element, materials, &ctx)?),
             "calculation" => calculations.push(read_calculation(element, &ctx)?),
             "buckling" => bucklings.push(read_buckling(element, &ctx)?),
+            "lastplyfailure" => last_ply_failures.push(read_last_ply_failure(element, &ctx)?),
             other => unsupported_modules.push(RawModule {
                 tag: other.to_string(),
                 xml: serialise(element),
@@ -186,6 +190,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
         laminate,
         calculations,
         bucklings,
+        last_ply_failures,
         unsupported_modules,
     })
 }
@@ -311,6 +316,34 @@ fn read_buckling(node: Node, parent: &str) -> Result<NamedBuckling> {
     };
 
     Ok(NamedBuckling { name, input })
+}
+
+fn read_last_ply_failure(node: Node, parent: &str) -> Result<NamedLastPlyFailure> {
+    let name = attr(node, "name").unwrap_or_default().to_string();
+    let ctx = format!("{parent}, Last-Ply-Failure-Analyse '{name}'");
+
+    let input = LastPlyFailureInput {
+        loads: Loads {
+            n_x: number(node, "n_x", &ctx)?,
+            n_y: number(node, "n_y", &ctx)?,
+            n_xy: number(node, "n_xy", &ctx)?,
+            m_x: number(node, "m_x", &ctx)?,
+            m_y: number(node, "m_y", &ctx)?,
+            m_xy: number(node, "m_xy", &ctx)?,
+            // No dT/dc: the format stores none, and the analysis could not use
+            // them (see clt::last_ply_failure).
+            ..Default::default()
+        },
+        degradation_factor: number(node, "degradationFactor", &ctx)?,
+        epsilon_crit: number(node, "epsilon_crit", &ctx)?,
+        j_a: number(node, "j_a", &ctx)?,
+        // The Java reader passes this through Boolean.parseBoolean, where
+        // anything but "true" means false - including a missing element.
+        degrade_all_on_fibre_failure: text(node, "degradeAllOnFibreFailure")
+            .is_some_and(|t| t.eq_ignore_ascii_case("true")),
+    };
+
+    Ok(NamedLastPlyFailure { name, input })
 }
 
 // ---------------------------------------------------------------------------

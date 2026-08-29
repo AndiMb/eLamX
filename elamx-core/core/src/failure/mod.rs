@@ -118,6 +118,44 @@ pub fn default_criterion_registry() -> CriterionRegistry {
     registry
 }
 
+/// The value the Java original starts every criterion parameter at, keyed by
+/// the same ids as [`Material::additional_values`].
+///
+/// In eLamX these live in each criterion module's `layer.xml`
+/// (`elamx/additionalMaterialValues`), and `Material`'s constructor seeds every
+/// freshly created material with them. This crate has no such registry - a
+/// missing value is an error, so that a criterion never silently evaluates
+/// against a parameter nobody chose (see [`additional_value`]). The defaults
+/// are still needed in one place: the last-ply-failure analysis rebuilds its
+/// plies on fresh materials and the original therefore evaluates them with
+/// exactly these values (see `clt::last_ply_failure`).
+///
+/// Reference: eLamX2/Laminate/src/de/elamx/laminate/layer.xml and
+/// eLamX2/AdditionalFailureCriteria/src/de/elamx/laminate/addFailureCriteria/layer.xml.
+pub const DEFAULT_ADDITIONAL_VALUES: &[(&str, f64)] = &[
+    (PSPD, 0.3),
+    (PSPZ, 0.35),
+    (A0, 0.5),
+    (LAMBDA_MIN, 0.5),
+    (F12_STAR, -0.5),
+    (ZTL_F12_STAR, -0.5),
+    (EPS_X, 0.003),
+    (EPS_Y, 0.003),
+    (GAMMA_XY, 0.006),
+    // A flag, not a strain: 0.3 is below the 0.5 threshold, i.e. "local".
+    (GLOBAL_LOCAL, 0.3),
+    (FMC_M, 3.1),
+    (FMC_MUE_SP, 0.15),
+];
+
+/// [`DEFAULT_ADDITIONAL_VALUES`] as the map a [`Material`] carries.
+pub fn default_additional_values() -> HashMap<String, f64> {
+    DEFAULT_ADDITIONAL_VALUES
+        .iter()
+        .map(|(key, value)| ((*key).to_string(), *value))
+        .collect()
+}
+
 /// A material is missing a value a criterion needs (e.g. Puck's `p_spd`), or
 /// the criterion's equations produced a mathematically undefined result for
 /// the given inputs (e.g. a negative value under a square root, which the
@@ -155,6 +193,40 @@ fn non_negative(value: f64, context: &str) -> Result<(), CriterionError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The point of the defaults is that a material carrying them can be
+    /// evaluated by any criterion. Asserting the numbers themselves would only
+    /// restate the table; asserting that no criterion reports a *missing*
+    /// parameter is what the last-ply-failure analysis actually relies on.
+    #[test]
+    fn a_material_with_only_the_defaults_satisfies_every_criterion() {
+        let mut material = Material::new("mat", "UD", 140000.0, 10000.0, 0.3, 5000.0, 1.6e-9);
+        material.r_par_ten = 2000.0;
+        material.r_par_com = 1200.0;
+        material.r_nor_ten = 50.0;
+        material.r_nor_com = 150.0;
+        material.r_shear = 70.0;
+        material.additional_values = default_additional_values();
+
+        let state = StressStrainState {
+            stress: [100.0, 20.0, 15.0],
+            strain: [7.0e-4, 1.5e-3, 3.0e-3],
+        };
+        let context = LayerContext {
+            angle_deg: 30.0,
+            embedded: true,
+        };
+
+        for (id, criterion) in default_criterion_registry() {
+            let result = criterion.reserve_factor(&material, Some(&context), &state);
+            if let Err(CriterionError(message)) = result {
+                assert!(
+                    !message.contains("missing the additional value"),
+                    "criterion '{id}': {message}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn default_registry_contains_all_ported_criteria() {

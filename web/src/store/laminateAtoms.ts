@@ -32,8 +32,11 @@ export interface CarryOver {
   calculationName?: string;
   /** Name of the buckling analysis its buckling input came from. */
   bucklingName?: string;
+  /** Name of the last-ply-failure analysis its input came from. */
+  lastPlyFailureName?: string;
   extraCalculations?: unknown[];
   extraBucklings?: unknown[];
+  extraLastPlyFailures?: unknown[];
   unsupportedModules?: unknown[];
 }
 

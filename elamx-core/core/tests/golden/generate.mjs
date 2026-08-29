@@ -105,6 +105,21 @@ const buckling = (name, o) => ({
   ...o,
 });
 
+// --- Last ply failure -------------------------------------------------------
+// The defaults here are LastPlyFailureInput's own field initialisers. Note
+// what is absent: the analysis is load-controlled only (its `useStrains` array
+// is all-false and never exposed) and has no dT/dc - the ply copies it builds
+// carry no expansion coefficients, so a hygrothermal load could not act
+// anyway. See core/src/clt/last_ply_failure.rs for that and two more
+// faithfully reproduced quirks.
+const lastPlyFailure = (name, o) => ({
+  name,
+  n_x: 0, n_y: 0, n_xy: 0, m_x: 0, m_y: 0, m_xy: 0,
+  degradationFactor: 0.000001, epsilon_crit: 0.003, j_a: 1.0,
+  degradeAllOnFibreFailure: true,
+  ...o,
+});
+
 // --- Helpers for the case definitions ---------------------------------------
 const layer = (angle, thickness, materialId, criterionId) =>
   ({ angle, thickness, materialId, criterionId });
@@ -148,6 +163,13 @@ const CASES = [
       buckling("GM-Beul-DTilde", { length: 450, width: 450, d_matrix: "d_tilde" }),
       buckling("GM-Beul-UnsymStandard", { length: 450, width: 450, d_matrix: "standard" }),
     ],
+    // One degradation path over all 15 criteria: each iteration's failure
+    // type and name comes from whichever criterion governs that ply, so this
+    // checks that every criterion feeds the loop the same verdict on both
+    // sides - not just the same reserve factor.
+    lastPlyFailures: [
+      lastPlyFailure("GM-LPF-Krit", { n_x: 400 }),
+    ],
   },
   {
     // Symmetric stack with a shared middle layer: exercises the mirroring and
@@ -164,6 +186,16 @@ const CASES = [
     calculations: [
       { name: "GM-Sym-Zug",    loads: loads({ n_x: 500, n_y: 100 }) },
       { name: "GM-Sym-Thermo", loads: loads({ delta_t: -120, delta_h: 0.6 }) },
+    ],
+    // Two loads on the same stack: the first is carried (so the strain-based
+    // RF_epsilon exists), the second is far beyond the laminate's strength, so
+    // no iteration ever reaches a reserve factor of 1 and eLamX prints "-".
+    // The first also carries jA != 1, and it has to be a case that reaches an
+    // inter-fibre failure - jA scales nothing else, so on a case without one
+    // (GM-LPF-Offset, say) it would go untested.
+    lastPlyFailures: [
+      lastPlyFailure("GM-LPF-Sym", { n_x: 300, n_xy: 60, j_a: 0.75 }),
+      lastPlyFailure("GM-LPF-SymUeberlast", { n_x: 4000, epsilon_crit: 0.005 }),
     ],
     bucklings: [
       buckling("GM-Beul-SS-Druck", {}),
@@ -185,6 +217,12 @@ const CASES = [
     calculations: [
       { name: "GM-Offset-Zug", loads: loads({ n_x: 300, m_x: 15 }) },
     ],
+    // The laminate carries offset = 0.35, which the analysis drops (it rebuilds
+    // the stack on a fresh, offset-free laminate). A bending load makes that
+    // visible: with the offset it would give different ply stresses.
+    lastPlyFailures: [
+      lastPlyFailure("GM-LPF-Offset", { n_x: 250, m_x: 12, j_a: 0.8 }),
+    ],
     bucklings: [
       buckling("GM-Beul-CF-SC", { length: 800, width: 400, bc_x: "CF", bc_y: "SC", m: 6, n: 9 }),
     ],
@@ -202,6 +240,13 @@ const CASES = [
     ],
     calculations: [
       { name: "GM-Invert-Biegung", loads: loads({ m_x: 30, m_xy: 12 }) },
+    ],
+    // invert_z, so the reported "layer of failure" numbers follow the reversed
+    // stack; degradeAllOnFibreFailure = false leaves a broken ply its matrix
+    // stiffness, which changes the path from the iteration of the first fibre
+    // failure onwards.
+    lastPlyFailures: [
+      lastPlyFailure("GM-LPF-Invert", { m_x: 30, m_xy: 12, degradeAllOnFibreFailure: false }),
     ],
     bucklings: [
       buckling("GM-Beul-FF-CC", { length: 700, width: 350, bc_x: "FF", bc_y: "CC", m: 7, n: 7, d_matrix: "d_tilde" }),
@@ -221,6 +266,12 @@ const CASES = [
     calculations: [
       { name: "GM-Hygro-Rein",     loads: loads({ delta_t: -150, delta_h: 1.2 }) },
       { name: "GM-Hygro-Mechanisch", loads: loads({ n_x: 150, delta_t: -150, delta_h: 1.2 }) },
+    ],
+    // Pure shear, and a degradation factor three orders of magnitude milder
+    // than the default: a degraded ply keeps 1% of its stiffness instead of
+    // 0.0001%, which changes how the load redistributes after every step.
+    lastPlyFailures: [
+      lastPlyFailure("GM-LPF-Schub", { n_xy: 200, degradationFactor: 0.01 }),
     ],
     bucklings: [
       buckling("GM-Beul-SF-SS", { length: 600, width: 300, bc_x: "SF", n_xy: -0.4, d_matrix: "d_tilde" }),
@@ -326,6 +377,19 @@ function elamxXml() {
       out.push(`                <dmatrixservice>${D_MATRIX[b.d_matrix].java}</dmatrixservice>`);
       out.push("            </buckling>");
     });
+    (c.lastPlyFailures ?? []).forEach((l) => {
+      out.push(`            <lastplyfailure name="${esc(l.name)}">`);
+      for (const k of ["n_x", "n_y", "n_xy", "m_x", "m_y", "m_xy"]) {
+        out.push(`                <${k}>${num(l[k])}</${k}>`);
+      }
+      out.push(`                <degradationFactor>${num(l.degradationFactor)}</degradationFactor>`);
+      out.push(
+        `                <degradeAllOnFibreFailure>${l.degradeAllOnFibreFailure}</degradeAllOnFibreFailure>`,
+      );
+      out.push(`                <epsilon_crit>${num(l.epsilon_crit)}</epsilon_crit>`);
+      out.push(`                <j_a>${num(l.j_a)}</j_a>`);
+      out.push("            </lastplyfailure>");
+    });
     out.push("        </laminate>");
   });
   out.push("    </laminates>");
@@ -393,7 +457,7 @@ function inputJson() {
     criterion_display_names: storedCriterionDisplayNames(c),
     calculations: c.calculations.map((calc) => ({
       name: calc.name,
-      loads: { ...calc.loads, nt_x: 0, nt_y: 0, nt_xy: 0, mt_x: 0, mt_y: 0, mt_xy: 0 },
+      loads: loadsJson(calc.loads),
       strains: calc.strains ?? strains(),
       use_strain: calc.useStrain ?? NO_STRAIN,
     })),
@@ -404,10 +468,26 @@ function inputJson() {
       // catch eLamX's silent fallback to the standard D matrix.
       d_matrix_label: D_MATRIX[d_matrix].label,
     })),
+    last_ply_failures: (c.lastPlyFailures ?? []).map((l) => ({
+      name: l.name,
+      input: {
+        loads: loadsJson(loads({
+          n_x: l.n_x, n_y: l.n_y, n_xy: l.n_xy, m_x: l.m_x, m_y: l.m_y, m_xy: l.m_xy,
+        })),
+        degradation_factor: l.degradationFactor,
+        epsilon_crit: l.epsilon_crit,
+        j_a: l.j_a,
+        degrade_all_on_fibre_failure: l.degradeAllOnFibreFailure,
+      },
+    })),
   }));
 
   return JSON.stringify({ materials, laminates }, null, 2) + "\n";
 }
+
+// elamx-core's Loads carries the resulting hygrothermal force vector in the
+// same struct as the applied load, and its Deserialize wants every field.
+const loadsJson = (l) => ({ ...l, nt_x: 0, nt_y: 0, nt_xy: 0, mt_x: 0, mt_y: 0, mt_xy: 0 });
 
 // Mirrors Laminate::layers_in_stacking_order (Java: Laminat.getLayers()): the
 // STORED layers only - for a symmetric stack the batch output lists just the
@@ -424,9 +504,10 @@ writeFileSync(join(HERE, "reference.input.json"), inputJson());
 const layerCount = CASES.reduce((n, c) => n + c.layers.length, 0);
 const calcCount = CASES.reduce((n, c) => n + c.calculations.length, 0);
 const buckCount = CASES.reduce((n, c) => n + (c.bucklings ?? []).length, 0);
+const lpfCount = CASES.reduce((n, c) => n + (c.lastPlyFailures ?? []).length, 0);
 console.log(
   `reference.elamx + reference.input.json geschrieben: ` +
     `${CASES.length} Laminate, ${layerCount} gespeicherte Lagen, ${calcCount} Berechnungen, ` +
-    `${buckCount} Beulanalysen, ` +
+    `${buckCount} Beulanalysen, ${lpfCount} Last-Ply-Failure-Analysen, ` +
     `${ALL_CRITERIA.length} Kriterien abgedeckt.`,
 );

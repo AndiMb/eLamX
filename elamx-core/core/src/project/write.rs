@@ -6,7 +6,9 @@
 //! the same file saved there - not a reformatting of the whole document.
 
 use super::naming;
-use super::{NamedBuckling, NamedCalculation, Project, ProjectLaminate};
+use super::{
+    NamedBuckling, NamedCalculation, NamedLastPlyFailure, Project, ProjectLaminate,
+};
 use crate::model::{Laminate, Material};
 
 /// Serialises a project to `.elamx` XML.
@@ -70,6 +72,9 @@ fn write_laminate(entry: &ProjectLaminate, out: &mut String) {
     for buckling in &entry.bucklings {
         write_buckling(buckling, out);
     }
+    for analysis in &entry.last_ply_failures {
+        write_last_ply_failure(analysis, out);
+    }
     for raw in &entry.unsupported_modules {
         out.push_str("            ");
         out.push_str(&raw.xml);
@@ -131,6 +136,34 @@ fn write_buckling(buckling: &NamedBuckling, out: &mut String) {
     tag(out, 16, "n", &b.n.to_string());
     tag(out, 16, "dmatrixservice", naming::d_matrix_to_java(b.d_matrix));
     out.push_str("            </buckling>\n");
+}
+
+fn write_last_ply_failure(analysis: &NamedLastPlyFailure, out: &mut String) {
+    let input = &analysis.input;
+    out.push_str(&format!(
+        "            <lastplyfailure name=\"{}\">\n",
+        escape(&analysis.name)
+    ));
+    for (name, value) in [
+        ("n_x", input.loads.n_x),
+        ("n_y", input.loads.n_y),
+        ("n_xy", input.loads.n_xy),
+        ("m_x", input.loads.m_x),
+        ("m_y", input.loads.m_y),
+        ("m_xy", input.loads.m_xy),
+    ] {
+        tag(out, 16, name, &num(value));
+    }
+    tag(out, 16, "degradationFactor", &num(input.degradation_factor));
+    tag(
+        out,
+        16,
+        "degradeAllOnFibreFailure",
+        &input.degrade_all_on_fibre_failure.to_string(),
+    );
+    tag(out, 16, "epsilon_crit", &num(input.epsilon_crit));
+    tag(out, 16, "j_a", &num(input.j_a));
+    out.push_str("            </lastplyfailure>\n");
 }
 
 fn write_material(material: &Material, out: &mut String) {

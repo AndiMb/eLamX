@@ -1,9 +1,9 @@
 //! Static CLT solver operations.
 //! Reference: eLamX2/Classical_Laminated_Plate_Theory/src/de/elamx/clt/{CLT_Calculator,CLT_LayerResult}.java
 //!
-//! `determineValuesLastPlyFailure` from the Java original (iterative
-//! progressive-failure degradation) is not ported yet; it builds on
-//! `get_layer_results` below and can be added the same way once needed.
+//! `determineValuesLastPlyFailure` from the Java original lives in its own
+//! module, `clt::last_ply_failure`, since it is a loop around the two
+//! functions here rather than another operation beside them.
 
 use super::laminate::CltLaminate;
 use super::loads::Loads;

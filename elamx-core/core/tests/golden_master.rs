@@ -20,8 +20,11 @@
 //! the batch writer's own `printf` format strings rather than picked by feel -
 //! see `Tolerances` below.
 
-use elamx_core::clt::{determine_values, get_layer_results, CltLaminate, Loads, Strains};
-use elamx_core::failure::default_criterion_registry;
+use elamx_core::clt::{
+    calculate_last_ply_failure, determine_values, get_layer_results, CltLaminate,
+    LastPlyFailureInput, Loads, Strains,
+};
+use elamx_core::failure::{default_criterion_registry, FailureType};
 use elamx_core::model::{Laminate, Material};
 use elamx_core::plate::{calculate_buckling, BoundaryCondition, BucklingInput, DMatrixKind};
 use serde::Deserialize;
@@ -47,6 +50,7 @@ struct GoldenLaminate {
     criterion_display_names: Vec<String>,
     calculations: Vec<GoldenCalculation>,
     bucklings: Vec<GoldenBuckling>,
+    last_ply_failures: Vec<GoldenLastPlyFailure>,
 }
 
 #[derive(Deserialize)]
@@ -58,6 +62,12 @@ struct GoldenBuckling {
     /// unrecognised `dmatrixservice` class name silently falls back to the
     /// standard D matrix (see plateui/buckling/LoadSaveLaminateHookImpl).
     d_matrix_label: String,
+}
+
+#[derive(Deserialize)]
+struct GoldenLastPlyFailure {
+    name: String,
+    input: LastPlyFailureInput,
 }
 
 #[derive(Deserialize)]
@@ -121,6 +131,43 @@ struct ExpectedBuckling {
     n: usize,
     n_crit: [f64; 3],
     eigenvalues: Vec<f64>,
+}
+
+/// One last-ply-failure analysis as the batch output reports it.
+#[derive(Debug, Default)]
+struct ExpectedLastPlyFailure {
+    name: String,
+    /// The load eLamX read from our file, echoed back: nxx..mxy.
+    loads: [f64; 6],
+    j_a: f64,
+    degradation_factor: f64,
+    epsilon_crit: f64,
+    degrade_all_on_fibre_failure: bool,
+    /// Reserve factor and the iteration it belongs to; `None` where the batch
+    /// output prints `-`, i.e. the event never occurred.
+    rf_epsilon: Option<(f64, usize)>,
+    rf_ff: Option<(f64, usize)>,
+    rf_iff: Option<(f64, usize)>,
+    ef_lpf: Option<(f64, usize)>,
+    ff_before_iff: bool,
+    iterations: Vec<ExpectedLpfIteration>,
+}
+
+#[derive(Debug, Default)]
+struct ExpectedLpfIteration {
+    layer_of_failure: usize,
+    reserve_factor: f64,
+    /// ReserveFactor's own integer code: 1 = FF, 2 = IFF, 4 = GMF.
+    failure_type: i32,
+    failure_type_short: String,
+    layers: Vec<ExpectedLpfLayer>,
+}
+
+#[derive(Debug, Default, Clone)]
+struct ExpectedLpfLayer {
+    layer: ExpectedLayer,
+    fibre_failed: bool,
+    matrix_failed: bool,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -241,6 +288,7 @@ fn is_section_banner(line: &str) -> bool {
     line.contains("LAMINATE INFORMATION")
         || line.contains("CLASSICAL LAMINATED PLATE THEORY")
         || line.contains("BUCKLING")
+        || line.contains("LAST PLY FAILURE")
 }
 
 /// Banner titles are centred by padding with `*` (see `Utilities.centeredText`).
@@ -274,13 +322,19 @@ fn parse_matrix(lines: &[&str], start: usize) -> Vec<f64> {
     values
 }
 
-type Parsed = (Vec<ExpectedLaminate>, Vec<ExpectedCalculation>, Vec<ExpectedBuckling>);
+type Parsed = (
+    Vec<ExpectedLaminate>,
+    Vec<ExpectedCalculation>,
+    Vec<ExpectedBuckling>,
+    Vec<ExpectedLastPlyFailure>,
+);
 
 fn parse_reference(text: &str) -> Parsed {
     let lines: Vec<&str> = text.lines().collect();
     let mut laminates: Vec<ExpectedLaminate> = Vec::new();
     let mut calculations: Vec<ExpectedCalculation> = Vec::new();
     let mut bucklings: Vec<ExpectedBuckling> = Vec::new();
+    let mut last_ply_failures: Vec<ExpectedLastPlyFailure> = Vec::new();
     // The laminate a section belongs to: sections follow their laminate's
     // header, and BUCKLING names it explicitly anyway.
     let mut i = 0;
@@ -455,17 +509,130 @@ fn parse_reference(text: &str) -> Parsed {
             continue;
         }
 
+        if line.contains("LAST PLY FAILURE") {
+            let mut lpf = ExpectedLastPlyFailure {
+                name: banner_text(lines[i + 1]).to_string(),
+                ..Default::default()
+            };
+            i += 2;
+            while i < lines.len() && !is_section_banner(lines[i]) {
+                let l = lines[i];
+                let t = l.trim_start();
+                const MECH: [&str; 6] = ["nxx  =", "nyy  =", "nxy  =", "mxx  =", "myy  =", "mxy  ="];
+
+                if let Some(k) = MECH.iter().position(|p| t.starts_with(p)) {
+                    lpf.loads[k] = value_after_eq(l);
+                } else if t.starts_with("jA") {
+                    lpf.j_a = value_after_eq(l);
+                } else if t.starts_with("degFac") {
+                    lpf.degradation_factor = value_after_eq(l);
+                } else if t.starts_with("epsAllow") {
+                    lpf.epsilon_crit = value_after_eq(l);
+                } else if t.starts_with("degAllOnFibreFailure") {
+                    lpf.degrade_all_on_fibre_failure = flag_after_eq(l);
+                } else if t.starts_with("FLAG_FF_before_IFF") {
+                    lpf.ff_before_iff = flag_after_eq(l);
+                // The value and its iteration are printed on consecutive
+                // lines, and both are "-" when the event never happened - so
+                // they are read as one pair rather than two fields.
+                } else if t.starts_with("RF_epsilon ") {
+                    lpf.rf_epsilon = event_after_eq(l, lines[i + 1]);
+                    i += 1;
+                } else if t.starts_with("RF_FF ") {
+                    lpf.rf_ff = event_after_eq(l, lines[i + 1]);
+                    i += 1;
+                } else if t.starts_with("RF_IFF ") {
+                    lpf.rf_iff = event_after_eq(l, lines[i + 1]);
+                    i += 1;
+                } else if t.starts_with("EF_LPF ") {
+                    lpf.ef_lpf = event_after_eq(l, lines[i + 1]);
+                    i += 1;
+                } else if l.starts_with('*') && l.contains("Iteration ") {
+                    lpf.iterations.push(ExpectedLpfIteration::default());
+                } else if t.starts_with("Layer of Failure:") {
+                    current_iteration(&mut lpf).layer_of_failure =
+                        parse_f64(after_colon(l)) as usize;
+                } else if t.starts_with("RF Iteration:") {
+                    current_iteration(&mut lpf).reserve_factor = parse_f64(after_colon(l));
+                } else if t.starts_with("Failure Type Short:") {
+                    current_iteration(&mut lpf).failure_type_short = after_colon(l).trim().to_string();
+                } else if t.starts_with("Failure Type:") {
+                    current_iteration(&mut lpf).failure_type = parse_f64(after_colon(l)) as i32;
+                } else if t.starts_with("upper") || t.contains(" upper ") {
+                    // Same two-line layout as the CLT section, with the ply's
+                    // FF/IFF degradation flags appended to each line.
+                    let tokens: Vec<&str> = l.split_whitespace().collect();
+                    let at = tokens.iter().position(|x| *x == "upper").expect("kein 'upper'");
+                    let mut layer = ExpectedLayer {
+                        zm: parse_f64(tokens[at - 1]),
+                        ..Default::default()
+                    };
+                    for (k, tok) in tokens[at + 1..at + 8].iter().enumerate() {
+                        layer.upper[k] = parse_f64(tok);
+                    }
+                    let lower: Vec<&str> = lines[i + 1].split_whitespace().collect();
+                    assert_eq!(lower[0], "lower", "auf 'upper' folgt keine 'lower'-Zeile");
+                    for (k, tok) in lower[1..8].iter().enumerate() {
+                        layer.lower[k] = parse_f64(tok);
+                    }
+                    current_iteration(&mut lpf).layers.push(ExpectedLpfLayer {
+                        layer,
+                        fibre_failed: tokens[at + 8] == "true",
+                        matrix_failed: tokens[at + 9] == "true",
+                    });
+                    i += 1;
+                }
+                i += 1;
+            }
+            last_ply_failures.push(lpf);
+            continue;
+        }
+
         i += 1;
     }
 
-    (laminates, calculations, bucklings)
+    (laminates, calculations, bucklings, last_ply_failures)
+}
+
+fn after_colon(line: &str) -> &str {
+    line.split_once(':').unwrap_or_else(|| panic!("kein ':' in {line:?}")).1
+}
+
+fn flag_after_eq(line: &str) -> bool {
+    line.split('=')
+        .nth(1)
+        .unwrap_or_else(|| panic!("kein '=' in {line:?}"))
+        .trim()
+        == "true"
+}
+
+/// The `RF_x = <value>` / `RF_x at iteration = <index>` pair, or `None` when
+/// both print as `-`.
+fn event_after_eq(value_line: &str, iteration_line: &str) -> Option<(f64, usize)> {
+    let value = try_parse_f64(value_line.split('=').nth(1)?)?;
+    let iteration = try_parse_f64(iteration_line.split('=').nth(1)?)? as usize;
+    Some((value, iteration))
+}
+
+fn current_iteration(lpf: &mut ExpectedLastPlyFailure) -> &mut ExpectedLpfIteration {
+    lpf.iterations
+        .last_mut()
+        .expect("Iterationsdaten vor dem ersten 'Iteration'-Banner")
 }
 
 // ---------------------------------------------------------------------------
 // The tests
 // ---------------------------------------------------------------------------
 
-fn load() -> (GoldenInput, Vec<ExpectedLaminate>, Vec<ExpectedCalculation>, Vec<ExpectedBuckling>) {
+type Loaded = (
+    GoldenInput,
+    Vec<ExpectedLaminate>,
+    Vec<ExpectedCalculation>,
+    Vec<ExpectedBuckling>,
+    Vec<ExpectedLastPlyFailure>,
+);
+
+fn load() -> Loaded {
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/golden");
     let input: GoldenInput = serde_json::from_str(
         &std::fs::read_to_string(format!("{dir}/reference.input.json"))
@@ -474,8 +641,8 @@ fn load() -> (GoldenInput, Vec<ExpectedLaminate>, Vec<ExpectedCalculation>, Vec<
     .expect("reference.input.json ist kein gültiges JSON");
     let text = std::fs::read_to_string(format!("{dir}/reference.txt"))
         .expect("reference.txt fehlt - siehe tests/golden/README.md");
-    let (laminates, calculations, bucklings) = parse_reference(&text);
-    (input, laminates, calculations, bucklings)
+    let (laminates, calculations, bucklings, last_ply_failures) = parse_reference(&text);
+    (input, laminates, calculations, bucklings, last_ply_failures)
 }
 
 fn expected_laminate<'a>(all: &'a [ExpectedLaminate], name: &str) -> &'a ExpectedLaminate {
@@ -496,11 +663,20 @@ fn expected_buckling<'a>(all: &'a [ExpectedBuckling], name: &str) -> &'a Expecte
         .unwrap_or_else(|| panic!("Beulanalyse '{name}' nicht in reference.txt"))
 }
 
+fn expected_last_ply_failure<'a>(
+    all: &'a [ExpectedLastPlyFailure],
+    name: &str,
+) -> &'a ExpectedLastPlyFailure {
+    all.iter()
+        .find(|l| l.name == name)
+        .unwrap_or_else(|| panic!("Last-Ply-Failure-Analyse '{name}' nicht in reference.txt"))
+}
+
 /// The stacking sequence, symmetry expansion, offset handling and every
 /// laminate-level stiffness quantity the batch mode reports.
 #[test]
 fn laminate_stiffness_matches_elamx() {
-    let (input, expected_all, _, _) = load();
+    let (input, expected_all, _, _, _) = load();
     let mut report = Report::default();
 
     for case in &input.laminates {
@@ -597,7 +773,7 @@ fn laminate_stiffness_matches_elamx() {
 /// hygrothermal force/moment contribution feeding back into the solution.
 #[test]
 fn solved_loads_and_strains_match_elamx() {
-    let (input, _, expected_all, _) = load();
+    let (input, _, expected_all, _, _) = load();
     let mut report = Report::default();
 
     for case in &input.laminates {
@@ -652,7 +828,7 @@ fn solved_loads_and_strains_match_elamx() {
 /// factor each of the 15 ported failure criteria produces for them.
 #[test]
 fn layer_results_and_reserve_factors_match_elamx() {
-    let (input, _, expected_all, _) = load();
+    let (input, _, expected_all, _, _) = load();
     let criteria = default_criterion_registry();
     let mut report = Report::default();
 
@@ -741,7 +917,7 @@ fn check_reserve_factor(report: &mut Report, what: &str, actual: f64, expected: 
 /// the full eigenvalue spectrum of the Ritz problem.
 #[test]
 fn buckling_matches_elamx() {
-    let (input, _, _, expected_all) = load();
+    let (input, _, _, expected_all, _) = load();
     let mut report = Report::default();
 
     for case in &input.laminates {
@@ -805,6 +981,196 @@ fn buckling_matches_elamx() {
     report.finish("Plattenbeulen");
 }
 
+/// Last ply failure: the whole degradation path - which ply fails when, under
+/// which criterion verdict, and what the laminate looks like after every step.
+#[test]
+fn last_ply_failure_matches_elamx() {
+    let (input, _, _, _, expected_all) = load();
+    let criteria = default_criterion_registry();
+    let mut report = Report::default();
+
+    for case in &input.laminates {
+        for analysis in &case.last_ply_failures {
+            let expected = expected_last_ply_failure(&expected_all, &analysis.name);
+            let label = &analysis.name;
+            let inp = &analysis.input;
+
+            // eLamX read our file as intended. Worth checking explicitly: these
+            // parameters are what distinguish the cases from one another, so a
+            // misread one would silently compare two runs of the same analysis.
+            report.close_group(
+                &format!("{label}/Last"),
+                &inp.loads.force_moment_vector(),
+                &expected.loads,
+                tolerances::ELEVEN_DIGITS,
+            );
+            report.close(format!("{label}/jA"), inp.j_a, expected.j_a, 0.0, tolerances::ELEVEN_DIGITS);
+            report.close(
+                format!("{label}/degFac"),
+                inp.degradation_factor,
+                expected.degradation_factor,
+                0.0,
+                tolerances::ELEVEN_DIGITS,
+            );
+            report.close(
+                format!("{label}/epsAllow"),
+                inp.epsilon_crit,
+                expected.epsilon_crit,
+                0.0,
+                tolerances::ELEVEN_DIGITS,
+            );
+            report.eq(
+                format!("{label}/degAllOnFibreFailure"),
+                inp.degrade_all_on_fibre_failure,
+                expected.degrade_all_on_fibre_failure,
+            );
+
+            let result = calculate_last_ply_failure(&case.laminate, &input.materials, &criteria, inp)
+                .unwrap_or_else(|e| panic!("{label}: calculate_last_ply_failure schlug fehl: {e}"));
+
+            for (what, actual, expected_event) in [
+                ("RF_epsilon", result.first_epsilon, expected.rf_epsilon),
+                ("RF_FF", result.first_fibre_failure, expected.rf_ff),
+                ("RF_IFF", result.first_matrix_failure, expected.rf_iff),
+                ("EF_LPF", result.exceedance_factor, expected.ef_lpf),
+            ] {
+                // "Never happened" is itself a result - eLamX prints `-` for
+                // it, and a port that produced a number here would be wrong in
+                // a way no tolerance could catch.
+                report.eq(
+                    format!("{label}/{what} vorhanden"),
+                    actual.is_some(),
+                    expected_event.is_some(),
+                );
+                if let (Some(actual), Some((value, iteration))) = (actual, expected_event) {
+                    report.close(
+                        format!("{label}/{what}"),
+                        actual.reserve_factor,
+                        value,
+                        0.0,
+                        tolerances::ELEVEN_DIGITS,
+                    );
+                    report.eq(format!("{label}/{what} Iteration"), actual.iteration, iteration);
+                }
+            }
+
+            report.eq(
+                format!("{label}/FLAG_FF_before_IFF"),
+                result.fibre_before_matrix_failure,
+                expected.ff_before_iff,
+            );
+
+            // The writer stops one short of the last recorded iteration
+            // (`maxIterationNumber = layerResults.length - 1`), so the printed
+            // count pins down the recorded one exactly.
+            report.eq(
+                format!("{label}/Iterationen"),
+                expected.iterations.len(),
+                result.iterations.len().saturating_sub(1),
+            );
+
+            for (index, (actual, expected_iteration)) in
+                result.iterations.iter().zip(&expected.iterations).enumerate()
+            {
+                let it = format!("{label}/Iter{index}");
+                report.eq(
+                    format!("{it}/versagende Lage"),
+                    actual.layer_number,
+                    expected_iteration.layer_of_failure,
+                );
+                report.close(
+                    format!("{it}/RF"),
+                    actual.reserve_factor,
+                    expected_iteration.reserve_factor,
+                    0.0,
+                    tolerances::SIX_DIGITS,
+                );
+                report.eq(
+                    format!("{it}/Versagensart"),
+                    failure_type_code(actual.failure_type),
+                    expected_iteration.failure_type,
+                );
+                report.eq(
+                    format!("{it}/Versagensart kurz"),
+                    failure_type_short(actual.failure_type),
+                    expected_iteration.failure_type_short.as_str(),
+                );
+                report.eq(
+                    format!("{it}/Lagenzahl"),
+                    actual.layer_results.len(),
+                    expected_iteration.layers.len(),
+                );
+
+                for (i, (ply_result, expected_ply)) in actual
+                    .layer_results
+                    .iter()
+                    .zip(&expected_iteration.layers)
+                    .enumerate()
+                {
+                    let ply = format!("{it}/Lage{}", i + 1);
+                    for (position, state, rf, expected_row) in [
+                        ("oben", &ply_result.sss_upper, &ply_result.rr_upper, &expected_ply.layer.upper),
+                        ("unten", &ply_result.sss_lower, &ply_result.rr_lower, &expected_ply.layer.lower),
+                    ] {
+                        let values = [
+                            state.stress[0], state.stress[1], state.stress[2],
+                            state.strain[0], state.strain[1], state.strain[2],
+                        ];
+                        report.close_group(
+                            &format!("{ply}/{position}"),
+                            &values,
+                            &expected_row[..6],
+                            tolerances::SIX_DIGITS,
+                        );
+                        check_reserve_factor(
+                            &mut report,
+                            &format!("{ply}/RF {position}"),
+                            rf.minimal_reserve_factor,
+                            expected_row[6],
+                        );
+                    }
+
+                    // The degradation state after this step: which plies have
+                    // lost their fibres, and which their matrix.
+                    report.eq(
+                        format!("{ply}/FF-Flag"),
+                        actual.fibre_failed[i],
+                        expected_ply.fibre_failed,
+                    );
+                    report.eq(
+                        format!("{ply}/IFF-Flag"),
+                        actual.matrix_failed[i],
+                        expected_ply.matrix_failed,
+                    );
+                }
+            }
+        }
+    }
+
+    report.finish("Last Ply Failure");
+}
+
+/// `ReserveFactor`'s integer codes and short names, as the batch output prints
+/// them (see ReserveFactor.java and FailureTypeShortNameHandler).
+fn failure_type_code(t: FailureType) -> i32 {
+    match t {
+        FailureType::Undamaged => 0,
+        FailureType::FiberFailure => 1,
+        FailureType::MatrixFailure => 2,
+        FailureType::GeneralMaterialFailure => 4,
+    }
+}
+
+fn failure_type_short(t: FailureType) -> &'static str {
+    match t {
+        FailureType::FiberFailure => "FF",
+        FailureType::MatrixFailure => "IFF",
+        FailureType::GeneralMaterialFailure => "GMF",
+        // The handler has no entry for it, so Java prints the map's null.
+        FailureType::Undamaged => "null",
+    }
+}
+
 /// `BoundaryCondition`'s Debug name (`SimplySimply`) versus the two-letter form
 /// the batch output prints (`SS`). Derived from the serde rename rather than
 /// hand-written, so the two cannot drift apart.
@@ -828,7 +1194,7 @@ fn bc_short(debug_name: &str) -> String {
 /// criterion at least once, and all the structural variants.
 #[test]
 fn reference_data_covers_every_ported_criterion() {
-    let (input, _, _, _) = load();
+    let (input, _, _, _, _) = load();
 
     let used: std::collections::BTreeSet<&str> = input
         .laminates
@@ -895,5 +1261,39 @@ fn reference_data_covers_every_ported_criterion() {
     assert!(
         bucklings.iter().any(|b| b.input.length != b.input.width),
         "keine Beulanalyse an einer nicht-quadratischen Platte"
+    );
+
+    // Last ply failure: each input parameter has to appear with a value that
+    // actually changes something, and jA only does so on a case that reaches
+    // an inter-fibre failure at all.
+    let lpf: Vec<&GoldenLastPlyFailure> =
+        input.laminates.iter().flat_map(|c| &c.last_ply_failures).collect();
+    assert!(!lpf.is_empty(), "keine Last-Ply-Failure-Analyse in den Referenzdaten");
+    assert!(
+        lpf.iter().any(|l| !l.input.degrade_all_on_fibre_failure),
+        "keine Last-Ply-Failure-Analyse mit degradeAllOnFibreFailure = false"
+    );
+    assert!(
+        lpf.iter().any(|l| l.input.degradation_factor != LastPlyFailureInput::default().degradation_factor),
+        "keine Last-Ply-Failure-Analyse mit abweichendem Degradationsfaktor"
+    );
+    assert!(
+        lpf.iter().any(|l| l.input.epsilon_crit != LastPlyFailureInput::default().epsilon_crit),
+        "keine Last-Ply-Failure-Analyse mit abweichender Grenzdehnung"
+    );
+    let (_, _, _, _, expected_lpf) = load();
+    assert!(
+        lpf.iter().any(|l| {
+            l.input.j_a != 1.0 && expected_last_ply_failure(&expected_lpf, &l.name).rf_iff.is_some()
+        }),
+        "keine Last-Ply-Failure-Analyse mit jA != 1, die einen Zfb erreicht - jA skaliert sonst nichts"
+    );
+    assert!(
+        expected_lpf.iter().any(|l| l.rf_epsilon.is_none()),
+        "keine Last-Ply-Failure-Analyse, in der die Dehnungsgrenze nie ausgewertet wird"
+    );
+    assert!(
+        expected_lpf.iter().any(|l| l.iterations.len() > 1),
+        "keine Last-Ply-Failure-Analyse mit mehreren Iterationen"
     );
 }
