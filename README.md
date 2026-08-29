@@ -69,6 +69,17 @@ cd elamx-core
 cargo test
 ```
 
+This includes the golden-master suite in `core/tests/golden/`, which compares
+the port against numbers the original Java eLamX 3.x produced. Those numbers are
+checked in, so the suite needs no Java installation - see
+`core/tests/golden/README.md` for how to regenerate them when the cases change.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs the Rust suite, the `wasm-pack` build and the
+frontend's lint and typecheck/build on every push to `main` and on every pull
+request - the same four commands documented above.
+
 ## License
 
 GPL-3.0-only, matching the original eLamX project.

@@ -1,0 +1,102 @@
+# The claim this port has to earn is "it computes the same thing as the Java
+# original" - and the golden-master suite in elamx-core/core/tests/ is what
+# earns it. That suite compares against numbers checked into the repo
+# (reference.txt, produced by eLamX 3.x), so it needs no Java installation and
+# runs here exactly as it runs locally. It is the reason this workflow exists;
+# the rest is the ordinary "does it still build" scaffolding around it.
+#
+# Deliberately absent: `cargo fmt --check` and `cargo clippy -D warnings`.
+# Neither passes today, and for reasons that are not simply neglect - the
+# transcribed constants in plate/boundary_tables.rs trip clippy::approx_constant
+# by design (they are the Java tables' literals, kept literal so they can be
+# diffed against the source), and rustfmt would reflow those same hand-aligned
+# tables. Both can be added once that has been decided deliberately, rather
+# than being forced by a red build.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch makes the older run's answer irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  core:
+    name: Rust core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Cargo.lock is not committed (see elamx-core/.gitignore), so the cache
+      # key follows the manifests instead. A dependency bump therefore starts
+      # from a cold cache rather than from a stale one.
+      - name: Cache cargo registry and build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            elamx-core/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('elamx-core/**/Cargo.toml') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      - name: cargo test
+        working-directory: elamx-core
+        run: cargo test --workspace
+
+  web:
+    name: Web frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo registry and build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            elamx-core/target
+          key: wasm-${{ runner.os }}-${{ hashFiles('elamx-core/**/Cargo.toml') }}
+          restore-keys: wasm-${{ runner.os }}-
+
+      - name: Install wasm toolchain
+        run: |
+          rustup target add wasm32-unknown-unknown
+          curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+
+      # web/src/wasm-pkg/ is gitignored, so the frontend cannot typecheck
+      # before this step has run - which also means this workflow exercises the
+      # exact build command the README documents.
+      - name: Build the WASM core
+        working-directory: elamx-core/wasm
+        run: wasm-pack build --target web --out-dir ../../web/src/wasm-pkg
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Lint
+        working-directory: web
+        run: npm run lint
+
+      # `npm run build` is `tsc -b && vite build`: the typecheck is part of it,
+      # so there is no separate typecheck step.
+      - name: Typecheck and build
+        working-directory: web
+        run: npm run build
