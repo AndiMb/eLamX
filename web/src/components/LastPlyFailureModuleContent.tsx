@@ -17,7 +17,7 @@ import { BackLink } from "./BackLink";
 import { Sym } from "./Sym";
 import { ResponsiveTable, type ResponsiveTableColumn } from "./ResponsiveTable";
 import { HowWasThisComputed } from "./HowWasThisComputed";
-import { NO_VALUE } from "../lib/numberFormat";
+import { formatSignificant, NO_VALUE } from "../lib/numberFormat";
 import { failureModeLabel, useLocale, useT, type MessageKey } from "../i18n";
 
 const FAILURE_TYPE_KEYS: Record<FailureType, MessageKey> = {
@@ -121,7 +121,10 @@ export function LastPlyFailureModuleContent({ laminateId }: { laminateId: string
       <BackLink to={`/laminates/${laminateId}`} label={t("nav.laminate")} />
       <p className="hint">{t("lpf.intro")}</p>
 
-      <section className="panel">
+      {/* Input left and standing, results right and scrolling, from 1024 px
+          up - see .module-split in App.css. */}
+      <div className="module-split">
+      <section className="panel module-input">
         <h2>{t("lpf.input.title")}</h2>
 
         <h3>{t("lpf.loads")}</h3>
@@ -189,6 +192,7 @@ export function LastPlyFailureModuleContent({ laminateId }: { laminateId: string
         </p>
       </section>
 
+      <div className="module-results">
       {error && <p className="error">{t("lpf.error", { message: error })}</p>}
       {loadableState.state === "loading" && <p className="hint">{t("results.computing")}</p>}
 
@@ -215,7 +219,7 @@ export function LastPlyFailureModuleContent({ laminateId }: { laminateId: string
           <HowWasThisComputed
             title={t("lpf.how.title")}
             formula={"E_{\\perp} \\leftarrow \\eta\\,E_{\\perp}, \\quad G_{\\perp\\parallel} \\leftarrow \\eta\\,G_{\\perp\\parallel}"}
-            substituted={`\\eta = ${input.degradation_factor}`}
+            substituted={`\\eta = ${formatSignificant(input.degradation_factor, 6, locale)}`}
           >
             <p className="hint">{t("lpf.how.hint", { steps: summary.steps })}</p>
           </HowWasThisComputed>
@@ -234,6 +238,8 @@ export function LastPlyFailureModuleContent({ laminateId }: { laminateId: string
           <p className="hint">{t("lpf.path.hint")}</p>
         </section>
       )}
+      </div>
+      </div>
     </>
   );
 }

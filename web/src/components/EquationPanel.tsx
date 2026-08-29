@@ -8,8 +8,8 @@ import { AbdMatrixPanel } from "./AbdMatrixPanel";
 import { useRenderCount } from "../lib/useRenderCount";
 import { symText } from "../lib/symbols";
 import { Sym } from "./Sym";
-import { isFiniteResult, NO_VALUE } from "../lib/numberFormat";
-import { useT } from "../i18n";
+import { formatFixed, formatScientific, isFiniteResult, NO_VALUE } from "../lib/numberFormat";
+import { useLocale, useT } from "../i18n";
 
 // Mirrors the classic CLT equation's spatial layout, as in the Java
 // original's CalculationPanel:
@@ -34,6 +34,7 @@ import { useT } from "../i18n";
 // the loads and strains columns moved to opposite ends of the equation row.
 export function EquationPanel({ laminateId }: { laminateId: string }) {
   const t = useT();
+  const locale = useLocale();
   const [config, setConfig] = useAtom(laminateConfigFamily(laminateId));
   const loads = useAtomValue(solvedLoadsFamily(laminateId));
   const strains = useAtomValue(solvedStrainsFamily(laminateId));
@@ -96,7 +97,7 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
                     aria-label={t("equation.prescribe", { name: symText(names.load) })}
                     title={t("equation.prescribe.title", { name: symText(names.load) })}
                   >
-                    {!loads ? "…" : isFiniteResult(loads[LOAD_FIELDS[i]]) ? loads[LOAD_FIELDS[i]].toFixed(3) : NO_VALUE}
+                    {!loads ? "…" : formatFixed(loads[LOAD_FIELDS[i]], 3, locale)}
                   </button>
                 )}
               </div>
@@ -119,7 +120,7 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
                 {!loads
                   ? "…"
                   : isFiniteResult(loads[HYGROTHERMAL_FIELDS[i]])
-                    ? loads[HYGROTHERMAL_FIELDS[i]].toFixed(3)
+                    ? formatFixed(loads[HYGROTHERMAL_FIELDS[i]], 3, locale)
                     : NO_VALUE}
               </span>
             </div>
@@ -155,7 +156,7 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
                     {!strains
                       ? "…"
                       : isFiniteResult(strains[STRAIN_FIELDS[i]])
-                        ? strains[STRAIN_FIELDS[i]].toExponential(4)
+                        ? formatScientific(strains[STRAIN_FIELDS[i]], 4, locale)
                         : NO_VALUE}
                   </button>
                 )}

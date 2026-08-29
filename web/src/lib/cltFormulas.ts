@@ -55,8 +55,17 @@ export function useFmt(): (value: number, decimals?: number) => string {
 // get scientific notation rather than a fixed decimal count. Both of these
 // end up inside KaTeX source, so the not-a-number case has to be valid TeX
 // too - \text{} keeps the dash from being typeset as a minus sign.
-export function fmtExp(value: number, decimals = 3): string {
+//
+// The mantissa takes the locale's decimal separator, like every other number
+// the user reads: `useFmt` above already does, and a formula that wrote
+// `1.234 x 10^-5` beside a table cell reading `0,40` would put the point in
+// two different meanings on one screen.
+export function fmtExp(value: number, locale: string, decimals = 3): string {
   if (!isFiniteResult(value)) return `\\text{${NO_VALUE}}`;
   const [mantissa, exponent] = value.toExponential(decimals).split("e");
-  return `${mantissa}\\times 10^{${Number(exponent)}}`;
+  const localizedMantissa = Number(mantissa).toLocaleString(locale, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+  return `${localizedMantissa}\\times 10^{${Number(exponent)}}`;
 }

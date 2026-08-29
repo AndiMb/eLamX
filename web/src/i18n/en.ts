@@ -129,6 +129,9 @@ export const en = {
   "layers.withMiddleLayer": "with middle layer",
   "layers.invertZ": "invert z-axis",
 
+  "context.openLayup": "Open the layup",
+  "context.plies": "{count} plies",
+
   // --- Modules -------------------------------------------------------------
   "modules.title": "Modules",
   "modules.unknown": "Unknown module.",
@@ -230,6 +233,7 @@ export const en = {
   "lpf.type.iff": "inter-fibre",
   "lpf.type.gmf": "material",
   "lpf.type.none": "none",
+
   "results.error": "Error: {message}",
   "results.computing": "Computing…",
   "results.abdVisualization": "ABD matrix – visualization",

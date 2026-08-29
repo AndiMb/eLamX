@@ -3,7 +3,8 @@ import { useAtomValue } from "jotai";
 import { abdMatrixFamily } from "../../store/derivedAtoms";
 import { ChartTooltip } from "./ChartTooltip";
 import { useChartColors } from "../../lib/chartColors";
-import { useT } from "../../i18n";
+import { formatScientific } from "../../lib/numberFormat";
+import { useLocale, useT } from "../../i18n";
 import type { SymbolSpec } from "../../lib/symbols";
 import { Sym } from "../Sym";
 
@@ -42,6 +43,7 @@ function cellColor(value: number, blockMax: number, neg: string, mid: string, po
 // right above this chart, so every value here is reachable without hovering.
 export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId: string }) {
   const t = useT();
+  const locale = useLocale();
   const abd = useAtomValue(abdMatrixFamily(laminateId));
   const [hover, setHover] = useState<{ i: number; j: number; x: number; y: number } | null>(null);
   const colors = useChartColors();
@@ -110,7 +112,7 @@ export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId:
             <strong>
               <Sym {...blockSymbol(hover.i, hover.j)} />
             </strong>
-            : {abd[hover.i][hover.j].toExponential(3)}
+            : {formatScientific(abd[hover.i][hover.j], 3, locale)}
           </ChartTooltip>
         )}
       </div>

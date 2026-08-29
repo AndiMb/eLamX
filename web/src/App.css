@@ -462,6 +462,98 @@ input[type="checkbox"] {
   color: var(--text-2);
 }
 
+/* --- Kontextleiste ueber den Modulseiten --- */
+
+/* Bleibt unter der Topbar stehen (48 px), damit das Laminat sichtbar bleibt,
+   solange man im Modul scrollt - genau die Stelle, an der der Aufbau vorher
+   aus dem Blick verschwand. */
+.module-context-bar {
+  position: sticky;
+  top: 48px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  margin-bottom: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  color: inherit;
+  text-decoration: none;
+}
+
+.module-context-bar:hover {
+  border-color: var(--text-muted);
+}
+
+.module-context-bar .context-name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.module-context-bar .context-notation {
+  font-family: var(--mono);
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.module-context-bar .context-facts {
+  margin-left: auto;
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.stack-strip {
+  flex: 0 0 auto;
+  border-radius: 2px;
+}
+
+/* Auf dem Handy zaehlt die Leiste am meisten (ein 16-lagiger Stapel ist dort
+   sonst nie als Ganzes sichtbar), aber der Platz ist knapp: Kennzahlen weg,
+   Kurzschreibweise bleibt. */
+@media (max-width: 640px) {
+  .module-context-bar .context-facts {
+    display: none;
+  }
+}
+
+/* --- Eingabe steht, Ergebnis scrollt --- */
+
+/* Ab 1024 px stehen Eingabepanel und Ergebnisse nebeneinander, das Eingabe-
+   panel bleibt beim Scrollen stehen. Damit sieht man die Live-Reaktion auf
+   eine geaenderte Last, ohne zurueckzuscrollen. Darunter stapelt es wie zuvor.
+   Nur fuer Module mit einem eigenen Eingabepanel - die CLT-Seite traegt ihre
+   Eingabe in der Gleichung selbst und laesst sich nicht so teilen. */
+.module-split > .module-input {
+  min-width: 0;
+}
+
+.module-split > .module-results {
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .module-split {
+    display: grid;
+    grid-template-columns: minmax(320px, 400px) 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .module-split > .module-input {
+    position: sticky;
+    /* Topbar (48) + Kontextleiste (~46) + Abstand */
+    top: 104px;
+  }
+}
+
 /* --- Formular-Raster --- */
 
 .field-grid {

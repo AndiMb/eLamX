@@ -46,3 +46,82 @@ export function formatNumber(value: number, config: FormatConfig, locale: string
   });
   return formatter.format(value);
 }
+
+// The three helpers below replace `value.toFixed(n)`, `value.toExponential(n)`
+// and `value.toPrecision(n)` at every display site. Those three always write
+// a POINT as the decimal separator, which in a German UI put "3.019e+4" next
+// to "0,40" - the same character standing for a decimal separator in one place
+// and a thousands separator in the other. Everything the user reads now goes
+// through Intl with the locale the UI is running in.
+
+/** Locale-aware `value.toFixed(digits)`. */
+export function formatFixed(value: number | null | undefined, digits: number, locale: string): string {
+  if (!isFiniteResult(value)) return NO_VALUE;
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
+}
+
+/** Locale-aware `value.toExponential(digits)`. */
+export function formatScientific(
+  value: number | null | undefined,
+  digits: number,
+  locale: string,
+): string {
+  if (!isFiniteResult(value)) return NO_VALUE;
+  return new Intl.NumberFormat(locale, {
+    notation: "scientific",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
+}
+
+/** Locale-aware `value.toPrecision(digits)`. */
+export function formatSignificant(
+  value: number | null | undefined,
+  digits: number,
+  locale: string,
+): string {
+  if (!isFiniteResult(value)) return NO_VALUE;
+  return new Intl.NumberFormat(locale, { maximumSignificantDigits: digits }).format(value);
+}
+
+/**
+ * Below this fraction of a matrix's largest entry, a value is the arithmetic's
+ * own noise rather than a result: a balanced laminate's B matrix comes back as
+ * ~1e-13 where it is exactly zero, and printed as `1,000E-13` that reads like
+ * a coupling term nobody put there. eLamX 3.x never had the problem because
+ * its stiffness format is a plain `0.0`, which collapses the same value to
+ * `0,0`; this is that effect made explicit rather than a side effect of the
+ * number of decimals.
+ */
+export const NEGLIGIBLE_FRACTION = 1e-10;
+
+/** The largest absolute entry of a matrix, ignoring non-finite ones. */
+export function matrixScale(matrix: number[][]): number {
+  let scale = 0;
+  for (const row of matrix) {
+    for (const value of row) {
+      if (isFiniteResult(value)) scale = Math.max(scale, Math.abs(value));
+    }
+  }
+  return scale;
+}
+
+/** A matrix entry, with everything below the noise threshold shown as zero. */
+export function formatMatrixEntry(
+  value: number | null | undefined,
+  scale: number,
+  digits: number,
+  locale: string,
+): string {
+  if (!isFiniteResult(value)) return NO_VALUE;
+  if (Math.abs(value) < NEGLIGIBLE_FRACTION * scale) {
+    return new Intl.NumberFormat(locale, {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }).format(0);
+  }
+  return formatScientific(value, digits, locale);
+}

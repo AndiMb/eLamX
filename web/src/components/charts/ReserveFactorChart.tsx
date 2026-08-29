@@ -4,6 +4,7 @@ import { layerResultsFamily } from "../../store/derivedAtoms";
 import type { FailureType } from "../../lib/types";
 import { ChartLegend } from "./ChartLegend";
 import { ChartTooltip } from "./ChartTooltip";
+import { formatFixed } from "../../lib/numberFormat";
 import { failureModeLabel, useLocale, useT } from "../../i18n";
 import type { MessageKey } from "../../i18n";
 
@@ -82,7 +83,7 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
               <g key={tickIndex}>
                 <line x1={0} x2={PLOT_W} y1={yScale(v)} y2={yScale(v)} className={v === 1 ? "chart-axis" : "chart-gridline"} />
                 <text x={-8} y={yScale(v)} textAnchor="end" dominantBaseline="middle">
-                  {v.toFixed(1)}
+                  {formatFixed(v, 1, locale)}
                 </text>
               </g>
             ))}
@@ -133,7 +134,7 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
                 {t("chart.layer", { nr: hover.layerNumber })} ({t(hover.position === "lower" ? "common.bottom" : "common.top")})
               </strong>
             </div>
-            <div>RF: {hover.value.toFixed(3)}</div>
+            <div>RF: {formatFixed(hover.value, 3, locale)}</div>
             <div>
               {t(FAILURE_LABEL_KEYS[hover.failureType])}
               {hover.failureName ? ` (${failureModeLabel(locale, hover.failureName)})` : ""}

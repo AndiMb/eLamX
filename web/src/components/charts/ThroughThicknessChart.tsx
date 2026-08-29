@@ -2,7 +2,8 @@ import { memo, useMemo, useState } from "react";
 import { useAtomValue } from "jotai";
 import { throughThicknessFamily, type ThroughThicknessLayer } from "../../store/derivedAtoms";
 import { ChartTooltip } from "./ChartTooltip";
-import { useT } from "../../i18n";
+import { formatFixed, formatScientific } from "../../lib/numberFormat";
+import { useLocale, useT } from "../../i18n";
 import { symText, type SymbolSpec } from "../../lib/symbols";
 
 // WIDTH matches AngleSweepChart/ReserveFactorChart (both 600) so all three
@@ -49,6 +50,7 @@ function valueOf(layer: ThroughThicknessLayer, field: FieldKey, idx: 0 | 1 | 2, 
 // See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
 export const ThroughThicknessChart = memo(function ThroughThicknessChart({ laminateId }: { laminateId: string }) {
   const t = useT();
+  const locale = useLocale();
   const layers = useAtomValue(throughThicknessFamily(laminateId));
   const [componentKey, setComponentKey] = useState(COMPONENTS[0].key);
   const [hoverLayer, setHoverLayer] = useState<{ layer: ThroughThicknessLayer; x: number; y: number } | null>(null);
@@ -114,7 +116,7 @@ export const ThroughThicknessChart = memo(function ThroughThicknessChart({ lamin
                 <g key={tickIndex}>
                   <line x1={0} x2={PLOT_W} y1={zScale(z)} y2={zScale(z)} className="chart-gridline" />
                   <text x={-8} y={zScale(z)} textAnchor="end" dominantBaseline="middle">
-                    {z.toFixed(2)}
+                    {formatFixed(z, 2, locale)}
                   </text>
                 </g>
               ))}
@@ -124,7 +126,7 @@ export const ThroughThicknessChart = memo(function ThroughThicknessChart({ lamin
               <line x1={vScale(0)} x2={vScale(0)} y1={0} y2={PLOT_H} className="chart-axis" />
               {[vMin, vMax].map((v, tickIndex) => (
                 <text key={tickIndex} x={vScale(v)} y={PLOT_H + 16} textAnchor="middle">
-                  {v.toExponential(1)}
+                  {formatScientific(v, 1, locale)}
                 </text>
               ))}
               {layers.map((l) => {
@@ -165,12 +167,12 @@ export const ThroughThicknessChart = memo(function ThroughThicknessChart({ lamin
                 <strong>{t("chart.layer", { nr: hoverLayer.layer.layerNumber })}</strong>
               </div>
               <div>
-                {t("common.bottom")} (z={hoverLayer.layer.zLower.toFixed(3)}):{" "}
-                {valueOf(hoverLayer.layer, field, idx, "lower").toExponential(3)} {component.unit}
+                {t("common.bottom")} (z={formatFixed(hoverLayer.layer.zLower, 3, locale)}):{" "}
+                {formatScientific(valueOf(hoverLayer.layer, field, idx, "lower"), 3, locale)} {component.unit}
               </div>
               <div>
-                {t("common.top")} (z={hoverLayer.layer.zUpper.toFixed(3)}):{" "}
-                {valueOf(hoverLayer.layer, field, idx, "upper").toExponential(3)} {component.unit}
+                {t("common.top")} (z={formatFixed(hoverLayer.layer.zUpper, 3, locale)}):{" "}
+                {formatScientific(valueOf(hoverLayer.layer, field, idx, "upper"), 3, locale)} {component.unit}
               </div>
             </ChartTooltip>
           )}
@@ -191,10 +193,10 @@ export const ThroughThicknessChart = memo(function ThroughThicknessChart({ lamin
             {layers.map((l) => (
               <tr key={l.layerNumber}>
                 <td>{l.layerNumber}</td>
-                <td>{l.zLower.toFixed(3)}</td>
-                <td>{valueOf(l, field, idx, "lower").toExponential(3)}</td>
-                <td>{l.zUpper.toFixed(3)}</td>
-                <td>{valueOf(l, field, idx, "upper").toExponential(3)}</td>
+                <td>{formatFixed(l.zLower, 3, locale)}</td>
+                <td>{formatScientific(valueOf(l, field, idx, "lower"), 3, locale)}</td>
+                <td>{formatFixed(l.zUpper, 3, locale)}</td>
+                <td>{formatScientific(valueOf(l, field, idx, "upper"), 3, locale)}</td>
               </tr>
             ))}
           </tbody>

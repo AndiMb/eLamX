@@ -119,6 +119,9 @@ export const de: Messages = {
   "layers.withMiddleLayer": "mit Mittellage",
   "layers.invertZ": "z-Achse umkehren",
 
+  "context.openLayup": "Lagenaufbau öffnen",
+  "context.plies": "{count} Lagen",
+
   // --- Modules -------------------------------------------------------------
   "modules.title": "Module",
   "modules.unknown": "Unbekanntes Modul.",
@@ -220,6 +223,7 @@ export const de: Messages = {
   "lpf.type.iff": "Zfb",
   "lpf.type.gmf": "Materialversagen",
   "lpf.type.none": "keines",
+
   "results.error": "Fehler: {message}",
   "results.computing": "Berechne…",
   "results.abdVisualization": "ABD-Matrix – Visualisierung",

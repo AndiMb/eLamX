@@ -3,8 +3,8 @@ import { useAtomValue } from "jotai";
 import { abdMatrixFamily } from "../store/derivedAtoms";
 import { useRenderCount } from "../lib/useRenderCount";
 import { ResponsiveTable } from "./ResponsiveTable";
-import { isFiniteResult, NO_VALUE } from "../lib/numberFormat";
-import { useT } from "../i18n";
+import { formatMatrixEntry, matrixScale } from "../lib/numberFormat";
+import { useLocale, useT } from "../i18n";
 
 // Matches the heatmap's AXIS_LABELS convention (A/D block indices 1,2,6).
 const AXIS_LABELS = ["1", "2", "6", "1", "2", "6"];
@@ -28,10 +28,15 @@ const blockClass = (i: number, j: number) => {
 // children" behavior.
 export const AbdMatrixPanel = memo(function AbdMatrixPanel({ laminateId }: { laminateId: string }) {
   const t = useT();
+  const locale = useLocale();
   const abd = useAtomValue(abdMatrixFamily(laminateId));
   const renderCount = useRenderCount();
 
   if (!abd) return null;
+
+  // The B block of a symmetric laminate is zero by construction but comes back
+  // as ~1e-13; scaled against the matrix's own largest entry, it prints as 0.
+  const scale = matrixScale(abd);
 
   return (
     <>
@@ -54,7 +59,7 @@ export const AbdMatrixPanel = memo(function AbdMatrixPanel({ laminateId }: { lam
                 <th scope="row">{AXIS_LABELS[i]}</th>
                 {row.map((value, j) => (
                   <td key={`cell-${i}-${j}`} className={blockClass(i, j)}>
-                    {isFiniteResult(value) ? value.toExponential(3) : NO_VALUE}
+                    {formatMatrixEntry(value, scale, 3, locale)}
                   </td>
                 ))}
               </tr>

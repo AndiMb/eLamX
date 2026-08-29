@@ -5,10 +5,10 @@ import { useRenderCount } from "../lib/useRenderCount";
 import { QuantityDisplay } from "./QuantityDisplay";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { useFmt, fmtExp } from "../lib/cltFormulas";
-import { isFiniteResult, NO_VALUE } from "../lib/numberFormat";
+import { formatScientific } from "../lib/numberFormat";
 import { Sym } from "./Sym";
 import type { QuantityCategory } from "../lib/units";
-import { useT } from "../i18n";
+import { useLocale, useT } from "../i18n";
 
 function StatTile({ label, category, value }: { label: ReactNode; category: QuantityCategory; value: number }) {
   return (
@@ -24,6 +24,7 @@ function StatTile({ label, category, value }: { label: ReactNode; category: Quan
 // See AbdMatrixPanel.tsx for why memo() is required here.
 export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminateId: string }) {
   const t = useT();
+  const locale = useLocale();
   const fmt = useFmt();
   const summary = useAtomValue(summaryFamily(laminateId));
   const renderCount = useRenderCount();
@@ -33,10 +34,10 @@ export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminat
   const abdInv = summary.abdInv;
 
   const exFormula = "E_x = \\dfrac{1}{(ABD^{-1})_{11}\\cdot t_{ges}}";
-  const exSubstituted = `E_x = \\dfrac{1}{${fmtExp(abdInv[0][0])} \\cdot ${fmt(summary.tges, 2)}} = ${fmt(ec.ex_simple, 1)}\\ \\text{MPa}`;
+  const exSubstituted = `E_x = \\dfrac{1}{${fmtExp(abdInv[0][0], locale)} \\cdot ${fmt(summary.tges, 2)}} = ${fmt(ec.ex_simple, 1)}\\ \\text{MPa}`;
 
   const nuxyFormula = "\\nu_{xy} = -\\dfrac{(ABD^{-1})_{12}}{(ABD^{-1})_{11}}";
-  const nuxySubstituted = `\\nu_{xy} = -\\dfrac{${fmtExp(abdInv[0][1])}}{${fmtExp(abdInv[0][0])}} = ${fmt(ec.nuxy_simple, 4)}`;
+  const nuxySubstituted = `\\nu_{xy} = -\\dfrac{${fmtExp(abdInv[0][1], locale)}}{${fmtExp(abdInv[0][0], locale)}} = ${fmt(ec.nuxy_simple, 4)}`;
 
   return (
     <>
@@ -61,7 +62,7 @@ export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminat
         <div className="stat-tile">
           <span className="label">{t("summary.areaWeight")}</span>
           <span className="value">
-            {isFiniteResult(summary.areaWeight) ? summary.areaWeight.toExponential(3) : NO_VALUE}
+            {formatScientific(summary.areaWeight, 3, locale)}
           </span>
         </div>
       </div>

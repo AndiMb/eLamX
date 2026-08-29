@@ -7,7 +7,8 @@ import {
   selectedBucklingModeFamily,
 } from "../../store/bucklingAtoms";
 import { BucklingPlate3D } from "./BucklingPlate3D";
-import { useT } from "../../i18n";
+import { formatSignificant } from "../../lib/numberFormat";
+import { useLocale, useT } from "../../i18n";
 
 // Mode picker + the 3D plate. Kept separate from BucklingPlate3D so that
 // component stays a pure renderer of one surface - it re-renders on every
@@ -19,6 +20,7 @@ const Z_SCALE_MAX = 0.4;
 
 export function BucklingShapeView({ laminateId }: { laminateId: string }) {
   const t = useT();
+  const locale = useLocale();
   const modes = useAtomValue(bucklingModeListFamily(laminateId));
   const input = useAtomValue(bucklingInputFamily(laminateId));
   const [selected, setSelected] = useAtom(selectedBucklingModeFamily(laminateId));
@@ -44,7 +46,7 @@ export function BucklingShapeView({ laminateId }: { laminateId: string }) {
               <option key={mode.index} value={i}>
                 {t("buckling.shape.modeOption", {
                   nr: i + 1,
-                  value: mode.eigenvalue.toPrecision(5),
+                  value: formatSignificant(mode.eigenvalue, 5, locale),
                 })}
               </option>
             ))}

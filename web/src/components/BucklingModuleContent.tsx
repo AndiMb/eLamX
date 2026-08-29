@@ -24,8 +24,8 @@ import { BackLink } from "./BackLink";
 import { Sym } from "./Sym";
 import { BucklingShapeView } from "./charts/BucklingShapeView";
 import { HowWasThisComputed } from "./HowWasThisComputed";
-import { isFiniteResult, NO_VALUE } from "../lib/numberFormat";
-import { useT } from "../i18n";
+import { formatFixed, formatSignificant, isFiniteResult } from "../lib/numberFormat";
+import { useLocale, useT } from "../i18n";
 
 // The content behind the "buckling" entry in MODULE_REGISTRY: stability of a
 // rectangular plate cut from this laminate, under in-plane load flows.
@@ -37,6 +37,7 @@ import { useT } from "../i18n";
 // is the least confusing starting point.
 export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
   const t = useT();
+  const locale = useLocale();
   const [input, setInput] = useAtom(bucklingInputFamily(laminateId));
   const summary = useAtomValue(bucklingSummaryFamily(laminateId));
   const modes = useAtomValue(bucklingModeListFamily(laminateId));
@@ -61,7 +62,10 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
       <BackLink to={`/laminates/${laminateId}`} label={t("nav.laminate")} />
       <p className="hint">{t("buckling.intro")}</p>
 
-      <section className="panel">
+      {/* Input left and standing, results right and scrolling, from 1024 px
+          up - see .module-split in App.css. */}
+      <div className="module-split">
+      <section className="panel module-input">
         <h2>{t("buckling.input.title")}</h2>
 
         <h3>{t("buckling.geometry")}</h3>
@@ -175,6 +179,7 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
         <p className="hint">{t("buckling.terms.hint", { max: MAX_RITZ_TERMS })}</p>
       </section>
 
+      <div className="module-results">
       {error && <p className="error">{t("buckling.error", { message: error })}</p>}
       {loadableState.state === "loading" && <p className="hint">{t("results.computing")}</p>}
 
@@ -209,7 +214,7 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
                         <Sym base="n" sub={`${sub},crit`} />
                       </span>
                       <span className="value">
-                        {value == null ? NO_VALUE : value.toFixed(3)}
+                        {formatFixed(value, 3, locale)}
                       </span>
                     </div>
                   );
@@ -219,7 +224,7 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
               <HowWasThisComputed
                 title={t("buckling.how.title")}
                 formula={"\\left(\\mathbf{K} + \\lambda\\,\\mathbf{K}_g\\right)\\mathbf{a} = \\mathbf{0}"}
-                substituted={`\\lambda_{crit} = ${summary.criticalFactor.toPrecision(6)}`}
+                substituted={`\\lambda_{crit} = ${formatSignificant(summary.criticalFactor, 6, locale)}`}
               >
                 <p className="hint">{t("buckling.how.hint", { m: input.m, n: input.n })}</p>
               </HowWasThisComputed>
@@ -255,8 +260,8 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
                         onClick={() => setSelectedMode(i)}
                       >
                         <td>{i + 1}</td>
-                        <td>{mode.eigenvalue.toPrecision(5)}</td>
-                        <td>{(mode.eigenvalue / modes[0].eigenvalue).toFixed(2)}</td>
+                        <td>{formatSignificant(mode.eigenvalue, 5, locale)}</td>
+                        <td>{formatFixed(mode.eigenvalue / modes[0].eigenvalue, 2, locale)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -267,6 +272,8 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
           </div>
         </section>
       )}
+      </div>
+      </div>
     </>
   );
 }

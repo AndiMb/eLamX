@@ -29,3 +29,82 @@ export function parseAngleStack(text: string): number[] | null {
   }
   return angles;
 }
+
+
+// Unicode subscript digits, so a repeated ply group reads as "0\u2082/45" rather
+// than "0/0/45" - the conventional stacking notation, and short enough for the
+// context bar above every module page.
+const SUBSCRIPTS = ["\u2080", "\u2081", "\u2082", "\u2083", "\u2084", "\u2085", "\u2086", "\u2087", "\u2088", "\u2089"];
+
+function subscript(n: number): string {
+  return String(n)
+    .split("")
+    .map((d) => SUBSCRIPTS[Number(d)])
+    .join("");
+}
+
+/**
+ * The stack in the notation people write on a drawing: `[0\u2082/45/-45]s`.
+ *
+ * Consecutive equal angles collapse into a subscripted count, and a symmetric
+ * laminate gets the trailing `s` instead of its mirrored half being spelled
+ * out. Angles are the STORED ones, so this is the same half of the stack the
+ * layer table shows.
+ */
+export function shortStackNotation(
+  angles: number[],
+  symmetric: boolean,
+  withMiddleLayer: boolean,
+): string {
+  if (angles.length === 0) return "[ ]";
+
+  const groups: { angle: number; count: number }[] = [];
+  for (const angle of angles) {
+    const last = groups[groups.length - 1];
+    if (last && last.angle === angle) last.count += 1;
+    else groups.push({ angle, count: 1 });
+  }
+
+  const body = groups
+    .map((g) => {
+      // A middle layer is shared with the mirrored half, so it is written with
+      // an overbar in the literature; a plain marker keeps it copy-pasteable.
+      const angle = formatAngle(g.angle);
+      return g.count > 1 ? `${angle}${subscript(g.count)}` : angle;
+    })
+    .join("/");
+
+  if (!symmetric) return `[${body}]`;
+  return withMiddleLayer ? `[${body}]\u0304s` : `[${body}]s`;
+}
+
+// Angles are data, not measurements: -45 stays "-45", 22.5 stays "22.5". No
+// locale formatting, because this string is meant to be recognised and
+// re-typed into the angle field, which parses both separators anyway.
+function formatAngle(angle: number): string {
+  return Number.isInteger(angle) ? String(angle) : String(Number(angle.toFixed(2)));
+}
+
+/**
+ * Expanded ply count and total thickness of a stored stack, following
+ * `Laminate::number_of_layers` / `Laminate::thickness` in the core: a
+ * symmetric laminate is mirrored, and a shared middle layer - always the LAST
+ * stored one - is counted once.
+ */
+export function expandedStack(
+  thicknesses: number[],
+  symmetric: boolean,
+  withMiddleLayer: boolean,
+): { plies: number; thickness: number } {
+  let plies = thicknesses.length;
+  let thickness = thicknesses.reduce((sum, t) => sum + t, 0);
+  if (symmetric) {
+    plies *= 2;
+    thickness *= 2;
+    if (withMiddleLayer && thicknesses.length > 0) {
+      plies -= 1;
+      thickness -= thicknesses[thicknesses.length - 1];
+    }
+  }
+  return { plies, thickness };
+}

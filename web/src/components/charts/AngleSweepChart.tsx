@@ -3,7 +3,8 @@ import { useAtomValue } from "jotai";
 import { loadableAngleSweepFamily } from "../../store/derivedAtoms";
 import { ChartLegend } from "./ChartLegend";
 import { ChartTooltip } from "./ChartTooltip";
-import { useT } from "../../i18n";
+import { formatFixed, formatScientific } from "../../lib/numberFormat";
+import { useLocale, useT } from "../../i18n";
 import type { SymbolSpec } from "../../lib/symbols";
 import { Sym } from "../Sym";
 
@@ -22,6 +23,7 @@ const SERIES = [
 // See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
 export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { laminateId: string }) {
   const t = useT();
+  const locale = useLocale();
   const loadableState = useAtomValue(loadableAngleSweepFamily(laminateId));
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
@@ -79,7 +81,7 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
                   <g key={tickIndex}>
                     <line x1={0} x2={PLOT_W} y1={yScale(tick)} y2={yScale(tick)} className="chart-gridline" />
                     <text x={-8} y={yScale(tick)} textAnchor="end" dominantBaseline="middle">
-                      {tick.toExponential(1)}
+                      {formatScientific(tick, 1, locale)}
                     </text>
                   </g>
                 ))}
@@ -119,12 +121,12 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
                 y={MARGIN.top + 4}
               >
                 <div>
-                  <strong>{data.angle_deg[hoverIndex].toFixed(0)}°</strong>
+                  <strong>{formatFixed(data.angle_deg[hoverIndex], 0, locale)}°</strong>
                 </div>
                 {SERIES.map((s) => (
                   <div className="chart-tooltip-row" key={s.key}>
                     <span className="chart-legend-swatch line" style={{ background: s.color }} />
-                    <Sym {...s.sym} />: {data[s.key][hoverIndex].toExponential(2)}
+                    <Sym {...s.sym} />: {formatScientific(data[s.key][hoverIndex], 2, locale)}
                   </div>
                 ))}
               </ChartTooltip>
@@ -147,10 +149,10 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
           <tbody>
             {data.angle_deg.map((angle, i) => (
               <tr key={angle}>
-                <td>{angle.toFixed(0)}°</td>
-                <td>{data.a11[i].toExponential(3)}</td>
-                <td>{data.a22[i].toExponential(3)}</td>
-                <td>{data.a66[i].toExponential(3)}</td>
+                <td>{formatFixed(angle, 0, locale)}°</td>
+                <td>{formatScientific(data.a11[i], 3, locale)}</td>
+                <td>{formatScientific(data.a22[i], 3, locale)}</td>
+                <td>{formatScientific(data.a66[i], 3, locale)}</td>
               </tr>
             ))}
           </tbody>

@@ -6,6 +6,11 @@ import { useT } from "../i18n";
 const WIDTH = 320;
 const MAX_HEIGHT = 150;
 const MIN_BAR = 4;
+// The context-bar thumbnail: one line of text tall, so the stack stays on
+// screen without taking space from the module it sits above.
+const STRIP_WIDTH = 26;
+const STRIP_HEIGHT = 34;
+const STRIP_MIN_BAR = 1.2;
 
 // Material identity -> fixed categorical slot (never re-assigned by current
 // filter state; index in the materials catalog is stable per session).
@@ -27,16 +32,23 @@ export function StackViz({
   layers,
   symmetric,
   withMiddleLayer,
+  variant = "full",
 }: {
   layers: LayerRow[];
   symmetric: boolean;
   withMiddleLayer: boolean;
+  /** "strip" is the thumbnail for the context bar: no angle labels, no
+   *  midplane line, and sized to a row of text rather than to a panel. */
+  variant?: "full" | "strip";
 }) {
   const t = useT();
   const materials = useAtomValue(materialsAtom);
   if (layers.length === 0) return null;
 
+  const strip = variant === "strip";
+
   const materialIndex = (id: string) => Math.max(0, materials.findIndex((m) => m.id === id));
+  const width = strip ? STRIP_WIDTH : WIDTH;
 
   const mirrored = symmetric ? [...layers].reverse().slice(withMiddleLayer ? 1 : 0) : [];
   const all = [
@@ -45,24 +57,24 @@ export function StackViz({
   ];
 
   const totalT = all.reduce((s, e) => s + Math.max(e.layer.thickness, 1e-9), 0);
-  const scale = MAX_HEIGHT / totalT;
+  const scale = (strip ? STRIP_HEIGHT : MAX_HEIGHT) / totalT;
 
   let y = 0;
   const bars = all.map((entry, i) => {
-    const h = Math.max(MIN_BAR, entry.layer.thickness * scale);
+    const h = Math.max(strip ? STRIP_MIN_BAR : MIN_BAR, entry.layer.thickness * scale);
     const bar = (
       <g key={`${entry.layer.id}-${entry.mirror ? "m" : "o"}-${i}`} opacity={entry.mirror ? 0.35 : 1}>
         <rect
           x={0}
           y={y}
-          width={WIDTH}
-          height={h - 1}
+          width={width}
+          height={strip ? h : h - 1}
           rx={2}
           fill={SLOT_VARS[materialIndex(entry.layer.materialId) % SLOT_VARS.length]}
           opacity={0.35}
         />
-        {h >= 11 && (
-          <text x={WIDTH / 2} y={y + h / 2} textAnchor="middle" dominantBaseline="central">
+        {!strip && h >= 11 && (
+          <text x={width / 2} y={y + h / 2} textAnchor="middle" dominantBaseline="central">
             {entry.layer.angle}°
           </text>
         )}
@@ -73,14 +85,15 @@ export function StackViz({
   });
 
   const totalHeight = y;
-  const midY = symmetric ? totalHeight / 2 : null;
+  const midY = symmetric && !strip ? totalHeight / 2 : null;
 
   return (
     <svg
-      className="stack-viz viz"
-      viewBox={`0 0 ${WIDTH} ${totalHeight}`}
-      width="100%"
-      style={{ maxWidth: 320 }}
+      className={strip ? "stack-viz stack-strip viz" : "stack-viz viz"}
+      viewBox={`0 0 ${width} ${totalHeight}`}
+      width={strip ? STRIP_WIDTH : "100%"}
+      height={strip ? STRIP_HEIGHT : undefined}
+      style={strip ? undefined : { maxWidth: 320 }}
       role="img"
       aria-label={t("layers.viz.aria")}
     >
@@ -88,7 +101,7 @@ export function StackViz({
       {midY !== null && (
         <line
           x1={0}
-          x2={WIDTH}
+          x2={width}
           y1={midY}
           y2={midY}
           stroke="var(--viz-text-muted)"
