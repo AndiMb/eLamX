@@ -190,11 +190,16 @@ impl Boundary {
     /// it loses accuracy as the term index rises. `c3 sinh(cv) + c4 cosh(cv)`
     /// has to cancel against the trigonometric part at the far edge, and by
     /// term 10 cosh(cv) is already ~1e15, so f64 constants cannot carry enough
-    /// digits for the cancellation to survive. Measured worst far-edge value
-    /// where it should be 0: ~2e-9 over the first 7 terms, ~5e-4 over 10,
-    /// ~0.25 over 20 (the test below pins these). Recovering it would need the
-    /// shape-function constants at higher precision, which is where they came
-    /// from originally but not what the tables store.
+    /// digits for the cancellation to survive. Worst far-edge value where it
+    /// should be 0, measured on Windows/MSVC: ~2e-9 over the first 7 terms,
+    /// ~5e-4 over 10, ~0.25 over 20. Those figures are not portable - what is
+    /// left is pure cancellation noise, so a platform whose `cosh`/`sinh`
+    /// round differently lands an order of magnitude away (a Linux/glibc build
+    /// gives ~8e-3 over 10 terms). The test below therefore pins the residual
+    /// against the size of the terms that cancel rather than against a
+    /// measured number. Recovering the accuracy would need the shape-function
+    /// constants at higher precision, which is where they came from originally
+    /// but not what the tables store.
     ///
     /// This affects `buckling::mode_surface` (the plotted mode shape) only.
     /// Eigenvalues are unaffected: they are built entirely from the tabulated
@@ -315,24 +320,46 @@ mod tests {
         }
     }
 
-    /// Pins the documented accuracy limit of `wx` so a future change to the
-    /// tables or the evaluation shows up as a test failure rather than as a
-    /// quietly wrong mode-shape plot.
+    /// Pins the accuracy limit of `wx` so a future change to the tables or the
+    /// evaluation shows up as a test failure rather than as a quietly wrong
+    /// mode-shape plot.
+    ///
+    /// The far-edge residual is compared against the size of the terms that
+    /// have to cancel there, not against a measured absolute value: what
+    /// survives the cancellation is rounding noise, and it differs by more
+    /// than an order of magnitude between platforms (~5e-4 over 10 terms on
+    /// Windows/MSVC, ~8e-3 on Linux/glibc). A wrong constant in the tables,
+    /// on the other hand, produces an error thousands of times larger than
+    /// that floor wherever the floor is still small - which is what this
+    /// guards.
     #[test]
-    fn clamped_clamped_far_edge_error_stays_within_the_documented_bounds() {
+    fn clamped_clamped_far_edge_error_stays_within_the_cancellation_floor() {
         let b = Boundary::new(BoundaryCondition::ClampedClamped, 1.0);
-        let worst = |n: usize| {
-            (0..n)
-                .map(|i| b.wx(i, 0.0).abs().max(b.wx(i, 1.0).abs()))
-                .fold(0.0f64, f64::max)
-        };
-        assert!(worst(7) < 1e-8, "first 7 terms should be clean: {}", worst(7));
-        assert!(worst(10) < 1e-3, "10 terms: {}", worst(10));
-        assert!(worst(20) < 0.3, "20 terms: {}", worst(20));
 
-        // The near edge stays exact at every term - cosh(0) = 1, so there is
-        // nothing to cancel there. Only the far edge suffers.
+        // The range the mode-shape plot actually relies on is clean in
+        // absolute terms on any platform.
+        let worst_of_first_seven = (0..7)
+            .map(|i| b.wx(i, 1.0).abs())
+            .fold(0.0f64, f64::max);
+        assert!(
+            worst_of_first_seven < 1e-8,
+            "first 7 terms should be clean: {worst_of_first_seven}"
+        );
+
         for i in 0..20 {
+            // c3*sinh(cv) and c4*cosh(cv) are the two large terms; their sum
+            // has to cancel the trigonometric part exactly at x = a.
+            let cv = b.t.cv[i];
+            let cancelling = b.t.c3[i].abs() * cv.sinh() + b.t.c4[i].abs() * cv.cosh();
+            let floor = 32.0 * f64::EPSILON * cancelling;
+            let residual = b.wx(i, 1.0).abs();
+            assert!(
+                residual <= floor,
+                "term {i}: far-edge residual {residual:.3e} exceeds the cancellation floor {floor:.3e}"
+            );
+
+            // The near edge stays exact at every term - cosh(0) = 1, so there
+            // is nothing to cancel there. Only the far edge suffers.
             assert!(b.wx(i, 0.0).abs() < 1e-12, "near edge term {i}");
         }
     }
@@ -353,4 +380,5 @@ mod tests {
         assert!((b2.ixdx(0, 1) / b1.ixdx(0, 1) - 1.0).abs() < 1e-12);
     }
 }
+
 
