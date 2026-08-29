@@ -23,6 +23,7 @@
 use elamx_core::clt::{determine_values, get_layer_results, CltLaminate, Loads, Strains};
 use elamx_core::failure::default_criterion_registry;
 use elamx_core::model::{Laminate, Material};
+use elamx_core::plate::{calculate_buckling, BoundaryCondition, BucklingInput, DMatrixKind};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -45,6 +46,18 @@ struct GoldenLaminate {
     /// this check a typo there would quietly compare Puck against something else.
     criterion_display_names: Vec<String>,
     calculations: Vec<GoldenCalculation>,
+    bucklings: Vec<GoldenBuckling>,
+}
+
+#[derive(Deserialize)]
+struct GoldenBuckling {
+    name: String,
+    input: BucklingInput,
+    /// How the batch output names the chosen bending-stiffness idealisation.
+    /// Checked for the same reason as `criterion_display_names`: an
+    /// unrecognised `dmatrixservice` class name silently falls back to the
+    /// standard D matrix (see plateui/buckling/LoadSaveLaminateHookImpl).
+    d_matrix_label: String,
 }
 
 #[derive(Deserialize)]
@@ -89,6 +102,25 @@ struct ExpectedCalculation {
     delta_h: f64,
     strains: [f64; 6],
     layers: Vec<ExpectedLayer>,
+}
+
+#[derive(Debug, Default)]
+struct ExpectedBuckling {
+    name: String,
+    laminate_name: String,
+    d_matrix_label: String,
+    /// The 3x3 bending stiffness the analysis actually ran on, row-major.
+    d_matrix: Vec<f64>,
+    length: f64,
+    width: f64,
+    /// Edge conditions, [x, y]. Taken positionally: the Java writer labels
+    /// BOTH lines "x" (it prints getBcy() under an "x" caption), so the
+    /// caption cannot be trusted to tell them apart.
+    bc: [String; 2],
+    m: usize,
+    n: usize,
+    n_crit: [f64; 3],
+    eigenvalues: Vec<f64>,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -137,6 +169,13 @@ impl Report {
     /// `|actual - expected| <= abs_floor + rel * |expected|`.
     fn close(&mut self, what: impl std::fmt::Display, actual: f64, expected: f64, abs_floor: f64, rel: f64) {
         self.checks += 1;
+        // Bit-identical values need no tolerance - and this is the only way
+        // two infinities can agree, since their difference is NaN. Free edges
+        // legitimately produce infinite buckling factors (rigid-body modes),
+        // and both implementations report them.
+        if actual == expected {
+            return;
+        }
         let diff = (actual - expected).abs();
         if diff <= abs_floor + rel * expected.abs() {
             return;
@@ -196,6 +235,14 @@ fn parse_f64(token: &str) -> f64 {
     try_parse_f64(token).unwrap_or_else(|| panic!("keine Zahl in reference.txt: {token:?}"))
 }
 
+/// Every section of the batch output opens with one of these banners; a
+/// section body runs until the next one.
+fn is_section_banner(line: &str) -> bool {
+    line.contains("LAMINATE INFORMATION")
+        || line.contains("CLASSICAL LAMINATED PLATE THEORY")
+        || line.contains("BUCKLING")
+}
+
 /// Banner titles are centred by padding with `*` (see `Utilities.centeredText`).
 fn banner_text(line: &str) -> &str {
     line.trim_matches('*').trim()
@@ -227,10 +274,15 @@ fn parse_matrix(lines: &[&str], start: usize) -> Vec<f64> {
     values
 }
 
-fn parse_reference(text: &str) -> (Vec<ExpectedLaminate>, Vec<ExpectedCalculation>) {
+type Parsed = (Vec<ExpectedLaminate>, Vec<ExpectedCalculation>, Vec<ExpectedBuckling>);
+
+fn parse_reference(text: &str) -> Parsed {
     let lines: Vec<&str> = text.lines().collect();
     let mut laminates: Vec<ExpectedLaminate> = Vec::new();
     let mut calculations: Vec<ExpectedCalculation> = Vec::new();
+    let mut bucklings: Vec<ExpectedBuckling> = Vec::new();
+    // The laminate a section belongs to: sections follow their laminate's
+    // header, and BUCKLING names it explicitly anyway.
     let mut i = 0;
 
     while i < lines.len() {
@@ -243,7 +295,7 @@ fn parse_reference(text: &str) -> (Vec<ExpectedLaminate>, Vec<ExpectedCalculatio
             };
             i += 2;
             // Read until the next section banner.
-            while i < lines.len() && !lines[i].contains("CLASSICAL LAMINATED PLATE THEORY") {
+            while i < lines.len() && !is_section_banner(lines[i]) {
                 let l = lines[i];
                 if let Some(rest) = l.strip_prefix("Lay-up is") {
                     lam.symmetric = !rest.contains("not");
@@ -304,10 +356,7 @@ fn parse_reference(text: &str) -> (Vec<ExpectedLaminate>, Vec<ExpectedCalculatio
                 ..Default::default()
             };
             i += 2;
-            while i < lines.len()
-                && !lines[i].contains("LAMINATE INFORMATION")
-                && !lines[i].contains("CLASSICAL LAMINATED PLATE THEORY")
-            {
+            while i < lines.len() && !is_section_banner(lines[i]) {
                 let l = lines[i];
                 let t = l.trim_start();
                 const MECH: [&str; 6] = ["nxx  =", "nyy  =", "nxy  =", "mxx  =", "myy  =", "mxy  ="];
@@ -350,17 +399,73 @@ fn parse_reference(text: &str) -> (Vec<ExpectedLaminate>, Vec<ExpectedCalculatio
             continue;
         }
 
+        if line.contains("BUCKLING") {
+            let mut buck = ExpectedBuckling {
+                name: banner_text(lines[i + 1]).to_string(),
+                ..Default::default()
+            };
+            i += 2;
+            while i < lines.len() && !is_section_banner(lines[i]) {
+                let l = lines[i];
+                let t = l.trim_start();
+                if let Some(rest) = t.strip_prefix("Laminate:") {
+                    buck.laminate_name = rest.trim().to_string();
+                } else if let Some(rest) = t.strip_prefix("D-matrix option:") {
+                    buck.d_matrix_label = rest.trim().to_string();
+                } else if t.starts_with("D-matrix used:") {
+                    for row in &lines[i + 1..i + 4] {
+                        let values: Vec<f64> = row.split_whitespace().map(parse_f64).collect();
+                        assert_eq!(values.len(), 3, "D-Matrixzeile: {row:?}");
+                        buck.d_matrix.extend(values);
+                    }
+                    i += 3;
+                } else if t.starts_with("length") {
+                    buck.length = value_after_eq(l);
+                } else if t.starts_with("width") {
+                    buck.width = value_after_eq(l);
+                } else if t.starts_with("Boundary conditions:") {
+                    // Both lines are captioned "x" in the Java writer; the
+                    // second one is really y, so take them by position.
+                    for (k, bc_line) in lines[i + 1..i + 3].iter().enumerate() {
+                        buck.bc[k] = bc_line
+                            .split_once(':')
+                            .expect("Randbedingungszeile ohne ':'")
+                            .1
+                            .trim()
+                            .to_string();
+                    }
+                    i += 2;
+                } else if t.starts_with("n_x") {
+                    buck.m = value_after_eq(l) as usize;
+                } else if t.starts_with("n_y") {
+                    buck.n = value_after_eq(l) as usize;
+                } else if t.starts_with("nx_crit") {
+                    buck.n_crit[0] = value_after_eq(l);
+                } else if t.starts_with("ny_crit") {
+                    buck.n_crit[1] = value_after_eq(l);
+                } else if t.starts_with("nxy_crit") {
+                    buck.n_crit[2] = value_after_eq(l);
+                } else if t.starts_with("Eigenv") && l.contains('=') {
+                    // "Eigenvalues 1 to 100" heads the list and shares the prefix.
+                    buck.eigenvalues.push(value_after_eq(l));
+                }
+                i += 1;
+            }
+            bucklings.push(buck);
+            continue;
+        }
+
         i += 1;
     }
 
-    (laminates, calculations)
+    (laminates, calculations, bucklings)
 }
 
 // ---------------------------------------------------------------------------
 // The tests
 // ---------------------------------------------------------------------------
 
-fn load() -> (GoldenInput, Vec<ExpectedLaminate>, Vec<ExpectedCalculation>) {
+fn load() -> (GoldenInput, Vec<ExpectedLaminate>, Vec<ExpectedCalculation>, Vec<ExpectedBuckling>) {
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/golden");
     let input: GoldenInput = serde_json::from_str(
         &std::fs::read_to_string(format!("{dir}/reference.input.json"))
@@ -369,8 +474,8 @@ fn load() -> (GoldenInput, Vec<ExpectedLaminate>, Vec<ExpectedCalculation>) {
     .expect("reference.input.json ist kein gültiges JSON");
     let text = std::fs::read_to_string(format!("{dir}/reference.txt"))
         .expect("reference.txt fehlt - siehe tests/golden/README.md");
-    let (laminates, calculations) = parse_reference(&text);
-    (input, laminates, calculations)
+    let (laminates, calculations, bucklings) = parse_reference(&text);
+    (input, laminates, calculations, bucklings)
 }
 
 fn expected_laminate<'a>(all: &'a [ExpectedLaminate], name: &str) -> &'a ExpectedLaminate {
@@ -385,11 +490,17 @@ fn expected_calculation<'a>(all: &'a [ExpectedCalculation], name: &str) -> &'a E
         .unwrap_or_else(|| panic!("Berechnung '{name}' nicht in reference.txt"))
 }
 
+fn expected_buckling<'a>(all: &'a [ExpectedBuckling], name: &str) -> &'a ExpectedBuckling {
+    all.iter()
+        .find(|b| b.name == name)
+        .unwrap_or_else(|| panic!("Beulanalyse '{name}' nicht in reference.txt"))
+}
+
 /// The stacking sequence, symmetry expansion, offset handling and every
 /// laminate-level stiffness quantity the batch mode reports.
 #[test]
 fn laminate_stiffness_matches_elamx() {
-    let (input, expected_all, _) = load();
+    let (input, expected_all, _, _) = load();
     let mut report = Report::default();
 
     for case in &input.laminates {
@@ -486,7 +597,7 @@ fn laminate_stiffness_matches_elamx() {
 /// hygrothermal force/moment contribution feeding back into the solution.
 #[test]
 fn solved_loads_and_strains_match_elamx() {
-    let (input, _, expected_all) = load();
+    let (input, _, expected_all, _) = load();
     let mut report = Report::default();
 
     for case in &input.laminates {
@@ -541,7 +652,7 @@ fn solved_loads_and_strains_match_elamx() {
 /// factor each of the 15 ported failure criteria produces for them.
 #[test]
 fn layer_results_and_reserve_factors_match_elamx() {
-    let (input, _, expected_all) = load();
+    let (input, _, expected_all, _) = load();
     let criteria = default_criterion_registry();
     let mut report = Report::default();
 
@@ -625,11 +736,99 @@ fn check_reserve_factor(report: &mut Report, what: &str, actual: f64, expected: 
     report.close(what, actual, expected, 0.0, tolerances::SIX_DIGITS);
 }
 
+
+/// Plate buckling: the bending-stiffness idealisation, the critical load and
+/// the full eigenvalue spectrum of the Ritz problem.
+#[test]
+fn buckling_matches_elamx() {
+    let (input, _, _, expected_all) = load();
+    let mut report = Report::default();
+
+    for case in &input.laminates {
+        let clt = CltLaminate::new(&case.laminate, &input.materials).unwrap();
+        for analysis in &case.bucklings {
+            let expected = expected_buckling(&expected_all, &analysis.name);
+            let label = &analysis.name;
+
+            // eLamX read our file as intended: same plate, same edges, same
+            // term counts, and above all the D-matrix idealisation we asked
+            // for rather than the silent fallback.
+            report.eq(format!("{label}/Laminat"), case.laminate.name.as_str(), expected.laminate_name.as_str());
+            report.eq(format!("{label}/D-Matrix-Wahl"), analysis.d_matrix_label.as_str(), expected.d_matrix_label.as_str());
+            report.eq(format!("{label}/m"), analysis.input.m, expected.m);
+            report.eq(format!("{label}/n"), analysis.input.n, expected.n);
+            report.eq(
+                format!("{label}/Randbedingungen"),
+                [format!("{:?}", analysis.input.bc_x), format!("{:?}", analysis.input.bc_y)]
+                    .map(|s| bc_short(&s)),
+                expected.bc.clone(),
+            );
+            report.close(format!("{label}/Laenge"), analysis.input.length, expected.length, 0.0, tolerances::ELEVEN_DIGITS);
+            report.close(format!("{label}/Breite"), analysis.input.width, expected.width, 0.0, tolerances::ELEVEN_DIGITS);
+
+            let d = analysis.input.d_matrix.matrix(&clt);
+            let flat: Vec<f64> = d.iter().flatten().copied().collect();
+            for (k, (a, e)) in flat.iter().zip(&expected.d_matrix).enumerate() {
+                report.close(
+                    format!("{label}/D[{}][{}]", k / 3, k % 3),
+                    *a,
+                    *e,
+                    tolerances::ONE_DECIMAL,
+                    0.0,
+                );
+            }
+
+            let result = calculate_buckling(&clt, &analysis.input)
+                .unwrap_or_else(|e| panic!("{label}: calculate_buckling schlug fehl: {e:?}"));
+
+            let n_crit = result
+                .n_crit
+                .unwrap_or_else(|| panic!("{label}: eLamX fand eine kritische Last, der Port nicht"));
+            report.close_group(&format!("{label}/n_crit"), &n_crit, &expected.n_crit, tolerances::ELEVEN_DIGITS);
+
+            // Both sides order the spectrum by ascending magnitude, so this
+            // compares element-wise. Signs are part of the result: a negative
+            // factor means the plate buckles under the REVERSED load.
+            let actual: Vec<f64> = result.modes.iter().map(|m| m.eigenvalue).collect();
+            report.eq(format!("{label}/Eigenwertanzahl"), actual.len(), expected.eigenvalues.len());
+            if actual.len() == expected.eigenvalues.len() {
+                report.close_group(
+                    &format!("{label}/Eigenwerte"),
+                    &actual,
+                    &expected.eigenvalues,
+                    tolerances::ELEVEN_DIGITS,
+                );
+            }
+        }
+    }
+
+    report.finish("Plattenbeulen");
+}
+
+/// `BoundaryCondition`'s Debug name (`SimplySimply`) versus the two-letter form
+/// the batch output prints (`SS`). Derived from the serde rename rather than
+/// hand-written, so the two cannot drift apart.
+fn bc_short(debug_name: &str) -> String {
+    serde_json::to_value(match debug_name {
+        "SimplySimply" => elamx_core::plate::BoundaryCondition::SimplySimply,
+        "ClampedClamped" => elamx_core::plate::BoundaryCondition::ClampedClamped,
+        "ClampedFree" => elamx_core::plate::BoundaryCondition::ClampedFree,
+        "FreeFree" => elamx_core::plate::BoundaryCondition::FreeFree,
+        "SimplyClamped" => elamx_core::plate::BoundaryCondition::SimplyClamped,
+        "SimplyFree" => elamx_core::plate::BoundaryCondition::SimplyFree,
+        other => panic!("unbekannte Randbedingung {other}"),
+    })
+    .expect("BoundaryCondition ist serialisierbar")
+    .as_str()
+    .expect("BoundaryCondition serialisiert als String")
+    .to_string()
+}
+
 /// The reference data must actually exercise what it claims to: every ported
 /// criterion at least once, and all the structural variants.
 #[test]
 fn reference_data_covers_every_ported_criterion() {
-    let (input, _, _) = load();
+    let (input, _, _, _) = load();
 
     let used: std::collections::BTreeSet<&str> = input
         .laminates
@@ -672,5 +871,29 @@ fn reference_data_covers_every_ported_criterion() {
     assert!(
         input.laminates.iter().flat_map(|c| &c.calculations).any(|c| c.use_strain.iter().any(|u| *u)),
         "kein Lastfall mit vorgegebener Verzerrung in den Referenzdaten"
+    );
+
+    // Buckling: every edge condition and every bending-stiffness idealisation.
+    let bucklings: Vec<&GoldenBuckling> =
+        input.laminates.iter().flat_map(|c| &c.bucklings).collect();
+    for bc in BoundaryCondition::ALL {
+        assert!(
+            bucklings.iter().any(|b| b.input.bc_x == bc || b.input.bc_y == bc),
+            "Randbedingung {bc:?} kommt in keiner Beulanalyse vor"
+        );
+    }
+    for kind in DMatrixKind::ALL {
+        assert!(
+            bucklings.iter().any(|b| b.input.d_matrix == kind),
+            "D-Matrix-Variante {kind:?} kommt in keiner Beulanalyse vor"
+        );
+    }
+    assert!(
+        bucklings.iter().any(|b| b.input.n_xy != 0.0),
+        "keine Beulanalyse unter Schub"
+    );
+    assert!(
+        bucklings.iter().any(|b| b.input.length != b.input.width),
+        "keine Beulanalyse an einer nicht-quadratischen Platte"
     );
 }

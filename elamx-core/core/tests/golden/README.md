@@ -68,6 +68,13 @@ most of this, so the list cannot quietly rot:
 - Hygrothermal loads (ΔT and Δc), alone and combined with a mechanical load.
 - Mixed boundary conditions, where some degrees of freedom prescribe the strain
   and the rest the load.
+- **Plate buckling**: all six edge conditions (SS, CC, CF, FF, SC, SF), all three
+  bending-stiffness idealisations (standard D, special orthotropic, D-tilde),
+  square and rectangular plates, uniaxial / biaxial / shear loading, asymmetric
+  Ritz term counts, and both a symmetric laminate (where the plain D matrix is
+  valid) and an unsymmetric one (where it is not, and eLamX computes it anyway).
+  Compared per analysis: the D matrix actually used, the critical load flows and
+  the *complete* eigenvalue spectrum - up to 144 values per analysis.
 
 ## Tolerances
 
@@ -91,12 +98,26 @@ cargo test --test golden_master
 git checkout -- ../../src/failure/puck.rs
 ```
 
+## Quirks of the batch output worth knowing
+
+Three things in the Java writers cost time if you meet them unprepared, and the
+parser in `golden_master.rs` works around all three:
+
+- The per-ply `Crit. = ...` text is printed on the **same line** as `S12`, because
+  the preceding `printf` has no newline. It is not at the start of a line.
+- In the buckling section **both** boundary-condition lines are captioned `x`
+  (`GeneralOutputWriterServiceImpl` prints `getBcy()` under an `x` caption), so
+  the two must be told apart by position, not by their label.
+- Free edges legitimately produce **infinite** buckling factors (rigid-body
+  modes). Both implementations report them, and they compare equal only by exact
+  equality - their difference is NaN.
+
 ## Not covered by the batch mode
 
 eLamX's batch mode implements `BatchRunService` for three modules only: the CLT
-calculation, buckling, and last-ply-failure. The CLT calculation is exactly what
-`elamx-core` implements today, so the current port is fully covered. Buckling
-and last-ply-failure can join this suite as soon as they are ported. Everything
-else in the original (pressure vessel, spring-in, cutouts, optimization,
-micromechanics, deformation, vibration) has no batch output and will need one
-before it can be validated this way.
+calculation, buckling, and last-ply-failure. The first two are exactly what
+`elamx-core` implements today, so the current port is fully covered.
+Last-ply-failure can join this suite as soon as it is ported. Everything else in
+the original (pressure vessel, spring-in, cutouts, optimization, micromechanics,
+deformation, vibration) has no batch output and will need one before it can be
+validated this way.

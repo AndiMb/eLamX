@@ -83,6 +83,28 @@ const MATERIALS = [
   }, 1.0),
 ];
 
+// --- Plate buckling ---------------------------------------------------------
+// Boundary conditions are stored in .elamx as the INDEX into eLamX's own
+// array (InputPanel.boundary_cond); elamx-core names them instead. The
+// D-matrix choice is stored as a Java class name and, like the failure
+// criterion, falls back silently to "Standard" when unrecognised
+// (see plateui/buckling/LoadSaveLaminateHookImpl) - hence the display label,
+// which the batch output prints and the Rust test checks.
+const BOUNDARY = ["SS", "CC", "CF", "FF", "SC", "SF"];
+const DM = "de.elamx.clt.plate.dmatrix.";
+const D_MATRIX = {
+  standard:            { java: DM + "StandardDMatrixServiceImpl",           label: "Original D matrix" },
+  special_orthotropic: { java: DM + "SpecialOrthotropicDMatrixServiceImpl", label: "D matrix with D_{16} = D_{26} = 0" },
+  d_tilde:             { java: DM + "DtildeDMatrixServiceImpl",             label: "D-tilde matrix" },
+};
+
+const buckling = (name, o) => ({
+  name,
+  length: 500, width: 500, n_x: -1, n_y: 0, n_xy: 0,
+  bc_x: "SS", bc_y: "SS", m: 10, n: 10, d_matrix: "standard",
+  ...o,
+});
+
 // --- Helpers for the case definitions ---------------------------------------
 const layer = (angle, thickness, materialId, criterionId) =>
   ({ angle, thickness, materialId, criterionId });
@@ -119,6 +141,13 @@ const CASES = [
       { name: "GM-Krit-Biegung",    loads: loads({ m_x: 40 }) },
       { name: "GM-Krit-Kombiniert", loads: loads({ n_x: 200, n_y: -150, n_xy: 120, m_y: 25 }) },
     ],
+    // Unsymmetric stack: D-tilde is the idealisation that actually applies
+    // here, and the plain D matrix is included precisely because it does not -
+    // eLamX computes it anyway, and so must the port.
+    bucklings: [
+      buckling("GM-Beul-DTilde", { length: 450, width: 450, d_matrix: "d_tilde" }),
+      buckling("GM-Beul-UnsymStandard", { length: 450, width: 450, d_matrix: "standard" }),
+    ],
   },
   {
     // Symmetric stack with a shared middle layer: exercises the mirroring and
@@ -136,6 +165,12 @@ const CASES = [
       { name: "GM-Sym-Zug",    loads: loads({ n_x: 500, n_y: 100 }) },
       { name: "GM-Sym-Thermo", loads: loads({ delta_t: -120, delta_h: 0.6 }) },
     ],
+    bucklings: [
+      buckling("GM-Beul-SS-Druck", {}),
+      buckling("GM-Beul-CC-Biax", { length: 600, width: 400, n_y: -0.5, bc_x: "CC", bc_y: "CC", m: 8, n: 8 }),
+      buckling("GM-Beul-Schub", { length: 500, width: 300, n_x: 0, n_xy: 1, m: 12, n: 12 }),
+      buckling("GM-Beul-SpecOrtho", { d_matrix: "special_orthotropic" }),
+    ],
   },
   {
     // Symmetric without a middle layer, plus a non-zero reference-plane offset
@@ -149,6 +184,9 @@ const CASES = [
     ],
     calculations: [
       { name: "GM-Offset-Zug", loads: loads({ n_x: 300, m_x: 15 }) },
+    ],
+    bucklings: [
+      buckling("GM-Beul-CF-SC", { length: 800, width: 400, bc_x: "CF", bc_y: "SC", m: 6, n: 9 }),
     ],
   },
   {
@@ -165,6 +203,9 @@ const CASES = [
     calculations: [
       { name: "GM-Invert-Biegung", loads: loads({ m_x: 30, m_xy: 12 }) },
     ],
+    bucklings: [
+      buckling("GM-Beul-FF-CC", { length: 700, width: 350, bc_x: "FF", bc_y: "CC", m: 7, n: 7, d_matrix: "d_tilde" }),
+    ],
   },
   {
     // Combined mechanical + thermal + moisture load: exercises the
@@ -180,6 +221,9 @@ const CASES = [
     calculations: [
       { name: "GM-Hygro-Rein",     loads: loads({ delta_t: -150, delta_h: 1.2 }) },
       { name: "GM-Hygro-Mechanisch", loads: loads({ n_x: 150, delta_t: -150, delta_h: 1.2 }) },
+    ],
+    bucklings: [
+      buckling("GM-Beul-SF-SS", { length: 600, width: 300, bc_x: "SF", n_xy: -0.4, d_matrix: "d_tilde" }),
     ],
   },
   {
@@ -270,6 +314,18 @@ function elamxXml() {
       }
       out.push("            </calculation>");
     });
+    (c.bucklings ?? []).forEach((b) => {
+      out.push(`            <buckling name="${esc(b.name)}">`);
+      for (const k of ["n_x", "n_y", "n_xy"]) out.push(`                <${k}>${num(b[k])}</${k}>`);
+      out.push(`                <length>${num(b.length)}</length>`);
+      out.push(`                <width>${num(b.width)}</width>`);
+      out.push(`                <bcx>${BOUNDARY.indexOf(b.bc_x)}</bcx>`);
+      out.push(`                <bcy>${BOUNDARY.indexOf(b.bc_y)}</bcy>`);
+      out.push(`                <m>${b.m}</m>`);
+      out.push(`                <n>${b.n}</n>`);
+      out.push(`                <dmatrixservice>${D_MATRIX[b.d_matrix].java}</dmatrixservice>`);
+      out.push("            </buckling>");
+    });
     out.push("        </laminate>");
   });
   out.push("    </laminates>");
@@ -341,6 +397,13 @@ function inputJson() {
       strains: calc.strains ?? strains(),
       use_strain: calc.useStrain ?? NO_STRAIN,
     })),
+    bucklings: (c.bucklings ?? []).map(({ name, d_matrix, ...input }) => ({
+      name,
+      input: { ...input, d_matrix },
+      // Printed by the batch output as "D-matrix option:", so the Rust test can
+      // catch eLamX's silent fallback to the standard D matrix.
+      d_matrix_label: D_MATRIX[d_matrix].label,
+    })),
   }));
 
   return JSON.stringify({ materials, laminates }, null, 2) + "\n";
@@ -360,8 +423,10 @@ writeFileSync(join(HERE, "reference.input.json"), inputJson());
 
 const layerCount = CASES.reduce((n, c) => n + c.layers.length, 0);
 const calcCount = CASES.reduce((n, c) => n + c.calculations.length, 0);
+const buckCount = CASES.reduce((n, c) => n + (c.bucklings ?? []).length, 0);
 console.log(
   `reference.elamx + reference.input.json geschrieben: ` +
     `${CASES.length} Laminate, ${layerCount} gespeicherte Lagen, ${calcCount} Berechnungen, ` +
+    `${buckCount} Beulanalysen, ` +
     `${ALL_CRITERIA.length} Kriterien abgedeckt.`,
 );
