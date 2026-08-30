@@ -4,6 +4,7 @@ import { SummaryPanel } from "./SummaryPanel";
 import { VerdictPanel } from "./VerdictPanel";
 import { MobileCollapse } from "./MobileCollapse";
 import { LayerResultsPanel } from "./LayerResultsPanel";
+import { LaminateInfoPanel } from "./LaminateInfoPanel";
 import { AbdExplanation } from "./AbdExplanation";
 import { AngleSweepChart } from "./charts/AngleSweepChart";
 import { AbdHeatmap } from "./charts/AbdHeatmap";
@@ -44,6 +45,10 @@ export function ResultsSection({ laminateId }: { laminateId: string }) {
           <section className="panel">
             <SummaryPanel laminateId={laminateId} />
           </section>
+
+          <MobileCollapse title={t("results.laminateInfo")}>
+            <LaminateInfoPanel laminateId={laminateId} />
+          </MobileCollapse>
 
           <MobileCollapse title={t("results.abdVisualization")}>
             <section className="panel">

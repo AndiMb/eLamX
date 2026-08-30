@@ -839,6 +839,22 @@ input[type="checkbox"] {
   font-weight: 400;
 }
 
+/* A tile that carries its own definition - the non-dimensional parameters are
+   not self-explanatory, and the original hides the formula in a tooltip a
+   touch screen never shows. */
+.stat-tile .hint {
+  font-size: 11px;
+  margin: 2px 0 0;
+  line-height: 1.35;
+}
+
+/* The constants table groups four columns under two headings, so the group row
+   needs a rule under it to show what belongs together. */
+.info-constants thead tr:first-child th[colspan] {
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+
 /* --- Chips --- */
 
 .chip {

@@ -161,6 +161,10 @@ export interface CltResponse {
   loads: LoadsDto;
   strains: StrainsDto;
   engineering_constants: EngineeringConstantsDto;
+  /** The laminate's own expansion coefficients, [x, y, xy] - the strain a unit
+   *  change in temperature / moisture produces. */
+  alpha_global: number[];
+  beta_global: number[];
   layer_contributions: LayerContributionDto[];
   layer_results: LayerResultDto[];
 }

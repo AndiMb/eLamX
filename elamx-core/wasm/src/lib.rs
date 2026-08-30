@@ -176,6 +176,11 @@ struct CltResponse {
     loads: Loads,
     strains: Strains,
     engineering_constants: EngineeringConstantsDto,
+    /// The laminate's own expansion coefficients: the strain a unit change in
+    /// temperature / moisture produces, [x, y, xy]. Not derivable from the
+    /// plies alone - a laminate expands as its stack lets it.
+    alpha_global: [f64; 3],
+    beta_global: [f64; 3],
     /// Per-layer A/B/D build-up, in stacking order - lets a UI show how each
     /// ply adds up to the assembled laminate stiffness.
     layer_contributions: Vec<LayerContributionDto>,
@@ -223,6 +228,8 @@ fn compute_clt_impl(request_json: &str) -> Result<String, String> {
         loads,
         strains,
         engineering_constants: EngineeringConstantsDto::from(&clt),
+        alpha_global: elamx_core::clt::alpha_global(&clt),
+        beta_global: elamx_core::clt::beta_global(&clt),
         layer_contributions: clt
             .layer_contributions()
             .into_iter()

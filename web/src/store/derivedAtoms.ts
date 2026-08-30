@@ -176,6 +176,21 @@ export const summaryFamily = atomFamily((laminateId: string) =>
   })),
 );
 
+// Everything the original's "Informationen" window shows beyond the headline
+// figures. Its own slice rather than part of summaryFamily, so the tile row at
+// the top of a result does not re-render when only the detail panel's numbers
+// move.
+export const laminateInfoFamily = atomFamily((laminateId: string) =>
+  selectFromResponse(laminateId, (r) => ({
+    abdInv: r.abd_inv,
+    engineeringConstants: r.engineering_constants,
+    alphaGlobal: r.alpha_global,
+    betaGlobal: r.beta_global,
+    massMoments: r.mass_moments,
+    isSymmetric: r.is_symmetric,
+  })),
+);
+
 // Per-layer A/B/D build-up (see elamx-core's LayerContribution) - used by the
 // "how was this computed" ABD/Q-bar explanations so they can show the exact
 // numbers the Rust core itself produced, rather than re-deriving them in TS.

@@ -167,6 +167,29 @@ export const en = {
   "buckling.result.title": "Critical load",
   "buckling.loadFactor": "Load factor λ",
   "buckling.noBuckling": "This load does not buckle the plate — under pure tension there is no positive load factor.",
+  "info.title": "Engineering constants and characteristics",
+  "info.constants": "Engineering constants",
+  "info.constants.hint":
+    "Membrane applies to in-plane strain, bending to curvature. QKB is transverse contraction restraint: without it the laminate is free to contract sideways, with it it is held.",
+  "info.constants.poissonNote":
+    "Poisson ratios are reported without restraint only — as in the original, which has the other four commented out.",
+  "info.membrane": "Membrane",
+  "info.bending": "Bending",
+  "info.withoutPoisson": "free",
+  "info.withPoisson": "restrained",
+  "info.expansion": "Expansion coefficients (thermal, hygral)",
+  "info.expansion.hint":
+    "The strain a change of 1 °C or 1 % moisture produces in the laminate. It follows from the stack, not from the plies alone: a cross-ply expands differently than the plies it is made of.",
+  "info.nonDimensional": "Non-dimensional parameters",
+  "info.nonDimensional.hint":
+    "The quantities plate theory is written in. γ and δ measure bending-twisting coupling: where they vanish, buckling and twisting decouple.",
+  "info.massMoments": "Mass moments",
+  "info.massMoments.hint":
+    "The stack's mass inertia per unit area. Reported for symmetric laminates only, as in the original.",
+  "info.abdInv": "Inverse ABD matrix",
+  "info.abdInv.hint":
+    "The compliance: it maps loads to strains, where the ABD matrix goes the other way.",
+  "results.laminateInfo": "Laminate characteristics",
   "plate.check.freeEdges":
     "All four edges are free - the plate is not supported anywhere. eLamX does not allow this combination; pick a support for at least one direction.",
   "plate.check.terms":

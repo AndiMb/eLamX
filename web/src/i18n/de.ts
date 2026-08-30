@@ -157,6 +157,29 @@ export const de: Messages = {
   "buckling.result.title": "Kritische Last",
   "buckling.loadFactor": "Laststeigerungsfaktor λ",
   "buckling.noBuckling": "Diese Belastung bringt die Platte nicht zum Beulen — unter reinem Zug gibt es keinen positiven Laststeigerungsfaktor.",
+  "info.title": "Ingenieurskonstanten und Kennwerte",
+  "info.constants": "Ingenieurskonstanten",
+  "info.constants.hint":
+    "Membran gilt für Dehnung in der Ebene, Biegung für Krümmung. QKB ist die Querkontraktionsbehinderung: ohne QKB darf sich das Laminat quer frei verformen, mit QKB ist es daran gehindert.",
+  "info.constants.poissonNote":
+    "Die Querkontraktionszahlen werden nur ohne QKB ausgewiesen — wie im Original, das die vier übrigen Werte auskommentiert hat.",
+  "info.membrane": "Membran",
+  "info.bending": "Biegung",
+  "info.withoutPoisson": "ohne QKB",
+  "info.withPoisson": "mit QKB",
+  "info.expansion": "Ausdehnungskoeffizienten (Wärme, Feuchte)",
+  "info.expansion.hint":
+    "Die Dehnung, die eine Änderung um 1 °C bzw. 1 % Feuchte im Laminat hervorruft. Sie folgt aus dem Aufbau, nicht aus den Lagen allein: ein Kreuzverbund dehnt sich anders als seine Einzellagen.",
+  "info.nonDimensional": "Dimensionslose Parameter",
+  "info.nonDimensional.hint":
+    "Die Größen, in denen die Plattentheorie geschrieben ist. γ und δ messen die Biege-Drill-Kopplung: sind sie null, entkoppeln Beulen und Verdrillen.",
+  "info.massMoments": "Massenmomente",
+  "info.massMoments.hint":
+    "Die Massenträgheit des Aufbaus je Fläche. Nur für symmetrische Laminate ausgewiesen, wie im Original.",
+  "info.abdInv": "Inverse ABD-Matrix",
+  "info.abdInv.hint":
+    "Die Nachgiebigkeit: sie bildet Lasten auf Verzerrungen ab, während die ABD-Matrix den Weg zurück geht.",
+  "results.laminateInfo": "Kennwerte des Laminats",
   "plate.check.freeEdges":
     "Alle vier Ränder sind frei - die Platte ist nirgends gelagert. Diese Randbedingung lässt eLamX nicht zu; wähle für mindestens eine Richtung eine Lagerung.",
   "plate.check.terms":
