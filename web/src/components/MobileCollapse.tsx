@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { NARROW_QUERY } from "../lib/breakpoints";
 
 // Puts a heavyweight panel behind a deliberate action on a narrow screen, and
 // leaves it exactly as it was on anything wider.
@@ -9,12 +10,11 @@ import { useEffect, useState, type ReactNode } from "react";
 // just not in the scroll path between a load and its answer. A <details> is
 // the whole mechanism: no state, no animation, and it stays open once opened.
 //
-// The threshold is wider than the shell's own mobile breakpoint (640 px, see
-// useIsMobile), deliberately: the shell switches where the TREE stops fitting,
-// this switches where the CONTENT does. A portrait tablet gets the desktop
-// shell and still cannot put the equation side by side or a heatmap next to a
-// sweep, so it has the phone's scrolling problem. Laptops keep everything.
-const NARROW_QUERY = "(max-width: 900px)";
+// The threshold is wider than the shell's own mobile breakpoint, deliberately:
+// the shell switches where the TREE stops fitting, this switches where the
+// CONTENT does. A portrait tablet gets the desktop shell and still cannot put
+// the equation side by side or a heatmap next to a sweep, so it has the
+// phone's scrolling problem. Laptops keep everything. See lib/breakpoints.ts.
 
 export function MobileCollapse({
   title,

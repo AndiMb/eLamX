@@ -1,0 +1,4 @@
+# ts-rs writes LF; pinning them stops a Windows checkout from turning the
+# generated tree into a diff against itself, which the CI drift check would
+# then report as bindings being out of date.
+web/src/lib/generated/*.ts text eol=lf

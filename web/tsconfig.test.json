@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
+    // The suite runs in Node (see vitest.config.ts) and one test reads the
+    // stylesheets from disk. Node's globals belong to the tests only - giving
+    // them to the app config would let application code reach for `fs`.
+    "types": ["vite/client", "node"]
+  },
+  // `extends` carries the app config's exclude across, which would cancel the
+  // include below.
+  "exclude": [],
+  "include": ["src/**/*.test.ts", "src/test"]
+}
