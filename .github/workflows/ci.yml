@@ -5,6 +5,10 @@
 # runs here exactly as it runs locally. It is the reason this workflow exists;
 # the rest is the ordinary "does it still build" scaffolding around it.
 #
+# The frontend suite (`npm test`, vitest) runs beside them: it covers the
+# arithmetic and state the browser tests cannot pin down cheaply - stacking
+# notation, number formatting, unit round-trips, the store's migrations.
+#
 # Deliberately absent: `cargo fmt --check` and `cargo clippy -D warnings`.
 # Neither passes today, and for reasons that are not simply neglect - the
 # transcribed constants in plate/boundary_tables.rs trip clippy::approx_constant
@@ -94,6 +98,10 @@ jobs:
       - name: Lint
         working-directory: web
         run: npm run lint
+
+      - name: Test
+        working-directory: web
+        run: npm test
 
       # `npm run build` is `tsc -b && vite build`: the typecheck is part of it,
       # so there is no separate typecheck step.

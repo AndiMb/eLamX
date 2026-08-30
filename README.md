@@ -33,7 +33,13 @@ npm install
 npm run dev
 ```
 
-Other useful commands (run from `web/`): `npm run build` (typecheck + production build), `npm run lint` (Oxlint).
+Other useful commands (run from `web/`): `npm run build` (typecheck + production build), `npm run lint` (Oxlint), `npm test` (Vitest).
+
+The frontend suite covers the parts that are arithmetic or state rather than
+pixels: stacking notation, number formatting, unit round-trips, the store's
+migrations and the comparison's bookkeeping. It runs in Node with a small
+`localStorage` stand-in (`src/test/setup.ts`) rather than a DOM - what needs a
+real browser is checked in one, where a jsdom stub would prove nothing.
 
 ## Languages
 
@@ -77,8 +83,8 @@ checked in, so the suite needs no Java installation - see
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs the Rust suite, the `wasm-pack` build and the
-frontend's lint and typecheck/build on every push to `main` and on every pull
-request - the same four commands documented above.
+frontend's lint, tests and typecheck/build on every push to `main` and on every
+pull request - the same commands documented above.
 
 ## License
 
