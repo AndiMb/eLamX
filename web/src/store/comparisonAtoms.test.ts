@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createStore } from "jotai";
 import {
   addVariantAtom,
@@ -46,5 +46,31 @@ describe("the comparison's variants", () => {
     store.set(addVariantAtom, variant("c", "1"));
     store.set(removeVariantAtom, 1);
     expect(store.get(comparisonVariantsAtom)).toEqual([variant("a", "1"), variant("c", "1")]);
+  });
+});
+
+// The surface exists to beat a spreadsheet's two columns; a spreadsheet does
+// not forget them when you close the tab.
+describe("persistence", () => {
+  it("writes the variants to storage so a reload keeps the columns", () => {
+    localStorage.clear();
+    const store = createStore();
+    store.set(addVariantAtom, variant("a", "1"));
+    store.set(addVariantAtom, variant("b", "2"));
+    expect(JSON.parse(localStorage.getItem("elamx.comparison") ?? "null")).toEqual([
+      variant("a", "1"),
+      variant("b", "2"),
+    ]);
+  });
+
+  // Through a fresh module, not a fresh store: the atom reads storage once when
+  // it is created (getOnInit), which is what a page load does. A second
+  // createStore() in the same process reuses the atom that already read.
+  it("reads them back on the next load", async () => {
+    localStorage.clear();
+    localStorage.setItem("elamx.comparison", JSON.stringify([variant("c", "3")]));
+    vi.resetModules();
+    const fresh = await import("./comparisonAtoms");
+    expect(createStore().get(fresh.comparisonVariantsAtom)).toEqual([variant("c", "3")]);
   });
 });

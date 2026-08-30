@@ -285,6 +285,8 @@ export const en = {
   "compare.remove": "Remove this column",
   "compare.empty": "No variants yet. Pick a laminate and one of its load cases above.",
   "compare.full": "At most {max} columns — beyond that they are too narrow to read.",
+  "compare.moreRows": "Show every quantity",
+  "compare.fewerRows": "Headline figures only",
   "compare.hint": "Highlighted cells differ from the first column.",
   "compare.group.layup": "Layup",
   "compare.group.stiffness": "Stiffness",

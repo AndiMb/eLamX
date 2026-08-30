@@ -275,6 +275,8 @@ export const de: Messages = {
   "compare.remove": "Diese Spalte entfernen",
   "compare.empty": "Noch keine Varianten. Oben ein Laminat und einen seiner Lastfälle wählen.",
   "compare.full": "Höchstens {max} Spalten — mehr wird zu schmal zum Lesen.",
+  "compare.moreRows": "Alle Größen zeigen",
+  "compare.fewerRows": "Nur die Kennzahlen",
   "compare.hint": "Hervorgehobene Zellen weichen von der ersten Spalte ab.",
   "compare.group.layup": "Aufbau",
   "compare.group.stiffness": "Steifigkeit",

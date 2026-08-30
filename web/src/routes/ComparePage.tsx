@@ -1,13 +1,15 @@
 import { Fragment, useMemo, useState, type ReactNode } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { X } from "lucide-react";
 import {
   addVariantAtom,
   comparisonVariantsAtom,
+  compareShowAllRowsAtom,
   MAX_VARIANTS,
   removeVariantAtom,
   type Variant,
 } from "../store/comparisonAtoms";
+import { useIsMobile } from "../lib/useIsMobile";
 import { loadableVariantFamily, variantKey } from "../store/derivedAtoms";
 import { laminateConfigFamily, laminateIdsAtom, loadCasesOf } from "../store/laminateAtoms";
 import { expandedStack, shortStackNotation } from "../lib/angleStack";
@@ -50,6 +52,12 @@ interface VariantFacts {
 interface Row {
   key: string;
   group: MessageKey;
+  /** Shown on a phone before "show everything" is tapped. Measured: three
+   *  variants make an 875 px table, and 390 px of screen showed the row
+   *  labels and the left edge of the first column - values are right-aligned,
+   *  so not one number was on screen. Fewer rows do not fix the width; they
+   *  make the width worth scrolling. */
+  essential?: true;
   label: ReactNode;
   render: (result: CltResponse | null, facts: VariantFacts) => ReactNode;
   /** The same cell as a string, so two columns can be told apart exactly. */
@@ -61,7 +69,11 @@ export function ComparePage() {
   const locale = useLocale();
   const variants = useAtomValue(comparisonVariantsAtom);
   const removeVariant = useSetAtom(removeVariantAtom);
-  const rows = useMemo(() => buildRows(t, locale), [t, locale]);
+  const allRows = useMemo(() => buildRows(t, locale), [t, locale]);
+  const isMobile = useIsMobile();
+  const [showAll, setShowAll] = useAtom(compareShowAllRowsAtom);
+  const condensed = isMobile && !showAll;
+  const rows = condensed ? allRows.filter((r) => r.essential) : allRows;
 
   return (
     <>
@@ -112,6 +124,11 @@ export function ComparePage() {
               </tbody>
             </table>
           </ResponsiveTable>
+          {isMobile && (
+            <button type="button" className="compare-rows-toggle" onClick={() => setShowAll(!showAll)}>
+              {t(showAll ? "compare.fewerRows" : "compare.moreRows")}
+            </button>
+          )}
           <p className="hint">{t("compare.hint")}</p>
         </section>
       )}
@@ -268,6 +285,7 @@ function buildRows(
     {
       key: "stack",
       group: "compare.group.layup",
+      essential: true,
       label: t("compare.row.stack"),
       render: (_r, f) => <code>{f.notation}</code>,
       compare: (_r, f) => f.notation,
@@ -282,6 +300,7 @@ function buildRows(
     {
       key: "thickness",
       group: "compare.group.layup",
+      essential: true,
       label: <Sym base="t" sub="ges" />,
       render: (_r, f) => <QuantityDisplay category="thickness" value={f.thickness} />,
       compare: (_r, f) => f.thickness.toFixed(6),
@@ -307,6 +326,7 @@ function buildRows(
     rows.push({
       key: field,
       group: "compare.group.stiffness",
+      ...(field === "ex_simple" ? { essential: true as const } : {}),
       label: <Sym {...symbol} />,
       render: (r) =>
         r && isFiniteResult(r.engineering_constants[field])
@@ -350,6 +370,7 @@ function buildRows(
     {
       key: "minRf",
       group: "compare.group.result",
+      essential: true,
       label: t("compare.row.minRf"),
       render: (r) => {
         const min = minReserveFactor(r);
@@ -363,6 +384,7 @@ function buildRows(
     {
       key: "verdict",
       group: "compare.group.result",
+      essential: true,
       label: t("compare.row.verdict"),
       render: (r) => {
         const min = minReserveFactor(r);

@@ -972,6 +972,46 @@ input[type="checkbox"] {
   }
 }
 
+/* The comparison on a phone. Three variants make a table wider than any phone,
+   so the width is a given; what was not is that NOTHING was readable - the
+   label column ate the screen and the right-aligned values started past its
+   edge. A narrow label column and tighter cells put the first variant fully on
+   screen, and the headline rows make the rest worth a swipe. */
+@media (max-width: 640px) {
+  .compare-table {
+    font-size: 12px;
+  }
+
+  .compare-table th,
+  .compare-table td {
+    padding: 6px 8px;
+  }
+
+  .compare-table th[scope="row"] {
+    max-width: 84px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* The stacking notation of a 16-ply laminate is one unbreakable token, and
+     one such cell sets the width of the whole column - which is how a
+     three-variant table reached 827 px and pushed every value off screen.
+     Here it may break anywhere; the shape of the stack still reads. */
+  .compare-table code {
+    font-size: 10px;
+    overflow-wrap: anywhere;
+  }
+
+  .compare-table td {
+    max-width: 110px;
+    overflow-wrap: anywhere;
+  }
+}
+
+.compare-rows-toggle {
+  margin-top: 10px;
+}
+
 /* --- Chips --- */
 
 .chip {
