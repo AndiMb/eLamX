@@ -3,7 +3,6 @@ import { useAtomValue } from "jotai";
 import { TriangleAlert, Check } from "lucide-react";
 import { layerResultsFamily } from "../store/derivedAtoms";
 import type { LayerResultDto } from "../lib/types";
-import { useRenderCount } from "../lib/useRenderCount";
 import { QuantityDisplay } from "./QuantityDisplay";
 import { ResponsiveTable, type ResponsiveTableColumn } from "./ResponsiveTable";
 import { LayerDetailPanel } from "./LayerDetailPanel";
@@ -14,7 +13,6 @@ export const LayerResultsPanel = memo(function LayerResultsPanel({ laminateId }:
   const t = useT();
   const locale = useLocale();
   const layerResults = useAtomValue(layerResultsFamily(laminateId));
-  const renderCount = useRenderCount();
   // Which ply's failure body is open, as an index into layerResults. Clicking
   // a ply is how the Java original opened its 3D views too; here the detail
   // appears under the table rather than in a separate window.
@@ -30,6 +28,7 @@ export const LayerResultsPanel = memo(function LayerResultsPanel({ laminateId }:
       {
         key: "rf-lower",
         label: t("layerResults.rfLower"),
+        numeric: true,
         render: (l) => <QuantityDisplay category="reserveFactor" value={l.rr_lower.minimal_reserve_factor} />,
       },
       {
@@ -40,6 +39,7 @@ export const LayerResultsPanel = memo(function LayerResultsPanel({ laminateId }:
       {
         key: "rf-upper",
         label: t("layerResults.rfUpper"),
+        numeric: true,
         render: (l) => <QuantityDisplay category="reserveFactor" value={l.rr_upper.minimal_reserve_factor} />,
       },
       {
@@ -69,9 +69,7 @@ export const LayerResultsPanel = memo(function LayerResultsPanel({ laminateId }:
 
   return (
     <>
-      <h3>
-        {t("layerResults.title")} <span className="render-count">{t("common.renders", { count: renderCount })}</span>
-      </h3>
+      <h3>{t("layerResults.title")}</h3>
       <ResponsiveTable
         variant="records"
         className="layer-results-table selectable-rows"

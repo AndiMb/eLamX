@@ -196,7 +196,9 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
 
           <h3>{t("buckling.method")}</h3>
           <div className="field-grid">
-            <label>
+            {/* As in buckling: the page's longest option needs two grid
+                columns, or it is cut off mid-formula. */}
+            <label className="wide">
               <span className="field-label">{t("buckling.dMatrix")}</span>
               <select
                 value={input.d_matrix}
@@ -244,7 +246,7 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
                   saying out loud. */}
               {Math.abs(summary.maxDeflection) >
                 LARGE_DEFLECTION_FRACTION * Math.min(input.length, input.width) && (
-                <p className="hint">
+                <p className="warning">
                   <TriangleAlert size={14} /> {t("deformation.largeDeflection")}
                 </p>
               )}
@@ -252,7 +254,7 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
               <PlateCheckList checks={checks} severity="warning" />
 
               {summary.symmetryWarning && (
-                <p className="hint">
+                <p className="warning">
                   <TriangleAlert size={14} /> {t("buckling.symmetryWarning")}{" "}
                   <Link to={`/laminates/${laminateId}`}>{t("buckling.symmetryWarning.link")}</Link>
                 </p>

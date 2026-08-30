@@ -18,12 +18,12 @@ export function ModulePage() {
   const { laminateId, moduleId } = useParams<{ laminateId: string; moduleId: string }>();
 
   if (!laminateId || !moduleId || !(moduleId in MODULE_REGISTRY)) {
-    return <p className="hint">{t("modules.unknown")}</p>;
+    return <p className="empty-note">{t("modules.unknown")}</p>;
   }
   // A module of another scope reached through a laminate URL is a wrong URL,
   // not a laminate without that module.
   if (MODULE_REGISTRY[moduleId as ModuleType].scope !== "laminate") {
-    return <p className="hint">{t("modules.unknown")}</p>;
+    return <p className="empty-note">{t("modules.unknown")}</p>;
   }
 
   return (
@@ -52,7 +52,7 @@ export function MaterialModulePage() {
     !(moduleId in MODULE_REGISTRY) ||
     MODULE_REGISTRY[moduleId as ModuleType].scope !== "material"
   ) {
-    return <p className="hint">{t("modules.unknown")}</p>;
+    return <p className="empty-note">{t("modules.unknown")}</p>;
   }
 
   switch (moduleId as ModuleType) {
@@ -64,7 +64,7 @@ export function MaterialModulePage() {
         </>
       );
     default:
-      return <p className="hint">{t("modules.unknown")}</p>;
+      return <p className="empty-note">{t("modules.unknown")}</p>;
   }
 }
 
@@ -78,14 +78,14 @@ export function ProjectModulePage() {
     !(moduleId in MODULE_REGISTRY) ||
     MODULE_REGISTRY[moduleId as ModuleType].scope !== "project"
   ) {
-    return <p className="hint">{t("modules.unknown")}</p>;
+    return <p className="empty-note">{t("modules.unknown")}</p>;
   }
 
   switch (moduleId as ModuleType) {
     case "compare":
       return <ComparePage />;
     default:
-      return <p className="hint">{t("modules.unknown")}</p>;
+      return <p className="empty-note">{t("modules.unknown")}</p>;
   }
 }
 
@@ -103,6 +103,6 @@ function ModuleBody({ laminateId, moduleId }: { laminateId: string; moduleId: Mo
     case "deformation":
       return <DeformationModuleContent laminateId={laminateId} />;
     default:
-      return <p className="hint">{t("modules.unknown")}</p>;
+      return <p className="empty-note">{t("modules.unknown")}</p>;
   }
 }

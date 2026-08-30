@@ -15,8 +15,8 @@ export function ModuleList({ scope, ownerId }: { scope: ModuleScope; ownerId?: s
   if (modules.length === 0) return null;
 
   return (
-    <>
-      <h3>{t("modules.title")}</h3>
+    <section className="panel">
+      <h2>{t("modules.title")}</h2>
       <ul className="module-list">
         {modules.map((mod) => {
           const Icon = mod.icon;
@@ -34,6 +34,6 @@ export function ModuleList({ scope, ownerId }: { scope: ModuleScope; ownerId?: s
           );
         })}
       </ul>
-    </>
+    </section>
   );
 }

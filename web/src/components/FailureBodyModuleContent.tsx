@@ -30,7 +30,7 @@ export function FailureBodyModuleContent({ materialId }: { materialId: string })
       <BackLink to={`/materials/${materialId}`} label={t("nav.material")} />
       <p className="hint">{t("failureBody.intro")}</p>
 
-      <section className="panel">
+      <section className="panel failure-body">
         <h2>{t("failureBody.title", { material: material.name })}</h2>
 
         <div className="field-grid">

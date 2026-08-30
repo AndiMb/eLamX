@@ -10,7 +10,6 @@ import { MobileCollapse } from "./MobileCollapse";
 import { SafeNumberInput } from "./SafeNumberInput";
 import { Quantity } from "./Quantity";
 import { AbdMatrixPanel } from "./AbdMatrixPanel";
-import { useRenderCount } from "../lib/useRenderCount";
 import { symText } from "../lib/symbols";
 import { Sym } from "./Sym";
 import { formatFixed, formatScientific, isFiniteResult, NO_VALUE } from "../lib/numberFormat";
@@ -46,7 +45,6 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
   const updateLoadCase = useSetAtom(updateActiveLoadCaseAtom);
   const loads = useAtomValue(solvedLoadsFamily(laminateId));
   const strains = useAtomValue(solvedStrainsFamily(laminateId));
-  const renderCount = useRenderCount();
 
   const setConfig = (update: (loadCase: LoadCase) => LoadCase) =>
     updateLoadCase({ laminateId, update });
@@ -61,10 +59,7 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
 
   return (
     <section className="panel">
-      <h2>
-        {t("equation.title")}{" "}
-        <span className="render-count">{t("common.renders", { count: renderCount })}</span>
-      </h2>
+      <h2>{t("equation.title")}</h2>
 
       <div className="equation-state">
         <span className="equation-state-title">{t("equation.hygrothermalState")}</span>

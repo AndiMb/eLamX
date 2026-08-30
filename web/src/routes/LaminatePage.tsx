@@ -489,9 +489,7 @@ export function LaminatePage() {
             )}
           </section>
 
-          <section className="panel">
-            <ModuleList scope="laminate" ownerId={id} />
-          </section>
+          <ModuleList scope="laminate" ownerId={id} />
         </div>
 
         {/* Sticky (desktop only, see App.css breakpoint): with many layers the

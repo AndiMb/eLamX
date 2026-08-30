@@ -5,6 +5,14 @@ export interface ResponsiveTableColumn<T> {
   key: string;
   label: string;
   render: (row: T) => ReactNode;
+  /** A column of measured values. Right-aligns cell AND header and switches
+   *  the cell to tabular figures, so the digits of a column line up under
+   *  each other and two reserve factors can be compared by their shape
+   *  rather than by reading them. Set it on everything that is a number with
+   *  a unit or a magnitude - not on ordinals like the ply number, which read
+   *  as labels and belong at the left edge with the rest of the row's
+   *  identity. */
+  numeric?: boolean;
 }
 
 type ResponsiveTableProps<T> =
@@ -53,7 +61,7 @@ export function ResponsiveTable<T>(props: ResponsiveTableProps<T>) {
           const fields = columns.map((col) => (
             <div className="responsive-card-row" key={col.key}>
               <span className="responsive-card-label">{col.label}</span>
-              <span>{col.render(row)}</span>
+              <span className={col.numeric ? "num" : undefined}>{col.render(row)}</span>
             </div>
           ));
           const cls = `responsive-card${rowClassName?.(row) ? ` ${rowClassName(row)}` : ""}`;
@@ -83,7 +91,9 @@ export function ResponsiveTable<T>(props: ResponsiveTableProps<T>) {
         <thead>
           <tr>
             {columns.map((col) => (
-              <th key={col.key}>{col.label}</th>
+              <th key={col.key} className={col.numeric ? "num" : undefined}>
+                {col.label}
+              </th>
             ))}
           </tr>
         </thead>
@@ -95,7 +105,9 @@ export function ResponsiveTable<T>(props: ResponsiveTableProps<T>) {
               onClick={onRowClick ? () => onRowClick(row) : undefined}
             >
               {columns.map((col) => (
-                <td key={col.key}>{col.render(row)}</td>
+                <td key={col.key} className={col.numeric ? "num" : undefined}>
+                  {col.render(row)}
+                </td>
               ))}
             </tr>
           ))}

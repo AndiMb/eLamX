@@ -39,7 +39,6 @@ export const de: Messages = {
   "common.global": "global",
   "common.top": "oben",
   "common.bottom": "unten",
-  "common.renders": "(Renders: {count})",
 
   // --- Sidebar tree --------------------------------------------------------
   "tree.rename": "Umbenennen",

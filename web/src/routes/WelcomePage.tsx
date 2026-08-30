@@ -5,7 +5,7 @@ export function WelcomePage() {
   const t = useT();
   const tx = useTx();
   return (
-    <section className="panel">
+    <section className="panel welcome">
       <div className="empty-state">
         <Layers size={40} strokeWidth={1.25} />
         <h2>{t("welcome.title")}</h2>

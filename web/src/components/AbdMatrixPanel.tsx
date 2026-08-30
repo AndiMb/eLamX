@@ -1,7 +1,6 @@
 import { memo } from "react";
 import { useAtomValue } from "jotai";
 import { abdMatrixFamily } from "../store/derivedAtoms";
-import { useRenderCount } from "../lib/useRenderCount";
 import { ResponsiveTable } from "./ResponsiveTable";
 import { formatMatrixEntry, matrixScale } from "../lib/numberFormat";
 import { useLocale, useT } from "../i18n";
@@ -30,7 +29,6 @@ export const AbdMatrixPanel = memo(function AbdMatrixPanel({ laminateId }: { lam
   const t = useT();
   const locale = useLocale();
   const abd = useAtomValue(abdMatrixFamily(laminateId));
-  const renderCount = useRenderCount();
 
   if (!abd) return null;
 
@@ -40,9 +38,7 @@ export const AbdMatrixPanel = memo(function AbdMatrixPanel({ laminateId }: { lam
 
   return (
     <>
-      <h3>
-        {t("abd.title")} <span className="render-count">{t("common.renders", { count: renderCount })}</span>
-      </h3>
+      <h3>{t("abd.title")}</h3>
       <ResponsiveTable variant="matrix">
         <table className="matrix">
           <thead>
@@ -69,15 +65,15 @@ export const AbdMatrixPanel = memo(function AbdMatrixPanel({ laminateId }: { lam
       </ResponsiveTable>
       <div className="abd-block-legend">
         <span>
-          <span className="swatch" style={{ background: "rgba(227,73,72,0.35)" }} />
+          <span className="swatch block-a" />
           {t("abd.legend.a")}
         </span>
         <span>
-          <span className="swatch" style={{ background: "rgba(27,175,122,0.35)" }} />
+          <span className="swatch block-b" />
           {t("abd.legend.b")}
         </span>
         <span>
-          <span className="swatch" style={{ background: "rgba(42,120,214,0.35)" }} />
+          <span className="swatch block-d" />
           {t("abd.legend.d")}
         </span>
       </div>

@@ -152,7 +152,10 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
 
         <h3>{t("buckling.method")}</h3>
         <div className="field-grid">
-          <label>
+          {/* The page's longest option ("D = D - B A^-1 B, also for
+              unsymmetric laminates") needs two grid columns; in one it is cut
+              off mid-formula. */}
+          <label className="wide">
             <span className="field-label">{t("buckling.dMatrix")}</span>
             <select
               value={input.d_matrix}
@@ -199,7 +202,7 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
           <PlateCheckList checks={checks} severity="warning" />
 
           {summary.symmetryWarning && (
-            <p className="hint">
+            <p className="warning">
               <TriangleAlert size={14} /> {t("buckling.symmetryWarning")}{" "}
               <Link to={`/laminates/${laminateId}`}>{t("buckling.symmetryWarning.link")}</Link>
             </p>

@@ -70,6 +70,7 @@ export function TopBar({ title }: { title?: string }) {
       {title && <span className="topbar-title">{title}</span>}
       <div className="topbar-actions">
         <ProjectActions />
+        <span className="topbar-sep" aria-hidden="true" />
         <button
           type="button"
           className={`student-pill${studentMode ? " active" : ""}`}
@@ -83,6 +84,7 @@ export function TopBar({ title }: { title?: string }) {
               string competing for that row. */}
           <span className="student-pill-text">{t("topbar.studentMode")}</span>
         </button>
+        <span className="topbar-sep" aria-hidden="true" />
         <LanguagePicker />
         <button
           type="button"

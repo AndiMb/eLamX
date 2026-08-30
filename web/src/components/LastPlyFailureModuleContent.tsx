@@ -88,6 +88,7 @@ export function LastPlyFailureModuleContent({ laminateId }: { laminateId: string
       {
         key: "rf",
         label: t("lpf.path.column.rf"),
+        numeric: true,
         render: (r) => <QuantityDisplay category="reserveFactor" value={r.reserveFactor} />,
       },
       {
@@ -209,7 +210,7 @@ export function LastPlyFailureModuleContent({ laminateId }: { laminateId: string
           </div>
 
           {summary.fibreBeforeMatrixFailure && (
-            <p className="hint">
+            <p className="warning">
               <TriangleAlert size={14} /> {t("lpf.fibreBeforeMatrix")}
             </p>
           )}
@@ -236,6 +237,7 @@ export function LastPlyFailureModuleContent({ laminateId }: { laminateId: string
             <h2>{t("lpf.path.title")}</h2>
             <ResponsiveTable
               variant="records"
+              className="layer-results-table"
               columns={columns}
               rows={path}
               rowKey={(r) => r.index}

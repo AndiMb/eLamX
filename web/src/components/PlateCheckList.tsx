@@ -19,7 +19,7 @@ export function PlateCheckList({
   return (
     <>
       {shown.map((check) => (
-        <p key={check.message} className={severity === "error" ? "error" : "hint"}>
+        <p key={check.message} className={severity === "error" ? "error" : "warning"}>
           <TriangleAlert size={14} /> {t(check.message)}
         </p>
       ))}

@@ -55,16 +55,19 @@ export function PressureVesselModuleContent({ laminateId }: { laminateId: string
       {
         key: "s11",
         label: "σ∥",
+        numeric: true,
         render: (l) => formatScientific(l.sss_lower.stress[0], 3, locale),
       },
       {
         key: "s22",
         label: "σ⊥",
+        numeric: true,
         render: (l) => formatScientific(l.sss_lower.stress[1], 3, locale),
       },
       {
         key: "rf",
         label: t("layerDetail.rf"),
+        numeric: true,
         render: (l) => (
           <QuantityDisplay
             category="reserveFactor"

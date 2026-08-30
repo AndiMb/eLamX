@@ -1,32 +1,90 @@
-/* Design-Tokens (siehe UI-Konzept-Plan §2). Neutraltöne = validierte
-   dataviz-Chrome-Palette, damit Karten und Diagramme nahtlos auf derselben
-   Fläche sitzen; Akzent aus der sequentiellen Blau-Rampe derselben Palette.
+/* Design-Tokens.
+
+   Bildsprache "Werkbank": die App-Chrome (Topbar, Baum, Tab-Leiste) ist in
+   BEIDEN Themes Graphit, die Arbeitsflaeche wechselt mit dem Theme. Damit
+   tritt die Navigation zurueck und die Rechnung ist das Blatt Papier, auf dem
+   gearbeitet wird - der Unterschied zwischen "wo bin ich" und "was rechne ich"
+   traegt sich ueber die Flaeche statt nur ueber Rahmenlinien.
+
+   Die Chrome-Rollen sind bewusst eigene Tokens (--chrome-*) und werden in
+   App.css lokal auf die normalen Rollen gemappt. Dadurch funktionieren alle
+   Regeln, die dort drin auf --card/--inset/--text/--accent zeigen, unveraendert
+   weiter und ergeben trotzdem eine dunkle Chrome.
+
+   Neutraltoene sind kuehl (Blaustich) statt warm: die Diagrammfarben unten in
+   App.css (.viz) sind die validierte dataviz-Palette und sitzen auf einem
+   kuehlen Grau ruhiger. --viz-surface/-grid/-axis/-text sind mitgezogen, die
+   Serienfarben selbst bleiben unveraendert.
+
    Dark-Werte doppelt gescoped: prefers-color-scheme als OS-Default, der
    explizite Theme-Toggle stampft data-theme auf <html> und gewinnt in beide
-   Richtungen (Muster aus der dataviz-Referenz). */
+   Richtungen. */
 :root {
-  --page: #f9f9f7;
-  --card: #fcfcfb;
-  --inset: #f0efec;
-  --border: #e1e0d9;
-  --text: #0b0b0b;
-  --text-2: #52514e;
-  --text-muted: #898781;
-  --accent: #256abf;
-  --accent-hover: #1c5cab;
-  --accent-bg: rgba(42, 120, 214, 0.1);
-  --ok: #006300;
-  --danger: #d03b3b;
+  /* --- Arbeitsflaeche, hell --- */
+  --page: #eceff4;
+  --card: #ffffff;
+  --inset: #f2f4f8;
+  --border: #dce1e9;
+  --border-strong: #c3cad6;
+  --text: #0e131b;
+  --text-2: #48505f;
+  --text-muted: #6b7486;
+  --accent: #1a56db;
+  --accent-hover: #1447b8;
+  --accent-bg: rgb(26 86 219 / 10%);
+  --accent-contrast: #ffffff;
+  --ok: #0b7a41;
+  --warn: #8a5300;
+  --danger: #c02b26;
 
-  --radius-card: 10px;
-  --radius-control: 6px;
-  --radius-chip: 4px;
+  --shadow-sm: 0 1px 2px rgb(13 20 33 / 6%), 0 1px 1px rgb(13 20 33 / 4%);
+  --shadow-md: 0 4px 16px rgb(13 20 33 / 8%), 0 1px 2px rgb(13 20 33 / 5%);
+  --shadow-lg: 0 12px 32px rgb(13 20 33 / 14%);
+
+  /* --- App-Chrome, in beiden Themes dunkel --- */
+  --chrome: #151a22;
+  --chrome-2: #1e242e;
+  --chrome-border: #262e39;
+  --chrome-text: #e9edf3;
+  --chrome-text-2: #b3bcc9;
+  --chrome-text-muted: #8b95a5;
+  --chrome-accent: #6aa4ff;
+  --chrome-accent-bg: rgb(106 164 255 / 14%);
+
+  /* --- Radien, Masse, Rhythmus --- */
+  --radius-card: 12px;
+  --radius-control: 7px;
+  --radius-chip: 999px;
   --touch-min: 44px;
+  --control-h: 32px;
+  --topbar-height: 52px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
 
-  font: 14px/1.5 var(--sans);
+  /* Lesbare Zeilenlaenge fuer Fliesstext. Die Erklaerungen dieser App sind
+     ihr halber Wert - ueber die volle Kartenbreite gesetzt liest sie niemand. */
+  --measure: 74ch;
+
+  /* --- Schriftskala --- */
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-base: 14px;
+  --fs-lg: 15px;
+  --fs-xl: 18px;
+  --fs-2xl: 22px;
+  --fs-3xl: 26px;
+  --ls-caps: 0.06em;
+
+  --sans: system-ui, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+
+  font: var(--fs-base) / 1.5 var(--sans);
   color-scheme: light;
   color: var(--text);
   background: var(--page);
@@ -36,37 +94,64 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Der Dark-Block: nur die Rollen, die sich aendern. Die Chrome wird dunkler
+   als die Karten, damit die Trennung Navigation/Arbeitsflaeche auch hier
+   sichtbar bleibt - im hellen Theme liegt sie darueber, hier darunter. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --page: #0d0d0d;
-    --card: #1a1a19;
-    --inset: #242423;
-    --border: #2c2c2a;
-    --text: #ffffff;
-    --text-2: #c3c2b7;
-    --text-muted: #898781;
-    --accent: #3987e5;
-    --accent-hover: #5598e7;
-    --accent-bg: rgba(57, 135, 229, 0.16);
-    --ok: #0ca30c;
-    --danger: #e66767;
+  :root:not([data-theme="light"]) {
+    --page: #080b0f;
+    --card: #161c24;
+    --inset: #1e252f;
+    --border: #2a323d;
+    --border-strong: #3b4553;
+    --text: #eef2f7;
+    --text-2: #b3bdcb;
+    --text-muted: #8590a1;
+    --accent: #5b96f5;
+    --accent-hover: #7aacf8;
+    --accent-bg: rgb(91 150 245 / 16%);
+    --accent-contrast: #06111f;
+    --ok: #3bbf72;
+    --warn: #d99a2b;
+    --danger: #f0736b;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-md: 0 4px 16px rgb(0 0 0 / 45%);
+    --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%);
+
+    --chrome: #0e1319;
+    --chrome-2: #171e26;
+    --chrome-border: #202832;
+
     color-scheme: dark;
   }
 }
 
-:root[data-theme='dark'] {
-  --page: #0d0d0d;
-  --card: #1a1a19;
-  --inset: #242423;
-  --border: #2c2c2a;
-  --text: #ffffff;
-  --text-2: #c3c2b7;
-  --text-muted: #898781;
-  --accent: #3987e5;
-  --accent-hover: #5598e7;
-  --accent-bg: rgba(57, 135, 229, 0.16);
-  --ok: #0ca30c;
-  --danger: #e66767;
+:root[data-theme="dark"] {
+  --page: #080b0f;
+  --card: #161c24;
+  --inset: #1e252f;
+  --border: #2a323d;
+  --border-strong: #3b4553;
+  --text: #eef2f7;
+  --text-2: #b3bdcb;
+  --text-muted: #8590a1;
+  --accent: #5b96f5;
+  --accent-hover: #7aacf8;
+  --accent-bg: rgb(91 150 245 / 16%);
+  --accent-contrast: #06111f;
+  --ok: #3bbf72;
+  --warn: #d99a2b;
+  --danger: #f0736b;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-md: 0 4px 16px rgb(0 0 0 / 45%);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%);
+
+  --chrome: #0e1319;
+  --chrome-2: #171e26;
+  --chrome-border: #202832;
+
   color-scheme: dark;
 }
 
@@ -78,16 +163,28 @@ body {
   min-height: 100svh;
 }
 
+/* Ueberschriften: eng gesetzt, damit sie neben den Zahlenkolonnen als
+   Struktur wirken und nicht als Fliesstext. */
 h1,
 h2,
 h3,
 h4 {
   color: var(--text);
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 p {
   margin: 0;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-bg);
 }
 
 /* Every indexed symbol in the UI renders as <sub> (see lib/symbols.ts), so
@@ -116,14 +213,23 @@ code {
   font-family: var(--mono);
   font-size: 0.9em;
   padding: 2px 6px;
-  border-radius: var(--radius-chip);
+  border-radius: var(--radius-control);
   background: var(--inset);
   color: var(--text);
 }
 
+/* Ein Ring statt einer Linie: liegt ueber der Kante des Controls und bleibt
+   damit auch auf getoenten Flaechen (Kacheln, Tabellenzeilen) sichtbar. */
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+
+/* Die Baumleiste und die Topbar sind dunkel - die hellen Standard-Scrollbars
+   des Systems schneiden dort sonst als weisser Streifen durch. */
+* {
+  scrollbar-color: var(--border-strong) transparent;
 }
 
 /* Present to a screen reader, absent to everyone else. The clip-path pair is

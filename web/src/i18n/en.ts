@@ -44,7 +44,6 @@ export const en = {
   "common.global": "global",
   "common.top": "top",
   "common.bottom": "bottom",
-  "common.renders": "(renders: {count})",
 
   // --- Sidebar tree --------------------------------------------------------
   "tree.rename": "Rename",

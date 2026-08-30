@@ -108,13 +108,17 @@ export function ComparePage() {
 
   return (
     <>
-      <h1>{t("compare.title")}</h1>
-      <p className="hint">{t("compare.intro")}</p>
+      <header className="page-header">
+        <div className="page-header-text">
+          <h1>{t("compare.title")}</h1>
+          <p className="page-header-sub">{t("compare.intro")}</p>
+        </div>
+      </header>
 
       <VariantPicker />
 
       {variants.length === 0 ? (
-        <p className="hint">{t("compare.empty")}</p>
+        <p className="empty-note">{t("compare.empty")}</p>
       ) : (
         <section className="panel">
           <ResponsiveTable variant="matrix">
@@ -344,8 +348,11 @@ function VariantPicker() {
             ))}
           </select>
         </label>
+        {/* The one action of this card, and the only place on the page where
+            something is created. */}
         <button
           type="button"
+          className="btn-primary"
           disabled={full || !chosenCase}
           onClick={() =>
             chosenCase && addVariant({ laminateId: chosenLaminate, loadCaseId: chosenCase.id })

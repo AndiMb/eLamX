@@ -1,7 +1,6 @@
 import { memo, type ReactNode } from "react";
 import { useAtomValue } from "jotai";
 import { summaryFamily } from "../store/derivedAtoms";
-import { useRenderCount } from "../lib/useRenderCount";
 import { QuantityDisplay } from "./QuantityDisplay";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { useFmt, fmtExp } from "../lib/cltFormulas";
@@ -27,7 +26,6 @@ export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminat
   const locale = useLocale();
   const fmt = useFmt();
   const summary = useAtomValue(summaryFamily(laminateId));
-  const renderCount = useRenderCount();
 
   if (!summary) return null;
   const ec = summary.engineeringConstants;
@@ -41,9 +39,7 @@ export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminat
 
   return (
     <>
-      <h3>
-        {t("summary.title")} <span className="render-count">{t("common.renders", { count: renderCount })}</span>
-      </h3>
+      <h3>{t("summary.title")}</h3>
       <div className="stat-tiles">
         <StatTile label={<Sym base="t" sub="ges" />} category="thickness" value={summary.tges} />
         <div className="stat-tile">
