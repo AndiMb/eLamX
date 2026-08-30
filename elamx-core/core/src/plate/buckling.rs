@@ -135,6 +135,10 @@ impl From<EigenError> for BucklingError {
 ///
 /// Port of Mechanical/InplaneLoad.java `add`. Note this ASSIGNS rather than
 /// accumulates, matching the Java.
+// Eight arguments, and every one of them is a term of the integral being
+// assembled. Bundling them into a struct would move the same list one line up
+// and make the formula harder to read against the Java original.
+#[allow(clippy::too_many_arguments)]
 fn add_geometric_stiffness(
     kg: &mut [Vec<f64>],
     n_x: f64,
@@ -512,6 +516,9 @@ mod tests {
         assert_eq!(surface.len(), 21);
         assert_eq!(surface[0].len(), 21);
         // Simply supported all round: zero deflection along every edge.
+        // The index walks a row AND a column here, so `enumerate()` over one of
+        // them would not remove it.
+        #[allow(clippy::needless_range_loop)]
         for s in 0..21 {
             assert!(surface[0][s].abs() < 1e-6, "top edge at {s}");
             assert!(surface[20][s].abs() < 1e-6, "bottom edge at {s}");

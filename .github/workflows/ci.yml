@@ -53,6 +53,15 @@ jobs:
           key: cargo-${{ runner.os }}-${{ hashFiles('elamx-core/**/Cargo.toml') }}
           restore-keys: cargo-${{ runner.os }}-
 
+      # Clippy was not run anywhere, and had drifted into failing: 17 errors,
+      # all of them the tabulated eLamX constants being read as sloppy
+      # approximations of pi. The allowances that settle those carry their
+      # reasoning; from here a new warning fails the build rather than piling
+      # up unseen.
+      - name: cargo clippy
+        working-directory: elamx-core
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
       - name: cargo test
         working-directory: elamx-core
         run: cargo test --workspace

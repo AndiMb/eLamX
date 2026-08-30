@@ -1013,6 +1013,9 @@ mod tests {
                 .fold(0.0f64, |a, v| a.max(v.abs()));
             assert!((peak - 1.0).abs() < 1e-9, "mode {mode_index} peak {peak}");
             // Simply supported all round: every edge stays put.
+            // The index walks a row AND a column here, so `enumerate()` over one of
+            // them would not remove it.
+            #[allow(clippy::needless_range_loop)]
             for s in 0..11 {
                 assert!(surface[0][s].abs() < 1e-6);
                 assert!(surface[10][s].abs() < 1e-6);

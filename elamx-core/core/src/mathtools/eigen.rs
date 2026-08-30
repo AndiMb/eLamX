@@ -12,6 +12,12 @@
 //! eLamX2's down to the last digit, and it keeps the wasm bundle free of a
 //! LAPACK-shaped dependency for a single 100x100 dense problem.
 
+// The index loops that clippy would rather see as `copy_from_slice` are the
+// shape the Java original has. Keeping them makes the two readable side by
+// side, which is the whole point of a term-for-term transcription; the
+// borrow-checker gymnastics a slice copy needs here would not.
+#![allow(clippy::manual_memcpy)]
+
 /// A generalised eigenvalue problem that turned out not to be solvable.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EigenError {

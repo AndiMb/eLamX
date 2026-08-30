@@ -2,5 +2,12 @@
 resolver = "2"
 members = ["core", "wasm"]
 
+[workspace.lints.clippy]
+# `if !(x > 0.0)` all over the input validation is deliberate, not clumsy:
+# it rejects NaN as well, where clippy's suggested `x <= 0.0` lets it straight
+# through into a Cholesky factorisation. Every site is a guard on a value that
+# came from a JSON payload, so NaN is a value it can actually have.
+neg_cmp_op_on_partial_ord = "allow"
+
 # Future workspace members (added in later migration phases):
 #   mobile  - uniffi-rs FFI bindings for Android/iOS (Phase 2)

@@ -11,6 +11,13 @@
 //! the Ritz term counts m and n at 20, so entries beyond that are unreachable,
 //! and the 2D tables would otherwise be 4x larger in the wasm binary.
 
+// The tables contain pi, 2*pi and 1/sqrt(2) as literals, which clippy reads as
+// sloppy approximations of the std constants. They are neither: they are
+// reference values carried over digit for digit, and rewriting them as
+// `std::f64::consts::PI` would silently change the last bits of a table that
+// exists to match eLamX 3.x exactly.
+#![allow(clippy::approx_constant)]
+
 pub const MAX_TERMS: usize = 20;
 
 // ---------------------------------------------------------------- SS

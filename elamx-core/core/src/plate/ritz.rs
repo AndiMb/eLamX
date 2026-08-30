@@ -66,6 +66,10 @@ pub enum SurfaceScale {
 /// `coefficients[i][j]` belongs to the shape-function pair (i in x, j in y),
 /// which is the layout both the eigenvector reshaping and the linear solve
 /// produce.
+// Same as add_geometric_stiffness: the arguments are the plate, its edges and
+// the sampling resolution, and a struct for them would be a struct with one
+// call site.
+#[allow(clippy::too_many_arguments)]
 pub fn surface(
     coefficients: &[Vec<f64>],
     length: f64,
