@@ -40,9 +40,12 @@ export interface CarryOver {
   lastPlyFailureName?: string;
   /** Name of the pressure-vessel analysis its input came from. */
   pressureVesselName?: string;
+  /** Name of the deformation analysis its input came from. */
+  deformationName?: string;
   extraBucklings?: unknown[];
   extraLastPlyFailures?: unknown[];
   extraPressureVessels?: unknown[];
+  extraDeformations?: unknown[];
   unsupportedModules?: unknown[];
 }
 

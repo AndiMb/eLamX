@@ -9,10 +9,15 @@
 // navigation all render from this registry, so a new module needs no UI
 // changes beyond its own page (see UI-Konzept §7).
 import type { LucideIcon } from "lucide-react";
-import { Calculator, Cylinder, Layers2, Waves } from "lucide-react";
+import { Calculator, Cylinder, Layers2, Spline, Waves } from "lucide-react";
 import type { MessageKey } from "../i18n";
 
-export type ModuleType = "clt" | "buckling" | "lastPlyFailure" | "pressureVessel";
+export type ModuleType =
+  | "clt"
+  | "buckling"
+  | "deformation"
+  | "lastPlyFailure"
+  | "pressureVessel";
 
 export interface ModuleDefinition {
   id: ModuleType;
@@ -34,6 +39,12 @@ export const MODULE_REGISTRY: Record<ModuleType, ModuleDefinition> = {
     labelKey: "module.buckling.label",
     icon: Waves,
     descriptionKey: "module.buckling.description",
+  },
+  deformation: {
+    id: "deformation",
+    labelKey: "module.deformation.label",
+    icon: Spline,
+    descriptionKey: "module.deformation.description",
   },
   lastPlyFailure: {
     id: "lastPlyFailure",

@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use super::boundary::{Boundary, BoundaryCondition};
 use super::boundary_tables::MAX_TERMS;
 use super::dmatrix::DMatrixKind;
+use super::ritz::{add_plate_stiffness, surface, SurfaceScale};
 use crate::clt::CltLaminate;
 use crate::mathtools::{generalized_symmetric_eigen, EigenError};
 
@@ -127,39 +128,6 @@ impl std::error::Error for BucklingError {}
 impl From<EigenError> for BucklingError {
     fn from(e: EigenError) -> Self {
         BucklingError::Eigen(e)
-    }
-}
-
-/// Assembles the Ritz stiffness matrix from the plate's bending stiffness.
-///
-/// Port of Mechanical/Plate.java `addStiffness`. The index pair (pp, qq) walks
-/// the variation and (ii, jj) the displacement; both flatten to `row * n + col`.
-fn add_plate_stiffness(k: &mut [Vec<f64>], d: &[[f64; 3]; 3], m: usize, n: usize, bx: &Boundary, by: &Boundary) {
-    let mut row = 0;
-    for pp in 0..m {
-        for qq in 0..n {
-            let mut col = 0;
-            for ii in 0..m {
-                for jj in 0..n {
-                    k[row][col] += d[0][0] * (bx.idx2dx2(ii, pp) * by.ixx(jj, qq))
-                        + d[0][1]
-                            * (bx.ixdx2(ii, pp) * by.ixdx2(qq, jj)
-                                + bx.ixdx2(pp, ii) * by.ixdx2(jj, qq))
-                        + 2.0
-                            * d[0][2]
-                            * (bx.idxdx2(ii, pp) * by.ixdx(qq, jj)
-                                + bx.idxdx2(pp, ii) * by.ixdx(jj, qq))
-                        + d[1][1] * (bx.ixx(ii, pp) * by.idx2dx2(jj, qq))
-                        + 2.0
-                            * d[1][2]
-                            * (bx.ixdx(pp, ii) * by.idxdx2(jj, qq)
-                                + bx.ixdx(ii, pp) * by.idxdx2(qq, jj))
-                        + 4.0 * d[2][2] * (bx.idxdx(ii, pp) * by.idxdx(jj, qq));
-                    col += 1;
-                }
-            }
-            row += 1;
-        }
     }
 }
 
@@ -274,61 +242,18 @@ pub fn mode_surface(
     nx_samples: usize,
     ny_samples: usize,
 ) -> Vec<Vec<f64>> {
-    let bx = Boundary::new(input.bc_x, input.length);
-    let by = Boundary::new(input.bc_y, input.width);
-    let (m, n) = (input.m, input.n);
-
-    // Precompute each shape function at every sample station: without this the
-    // sinh/cosh calls dominate, being evaluated m*n times per grid point.
-    let xs: Vec<Vec<f64>> = (0..m)
-        .map(|i| {
-            (0..nx_samples)
-                .map(|s| {
-                    let x = input.length * s as f64 / (nx_samples - 1).max(1) as f64;
-                    bx.wx(i, x)
-                })
-                .collect()
-        })
-        .collect();
-    let ys: Vec<Vec<f64>> = (0..n)
-        .map(|j| {
-            (0..ny_samples)
-                .map(|s| {
-                    let y = input.width * s as f64 / (ny_samples - 1).max(1) as f64;
-                    by.wx(j, y)
-                })
-                .collect()
-        })
-        .collect();
-
-    let mut surface = vec![vec![0.0f64; nx_samples]; ny_samples];
-    for (i, xrow) in xs.iter().enumerate() {
-        for (j, yrow) in ys.iter().enumerate() {
-            let a = shape[i][j];
-            if a == 0.0 {
-                continue;
-            }
-            for (sy, &yv) in yrow.iter().enumerate() {
-                let ay = a * yv;
-                for (sx, &xv) in xrow.iter().enumerate() {
-                    surface[sy][sx] += ay * xv;
-                }
-            }
-        }
-    }
-
-    let peak = surface
-        .iter()
-        .flat_map(|r| r.iter())
-        .fold(0.0f64, |acc, v| acc.max(v.abs()));
-    if peak > 0.0 {
-        for row in surface.iter_mut() {
-            for v in row.iter_mut() {
-                *v /= peak;
-            }
-        }
-    }
-    surface
+    // Normalised: a buckling mode has a shape but no amplitude, so the peak is
+    // scaled to 1 and the view exaggerates it from there.
+    surface(
+        shape,
+        input.length,
+        input.width,
+        &Boundary::new(input.bc_x, input.length),
+        &Boundary::new(input.bc_y, input.width),
+        nx_samples,
+        ny_samples,
+        SurfaceScale::Normalised,
+    )
 }
 
 #[cfg(test)]

@@ -524,6 +524,26 @@ input[type="checkbox"] {
   }
 }
 
+/* --- Querlasten der Plattenverformung --- */
+
+/* Each load is a small block of fields with a remove button beside it; the
+   fields wrap, the button stays put. */
+.deformation-load {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.deformation-load .field-grid {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
 /* --- Vergleichsflaeche --- */
 
 .compare-table th[scope="row"] {

@@ -10,11 +10,12 @@
 //! `LoadSaveLaminateHook` per calculation module.
 //!
 //! What is covered: materials, laminates with their layers, CLT calculations,
-//! buckling, last-ply-failure and pressure-vessel analyses - everything the
-//! ported calculation modules need. Module data this crate cannot calculate yet
-//! (cutouts, spring-in, optimisation, stiffeners) is **preserved verbatim** on
-//! read and written back unchanged, so opening and saving a file in the web
-//! version does not silently destroy what the desktop put there.
+//! buckling, deformation, last-ply-failure and pressure-vessel analyses -
+//! everything the ported calculation modules need. Module data this crate
+//! cannot calculate yet (vibration, cutouts, spring-in, optimisation,
+//! stiffeners) is **preserved verbatim** on read and written back unchanged,
+//! so opening and saving a file in the web version does not silently destroy
+//! what the desktop put there.
 
 pub mod naming;
 mod read;
@@ -25,7 +26,7 @@ pub use write::write_elamx;
 
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, Strains};
 use crate::model::{Laminate, Material};
-use crate::plate::BucklingInput;
+use crate::plate::{BucklingInput, DeformationInput};
 use serde::{Deserialize, Serialize};
 
 /// A whole `.elamx` document.
@@ -51,6 +52,8 @@ pub struct ProjectLaminate {
     pub last_ply_failures: Vec<NamedLastPlyFailure>,
     #[serde(default)]
     pub pressure_vessels: Vec<NamedPressureVessel>,
+    #[serde(default)]
+    pub deformations: Vec<NamedDeformation>,
     /// Module data from modules this crate does not implement, kept as raw XML
     /// so a read/write cycle is lossless. Order is the order in the file.
     #[serde(default)]
@@ -86,6 +89,13 @@ pub struct NamedLastPlyFailure {
 pub struct NamedPressureVessel {
     pub name: String,
     pub input: PressureVesselInput,
+}
+
+/// One plate-deformation analysis.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NamedDeformation {
+    pub name: String,
+    pub input: DeformationInput,
 }
 
 /// An element under `<laminate>` that this crate does not interpret.

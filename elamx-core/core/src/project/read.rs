@@ -9,12 +9,12 @@
 
 use super::naming;
 use super::{
-    NamedBuckling, NamedCalculation, NamedLastPlyFailure, NamedPressureVessel, Project,
-    ProjectLaminate, RawModule,
+    NamedBuckling, NamedCalculation, NamedDeformation, NamedLastPlyFailure, NamedPressureVessel,
+    Project, ProjectLaminate, RawModule,
 };
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, RadiusType, Strains};
 use crate::model::{Laminate, Layer, Material};
-use crate::plate::BucklingInput;
+use crate::plate::{BucklingInput, DeformationInput, NamedLoad};
 use roxmltree::{Document, Node};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -173,6 +173,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
     let mut bucklings = Vec::new();
     let mut last_ply_failures = Vec::new();
     let mut pressure_vessels = Vec::new();
+    let mut deformations = Vec::new();
     let mut unsupported_modules = Vec::new();
 
     for element in node.children().filter(|n| n.is_element()) {
@@ -182,6 +183,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
             "buckling" => bucklings.push(read_buckling(element, &ctx)?),
             "lastplyfailure" => last_ply_failures.push(read_last_ply_failure(element, &ctx)?),
             "pressurevessel" => pressure_vessels.push(read_pressure_vessel(element, &ctx)?),
+            "deformation" => deformations.push(read_deformation(element, &ctx)?),
             other => unsupported_modules.push(RawModule {
                 tag: other.to_string(),
                 xml: serialise(element),
@@ -195,6 +197,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
         bucklings,
         last_ply_failures,
         pressure_vessels,
+        deformations,
         unsupported_modules,
     })
 }
@@ -348,6 +351,68 @@ fn read_last_ply_failure(node: Node, parent: &str) -> Result<NamedLastPlyFailure
     };
 
     Ok(NamedLastPlyFailure { name, input })
+}
+
+fn read_deformation(node: Node, parent: &str) -> Result<NamedDeformation> {
+    let name = attr(node, "name").unwrap_or_default().to_string();
+    let ctx = format!("{parent}, Plattenverformung '{name}'");
+
+    let bc = |tag: &str| -> Result<crate::plate::BoundaryCondition> {
+        let index = number(node, tag, &ctx)? as usize;
+        naming::boundary_from_index(index).ok_or_else(|| ReadError::Unknown {
+            context: format!("{ctx}, <{tag}>"),
+            value: index.to_string(),
+        })
+    };
+
+    // Same fallback the buckling reader documents: a file written before the
+    // choice existed carries <wholed> instead.
+    let d_matrix = match text(node, "dmatrixservice") {
+        Some(java) => naming::d_matrix_from_java(java).ok_or_else(|| ReadError::Unknown {
+            context: format!("{ctx}, Biegesteifigkeit"),
+            value: java.to_string(),
+        })?,
+        None => match text(node, "wholed") {
+            Some("false") => crate::plate::DMatrixKind::SpecialOrthotropic,
+            _ => crate::plate::DMatrixKind::Standard,
+        },
+    };
+
+    let mut loads = Vec::new();
+    for element in node.children().filter(|n| n.is_element()) {
+        match element.tag_name().name() {
+            "pointload" => {
+                let load_name = attr(element, "name").unwrap_or_default().to_string();
+                let lctx = format!("{ctx}, Einzellast '{load_name}'");
+                loads.push(NamedLoad::point(
+                    load_name,
+                    number(element, "xposition", &lctx)?,
+                    number(element, "yposition", &lctx)?,
+                    number(element, "force", &lctx)?,
+                ));
+            }
+            "surfaceLoad_const_full" => {
+                let load_name = attr(element, "name").unwrap_or_default().to_string();
+                let lctx = format!("{ctx}, Flächenlast '{load_name}'");
+                loads.push(NamedLoad::surface(load_name, number(element, "force", &lctx)?));
+            }
+            _ => {}
+        }
+    }
+
+    Ok(NamedDeformation {
+        name,
+        input: DeformationInput {
+            length: number(node, "length", &ctx)?,
+            width: number(node, "width", &ctx)?,
+            bc_x: bc("bcx")?,
+            bc_y: bc("bcy")?,
+            m: number(node, "m", &ctx)? as usize,
+            n: number(node, "n", &ctx)? as usize,
+            d_matrix,
+            loads,
+        },
+    })
 }
 
 fn read_pressure_vessel(node: Node, parent: &str) -> Result<NamedPressureVessel> {

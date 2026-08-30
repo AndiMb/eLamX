@@ -7,10 +7,11 @@
 
 use super::naming;
 use super::{
-    NamedBuckling, NamedCalculation, NamedLastPlyFailure, NamedPressureVessel, Project,
-    ProjectLaminate,
+    NamedBuckling, NamedCalculation, NamedDeformation, NamedLastPlyFailure, NamedPressureVessel,
+    Project, ProjectLaminate,
 };
 use crate::clt::RadiusType;
+use crate::plate::TransverseLoad;
 use crate::model::{Laminate, Material};
 
 /// Serialises a project to `.elamx` XML.
@@ -79,6 +80,9 @@ fn write_laminate(entry: &ProjectLaminate, out: &mut String) {
     }
     for analysis in &entry.pressure_vessels {
         write_pressure_vessel(analysis, out);
+    }
+    for analysis in &entry.deformations {
+        write_deformation(analysis, out);
     }
     for raw in &entry.unsupported_modules {
         out.push_str("            ");
@@ -169,6 +173,46 @@ fn write_last_ply_failure(analysis: &NamedLastPlyFailure, out: &mut String) {
     tag(out, 16, "epsilon_crit", &num(input.epsilon_crit));
     tag(out, 16, "j_a", &num(input.j_a));
     out.push_str("            </lastplyfailure>\n");
+}
+
+fn write_deformation(analysis: &NamedDeformation, out: &mut String) {
+    let input = &analysis.input;
+    out.push_str(&format!(
+        "            <deformation name=\"{}\">\n",
+        escape(&analysis.name)
+    ));
+    tag(out, 16, "length", &num(input.length));
+    tag(out, 16, "width", &num(input.width));
+    tag(out, 16, "bcx", &naming::boundary_to_index(input.bc_x).to_string());
+    tag(out, 16, "bcy", &naming::boundary_to_index(input.bc_y).to_string());
+    tag(out, 16, "m", &input.m.to_string());
+    tag(out, 16, "n", &input.n.to_string());
+    tag(out, 16, "dmatrixservice", naming::d_matrix_to_java(input.d_matrix));
+
+    for load in &input.loads {
+        match load.load {
+            TransverseLoad::Point { x, y, force } => {
+                out.push_str(&format!(
+                    "                <pointload name=\"{}\">\n",
+                    escape(&load.name)
+                ));
+                tag(out, 20, "xposition", &num(x));
+                tag(out, 20, "yposition", &num(y));
+                tag(out, 20, "force", &num(force));
+                out.push_str("                </pointload>\n");
+            }
+            TransverseLoad::Surface { force } => {
+                out.push_str(&format!(
+                    "                <surfaceLoad_const_full name=\"{}\">\n",
+                    escape(&load.name)
+                ));
+                tag(out, 20, "force", &num(force));
+                out.push_str("                </surfaceLoad_const_full>\n");
+            }
+        }
+    }
+
+    out.push_str("            </deformation>\n");
 }
 
 fn write_pressure_vessel(analysis: &NamedPressureVessel, out: &mut String) {

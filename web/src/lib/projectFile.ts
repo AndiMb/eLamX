@@ -21,6 +21,7 @@ import {
   type CriterionId,
   type LastPlyFailureInputDto,
   type MaterialDto,
+  type DeformationInputDto,
   type PressureVesselInputDto,
 } from "./types";
 import {
@@ -45,6 +46,7 @@ interface ProjectLaminateDto {
   bucklings: BucklingEntryDto[];
   last_ply_failures: LastPlyFailureEntryDto[];
   pressure_vessels: PressureVesselEntryDto[];
+  deformations: DeformationEntryDto[];
   unsupported_modules?: unknown[];
 }
 
@@ -89,6 +91,11 @@ interface PressureVesselEntryDto {
   input: PressureVesselInputDto;
 }
 
+interface DeformationEntryDto {
+  name: string;
+  input: DeformationInputDto;
+}
+
 /** A whole session: what a file turns into on open, and what a save turns
  *  back into a file. The same shape in both directions on purpose - anything
  *  that survives one has to survive the other. */
@@ -98,6 +105,7 @@ export interface ProjectSnapshot {
   bucklings: Record<string, BucklingInputDto>;
   lastPlyFailures: Record<string, LastPlyFailureInputDto>;
   pressureVessels: Record<string, PressureVesselInputDto>;
+  deformations: Record<string, DeformationInputDto>;
   version: string;
 }
 
@@ -120,11 +128,13 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
   const bucklings: Record<string, BucklingInputDto> = {};
   const lastPlyFailures: Record<string, LastPlyFailureInputDto> = {};
   const pressureVessels: Record<string, PressureVesselInputDto> = {};
+  const deformations: Record<string, DeformationInputDto> = {};
   const laminates = project.laminates.map((entry) => {
     const dto = entry.laminate;
     const [buckling, ...extraBucklings] = entry.bucklings;
     const [lastPlyFailure, ...extraLastPlyFailures] = entry.last_ply_failures ?? [];
     const [pressureVessel, ...extraPressureVessels] = entry.pressure_vessels ?? [];
+    const [deformation, ...extraDeformations] = entry.deformations ?? [];
 
     // Every <calculation> becomes a load case, in file order. A file with none
     // still opens - it gets the default case, the same one a new laminate has.
@@ -163,9 +173,11 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
         bucklingName: buckling?.name,
         lastPlyFailureName: lastPlyFailure?.name,
         pressureVesselName: pressureVessel?.name,
+        deformationName: deformation?.name,
         extraBucklings,
         extraLastPlyFailures,
         extraPressureVessels,
+        extraDeformations,
         unsupportedModules: entry.unsupported_modules ?? [],
       },
     };
@@ -173,6 +185,7 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
     if (buckling) bucklings[dto.id] = buckling.input;
     if (lastPlyFailure) lastPlyFailures[dto.id] = lastPlyFailure.input;
     if (pressureVessel) pressureVessels[dto.id] = pressureVessel.input;
+    if (deformation) deformations[dto.id] = deformation.input;
     return config;
   });
 
@@ -182,6 +195,7 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
     bucklings,
     lastPlyFailures,
     pressureVessels,
+    deformations,
     version: project.version,
   };
 }
@@ -215,6 +229,7 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
       const buckling = snapshot.bucklings[config.id];
       const lastPlyFailure = snapshot.lastPlyFailures[config.id];
       const pressureVessel = snapshot.pressureVessels[config.id];
+      const deformation = snapshot.deformations[config.id];
 
       return {
         laminate: {
@@ -251,6 +266,12 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
             ? [{ name: carry.pressureVesselName ?? "Drucktank", input: pressureVessel }]
             : []),
           ...((carry.extraPressureVessels ?? []) as PressureVesselEntryDto[]),
+        ],
+        deformations: [
+          ...(deformation
+            ? [{ name: carry.deformationName ?? "Plattenverformung", input: deformation }]
+            : []),
+          ...((carry.extraDeformations ?? []) as DeformationEntryDto[]),
         ],
         unsupported_modules: carry.unsupportedModules ?? [],
       };

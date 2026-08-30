@@ -328,6 +328,38 @@ export interface BucklingResponse {
   symmetry_warning: boolean;
 }
 
+// --- Plate deformation (elamx-core::plate::deformation) ---------------------
+// Mirrors DeformationRequest / DeformationResult in elamx-core/wasm/src/lib.rs.
+
+/** A transverse load. Serde tags the variant with `kind` and flattens the
+ *  name beside it, so the JSON is one flat object per load. */
+export type NamedLoadDto =
+  | { kind: "Surface"; name: string; force: number }
+  | { kind: "Point"; name: string; x: number; y: number; force: number };
+
+export interface DeformationInputDto {
+  length: number;
+  width: number;
+  bc_x: BoundaryConditionId;
+  bc_y: BoundaryConditionId;
+  m: number;
+  n: number;
+  d_matrix: DMatrixKindId;
+  loads: NamedLoadDto[];
+}
+
+export interface DeformationResponse {
+  /** Ritz coefficients, m rows of n. */
+  coefficients: number[][];
+  /** Deflection on a regular grid, rows along y - in real length units. */
+  surface: number[][];
+  max_deflection: number;
+  /** Where the maximum sits, as [x, y] on the plate. */
+  max_at: [number, number];
+  min_deflection: number;
+  symmetry_warning: boolean;
+}
+
 // --- Pressure vessel (elamx-core::clt::pressure_vessel) ---------------------
 // Mirrors PressureVesselRequest / PressureVesselResult in
 // elamx-core/wasm/src/lib.rs.

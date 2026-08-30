@@ -17,7 +17,10 @@ use elamx_core::failure::{
 use elamx_core::mathtools;
 use elamx_core::model::{Laminate, Material};
 use elamx_core::project::{read_elamx, write_elamx, Project};
-use elamx_core::plate::{calculate_buckling, mode_surface, BucklingInput};
+use elamx_core::plate::{
+    calculate_buckling, calculate_deformation, mode_surface, BucklingInput, DeformationInput,
+    DeformationResult,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
@@ -423,6 +426,36 @@ fn compute_last_ply_failure_impl(request_json: &str) -> Result<String, String> {
 }
 
 #[derive(Deserialize)]
+struct DeformationRequest {
+    laminate: Laminate,
+    materials: HashMap<String, Material>,
+    input: DeformationInput,
+}
+
+/// Solves the deflection of a rectangular plate made of `laminate` under
+/// transverse loads: the same Ritz series as the buckling analysis, with a
+/// load vector instead of a geometric stiffness matrix.
+///
+/// The response is [`DeformationResult`] as JSON, including the deflection
+/// already sampled on a grid - unlike the buckling modes, there is exactly one
+/// field here, so there is nothing to choose between and no second call.
+#[wasm_bindgen]
+pub fn compute_deformation(request_json: &str) -> Result<String, JsValue> {
+    compute_deformation_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_deformation_impl(request_json: &str) -> Result<String, String> {
+    let request: DeformationRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let clt = CltLaminate::new(&request.laminate, &request.materials).map_err(|e| e.to_string())?;
+
+    let result: DeformationResult =
+        calculate_deformation(&clt, &request.input).map_err(|e| e.to_string())?;
+
+    serde_json::to_string(&result).map_err(|e| e.to_string())
+}
+
+#[derive(Deserialize)]
 struct PressureVesselRequest {
     laminate: Laminate,
     materials: HashMap<String, Material>,
@@ -706,6 +739,53 @@ mod tests {
     fn compute_angle_sweep_rejects_malformed_json() {
         let result = compute_angle_sweep_impl("not json", 90.0);
         assert!(result.is_err());
+    }
+
+    fn deformation_request(loads: &str, extra_input: &str) -> String {
+        let base = sample_request(0.0, "\"max_stress\"");
+        let head = base.rsplit_once("\"loads\"").map(|(h, _)| h.to_string()).unwrap();
+        format!(
+            r#"{head}"input": {{
+                "length": 400.0, "width": 400.0,
+                "bc_x": "SS", "bc_y": "SS",
+                "m": 10, "n": 10,
+                "d_matrix": "standard",
+                "loads": [{loads}]{extra_input}
+            }}}}"#
+        )
+    }
+
+    #[test]
+    fn compute_deformation_returns_a_deflected_surface() {
+        let request = deformation_request(r#"{"kind":"Surface","name":"q","force":0.01}"#, "");
+        let response =
+            compute_deformation_impl(&request).expect("compute_deformation_impl should succeed");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+
+        assert!(parsed["max_deflection"].as_f64().unwrap() > 0.0);
+        let surface = parsed["surface"].as_array().unwrap();
+        assert_eq!(surface.len(), 41);
+        // Simply supported: the edges do not move.
+        for value in surface[0].as_array().unwrap() {
+            assert!(value.as_f64().unwrap().abs() < 1e-9);
+        }
+        // The peak sits in the middle of the plate.
+        let at = parsed["max_at"].as_array().unwrap();
+        assert!((at[0].as_f64().unwrap() - 200.0).abs() < 25.0);
+    }
+
+    #[test]
+    fn compute_deformation_takes_a_point_load() {
+        let request =
+            deformation_request(r#"{"kind":"Point","name":"F","x":0.0,"y":0.0,"force":100.0}"#, "");
+        let response = compute_deformation_impl(&request).expect("point load should solve");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+        assert!(parsed["max_deflection"].as_f64().unwrap() > 0.0);
+    }
+
+    #[test]
+    fn compute_deformation_reports_an_unloaded_plate_as_an_error() {
+        assert!(compute_deformation_impl(&deformation_request("", "")).is_err());
     }
 
     fn pressure_vessel_request(pressure: f64, radius: f64, radius_type: &str) -> String {
