@@ -10,12 +10,12 @@ import {
   type Variant,
 } from "../store/comparisonAtoms";
 import { useIsMobile } from "../lib/useIsMobile";
-import { bucklingStorageKey, bucklingSummaryFamily } from "../store/bucklingAtoms";
-import { deformationStorageKey, deformationSummaryFamily } from "../store/deformationAtoms";
 import {
-  lastPlyFailureStorageKey,
-  lastPlyFailureSummaryFamily,
-} from "../store/lastPlyFailureAtoms";
+  figureKey,
+  moduleFigureFamily,
+  visibleModuleFiguresAtom,
+  type ModuleFigureId,
+} from "../store/moduleFigureAtoms";
 import { loadableVariantFamily, variantKey } from "../store/derivedAtoms";
 import { laminateConfigFamily, laminateIdsAtom, loadCasesOf } from "../store/laminateAtoms";
 import { expandedStack, shortStackNotation } from "../lib/angleStack";
@@ -72,83 +72,24 @@ interface Row {
 
 /** A row fed by one of the other modules rather than by the CLT result.
  *
- *  Its own kind of row because it reads a different atom family and answers a
- *  different question about presence: a laminate HAS a CLT result as soon as
- *  it has plies, but it only has a buckling factor once someone has defined a
- *  plate. Showing one for the default 500x500 mm plate nobody set up would be
- *  a confident number about a structure that does not exist. */
+ *  Its own kind of row because it answers a different question about presence:
+ *  a laminate HAS a CLT result as soon as it has plies, but it only has a
+ *  buckling factor once someone has defined a plate. The figure itself comes
+ *  from an atom (see store/moduleFigureAtoms), which is what keeps a buckling
+ *  row from computing a deformation. */
 interface ModuleRow {
-  key: string;
-  group: MessageKey;
+  key: ModuleFigureId;
   essential?: true;
   labelKey: MessageKey;
-  module: "buckling" | "deformation" | "lastPlyFailure";
-  /** Reads the module's summary slice; `null` renders as "not configured". */
-  value: (summary: ModuleSummaries) => number | null | undefined;
   digits: number;
 }
 
-interface ModuleSummaries {
-  buckling: { criticalFactor: number | null } | null;
-  deformation: { maxDeflection: number } | null;
-  lastPlyFailure: {
-    firstMatrixFailure: { reserve_factor: number } | null;
-    exceedanceFactor: { reserve_factor: number } | null;
-  } | null;
-}
-
 const MODULE_ROWS: ModuleRow[] = [
-  {
-    key: "bucklingFactor",
-    group: "compare.group.modules",
-    essential: true,
-    labelKey: "compare.row.bucklingFactor",
-    module: "buckling",
-    value: (s) => s.buckling?.criticalFactor,
-    digits: 3,
-  },
-  {
-    key: "maxDeflection",
-    group: "compare.group.modules",
-    labelKey: "compare.row.maxDeflection",
-    module: "deformation",
-    value: (s) => s.deformation?.maxDeflection,
-    digits: 3,
-  },
-  {
-    key: "lpfFirstMatrix",
-    group: "compare.group.modules",
-    labelKey: "compare.row.lpfFirstMatrix",
-    module: "lastPlyFailure",
-    value: (s) => s.lastPlyFailure?.firstMatrixFailure?.reserve_factor,
-    digits: 3,
-  },
-  {
-    key: "lpfFinal",
-    group: "compare.group.modules",
-    labelKey: "compare.row.lpfFinal",
-    module: "lastPlyFailure",
-    value: (s) => s.lastPlyFailure?.exceedanceFactor?.reserve_factor,
-    digits: 3,
-  },
+  { key: "bucklingFactor", essential: true, labelKey: "compare.row.bucklingFactor", digits: 3 },
+  { key: "maxDeflection", labelKey: "compare.row.maxDeflection", digits: 3 },
+  { key: "lpfFirstMatrix", labelKey: "compare.row.lpfFirstMatrix", digits: 3 },
+  { key: "lpfFinal", labelKey: "compare.row.lpfFinal", digits: 3 },
 ];
-
-/** Whether this laminate has the module configured at all. Storage rather than
- *  the input atom, for the reason projectAtoms gives: an input atom answers
- *  with its default whether or not the module was ever opened. */
-function hasModule(laminateId: string, module: ModuleRow["module"]): boolean {
-  const key =
-    module === "buckling"
-      ? bucklingStorageKey(laminateId)
-      : module === "deformation"
-        ? deformationStorageKey(laminateId)
-        : lastPlyFailureStorageKey(laminateId);
-  try {
-    return localStorage.getItem(key) !== null;
-  } catch {
-    return false;
-  }
-}
 
 export function ComparePage() {
   const t = useT();
@@ -160,12 +101,9 @@ export function ComparePage() {
   const [showAll, setShowAll] = useAtom(compareShowAllRowsAtom);
   const condensed = isMobile && !showAll;
   const rows = condensed ? allRows.filter((r) => r.essential) : allRows;
-  // Only the module rows any of the variants has actually configured - a row
-  // of dashes says nothing and costs a line.
+  const visibleFigures = useAtomValue(visibleModuleFiguresAtom);
   const moduleRows = MODULE_ROWS.filter(
-    (row) =>
-      (!condensed || row.essential) &&
-      variants.some((v) => hasModule(v.laminateId, row.module)),
+    (row) => (!condensed || row.essential) && visibleFigures.includes(row.key),
   );
 
   return (
@@ -219,7 +157,7 @@ export function ComparePage() {
                     {i === 0 && (
                       <tr className="compare-group">
                         <th colSpan={variants.length + 1} scope="colgroup">
-                          {t(row.group)}
+                          {t("compare.group.modules")}
                         </th>
                       </tr>
                     )}
@@ -330,17 +268,6 @@ function Cell({
   return <td className={differs ? "compare-differs" : undefined}>{row.render(result, facts)}</td>;
 }
 
-/** Reads all three module summaries for one laminate. One hook set, called
- *  unconditionally, so a row for a module this laminate has not configured
- *  costs a subscription and nothing else. */
-function useModuleSummaries(laminateId: string): ModuleSummaries {
-  return {
-    buckling: useAtomValue(bucklingSummaryFamily(laminateId)),
-    deformation: useAtomValue(deformationSummaryFamily(laminateId)),
-    lastPlyFailure: useAtomValue(lastPlyFailureSummaryFamily(laminateId)),
-  };
-}
-
 function ModuleCell({
   variant,
   reference,
@@ -352,21 +279,17 @@ function ModuleCell({
 }) {
   const t = useT();
   const locale = useLocale();
-  const summaries = useModuleSummaries(variant.laminateId);
-  const referenceSummaries = useModuleSummaries((reference ?? variant).laminateId);
+  const value = useAtomValue(moduleFigureFamily(figureKey(row.key, variant.laminateId)));
+  const referenceValue = useAtomValue(
+    moduleFigureFamily(figureKey(row.key, (reference ?? variant).laminateId)),
+  );
 
-  const configured = hasModule(variant.laminateId, row.module);
-  const value = configured ? row.value(summaries) : null;
-  const referenceConfigured = hasModule((reference ?? variant).laminateId, row.module);
-  const referenceValue = referenceConfigured ? row.value(referenceSummaries) : null;
-
-  const asText = (v: number | null | undefined) =>
-    isFiniteResult(v) ? v.toFixed(6) : "-";
+  const asText = (v: number | null) => (isFiniteResult(v) ? v.toFixed(6) : "-");
   const differs = reference !== null && asText(value) !== asText(referenceValue);
 
   return (
     <td className={differs ? "compare-differs" : undefined}>
-      {!configured ? (
+      {value === null ? (
         <span className="hint" title={t("compare.notConfigured")}>
           {NO_VALUE}
         </span>
