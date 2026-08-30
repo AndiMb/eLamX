@@ -157,6 +157,10 @@ export const de: Messages = {
   "buckling.result.title": "Kritische Last",
   "buckling.loadFactor": "Laststeigerungsfaktor λ",
   "buckling.noBuckling": "Diese Belastung bringt die Platte nicht zum Beulen — unter reinem Zug gibt es keinen positiven Laststeigerungsfaktor.",
+  "plate.check.freeEdges":
+    "Alle vier Ränder sind frei - die Platte ist nirgends gelagert. Diese Randbedingung lässt eLamX nicht zu; wähle für mindestens eine Richtung eine Lagerung.",
+  "plate.check.terms":
+    "Das Seitenverhältnis der Platte ist größer als die Termanzahl in x oder kleiner als 1 durch sie. Die Ritz-Lösung ist eine obere Schranke: zu wenige Terme lassen die Platte fester erscheinen, als sie ist. Erhöhe die Termanzahl, bis sich das Ergebnis nicht mehr ändert.",
   "buckling.symmetryWarning": "Die gewählte Biegesteifigkeit setzt ein symmetrisches Laminat voraus, dieses ist aber unsymmetrisch. Nutze stattdessen D̃ oder mache den Lagenaufbau symmetrisch.",
   "buckling.symmetryWarning.link": "Lagenaufbau öffnen",
   "buckling.how.title": "Beul-Eigenwertproblem",

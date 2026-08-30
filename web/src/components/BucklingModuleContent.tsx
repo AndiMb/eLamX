@@ -24,6 +24,8 @@ import { BackLink } from "./BackLink";
 import { Sym } from "./Sym";
 import { BucklingShapeView } from "./charts/BucklingShapeView";
 import { HowWasThisComputed } from "./HowWasThisComputed";
+import { PlateCheckList } from "./PlateCheckList";
+import { hasBlockingCheck, plateChecks } from "../lib/plateChecks";
 import { formatFixed, formatSignificant, isFiniteResult } from "../lib/numberFormat";
 import { useLocale, useT } from "../i18n";
 
@@ -47,6 +49,12 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
   // The list shortens when the term count drops, so the stored index can fall
   // past its end - see selectedBucklingModeFamily on why it is not reset.
   const activeMode = modes ? Math.min(selectedMode, modes.length - 1) : 0;
+  // eLamX 3.x runs these before it computes at all; here they run on every
+  // keystroke, so a blocking one has to hide the core's own message rather
+  // than stand beside it - "not positive definite" is the same fact told
+  // worse.
+  const checks = plateChecks(input);
+  const blocked = hasBlockingCheck(checks);
 
   const update = <K extends keyof BucklingInputDto>(key: K, value: BucklingInputDto[K]) => {
     setInput((c) => ({ ...c, [key]: value }));
@@ -180,12 +188,15 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
       </section>
 
       <div className="module-results">
-      {error && <p className="error">{t("buckling.error", { message: error })}</p>}
+      <PlateCheckList checks={checks} severity="error" />
+      {error && !blocked && <p className="error">{t("buckling.error", { message: error })}</p>}
       {loadableState.state === "loading" && <p className="hint">{t("results.computing")}</p>}
 
       {summary && (
         <section className="panel">
           <h2>{t("buckling.result.title")}</h2>
+
+          <PlateCheckList checks={checks} severity="warning" />
 
           {summary.symmetryWarning && (
             <p className="hint">

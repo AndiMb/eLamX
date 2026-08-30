@@ -27,6 +27,8 @@ import { BackLink } from "./BackLink";
 import { Sym } from "./Sym";
 import { BucklingPlate3D } from "./charts/BucklingPlate3D";
 import { HowWasThisComputed } from "./HowWasThisComputed";
+import { PlateCheckList } from "./PlateCheckList";
+import { hasBlockingCheck, plateChecks } from "../lib/plateChecks";
 import { useLocale, useT } from "../i18n";
 
 // The content behind the "deformation" entry in MODULE_REGISTRY: how far a
@@ -44,6 +46,10 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
   const summary = useAtomValue(deformationSummaryFamily(laminateId));
   const surface = useAtomValue(deformationSurfaceFamily(laminateId));
   const error = useAtomValue(deformationErrorFamily(laminateId));
+  // Same guard rails as the buckling module - the plate and its edges are the
+  // same input, and eLamX 3.x checks both modules with the same code.
+  const checks = plateChecks(input);
+  const blocked = hasBlockingCheck(checks);
   const loadableState = useAtomValue(loadableDeformationFamily(laminateId));
   const addLoad = useSetAtom(addDeformationLoadAtom);
   const removeLoad = useSetAtom(removeDeformationLoadAtom);
@@ -220,7 +226,10 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
         </section>
 
         <div className="module-results">
-          {error && <p className="error">{t("deformation.error", { message: error })}</p>}
+          <PlateCheckList checks={checks} severity="error" />
+          {error && !blocked && (
+            <p className="error">{t("deformation.error", { message: error })}</p>
+          )}
           {loadableState.state === "loading" && <p className="hint">{t("results.computing")}</p>}
 
           {summary && (
@@ -239,6 +248,8 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
                   <TriangleAlert size={14} /> {t("deformation.largeDeflection")}
                 </p>
               )}
+
+              <PlateCheckList checks={checks} severity="warning" />
 
               {summary.symmetryWarning && (
                 <p className="hint">

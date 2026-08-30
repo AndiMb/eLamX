@@ -167,6 +167,10 @@ export const en = {
   "buckling.result.title": "Critical load",
   "buckling.loadFactor": "Load factor λ",
   "buckling.noBuckling": "This load does not buckle the plate — under pure tension there is no positive load factor.",
+  "plate.check.freeEdges":
+    "All four edges are free - the plate is not supported anywhere. eLamX does not allow this combination; pick a support for at least one direction.",
+  "plate.check.terms":
+    "The plate's aspect ratio is larger than the term count in x, or smaller than 1 over it. The Ritz solution is an upper bound: too few terms make the plate look stronger than it is. Raise the term count until the result stops changing.",
   "buckling.symmetryWarning": "The selected bending stiffness assumes a symmetric laminate, but this one is not symmetric. Use D̃ instead, or make the layup symmetric.",
   "buckling.symmetryWarning.link": "Open the layup",
   "buckling.how.title": "Buckling eigenvalue problem",

@@ -1020,9 +1020,21 @@ input[type="checkbox"] {
   padding: 0 4px;
 }
 
+/* Two guards against the same failure, because the threshold is a property of
+   the CONTENT, not of the viewport: the equation needs about 970 px of panel
+   width for its four blocks, and at 1100 px viewport minus sidebar there are
+   840. Measured, the side-by-side layout first fits between 1224 and 1256 px,
+   so the switch sits at 1280 - a real device width, with margin for a longer
+   translation. The overflow below catches whatever the margin does not: then
+   the equation scrolls inside its own panel, the way the matrices do, instead
+   of making the whole page scroll sideways. */
+.equation-row {
+  overflow-x: auto;
+}
+
 /* Stacked: the columns no longer sit side by side, so there is nothing left
    to align and the spacer rows would just be dead space. */
-@media (max-width: 1100px) {
+@media (max-width: 1279px) {
   .equation-row {
     flex-direction: column;
     align-items: stretch;
