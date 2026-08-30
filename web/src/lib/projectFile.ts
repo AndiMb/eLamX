@@ -38,6 +38,10 @@ interface ProjectDto {
   version: string;
   materials: MaterialDto[];
   laminates: ProjectLaminateDto[];
+  /** `<fibres>`, `<matrices>`, `<optimizations>` as raw XML - sections the
+   *  core does not model and this app does not touch, carried so that saving
+   *  a desktop project does not delete its fibre materials. */
+  unsupported_sections?: unknown[];
 }
 
 interface ProjectLaminateDto {
@@ -107,6 +111,8 @@ export interface ProjectSnapshot {
   pressureVessels: Record<string, PressureVesselInputDto>;
   deformations: Record<string, DeformationInputDto>;
   version: string;
+  /** Project-level sections carried through untouched - see ProjectDto. */
+  unsupportedSections: unknown[];
 }
 
 const KNOWN_CRITERIA = new Set<string>(CRITERIA.map((c) => c.id));
@@ -197,6 +203,7 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
     pressureVessels,
     deformations,
     version: project.version,
+    unsupportedSections: project.unsupported_sections ?? [],
   };
 }
 
@@ -206,6 +213,7 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
 
   const project: ProjectDto = {
     version: snapshot.version || "1",
+    unsupported_sections: snapshot.unsupportedSections,
     materials: snapshot.materials,
     laminates: snapshot.laminates.map((config) => {
       const carry = config.carryOver ?? {};

@@ -31,6 +31,13 @@ export const projectVersionAtom = atom<string>("1");
 /** Name suggested when saving; taken from the opened file. */
 export const projectNameAtom = atom<string>("eLamX");
 
+/** `<fibres>`, `<matrices>`, `<optimizations>` from the opened file, as raw
+ *  XML. This app models none of them, but they are the user's data: without
+ *  carrying them, opening a desktop project and saving it deleted its fibre
+ *  and matrix materials. Session state, not persisted - a reload starts from
+ *  an empty project anyway. */
+export const projectSectionsAtom = atom<unknown[]>([]);
+
 /** Whether a laminate has a stored input for a module.
  *
  *  A module's input atom answers with its default whether or not the laminate
@@ -78,6 +85,7 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
     pressureVessels,
     deformations,
     version: get(projectVersionAtom),
+    unsupportedSections: get(projectSectionsAtom),
   };
 });
 
@@ -102,6 +110,7 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
 
   set(materialsAtom, project.materials);
   set(projectVersionAtom, project.version);
+  set(projectSectionsAtom, project.unsupportedSections);
 
   for (const config of project.laminates) {
     set(laminateConfigFamily(config.id), config);

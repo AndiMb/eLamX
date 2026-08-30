@@ -298,6 +298,48 @@ fn keeps_module_data_it_cannot_interpret() {
     assert!(xml.contains("<angle>90.0</angle>"));
 }
 
+/// The same promise one level up. `<fibres>`, `<matrices>` and
+/// `<optimizations>` hang off the root, not off a laminate, so the per-laminate
+/// carry-through never saw them - and a real project opened in the web version
+/// and saved again came back without its fibre materials.
+#[test]
+fn keeps_project_sections_it_cannot_interpret() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<elamx version="1">
+    <laminates/>
+    <materials/>
+    <fibres>
+        <fibre class="de.elamx.micromechanics.Fiber" name="Neues Fasermaterial" uuid="9fec">
+            <Epar>230000.0</Epar>
+            <Enor>15000.0</Enor>
+            <nue12>0.23</nue12>
+        </fibre>
+    </fibres>
+    <matrices/>
+    <optimizations/>
+</elamx>"#;
+
+    let project = read_elamx(xml).unwrap();
+    let tags: Vec<&str> = project
+        .unsupported_sections
+        .iter()
+        .map(|s| s.tag.as_str())
+        .collect();
+    assert_eq!(tags, ["fibres", "matrices", "optimizations"]);
+
+    let written = write_elamx(&project);
+    assert!(written.contains("name=\"Neues Fasermaterial\""));
+    assert!(written.contains("<Epar>230000.0</Epar>"));
+    assert!(written.contains("<nue12>0.23</nue12>"));
+    assert!(written.contains("<matrices/>"));
+    assert!(written.contains("<optimizations/>"));
+
+    // And once more, so that saving a file that this version wrote does not
+    // lose them either.
+    let again = read_elamx(&written).unwrap();
+    assert_eq!(again.unsupported_sections.len(), 3);
+}
+
 /// Likewise for material parameters belonging to criteria this crate has not
 /// ported: they are not ours to discard.
 #[test]

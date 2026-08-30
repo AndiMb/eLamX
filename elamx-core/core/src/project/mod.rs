@@ -11,11 +11,12 @@
 //!
 //! What is covered: materials, laminates with their layers, CLT calculations,
 //! buckling, deformation, last-ply-failure and pressure-vessel analyses -
-//! everything the ported calculation modules need. Module data this crate
-//! cannot calculate yet (vibration, cutouts, spring-in, optimisation,
-//! stiffeners) is **preserved verbatim** on read and written back unchanged,
-//! so opening and saving a file in the web version does not silently destroy
-//! what the desktop put there.
+//! everything the ported calculation modules need. Everything else is
+//! **preserved verbatim** on read and written back unchanged, so opening and
+//! saving a file in the web version does not silently destroy what the desktop
+//! put there. That holds at both levels the format has: module data under a
+//! laminate (vibration, cutouts, spring-in, stiffeners) and whole sections
+//! under the root (`<fibres>`, `<matrices>`, `<optimizations>`).
 
 pub mod naming;
 mod read;
@@ -37,6 +38,14 @@ pub struct Project {
     pub version: String,
     pub materials: Vec<Material>,
     pub laminates: Vec<ProjectLaminate>,
+    /// Top-level sections this crate does not model - `<fibres>`,
+    /// `<matrices>`, `<optimizations>` - as raw XML, in file order.
+    ///
+    /// Without this, opening a desktop project and saving it again deleted
+    /// the user's fibre and matrix materials: they belong to the project, not
+    /// to a laminate, so `unsupported_modules` never saw them.
+    #[serde(default)]
+    pub unsupported_sections: Vec<RawElement>,
 }
 
 /// A laminate together with the module data attached to it. The original
@@ -57,7 +66,7 @@ pub struct ProjectLaminate {
     /// Module data from modules this crate does not implement, kept as raw XML
     /// so a read/write cycle is lossless. Order is the order in the file.
     #[serde(default)]
-    pub unsupported_modules: Vec<RawModule>,
+    pub unsupported_modules: Vec<RawElement>,
 }
 
 /// One CLT load case.
@@ -98,10 +107,13 @@ pub struct NamedDeformation {
     pub input: DeformationInput,
 }
 
-/// An element under `<laminate>` that this crate does not interpret.
+/// An element this crate does not interpret, kept verbatim so that a read/
+/// write cycle does not drop it. Used at two levels: under `<laminate>` for
+/// module data (spring-in, cutouts, ...) and under `<elamx>` for whole
+/// sections (`<fibres>`, `<matrices>`, `<optimizations>`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RawModule {
-    /// Element name, e.g. `springIn`.
+pub struct RawElement {
+    /// Element name, e.g. `springIn` or `fibres`.
     pub tag: String,
     /// The element serialised back to XML, including its own tag.
     pub xml: String,

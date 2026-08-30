@@ -32,6 +32,14 @@ pub fn write_elamx(project: &Project) -> String {
     }
     out.push_str("    </materials>\n");
 
+    // Sections the reader kept verbatim, in the order the file had them -
+    // after `<materials>`, which is where eLamX 3.x writes them.
+    for section in &project.unsupported_sections {
+        out.push_str("    ");
+        out.push_str(&section.xml);
+        out.push('\n');
+    }
+
     out.push_str("</elamx>\n");
     out
 }

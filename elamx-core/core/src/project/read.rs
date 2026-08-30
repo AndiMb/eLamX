@@ -10,7 +10,7 @@
 use super::naming;
 use super::{
     NamedBuckling, NamedCalculation, NamedDeformation, NamedLastPlyFailure, NamedPressureVessel,
-    Project, ProjectLaminate, RawModule,
+    Project, ProjectLaminate, RawElement,
 };
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, RadiusType, Strains};
 use crate::model::{Laminate, Layer, Material};
@@ -86,10 +86,25 @@ pub fn read_elamx(xml: &str) -> Result<Project> {
         None => Vec::new(),
     };
 
+    // `<fibres>`, `<matrices>`, `<optimizations>` - sections that belong to
+    // the project rather than to a laminate. This crate models none of them,
+    // so they travel as raw XML: dropping them would delete a real file's
+    // fibre and matrix materials on the next save.
+    let unsupported_sections = root
+        .children()
+        .filter(|n| n.is_element())
+        .filter(|n| !n.has_tag_name("materials") && !n.has_tag_name("laminates"))
+        .map(|n| RawElement {
+            tag: n.tag_name().name().to_string(),
+            xml: serialise(n),
+        })
+        .collect();
+
     Ok(Project {
         version,
         materials,
         laminates,
+        unsupported_sections,
     })
 }
 
@@ -184,7 +199,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
             "lastplyfailure" => last_ply_failures.push(read_last_ply_failure(element, &ctx)?),
             "pressurevessel" => pressure_vessels.push(read_pressure_vessel(element, &ctx)?),
             "deformation" => deformations.push(read_deformation(element, &ctx)?),
-            other => unsupported_modules.push(RawModule {
+            other => unsupported_modules.push(RawElement {
                 tag: other.to_string(),
                 xml: serialise(element),
             }),
