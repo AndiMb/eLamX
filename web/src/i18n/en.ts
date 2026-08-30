@@ -325,6 +325,17 @@ export const en = {
 
   "deformation.largeDeflection": "The deflection exceeds a tenth of the plate's shorter edge. This analysis is linear — it takes the stiffness at the undeformed shape — so treat the number as an indication that the plate is far too soft for this load, not as its actual deflection.",
 
+  "module.failureBody.label": "Failure body",
+  "module.failureBody.description": "The failure surface of this material in stress space, per criterion",
+  "module.compare.label": "Comparison",
+  "module.compare.description": "Several laminates and load cases side by side, as columns",
+  "failureBody.intro": "The failure surface of this material on its own - no laminate, no load. Every point on it is a stress state the criterion calls exactly failing, so switching criteria shows how differently they judge the same material.",
+  "failureBody.title": "{material} — failure surface",
+  "failureBody.criterion": "Criterion",
+  "failureBody.hint": "Drag to rotate, scroll or pinch to zoom. Each axis is scaled to its own extent. To see a ply's stress state inside or outside this body, open a laminate's layer-by-layer analysis and click the ply.",
+  "material.unknown": "Unknown material.",
+  "nav.material": "Material",
+
   "results.error": "Error: {message}",
   "results.computing": "Computing…",
   "results.abdVisualization": "ABD matrix – visualization",

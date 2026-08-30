@@ -7,9 +7,8 @@ import { TopBar } from "./components/TopBar";
 import { BottomTabs } from "./components/BottomTabs";
 import { IndexPage } from "./routes/IndexPage";
 import { LaminatePage } from "./routes/LaminatePage";
-import { ModulePage } from "./routes/ModulePage";
+import { ModulePage, MaterialModulePage, ProjectModulePage } from "./routes/ModulePage";
 import { MaterialPage } from "./routes/MaterialPage";
-import { ComparePage } from "./routes/ComparePage";
 import { MaterialListPage } from "./routes/MaterialListPage";
 import { FormatSettingsPage } from "./routes/FormatSettingsPage";
 import "./App.css";
@@ -20,9 +19,10 @@ function AppRoutes() {
       <Route index element={<IndexPage />} />
       <Route path="/laminates/:laminateId" element={<LaminatePage />} />
       <Route path="/laminates/:laminateId/modules/:moduleId" element={<ModulePage />} />
-      <Route path="/compare" element={<ComparePage />} />
+      <Route path="/modules/:moduleId" element={<ProjectModulePage />} />
       <Route path="/materials" element={<MaterialListPage />} />
       <Route path="/materials/:materialId" element={<MaterialPage />} />
+      <Route path="/materials/:materialId/modules/:moduleId" element={<MaterialModulePage />} />
       <Route path="/settings/format" element={<FormatSettingsPage />} />
     </Routes>
   );

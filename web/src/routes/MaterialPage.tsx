@@ -7,6 +7,7 @@ import { Quantity } from "../components/Quantity";
 import { SafeNumberInput } from "../components/SafeNumberInput";
 import { BackLink } from "../components/BackLink";
 import { useT } from "../i18n";
+import { ModuleList } from "../components/ModuleList";
 
 export function MaterialPage() {
   const t = useT();
@@ -285,6 +286,10 @@ export function MaterialPage() {
           </label>
         </div>
       </details>
+
+      {/* Modules that are about the MATERIAL rather than a laminate - the
+          scope the registry gained for exactly this. */}
+      <ModuleList scope="material" ownerId={material.id} />
     </section>
   );
 }

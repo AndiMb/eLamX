@@ -438,7 +438,7 @@ export function LaminatePage() {
           </section>
 
           <section className="panel">
-            <ModuleList laminateId={id} />
+            <ModuleList scope="laminate" ownerId={id} />
           </section>
         </div>
 

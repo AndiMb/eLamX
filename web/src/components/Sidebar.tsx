@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { NavLink, useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronRight, Columns3, Copy, Diamond, Layers, Plus, Ruler, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Diamond, Layers, Plus, Ruler, Trash2 } from "lucide-react";
 import {
   addLaminateAtom,
   duplicateLaminateAtom,
@@ -13,7 +13,7 @@ import {
 import { materialsAtom } from "../store/materialsAtoms";
 import { expandedLaminateIdsAtom } from "../store/uiAtoms";
 import { defaultMaterial } from "../lib/constants";
-import { MODULE_LIST } from "../lib/moduleRegistry";
+import { modulePath, modulesOfScope } from "../lib/moduleRegistry";
 import { useT } from "../i18n";
 
 // Inline rename on double-click (UI-Konzept §4/§6): Enter commits, Escape
@@ -94,8 +94,6 @@ function LaminateTreeItem({ id }: { id: string }) {
     navigate(`/laminates/${newId}`);
   };
 
-  const ModIcon = (mod: (typeof MODULE_LIST)[number]) => mod.icon;
-
   return (
     <li>
       <div className="tree-node-row">
@@ -134,13 +132,13 @@ function LaminateTreeItem({ id }: { id: string }) {
       </div>
       {expanded && (
         <ul className="tree-children">
-          {MODULE_LIST.map((mod) => {
-            const Icon = ModIcon(mod);
+          {modulesOfScope("laminate").map((mod) => {
+            const Icon = mod.icon;
             return (
               <li key={mod.id}>
                 <div className="tree-node-row">
                   <NavLink
-                    to={`/laminates/${id}/modules/${mod.id}`}
+                    to={modulePath(mod, id)}
                     className={({ isActive }) => `tree-node${isActive ? " active" : ""}`}
                   >
                     <Icon size={16} strokeWidth={1.75} />
@@ -160,6 +158,17 @@ export function Sidebar() {
   const t = useT();
   const laminateIds = useAtomValue(laminateIdsAtom);
   const [materials, setMaterials] = useAtom(materialsAtom);
+  // Which materials show their modules. Session state like the laminates'
+  // (see expandedLaminateIdsAtom), not part of the document.
+  const [expandedMaterialIds, setExpandedMaterialIds] = useState<Set<string>>(new Set());
+
+  const toggleMaterial = (id: string) =>
+    setExpandedMaterialIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const usedMaterialIds = useAtomValue(usedMaterialIdsAtom);
   const addLaminate = useSetAtom(addLaminateAtom);
   const navigate = useNavigate();
@@ -240,9 +249,18 @@ export function Sidebar() {
           {materials.map((m) => {
             const inUse = usedMaterialIds.has(m.id);
             const isLast = materials.length <= 1;
+            const expanded = expandedMaterialIds.has(m.id);
             return (
               <li key={m.id}>
                 <div className="tree-node-row">
+                  <button
+                    type="button"
+                    className="tree-expand"
+                    onClick={() => toggleMaterial(m.id)}
+                    aria-label={expanded ? t("tree.collapse") : t("tree.expand")}
+                  >
+                    {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  </button>
                   <NavLink
                     to={`/materials/${m.id}`}
                     className={({ isActive }) => `tree-node${isActive ? " active" : ""}`}
@@ -278,6 +296,26 @@ export function Sidebar() {
                     </button>
                   </span>
                 </div>
+                {expanded && (
+                  <ul className="tree-children">
+                    {modulesOfScope("material").map((mod) => {
+                      const Icon = mod.icon;
+                      return (
+                        <li key={mod.id}>
+                          <div className="tree-node-row">
+                            <NavLink
+                              to={modulePath(mod, m.id)}
+                              className={({ isActive }) => `tree-node${isActive ? " active" : ""}`}
+                            >
+                              <Icon size={16} strokeWidth={1.75} />
+                              <span className="tree-node-label">{t(mod.labelKey)}</span>
+                            </NavLink>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </li>
             );
           })}
@@ -291,14 +329,22 @@ export function Sidebar() {
           <h3>{t("nav.project")}</h3>
         </div>
         <ul className="tree-list">
-          <li>
-            <div className="tree-node-row">
-              <NavLink to="/compare" className={({ isActive }) => `tree-node${isActive ? " active" : ""}`}>
-                <Columns3 size={16} strokeWidth={1.75} />
-                <span className="tree-node-label">{t("nav.compare")}</span>
-              </NavLink>
-            </div>
-          </li>
+          {modulesOfScope("project").map((mod) => {
+            const Icon = mod.icon;
+            return (
+              <li key={mod.id}>
+                <div className="tree-node-row">
+                  <NavLink
+                    to={modulePath(mod)}
+                    className={({ isActive }) => `tree-node${isActive ? " active" : ""}`}
+                  >
+                    <Icon size={16} strokeWidth={1.75} />
+                    <span className="tree-node-label">{t(mod.labelKey)}</span>
+                  </NavLink>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       </section>
 

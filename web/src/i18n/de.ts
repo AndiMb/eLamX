@@ -315,6 +315,17 @@ export const de: Messages = {
 
   "deformation.largeDeflection": "Die Durchbiegung übersteigt ein Zehntel der kürzeren Plattenkante. Die Rechnung ist linear — sie setzt die Steifigkeit der unverformten Platte an —, der Wert ist also ein Hinweis darauf, dass die Platte für diese Last viel zu weich ist, und nicht ihre tatsächliche Durchbiegung.",
 
+  "module.failureBody.label": "Versagenskörper",
+  "module.failureBody.description": "Die Versagensfläche dieses Materials im Spannungsraum, je Kriterium",
+  "module.compare.label": "Vergleich",
+  "module.compare.description": "Mehrere Laminate und Lastfälle nebeneinander, als Spalten",
+  "failureBody.intro": "Die Versagensfläche dieses Materials für sich — ohne Laminat, ohne Last. Jeder Punkt darauf ist ein Spannungszustand, den das Kriterium als genau versagend ansieht; ein Wechsel des Kriteriums zeigt also, wie unterschiedlich sie dasselbe Material beurteilen.",
+  "failureBody.title": "{material} — Versagensfläche",
+  "failureBody.criterion": "Kriterium",
+  "failureBody.hint": "Ziehen zum Drehen, Scrollen oder Zwei-Finger-Geste zum Zoomen. Jede Achse ist auf ihre eigene Ausdehnung skaliert. Den Spannungszustand einer Lage innerhalb oder außerhalb dieses Körpers zeigt die schichtweise Berechnung eines Laminats beim Klick auf die Lage.",
+  "material.unknown": "Unbekanntes Material.",
+  "nav.material": "Material",
+
   "results.error": "Fehler: {message}",
   "results.computing": "Berechne…",
   "results.abdVisualization": "ABD-Matrix – Visualisierung",
