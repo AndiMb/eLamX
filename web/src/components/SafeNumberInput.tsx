@@ -10,10 +10,15 @@ export function SafeNumberInput({
   value,
   onChange,
   className,
+  "aria-label": ariaLabel,
 }: {
   value: number;
   onChange: (value: number) => void;
   className?: string;
+  /** Required wherever the field has no <label> of its own - a cell in a
+   *  table is named by its column header for a sighted reader and by nothing
+   *  at all for a screen reader. */
+  "aria-label"?: string;
 }) {
   const [buffer, setBuffer] = useState<string | null>(null);
   const displayText = buffer ?? String(value);
@@ -23,6 +28,7 @@ export function SafeNumberInput({
       type="text"
       inputMode="decimal"
       className={className}
+      aria-label={ariaLabel}
       value={displayText}
       onFocus={() => setBuffer(String(value))}
       onChange={(e) => {

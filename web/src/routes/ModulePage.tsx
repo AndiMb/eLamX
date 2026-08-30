@@ -30,6 +30,11 @@ export function ModulePage() {
     <>
       {/* Above every module, not inside each one: the laminate is what all of
           them are about, and it must not disappear when one is opened. */}
+      {/* Every page needs a level-one heading; here the visible hierarchy
+          starts at the first panel's h2, and the context bar carries the
+          laminate. So the module's own name is the h1, for anyone navigating
+          by headings. */}
+      <h1 className="visually-hidden">{t(MODULE_REGISTRY[moduleId as ModuleType].labelKey)}</h1>
       <ModuleContextBar laminateId={laminateId} />
       <ModuleBody laminateId={laminateId} moduleId={moduleId as ModuleType} />
     </>
@@ -52,7 +57,12 @@ export function MaterialModulePage() {
 
   switch (moduleId as ModuleType) {
     case "failureBody":
-      return <FailureBodyModuleContent materialId={materialId} />;
+      return (
+        <>
+          <h1 className="visually-hidden">{t(MODULE_REGISTRY.failureBody.labelKey)}</h1>
+          <FailureBodyModuleContent materialId={materialId} />
+        </>
+      );
     default:
       return <p className="hint">{t("modules.unknown")}</p>;
   }

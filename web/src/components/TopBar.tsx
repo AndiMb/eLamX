@@ -10,7 +10,7 @@ import { ProjectActions } from "./ProjectActions";
 function LogoMark() {
   return (
     <span className="topbar-logo" aria-hidden="true">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
         <path d="M6 3 L18 3 L14 7.2 L2 7.2 Z" fill="currentColor" opacity="0.9" />
         <path d="M6 8.4 L18 8.4 L14 12.6 L2 12.6 Z" fill="currentColor" opacity="0.6" />
         <path d="M6 13.8 L18 13.8 L14 18 L2 18 Z" fill="currentColor" opacity="0.35" />

@@ -89,7 +89,11 @@ export const ThroughThicknessChart = memo(function ThroughThicknessChart({ lamin
     <div className="chart viz">
       <p className="chart-title">{t("chart.throughThickness.title")}</p>
       <div className="chart-controls">
-        <select value={componentKey} onChange={(e) => setComponentKey(e.target.value)}>
+        <select
+          value={componentKey}
+          aria-label={t("chart.throughThickness.component")}
+          onChange={(e) => setComponentKey(e.target.value)}
+        >
           {components.map((c) => (
             <option key={c.key} value={c.key}>
               {c.label}

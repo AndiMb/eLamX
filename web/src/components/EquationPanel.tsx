@@ -72,6 +72,7 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
           <span className="equation-label">&Delta;T</span>
           <Quantity
             category="temperatureDelta"
+            aria-label="delta T"
             value={config.deltaT}
             onChange={(v) => setConfig((c) => ({ ...c, deltaT: v }))}
           />
@@ -80,6 +81,7 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
           <span className="equation-label">&Delta;H</span>
           <Quantity
             category="percent"
+            aria-label="delta H"
             value={config.deltaH}
             onChange={(v) => setConfig((c) => ({ ...c, deltaH: v }))}
           />
@@ -99,7 +101,11 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
               <div className="equation-cell" key={symText(names.load)}>
                 <span className="equation-label"><Sym {...names.load} /></span>
                 {editable ? (
-                  <SafeNumberInput value={config.dofValues[i]} onChange={(v) => updateDofValue(i, v)} />
+                  <SafeNumberInput
+                    value={config.dofValues[i]}
+                    aria-label={symText(names.load)}
+                    onChange={(v) => updateDofValue(i, v)}
+                  />
                 ) : (
                   <button
                     type="button"
@@ -170,7 +176,11 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
               <div className="equation-cell" key={symText(names.strain)}>
                 <span className="equation-label"><Sym {...names.strain} /></span>
                 {editable ? (
-                  <SafeNumberInput value={config.dofValues[i]} onChange={(v) => updateDofValue(i, v)} />
+                  <SafeNumberInput
+                    value={config.dofValues[i]}
+                    aria-label={symText(names.strain)}
+                    onChange={(v) => updateDofValue(i, v)}
+                  />
                 ) : (
                   <button
                     type="button"

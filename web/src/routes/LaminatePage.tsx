@@ -204,6 +204,12 @@ export function LaminatePage() {
     ? 2 * config.layers.length - (config.withMiddleLayer ? 1 : 0)
     : config.layers.length;
 
+  // A cell in a table is named by its column header for anyone who can see the
+  // header, and by nothing at all for a screen reader. Sixteen plies were 82
+  // fields announced as "edit text".
+  const fieldLabel = (field: string, index: number) =>
+    `${field}, ${t("layers.aria.ply", { nr: index + 1 })}`;
+
   const columns: ResponsiveTableColumn<LayerRow & { index: number }>[] = [
     {
       key: "select",
@@ -222,28 +228,47 @@ export function LaminatePage() {
       key: "name",
       label: t("common.name"),
       render: (l) => (
-        <input type="text" value={l.name} onChange={(e) => updateLayerField(l.id, "name", e.target.value)} />
+        <input
+          type="text"
+          value={l.name}
+          aria-label={fieldLabel(t("common.name"), l.index)}
+          onChange={(e) => updateLayerField(l.id, "name", e.target.value)}
+        />
       ),
     },
     {
       key: "angle",
       label: t("layers.column.angle"),
       render: (l) => (
-        <Quantity category="angle" value={l.angle} onChange={(v) => updateLayerField(l.id, "angle", v)} />
+        <Quantity
+          category="angle"
+          value={l.angle}
+          aria-label={fieldLabel(t("layers.column.angle"), l.index)}
+          onChange={(v) => updateLayerField(l.id, "angle", v)}
+        />
       ),
     },
     {
       key: "thickness",
       label: t("layers.column.thickness"),
       render: (l) => (
-        <Quantity category="thickness" value={l.thickness} onChange={(v) => updateLayerField(l.id, "thickness", v)} />
+        <Quantity
+          category="thickness"
+          value={l.thickness}
+          aria-label={fieldLabel(t("layers.column.thickness"), l.index)}
+          onChange={(v) => updateLayerField(l.id, "thickness", v)}
+        />
       ),
     },
     {
       key: "material",
       label: t("layers.column.material"),
       render: (l) => (
-        <select value={l.materialId} onChange={(e) => updateLayerField(l.id, "materialId", e.target.value)}>
+        <select
+          value={l.materialId}
+          aria-label={fieldLabel(t("layers.column.material"), l.index)}
+          onChange={(e) => updateLayerField(l.id, "materialId", e.target.value)}
+        >
           {materials.map((m: MaterialDto) => (
             <option key={m.id} value={m.id}>
               {m.name}
@@ -258,6 +283,7 @@ export function LaminatePage() {
       render: (l) => (
         <select
           value={l.criterionId}
+          aria-label={fieldLabel(t("layers.column.criterion"), l.index)}
           onChange={(e) => updateLayerField(l.id, "criterionId", e.target.value as CriterionId)}
         >
           {CRITERIA.map((c) => (
@@ -319,6 +345,9 @@ export function LaminatePage() {
   return (
     <>
       <BackLink to="/" label={t("nav.laminates")} />
+      {/* The visible hierarchy starts at the editor panel's h2; this is the
+          page's level-one heading for anyone navigating by them. */}
+      <h1 className="visually-hidden">{config.name}</h1>
       <div className="editor-layout">
         {/* Both cards stacked in one column, sized to their own content - the
             module list sits directly under the table (rather than as a
@@ -515,7 +544,11 @@ export function LaminatePage() {
                 <RotateCw size={16} /> {t("layers.rotateBy")}
               </button>
               <span className="rotate-field">
-                <SafeNumberInput value={rotateDelta} onChange={setRotateDelta} />
+                <SafeNumberInput
+                  value={rotateDelta}
+                  aria-label={t("layers.rotateBy")}
+                  onChange={setRotateDelta}
+                />
               </span>
               <span className="hint" style={{ margin: 0 }}>
                 °

@@ -60,6 +60,7 @@ export function ProjectActions() {
         <input
           ref={fileInput}
           type="file"
+          aria-label={t("topbar.open")}
           accept=".elamx,application/xml,text/xml"
           hidden
           onChange={(e) => {

@@ -41,6 +41,9 @@ export function MaterialPage() {
         <input type="text" value={material.name} onChange={(e) => updateName(e.target.value)} />
       </label>
 
+      {/* As on the laminate page: the visible hierarchy starts at h2, so the
+          page's own name is the h1 for heading navigation. */}
+      <h1 className="visually-hidden">{material.name}</h1>
       <h2>
         <Diamond size={16} strokeWidth={1.75} />
         {t("material.properties")}
