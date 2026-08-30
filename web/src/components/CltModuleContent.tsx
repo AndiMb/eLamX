@@ -12,8 +12,13 @@ import { useT, useTx } from "../i18n";
 export function CltModuleContent({ laminateId }: { laminateId: string }) {
   const t = useT();
   const tx = useTx();
+  // A flex column rather than a plain fragment, so that a narrow screen can
+  // lift the verdict above the equation without moving it in the DOM - see
+  // .module-stack in App.css. On a phone the order that matters is enter a
+  // load, read the answer; on a wide screen the equation carries the answer's
+  // derivation beside it and belongs first.
   return (
-    <>
+    <div className="module-stack">
       <BackLink to={`/laminates/${laminateId}`} label={t("nav.laminate")} />
       <p className="hint">
         {tx("clt.criterionHint", {
@@ -23,6 +28,6 @@ export function CltModuleContent({ laminateId }: { laminateId: string }) {
       <LoadCaseBar laminateId={laminateId} />
       <EquationPanel laminateId={laminateId} />
       <ResultsSection laminateId={laminateId} />
-    </>
+    </div>
   );
 }

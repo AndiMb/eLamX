@@ -16,7 +16,18 @@ import { useEffect, useState, type ReactNode } from "react";
 // sweep, so it has the phone's scrolling problem. Laptops keep everything.
 const NARROW_QUERY = "(max-width: 900px)";
 
-export function MobileCollapse({ title, children }: { title: string; children: ReactNode }) {
+export function MobileCollapse({
+  title,
+  children,
+  disabled = false,
+}: {
+  title: string;
+  children: ReactNode;
+  /** Leaves the children where they are, at any width. For a panel that is
+   *  usually output and occasionally input - hiding a field someone has to
+   *  fill in is worse than a long page. */
+  disabled?: boolean;
+}) {
   const [narrow, setNarrow] = useState(() => window.matchMedia(NARROW_QUERY).matches);
 
   useEffect(() => {
@@ -26,7 +37,7 @@ export function MobileCollapse({ title, children }: { title: string; children: R
     return () => query.removeEventListener("change", handler);
   }, []);
 
-  if (!narrow) return <>{children}</>;
+  if (!narrow || disabled) return <>{children}</>;
 
   return (
     <details className="mobile-collapse">

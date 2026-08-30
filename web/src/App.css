@@ -855,6 +855,123 @@ input[type="checkbox"] {
   text-align: center;
 }
 
+/* A ply as one line instead of eight. The card opens to the full set of
+   fields; closed it carries what identifies a ply in a stack - position,
+   angle, thickness, name. */
+.responsive-card.card-collapsed {
+  padding: 0;
+}
+
+.responsive-card.card-collapsed > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
+  min-height: var(--touch-min);
+  box-sizing: border-box;
+}
+
+.responsive-card.card-collapsed > summary::-webkit-details-marker {
+  display: none;
+}
+
+.responsive-card.card-collapsed > summary::after {
+  content: "";
+  margin-left: auto;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: rotate(45deg);
+  transition: transform 120ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .responsive-card.card-collapsed > summary::after {
+    transition: none;
+  }
+}
+
+.responsive-card.card-collapsed[open] > summary::after {
+  transform: rotate(-135deg);
+}
+
+.responsive-card.card-collapsed > .responsive-card-row:first-of-type {
+  border-top: 1px solid var(--border);
+}
+
+.responsive-card.card-collapsed .ply-nr {
+  min-width: 2ch;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.responsive-card.card-collapsed .ply-angle {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.responsive-card.card-collapsed .ply-thickness {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.responsive-card.card-collapsed .ply-name {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The whole stack in 34 px. On a wide screen the preview panel in the right
+   rail does this job, so the strip only earns its place where that rail has
+   dropped below the table. */
+.layer-strip {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .layer-strip {
+    display: block;
+    margin-bottom: 12px;
+  }
+
+  .layer-strip .stack-viz {
+    max-height: 150px;
+  }
+}
+
+/* On a narrow screen the CLT page reads: what am I looking at, what load, what
+   is the answer - and only then the equation that produced it. Measured, the
+   verdict sat 1060 px down, past a full screen of input fields.
+
+   Order, not DOM position, because on a wide screen the equation IS the
+   explanation and belongs above the verdict it derives. Everything not named
+   here keeps its document order behind both groups. */
+@media (max-width: 900px) {
+  .module-stack {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .module-stack > * {
+    order: 3;
+  }
+
+  .module-stack > .back-link,
+  .module-stack > .hint,
+  .module-stack > .error,
+  .module-stack > .load-case-bar {
+    order: 1;
+  }
+
+  .module-stack > .panel.verdict {
+    order: 2;
+  }
+}
+
 /* --- Chips --- */
 
 .chip {

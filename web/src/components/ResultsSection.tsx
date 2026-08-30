@@ -61,7 +61,12 @@ export function ResultsSection({ laminateId }: { laminateId: string }) {
           </MobileCollapse>
 
           <section className="panel">
-            <LayerResultsPanel laminateId={laminateId} />
+            {/* Behind a tap on a narrow screen for the same reason the ABD is:
+                this one GROWS with the stack. Sixteen plies were 2800 px of
+                cards between the load and the next thing worth reading. */}
+            <MobileCollapse title={t("layerResults.title")}>
+              <LayerResultsPanel laminateId={laminateId} />
+            </MobileCollapse>
             <MobileCollapse title={t("results.plyCharts")}>
               <div className="grid">
                 <ReserveFactorChart laminateId={laminateId} />

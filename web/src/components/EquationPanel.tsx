@@ -153,6 +153,14 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
           <span className="equation-op">&times;</span>
         </MobileCollapse>
 
+        {/* Output, unless a degree of freedom is prescribed as a strain - and
+            then it is the input, so the collapse steps aside. Six read-only
+            rows are about 380 px on a phone, which is most of the distance
+            between a load and the verdict below. */}
+        <MobileCollapse
+          title={t("equation.strains")}
+          disabled={config.useStrain.some(Boolean)}
+        >
         <div className="equation-block">
           <h3>{t("equation.strains")}</h3>
           <div className="equation-head-spacer" aria-hidden="true" />
@@ -182,6 +190,7 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
             );
           })}
         </div>
+        </MobileCollapse>
       </div>
       <p className="hint equation-hygro-hint">{t("equation.hygrothermalLoads.hint")}</p>
     </section>

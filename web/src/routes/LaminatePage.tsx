@@ -426,12 +426,35 @@ export function LaminatePage() {
                     </>
                   )}
                 </div>
+                {/* The whole stack in one picture, above the list rather than
+                    below it. The right rail holds the same drawing on a wide
+                    screen; on a narrow one the rail sits after 16 ply cards,
+                    which is where it helps least. */}
+                <div className="layer-strip">
+                  <StackViz
+                    layers={config.layers}
+                    symmetric={config.symmetric}
+                    withMiddleLayer={config.withMiddleLayer}
+                  />
+                </div>
                 <ResponsiveTable
                   variant="records"
                   className="layer-table"
                   columns={columns}
                   rows={config.layers.map((l, index) => ({ ...l, index }))}
                   rowKey={(l) => l.id}
+                  cardSummary={(l) => (
+                    <>
+                      <span className="ply-nr">{l.index + 1}</span>
+                      <span className="ply-angle">
+                        <QuantityDisplay category="angle" value={l.angle} />
+                      </span>
+                      <span className="ply-thickness">
+                        <QuantityDisplay category="thickness" value={l.thickness} />
+                      </span>
+                      <span className="ply-name">{l.name}</span>
+                    </>
+                  )}
                 />
               </>
             )}

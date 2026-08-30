@@ -24,6 +24,16 @@ type ResponsiveTableProps<T> =
       /** Makes rows act as buttons - both in the table and in the mobile
        *  cards, so a detail view is reachable on either. */
       onRowClick?: (row: T) => void;
+      /** One line summarising the row, shown on the CLOSED card; the full set
+       *  of fields appears when it is opened.
+       *
+       *  Without it every column stacks, which is right for a handful of
+       *  read-only values and wrong for an editable list: a ply card with
+       *  eight labelled fields is 330 px tall, so a 16-ply stack was 5300 px
+       *  of cards and the stack was never visible as a whole. Return display
+       *  values here, not inputs - a control inside a <summary> fights the
+       *  toggle for the tap. */
+      cardSummary?: (row: T) => ReactNode;
       className?: string;
     };
 
@@ -34,25 +44,35 @@ export function ResponsiveTable<T>(props: ResponsiveTableProps<T>) {
     return <div className={`responsive-table-scroll matrix${props.className ? ` ${props.className}` : ""}`}>{props.children}</div>;
   }
 
-  const { columns, rows, rowKey, rowClassName, onRowClick, className } = props;
+  const { columns, rows, rowKey, rowClassName, onRowClick, cardSummary, className } = props;
 
   if (isMobile) {
     return (
       <div className="responsive-cards">
-        {rows.map((row) => (
-          <div
-            className={`responsive-card${rowClassName?.(row) ? ` ${rowClassName(row)}` : ""}`}
-            key={rowKey(row)}
-            onClick={onRowClick ? () => onRowClick(row) : undefined}
-          >
-            {columns.map((col) => (
-              <div className="responsive-card-row" key={col.key}>
-                <span className="responsive-card-label">{col.label}</span>
-                <span>{col.render(row)}</span>
-              </div>
-            ))}
-          </div>
-        ))}
+        {rows.map((row) => {
+          const fields = columns.map((col) => (
+            <div className="responsive-card-row" key={col.key}>
+              <span className="responsive-card-label">{col.label}</span>
+              <span>{col.render(row)}</span>
+            </div>
+          ));
+          const cls = `responsive-card${rowClassName?.(row) ? ` ${rowClassName(row)}` : ""}`;
+
+          return cardSummary ? (
+            <details className={`${cls} card-collapsed`} key={rowKey(row)}>
+              <summary>{cardSummary(row)}</summary>
+              {fields}
+            </details>
+          ) : (
+            <div
+              className={cls}
+              key={rowKey(row)}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+            >
+              {fields}
+            </div>
+          );
+        })}
       </div>
     );
   }
