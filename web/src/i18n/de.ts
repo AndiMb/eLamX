@@ -326,6 +326,16 @@ export const de: Messages = {
   "material.unknown": "Unbekanntes Material.",
   "nav.material": "Material",
 
+  "verdict.holds": "Hält",
+  "verdict.fails": "Hält nicht",
+  "verdict.governing": "Maßgebend: Lage {nr}, {mode}",
+  "verdict.minRf": "Kleinster Reservefaktor",
+  "verdict.failedPlies": "Versagende Lagen",
+  "results.derivation": "Wie die ABD-Matrix entsteht",
+  "results.plyCharts": "Diagramme über die Lagen",
+
+  "equation.middle": "ABD-Matrix und hygrothermale Anteile",
+
   "results.error": "Fehler: {message}",
   "results.computing": "Berechne…",
   "results.abdVisualization": "ABD-Matrix – Visualisierung",

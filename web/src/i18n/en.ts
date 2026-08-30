@@ -336,6 +336,16 @@ export const en = {
   "material.unknown": "Unknown material.",
   "nav.material": "Material",
 
+  "verdict.holds": "Holds",
+  "verdict.fails": "Does not hold",
+  "verdict.governing": "Governing: ply {nr}, {mode}",
+  "verdict.minRf": "Smallest reserve factor",
+  "verdict.failedPlies": "Failed plies",
+  "results.derivation": "How the ABD matrix is built",
+  "results.plyCharts": "Charts across the plies",
+
+  "equation.middle": "ABD matrix and hygrothermal loads",
+
   "results.error": "Error: {message}",
   "results.computing": "Computing…",
   "results.abdVisualization": "ABD matrix – visualization",

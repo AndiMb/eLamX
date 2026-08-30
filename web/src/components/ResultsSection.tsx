@@ -1,6 +1,8 @@
 import { useAtomValue } from "jotai";
 import { cltErrorFamily, loadableCltResponseFamily } from "../store/derivedAtoms";
 import { SummaryPanel } from "./SummaryPanel";
+import { VerdictPanel } from "./VerdictPanel";
+import { MobileCollapse } from "./MobileCollapse";
 import { LayerResultsPanel } from "./LayerResultsPanel";
 import { AbdExplanation } from "./AbdExplanation";
 import { AngleSweepChart } from "./charts/AngleSweepChart";
@@ -31,26 +33,36 @@ export function ResultsSection({ laminateId }: { laminateId: string }) {
       {loadableState.state === "loading" && <p className="hint">{t("results.computing")}</p>}
       {loadableState.state === "hasData" && (
         <>
-          <AbdExplanation laminateId={laminateId} />
+          {/* The answer first. Everything below explains it - which is the
+              order a phone needs and a wide screen does not mind. */}
+          <VerdictPanel laminateId={laminateId} />
+
+          <MobileCollapse title={t("results.derivation")}>
+            <AbdExplanation laminateId={laminateId} />
+          </MobileCollapse>
 
           <section className="panel">
             <SummaryPanel laminateId={laminateId} />
           </section>
 
-          <section className="panel">
-            <h2>{t("results.abdVisualization")}</h2>
-            <div className="grid">
-              <AbdHeatmap laminateId={laminateId} />
-              <AngleSweepChart laminateId={laminateId} />
-            </div>
-          </section>
+          <MobileCollapse title={t("results.abdVisualization")}>
+            <section className="panel">
+              <h2>{t("results.abdVisualization")}</h2>
+              <div className="grid">
+                <AbdHeatmap laminateId={laminateId} />
+                <AngleSweepChart laminateId={laminateId} />
+              </div>
+            </section>
+          </MobileCollapse>
 
           <section className="panel">
             <LayerResultsPanel laminateId={laminateId} />
-            <div className="grid">
-              <ReserveFactorChart laminateId={laminateId} />
-              <ThroughThicknessChart laminateId={laminateId} />
-            </div>
+            <MobileCollapse title={t("results.plyCharts")}>
+              <div className="grid">
+                <ReserveFactorChart laminateId={laminateId} />
+                <ThroughThicknessChart laminateId={laminateId} />
+              </div>
+            </MobileCollapse>
           </section>
         </>
       )}

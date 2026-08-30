@@ -6,6 +6,7 @@ import {
 } from "../store/laminateAtoms";
 import { solvedLoadsFamily, solvedStrainsFamily } from "../store/derivedAtoms";
 import { DOF_NAMES, HYGROTHERMAL_FIELDS, LOAD_FIELDS, STRAIN_FIELDS } from "../lib/constants";
+import { MobileCollapse } from "./MobileCollapse";
 import { SafeNumberInput } from "./SafeNumberInput";
 import { Quantity } from "./Quantity";
 import { AbdMatrixPanel } from "./AbdMatrixPanel";
@@ -115,12 +116,18 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
           })}
         </div>
 
-        <span className="equation-op">+</span>
+        {/* On a phone the equation metaphor is already gone - the row stacks
+            into a linear form, and the ABD matrix has to scroll sideways. What
+            is left of it there is the two things a phone is for: the load
+            column and the strain column. The middle - the operators, the
+            derived hygrothermal loads and the matrix - goes behind one tap. */}
+        <MobileCollapse title={t("equation.middle")}>
+          <span className="equation-op">+</span>
 
-        {/* Purely derived - unlike the load/strain columns there is nothing to
-            prescribe here, so these are plain read-only values rather than the
-            clickable .equation-computed buttons. */}
-        <div className="equation-block">
+          {/* Purely derived - unlike the load/strain columns there is nothing
+              to prescribe here, so these are plain read-only values rather
+              than the clickable .equation-computed buttons. */}
+          <div className="equation-block">
           <h3>{t("equation.hygrothermalLoads")}</h3>
           <div className="equation-head-spacer" aria-hidden="true" />
           {DOF_NAMES.map((names, i) => (
@@ -134,16 +141,17 @@ export function EquationPanel({ laminateId }: { laminateId: string }) {
                     : NO_VALUE}
               </span>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <span className="equation-op">=</span>
+          <span className="equation-op">=</span>
 
-        <div className="equation-block equation-abd">
-          <AbdMatrixPanel laminateId={laminateId} />
-        </div>
+          <div className="equation-block equation-abd">
+            <AbdMatrixPanel laminateId={laminateId} />
+          </div>
 
-        <span className="equation-op">&times;</span>
+          <span className="equation-op">&times;</span>
+        </MobileCollapse>
 
         <div className="equation-block">
           <h3>{t("equation.strains")}</h3>

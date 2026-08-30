@@ -591,6 +591,66 @@ input[type="checkbox"] {
   align-items: end;
 }
 
+/* --- Urteil und mobile Dichte --- */
+
+.panel.verdict {
+  border-left: 3px solid var(--border);
+}
+
+.panel.verdict.holds {
+  border-left-color: var(--ok);
+}
+
+.panel.verdict.fails {
+  border-left-color: var(--danger);
+}
+
+.verdict-headline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.verdict-headline .chip {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.verdict-detail {
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+/* Heavyweights are one tap away on the phone rather than in the scroll path
+   between a load and its answer - see MobileCollapse. */
+.mobile-collapse {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  margin-bottom: 16px;
+  background: var(--card);
+}
+
+.mobile-collapse > summary {
+  padding: 12px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: var(--touch-min);
+  display: flex;
+  align-items: center;
+}
+
+.mobile-collapse[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+
+/* The panels inside lose their own frame - the collapse already is one. */
+.mobile-collapse .panel {
+  border: none;
+  margin-bottom: 0;
+}
+
 /* --- Lastfaelle --- */
 
 .load-case-bar {
