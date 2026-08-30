@@ -5,10 +5,15 @@
 // half: moving a project in and out as an `.elamx` file, so work can leave the
 // browser and be opened in eLamX on the desktop.
 import { atom } from "jotai";
-import type { BucklingInputDto, LastPlyFailureInputDto } from "../lib/types";
+import type {
+  BucklingInputDto,
+  LastPlyFailureInputDto,
+  PressureVesselInputDto,
+} from "../lib/types";
 import type { ProjectSnapshot } from "../lib/projectFile";
 import { bucklingInputFamily, bucklingStorageKey } from "./bucklingAtoms";
 import { lastPlyFailureInputFamily, lastPlyFailureStorageKey } from "./lastPlyFailureAtoms";
+import { pressureVesselInputFamily, pressureVesselStorageKey } from "./pressureVesselAtoms";
 import {
   forgetStoredLaminate,
   laminateConfigFamily,
@@ -47,6 +52,7 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
   const laminates: LaminateConfig[] = ids.map((id) => get(laminateConfigFamily(id)));
   const bucklings: Record<string, BucklingInputDto> = {};
   const lastPlyFailures: Record<string, LastPlyFailureInputDto> = {};
+  const pressureVessels: Record<string, PressureVesselInputDto> = {};
   for (const id of ids) {
     if (hasStoredInput(bucklingStorageKey(id))) {
       bucklings[id] = get(bucklingInputFamily(id));
@@ -54,12 +60,16 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
     if (hasStoredInput(lastPlyFailureStorageKey(id))) {
       lastPlyFailures[id] = get(lastPlyFailureInputFamily(id));
     }
+    if (hasStoredInput(pressureVesselStorageKey(id))) {
+      pressureVessels[id] = get(pressureVesselInputFamily(id));
+    }
   }
   return {
     materials: get(materialsAtom),
     laminates,
     bucklings,
     lastPlyFailures,
+    pressureVessels,
     version: get(projectVersionAtom),
   };
 });
@@ -74,9 +84,11 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
     laminateConfigFamily.remove(id);
     bucklingInputFamily.remove(id);
     lastPlyFailureInputFamily.remove(id);
+    pressureVesselInputFamily.remove(id);
     forgetStoredLaminate(id);
     forgetStored(bucklingStorageKey(id));
     forgetStored(lastPlyFailureStorageKey(id));
+    forgetStored(pressureVesselStorageKey(id));
   }
 
   set(materialsAtom, project.materials);
@@ -88,6 +100,8 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
     if (buckling) set(bucklingInputFamily(config.id), buckling);
     const lastPlyFailure = project.lastPlyFailures[config.id];
     if (lastPlyFailure) set(lastPlyFailureInputFamily(config.id), lastPlyFailure);
+    const pressureVessel = project.pressureVessels[config.id];
+    if (pressureVessel) set(pressureVesselInputFamily(config.id), pressureVessel);
   }
   set(
     laminateIdsAtom,

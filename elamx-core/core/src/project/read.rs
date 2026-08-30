@@ -9,9 +9,10 @@
 
 use super::naming;
 use super::{
-    NamedBuckling, NamedCalculation, NamedLastPlyFailure, Project, ProjectLaminate, RawModule,
+    NamedBuckling, NamedCalculation, NamedLastPlyFailure, NamedPressureVessel, Project,
+    ProjectLaminate, RawModule,
 };
-use crate::clt::{LastPlyFailureInput, Loads, Strains};
+use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, RadiusType, Strains};
 use crate::model::{Laminate, Layer, Material};
 use crate::plate::BucklingInput;
 use roxmltree::{Document, Node};
@@ -171,6 +172,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
     let mut calculations = Vec::new();
     let mut bucklings = Vec::new();
     let mut last_ply_failures = Vec::new();
+    let mut pressure_vessels = Vec::new();
     let mut unsupported_modules = Vec::new();
 
     for element in node.children().filter(|n| n.is_element()) {
@@ -179,6 +181,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
             "calculation" => calculations.push(read_calculation(element, &ctx)?),
             "buckling" => bucklings.push(read_buckling(element, &ctx)?),
             "lastplyfailure" => last_ply_failures.push(read_last_ply_failure(element, &ctx)?),
+            "pressurevessel" => pressure_vessels.push(read_pressure_vessel(element, &ctx)?),
             other => unsupported_modules.push(RawModule {
                 tag: other.to_string(),
                 xml: serialise(element),
@@ -191,6 +194,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
         calculations,
         bucklings,
         last_ply_failures,
+        pressure_vessels,
         unsupported_modules,
     })
 }
@@ -344,6 +348,34 @@ fn read_last_ply_failure(node: Node, parent: &str) -> Result<NamedLastPlyFailure
     };
 
     Ok(NamedLastPlyFailure { name, input })
+}
+
+fn read_pressure_vessel(node: Node, parent: &str) -> Result<NamedPressureVessel> {
+    let name = attr(node, "name").unwrap_or_default().to_string();
+    let ctx = format!("{parent}, Drucktank '{name}'");
+
+    // The format stores the radius type as the Java constant's own value
+    // (1/2/4), not as an index - see PressureVesselInput.
+    let radius_type = match number(node, "radiustype", &ctx)? as i64 {
+        1 => RadiusType::Inner,
+        2 => RadiusType::Mean,
+        4 => RadiusType::Outer,
+        other => {
+            return Err(ReadError::Unknown {
+                context: format!("{ctx}, <radiustype>"),
+                value: other.to_string(),
+            })
+        }
+    };
+
+    Ok(NamedPressureVessel {
+        name,
+        input: PressureVesselInput {
+            pressure: number(node, "pressure", &ctx)?,
+            radius: number(node, "radius", &ctx)?,
+            radius_type,
+        },
+    })
 }
 
 // ---------------------------------------------------------------------------

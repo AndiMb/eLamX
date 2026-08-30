@@ -8,10 +8,10 @@
 // the atoms the UI edits.
 //
 // What this app does not model yet is carried through untouched rather than
-// dropped: buckling and last-ply-failure analyses beyond the first, and modules
-// with no web counterpart (cutouts, pressure vessel, spring-in). Load cases are
-// no longer among them - every <calculation> in the file becomes a real load
-// case. See `CarryOver` in store/laminateAtoms.ts.
+// dropped: analyses beyond the first of each kind, and modules with no web
+// counterpart (cutouts, spring-in, optimisation). Load cases are not among
+// them - every <calculation> in the file becomes a real load case. See
+// `CarryOver` in store/laminateAtoms.ts.
 
 import { loadElamxWasm } from "./wasm";
 import { DEFAULT_CRITERION_ID, LOAD_FIELDS, STRAIN_FIELDS, type LayerRow } from "./constants";
@@ -21,6 +21,7 @@ import {
   type CriterionId,
   type LastPlyFailureInputDto,
   type MaterialDto,
+  type PressureVesselInputDto,
 } from "./types";
 import {
   defaultLaminateConfig,
@@ -43,6 +44,7 @@ interface ProjectLaminateDto {
   calculations: CalculationDto[];
   bucklings: BucklingEntryDto[];
   last_ply_failures: LastPlyFailureEntryDto[];
+  pressure_vessels: PressureVesselEntryDto[];
   unsupported_modules?: unknown[];
 }
 
@@ -82,6 +84,11 @@ interface LastPlyFailureEntryDto {
   input: LastPlyFailureInputDto;
 }
 
+interface PressureVesselEntryDto {
+  name: string;
+  input: PressureVesselInputDto;
+}
+
 /** A whole session: what a file turns into on open, and what a save turns
  *  back into a file. The same shape in both directions on purpose - anything
  *  that survives one has to survive the other. */
@@ -90,6 +97,7 @@ export interface ProjectSnapshot {
   laminates: LaminateConfig[];
   bucklings: Record<string, BucklingInputDto>;
   lastPlyFailures: Record<string, LastPlyFailureInputDto>;
+  pressureVessels: Record<string, PressureVesselInputDto>;
   version: string;
 }
 
@@ -111,10 +119,12 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
 
   const bucklings: Record<string, BucklingInputDto> = {};
   const lastPlyFailures: Record<string, LastPlyFailureInputDto> = {};
+  const pressureVessels: Record<string, PressureVesselInputDto> = {};
   const laminates = project.laminates.map((entry) => {
     const dto = entry.laminate;
     const [buckling, ...extraBucklings] = entry.bucklings;
     const [lastPlyFailure, ...extraLastPlyFailures] = entry.last_ply_failures ?? [];
+    const [pressureVessel, ...extraPressureVessels] = entry.pressure_vessels ?? [];
 
     // Every <calculation> becomes a load case, in file order. A file with none
     // still opens - it gets the default case, the same one a new laminate has.
@@ -152,14 +162,17 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
       carryOver: {
         bucklingName: buckling?.name,
         lastPlyFailureName: lastPlyFailure?.name,
+        pressureVesselName: pressureVessel?.name,
         extraBucklings,
         extraLastPlyFailures,
+        extraPressureVessels,
         unsupportedModules: entry.unsupported_modules ?? [],
       },
     };
 
     if (buckling) bucklings[dto.id] = buckling.input;
     if (lastPlyFailure) lastPlyFailures[dto.id] = lastPlyFailure.input;
+    if (pressureVessel) pressureVessels[dto.id] = pressureVessel.input;
     return config;
   });
 
@@ -168,6 +181,7 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
     laminates,
     bucklings,
     lastPlyFailures,
+    pressureVessels,
     version: project.version,
   };
 }
@@ -200,6 +214,7 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
 
       const buckling = snapshot.bucklings[config.id];
       const lastPlyFailure = snapshot.lastPlyFailures[config.id];
+      const pressureVessel = snapshot.pressureVessels[config.id];
 
       return {
         laminate: {
@@ -230,6 +245,12 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
             ? [{ name: carry.lastPlyFailureName ?? "Last Ply Failure", input: lastPlyFailure }]
             : []),
           ...((carry.extraLastPlyFailures ?? []) as LastPlyFailureEntryDto[]),
+        ],
+        pressure_vessels: [
+          ...(pressureVessel
+            ? [{ name: carry.pressureVesselName ?? "Drucktank", input: pressureVessel }]
+            : []),
+          ...((carry.extraPressureVessels ?? []) as PressureVesselEntryDto[]),
         ],
         unsupported_modules: carry.unsupportedModules ?? [],
       };

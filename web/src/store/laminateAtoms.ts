@@ -38,8 +38,11 @@ export interface CarryOver {
   bucklingName?: string;
   /** Name of the last-ply-failure analysis its input came from. */
   lastPlyFailureName?: string;
+  /** Name of the pressure-vessel analysis its input came from. */
+  pressureVesselName?: string;
   extraBucklings?: unknown[];
   extraLastPlyFailures?: unknown[];
+  extraPressureVessels?: unknown[];
   unsupportedModules?: unknown[];
 }
 

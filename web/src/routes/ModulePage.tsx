@@ -4,6 +4,7 @@ import { CltModuleContent } from "../components/CltModuleContent";
 import { BucklingModuleContent } from "../components/BucklingModuleContent";
 import { LastPlyFailureModuleContent } from "../components/LastPlyFailureModuleContent";
 import { ModuleContextBar } from "../components/ModuleContextBar";
+import { PressureVesselModuleContent } from "../components/PressureVesselModuleContent";
 import { useT } from "../i18n";
 
 // Dispatches on :moduleId via MODULE_REGISTRY. A new module type gets a new
@@ -36,6 +37,8 @@ function ModuleBody({ laminateId, moduleId }: { laminateId: string; moduleId: Mo
       return <BucklingModuleContent laminateId={laminateId} />;
     case "lastPlyFailure":
       return <LastPlyFailureModuleContent laminateId={laminateId} />;
+    case "pressureVessel":
+      return <PressureVesselModuleContent laminateId={laminateId} />;
     default:
       return <p className="hint">{t("modules.unknown")}</p>;
   }

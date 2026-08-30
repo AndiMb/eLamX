@@ -7,9 +7,9 @@
 //! builders without needing bindgen-generated classes for every domain type.
 
 use elamx_core::clt::{
-    calculate_last_ply_failure, determine_values, get_layer_results, CltLaminate,
-    LastPlyFailureInput, LastPlyFailureResult, LayerContribution, LayerResult, Loads, MassMoments,
-    Strains,
+    calculate_last_ply_failure, calculate_pressure_vessel, determine_values, get_layer_results,
+    CltLaminate, LastPlyFailureInput, LastPlyFailureResult, LayerContribution, LayerResult, Loads,
+    MassMoments, PressureVesselInput, PressureVesselResult, Strains,
 };
 use elamx_core::failure::{
     default_criterion_registry, failure_envelope, FailureEnvelope, DEFAULT_QUALITY,
@@ -423,6 +423,38 @@ fn compute_last_ply_failure_impl(request_json: &str) -> Result<String, String> {
 }
 
 #[derive(Deserialize)]
+struct PressureVesselRequest {
+    laminate: Laminate,
+    materials: HashMap<String, Material>,
+    input: PressureVesselInput,
+}
+
+/// Solves a thin-walled cylinder made of `laminate`: the boiler-formula load
+/// on the mean radius, the moments its wall's zero curvature requires, and
+/// every ply's state through the wall - where the hoop strain follows 1/r
+/// rather than being constant.
+///
+/// Shaped by [`PressureVesselRequest`]; the response is
+/// [`PressureVesselResult`] as JSON.
+#[wasm_bindgen]
+pub fn compute_pressure_vessel(request_json: &str) -> Result<String, JsValue> {
+    compute_pressure_vessel_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_pressure_vessel_impl(request_json: &str) -> Result<String, String> {
+    let request: PressureVesselRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let clt = CltLaminate::new(&request.laminate, &request.materials).map_err(|e| e.to_string())?;
+
+    let criteria = default_criterion_registry();
+    let result: PressureVesselResult =
+        calculate_pressure_vessel(&clt, &request.materials, &criteria, &request.input)
+            .map_err(|e| e.to_string())?;
+
+    serde_json::to_string(&result).map_err(|e| e.to_string())
+}
+
+#[derive(Deserialize)]
 struct FailureEnvelopeRequest {
     material: Material,
     /// Criterion id, as on a layer (`puck`, `max_stress`, ...).
@@ -676,6 +708,48 @@ mod tests {
         assert!(result.is_err());
     }
 
+    fn pressure_vessel_request(pressure: f64, radius: f64, radius_type: &str) -> String {
+        let base = sample_request(0.0, "\"max_stress\"");
+        let head = base.rsplit_once("\"loads\"").map(|(h, _)| h.to_string()).unwrap();
+        format!(
+            r#"{head}"input": {{
+                "pressure": {pressure},
+                "radius": {radius},
+                "radius_type": "{radius_type}"
+            }}}}"#
+        )
+    }
+
+    #[test]
+    fn compute_pressure_vessel_returns_the_wall_state() {
+        let response = compute_pressure_vessel_impl(&pressure_vessel_request(0.5, 200.0, "Mean"))
+            .expect("compute_pressure_vessel_impl should succeed");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+
+        assert_eq!(parsed["mean_radius"].as_f64().unwrap(), 200.0);
+        // Boiler formula: hoop is twice axial.
+        let n_x = parsed["loads"]["n_x"].as_f64().unwrap();
+        let n_y = parsed["loads"]["n_y"].as_f64().unwrap();
+        assert!((n_y - 2.0 * n_x).abs() < 1e-9);
+        // The wall is held straight.
+        assert!(parsed["strains"]["kappa_x"].as_f64().unwrap().abs() < 1e-12);
+        assert_eq!(parsed["layer_results"].as_array().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn compute_pressure_vessel_moves_an_inner_radius_to_the_mean_one() {
+        let response = compute_pressure_vessel_impl(&pressure_vessel_request(0.5, 200.0, "Inner"))
+            .expect("compute_pressure_vessel_impl should succeed");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+        // The sample laminate is two 0.2 mm plies.
+        assert!((parsed["mean_radius"].as_f64().unwrap() - 200.2).abs() < 1e-9);
+    }
+
+    #[test]
+    fn compute_pressure_vessel_reports_a_degenerate_radius() {
+        assert!(compute_pressure_vessel_impl(&pressure_vessel_request(1.0, 0.0, "Mean")).is_err());
+    }
+
     fn envelope_request(criterion_id: &str, quality: f64) -> String {
         format!(
             r#"{{
@@ -917,7 +991,7 @@ mod tests {
                 <epsilon_crit>0.003</epsilon_crit>
                 <j_a>1.0</j_a>
             </lastplyfailure>
-            <pressurevessel name="Kessel"><pressure>0.5</pressure></pressurevessel>
+            <springIn name="Spring-In"><temperature>-120.0</temperature></springIn>
         </laminate>
     </laminates>
     <materials>
@@ -948,7 +1022,7 @@ mod tests {
         assert!(xml.contains("<criterion>de.elamx.laminate.failure.Puck</criterion>"));
         assert!(xml.contains("<lastplyfailure name=\"LPF\">"));
         // Module data the core cannot calculate survives the browser round trip.
-        assert!(xml.contains("<pressurevessel name=\"Kessel\">"));
+        assert!(xml.contains("<springIn name=\"Spring-In\">"));
         assert_eq!(import_elamx_impl(&xml).unwrap(), json);
     }
 

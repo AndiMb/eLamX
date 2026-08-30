@@ -328,6 +328,35 @@ export interface BucklingResponse {
   symmetry_warning: boolean;
 }
 
+// --- Pressure vessel (elamx-core::clt::pressure_vessel) ---------------------
+// Mirrors PressureVesselRequest / PressureVesselResult in
+// elamx-core/wasm/src/lib.rs.
+
+/** Which radius the user measured; the analysis works on the mean one. */
+export type RadiusTypeId = "Inner" | "Mean" | "Outer";
+
+export const RADIUS_TYPES = [
+  { id: "Inner", labelKey: "vessel.radius.inner" },
+  { id: "Mean", labelKey: "vessel.radius.mean" },
+  { id: "Outer", labelKey: "vessel.radius.outer" },
+] as const satisfies readonly { id: RadiusTypeId; labelKey: MessageKey }[];
+
+export interface PressureVesselInputDto {
+  pressure: number;
+  radius: number;
+  radius_type: RadiusTypeId;
+}
+
+export interface PressureVesselResponse {
+  /** Derived from the given radius and the wall thickness. */
+  mean_radius: number;
+  /** The boiler-formula load, plus the moments the straight wall requires. */
+  loads: LoadsDto;
+  /** Axial strain in epsilon_x, hoop strain in epsilon_y; curvatures are zero. */
+  strains: StrainsDto;
+  layer_results: LayerResultDto[];
+}
+
 // --- Failure body (elamx-core::failure::envelope) ---------------------------
 // Mirrors FailureEnvelope in elamx-core/wasm/src/lib.rs.
 

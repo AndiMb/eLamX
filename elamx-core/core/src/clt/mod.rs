@@ -11,6 +11,7 @@ pub mod laminate;
 pub mod last_ply_failure;
 pub mod layer;
 pub mod loads;
+pub mod pressure_vessel;
 pub mod strains;
 
 pub use calculator::{
@@ -23,6 +24,10 @@ pub use last_ply_failure::{
     LastPlyFailureInput, LastPlyFailureIteration, LastPlyFailureResult,
 };
 pub use layer::{CltLayer, LayerPosition};
+pub use pressure_vessel::{
+    calculate as calculate_pressure_vessel, PressureVesselError, PressureVesselInput,
+    PressureVesselResult, RadiusType,
+};
 pub use loads::Loads;
 pub use strains::Strains;
 

@@ -7,8 +7,10 @@
 
 use super::naming;
 use super::{
-    NamedBuckling, NamedCalculation, NamedLastPlyFailure, Project, ProjectLaminate,
+    NamedBuckling, NamedCalculation, NamedLastPlyFailure, NamedPressureVessel, Project,
+    ProjectLaminate,
 };
+use crate::clt::RadiusType;
 use crate::model::{Laminate, Material};
 
 /// Serialises a project to `.elamx` XML.
@@ -74,6 +76,9 @@ fn write_laminate(entry: &ProjectLaminate, out: &mut String) {
     }
     for analysis in &entry.last_ply_failures {
         write_last_ply_failure(analysis, out);
+    }
+    for analysis in &entry.pressure_vessels {
+        write_pressure_vessel(analysis, out);
     }
     for raw in &entry.unsupported_modules {
         out.push_str("            ");
@@ -164,6 +169,27 @@ fn write_last_ply_failure(analysis: &NamedLastPlyFailure, out: &mut String) {
     tag(out, 16, "epsilon_crit", &num(input.epsilon_crit));
     tag(out, 16, "j_a", &num(input.j_a));
     out.push_str("            </lastplyfailure>\n");
+}
+
+fn write_pressure_vessel(analysis: &NamedPressureVessel, out: &mut String) {
+    let input = &analysis.input;
+    out.push_str(&format!(
+        "            <pressurevessel name=\"{}\">\n",
+        escape(&analysis.name)
+    ));
+    tag(out, 16, "pressure", &num(input.pressure));
+    tag(out, 16, "radius", &num(input.radius));
+    tag(
+        out,
+        16,
+        "radiustype",
+        match input.radius_type {
+            RadiusType::Inner => "1",
+            RadiusType::Mean => "2",
+            RadiusType::Outer => "4",
+        },
+    );
+    out.push_str("            </pressurevessel>\n");
 }
 
 fn write_material(material: &Material, out: &mut String) {

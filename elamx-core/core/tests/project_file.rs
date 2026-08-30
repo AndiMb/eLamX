@@ -7,6 +7,7 @@
 //! definition. So the reader is not compared against itself - it has to
 //! reproduce what something else produced.
 
+use elamx_core::clt::RadiusType;
 use elamx_core::project::{read_elamx, write_elamx, Project, ReadError};
 use serde_json::Value;
 
@@ -259,11 +260,10 @@ const MINIMAL: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
                 <material>mat</material>
                 <criterion>CRITERION</criterion>
             </layer>
-            <pressurevessel name="Kessel">
-                <pressure>0.5</pressure>
-                <radius>250.0</radius>
-                <radiustype>1</radiustype>
-            </pressurevessel>
+            <springIn name="Spring-In">
+                <temperature>-120.0</temperature>
+                <angle>90.0</angle>
+            </springIn>
         </laminate>
     </laminates>
     <materials>
@@ -290,12 +290,12 @@ fn keeps_module_data_it_cannot_interpret() {
     let project = read_elamx(&minimal_with("de.elamx.laminate.failure.Puck")).unwrap();
     let kept = &project.laminates[0].unsupported_modules;
     assert_eq!(kept.len(), 1);
-    assert_eq!(kept[0].tag, "pressurevessel");
+    assert_eq!(kept[0].tag, "springIn");
 
     let xml = write_elamx(&project);
-    assert!(xml.contains("<pressurevessel name=\"Kessel\">"));
-    assert!(xml.contains("<pressure>0.5</pressure>"));
-    assert!(xml.contains("<radiustype>1</radiustype>"));
+    assert!(xml.contains("<springIn name=\"Spring-In\">"));
+    assert!(xml.contains("<temperature>-120.0</temperature>"));
+    assert!(xml.contains("<angle>90.0</angle>"));
 }
 
 /// Likewise for material parameters belonging to criteria this crate has not
@@ -319,7 +319,7 @@ fn reads_the_last_ply_failure_flag_the_way_java_parses_it() {
         MINIMAL
             .replace("CRITERION", "de.elamx.laminate.failure.Puck")
             .replace(
-                "<pressurevessel name=\"Kessel\">\n                <pressure>0.5</pressure>\n                <radius>250.0</radius>\n                <radiustype>1</radiustype>\n            </pressurevessel>",
+                "<springIn name=\"Spring-In\">\n                <temperature>-120.0</temperature>\n                <angle>90.0</angle>\n            </springIn>",
                 &format!(
                     "<lastplyfailure name=\"LPF\">\n                <n_x>1.0</n_x>\n                <n_y>0.0</n_y>\n                <n_xy>0.0</n_xy>\n                <m_x>0.0</m_x>\n                <m_y>0.0</m_y>\n                <m_xy>0.0</m_xy>\n                <degradationFactor>1.0E-6</degradationFactor>\n                {value}\n                <epsilon_crit>0.003</epsilon_crit>\n                <j_a>1.0</j_a>\n            </lastplyfailure>"
                 ),
@@ -341,6 +341,67 @@ fn reads_the_last_ply_failure_flag_the_way_java_parses_it() {
         assert_eq!(analysis.input.loads.n_x, 1.0);
         assert_eq!(analysis.input.loads.delta_t, 0.0, "die Analyse kennt keine Temperaturlast");
     }
+}
+
+/// The pressure vessel stores its radius type as the Java constant's own value
+/// (1 inner / 2 mean / 4 outer), not as an index into a list - a distinction
+/// that only shows up when a file written elsewhere is read back.
+#[test]
+fn reads_and_writes_the_pressure_vessel_radius_types() {
+    for (stored, expected) in [
+        ("1", RadiusType::Inner),
+        ("2", RadiusType::Mean),
+        ("4", RadiusType::Outer),
+    ] {
+        let xml = MINIMAL
+            .replace("CRITERION", "de.elamx.laminate.failure.Puck")
+            .replace(
+                "<springIn name=\"Spring-In\">
+                <temperature>-120.0</temperature>
+                <angle>90.0</angle>
+            </springIn>",
+                &format!(
+                    "<pressurevessel name=\"Kessel\">
+                <pressure>0.5</pressure>
+                <radius>250.0</radius>
+                <radiustype>{stored}</radiustype>
+            </pressurevessel>"
+                ),
+            );
+
+        let project = read_elamx(&xml).unwrap_or_else(|e| panic!("radiustype {stored}: {e}"));
+        let vessel = &project.laminates[0].pressure_vessels[0];
+        assert_eq!(vessel.name, "Kessel");
+        assert_eq!(vessel.input.radius_type, expected);
+        assert_eq!(vessel.input.pressure, 0.5);
+        assert_eq!(vessel.input.radius, 250.0);
+
+        // And back out under the same numbering, so the desktop reads what it
+        // wrote.
+        let written = write_elamx(&project);
+        assert!(written.contains(&format!("<radiustype>{stored}</radiustype>")));
+        assert!(written.contains("<pressurevessel name=\"Kessel\">"));
+    }
+}
+
+/// An unknown radius type is refused rather than quietly analysed about some
+/// other radius - the same rule the criterion names follow.
+#[test]
+fn rejects_an_unknown_pressure_vessel_radius_type() {
+    let xml = MINIMAL
+        .replace("CRITERION", "de.elamx.laminate.failure.Puck")
+        .replace(
+            "<springIn name=\"Spring-In\">
+                <temperature>-120.0</temperature>
+                <angle>90.0</angle>
+            </springIn>",
+            "<pressurevessel name=\"Kessel\">
+                <pressure>0.5</pressure>
+                <radius>250.0</radius>
+                <radiustype>3</radiustype>
+            </pressurevessel>",
+        );
+    assert!(matches!(read_elamx(&xml), Err(ReadError::Unknown { .. })));
 }
 
 /// The Java loader substitutes Puck for a criterion it cannot resolve, without
