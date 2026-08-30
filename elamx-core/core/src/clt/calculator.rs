@@ -167,6 +167,7 @@ pub fn beta_global(lam: &CltLaminate) -> [f64; 3] {
 /// Per-layer stress/strain state and reserve factor at both the upper and
 /// lower surface of a ply. Reference: CLT_LayerResult.java.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct LayerResult {
     /// Stacking-order position (1-based), matching `CltLayer::number`.
     pub layer_number: usize,

@@ -66,6 +66,17 @@ jobs:
         working-directory: elamx-core
         run: cargo test --workspace
 
+      # web/src/lib/generated/ is written by ts-rs from the Rust structs and
+      # committed, so the frontend builds without a Rust toolchain. This step
+      # is what keeps the two honest: regenerate, and fail if anything moved.
+      # Without it a renamed serde field would compile on both sides and turn
+      # up as an `undefined` at runtime.
+      - name: TypeScript bindings are up to date
+        working-directory: elamx-core
+        run: |
+          cargo test --workspace --features ts
+          git diff --exit-code -- ../web/src/lib/generated
+
   web:
     name: Web frontend
     runs-on: ubuntu-latest

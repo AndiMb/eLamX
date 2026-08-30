@@ -1,181 +1,79 @@
-// Mirrors the JSON shapes of elamx-core's Rust structs (see
-// elamx-core/core/src/model/ and elamx-core/wasm/src/lib.rs). Field names
-// must match the Rust `serde` field names exactly (snake_case, no renames).
+// The app's names for the types that cross the wasm boundary.
+//
+// The shapes themselves are GENERATED from the Rust structs by ts-rs (see
+// elamx-core/core/tests, `cargo test --features ts`) and live in
+// ./generated/. They used to be written out by hand here, mirroring the Rust
+// with nothing but a comment saying so - and a renamed serde field would then
+// compile on both sides and fail at runtime as an `undefined`.
+//
+// Aliased rather than used under their Rust names, because the app has its own
+// vocabulary: a `Dto` suffix for a payload, an `Id` suffix for a string union.
+// Renaming or removing a Rust type now breaks this file, which is the point.
+
 import type { MessageKey } from "../i18n";
+import type { AngleSweepResponse as GenAngleSweepResponse } from "./generated/AngleSweepResponse";
+import type { BoundaryCondition as GenBoundaryCondition } from "./generated/BoundaryCondition";
+import type { BucklingInput as GenBucklingInput } from "./generated/BucklingInput";
+import type { BucklingModeDto as GenBucklingModeDto } from "./generated/BucklingModeDto";
+import type { BucklingResponse as GenBucklingResponse } from "./generated/BucklingResponse";
+import type { CltRequest as GenCltRequest } from "./generated/CltRequest";
+import type { CltResponse as GenCltResponse } from "./generated/CltResponse";
+import type { DMatrixKind as GenDMatrixKind } from "./generated/DMatrixKind";
+import type { DeformationInput as GenDeformationInput } from "./generated/DeformationInput";
+import type { DeformationResult as GenDeformationResult } from "./generated/DeformationResult";
+import type { EngineeringConstantsDto as GenEngineeringConstantsDto } from "./generated/EngineeringConstantsDto";
+import type { FailureEnvelope as GenFailureEnvelope } from "./generated/FailureEnvelope";
+import type { FailureType as GenFailureType } from "./generated/FailureType";
+import type { Laminate as GenLaminate } from "./generated/Laminate";
+import type { LastPlyFailureEvent as GenLastPlyFailureEvent } from "./generated/LastPlyFailureEvent";
+import type { LastPlyFailureInput as GenLastPlyFailureInput } from "./generated/LastPlyFailureInput";
+import type { LastPlyFailureIteration as GenLastPlyFailureIteration } from "./generated/LastPlyFailureIteration";
+import type { LastPlyFailureResult as GenLastPlyFailureResult } from "./generated/LastPlyFailureResult";
+import type { Layer as GenLayer } from "./generated/Layer";
+import type { LayerContributionDto as GenLayerContributionDto } from "./generated/LayerContributionDto";
+import type { LayerResult as GenLayerResult } from "./generated/LayerResult";
+import type { Loads as GenLoads } from "./generated/Loads";
+import type { MassMomentsDto as GenMassMomentsDto } from "./generated/MassMomentsDto";
+import type { Material as GenMaterial } from "./generated/Material";
+import type { NamedLoad as GenNamedLoad } from "./generated/NamedLoad";
+import type { PressureVesselInput as GenPressureVesselInput } from "./generated/PressureVesselInput";
+import type { PressureVesselResult as GenPressureVesselResult } from "./generated/PressureVesselResult";
+import type { RadiusType as GenRadiusType } from "./generated/RadiusType";
+import type { ReserveFactor as GenReserveFactor } from "./generated/ReserveFactor";
+import type { Strains as GenStrains } from "./generated/Strains";
+import type { StressStrainState as GenStressStrainState } from "./generated/StressStrainState";
 
-export interface MaterialDto {
-  id: string;
-  name: string;
-  e_par: number;
-  e_nor: number;
-  nue12: number;
-  g: number;
-  g13: number;
-  g23: number;
-  rho: number;
-  alpha_t_par: number;
-  alpha_t_nor: number;
-  beta_par: number;
-  beta_nor: number;
-  r_par_ten: number;
-  r_par_com: number;
-  r_nor_ten: number;
-  r_nor_com: number;
-  r_shear: number;
-  additional_values: Record<string, number>;
-}
-
-export interface LayerDto {
-  id: string;
-  name: string;
-  angle: number;
-  thickness: number;
-  material_id: string;
-  criterion_id: string | null;
-}
-
-export interface LaminateDto {
-  id: string;
-  name: string;
-  layers: LayerDto[];
-  symmetric: boolean;
-  with_middle_layer: boolean;
-  invert_z: boolean;
-  offset: number;
-}
-
-export interface LoadsDto {
-  n_x: number;
-  n_y: number;
-  n_xy: number;
-  m_x: number;
-  m_y: number;
-  m_xy: number;
-  delta_t: number;
-  delta_h: number;
-  nt_x: number;
-  nt_y: number;
-  nt_xy: number;
-  mt_x: number;
-  mt_y: number;
-  mt_xy: number;
-}
-
-export interface StrainsDto {
-  epsilon_x: number;
-  epsilon_y: number;
-  gamma_xy: number;
-  kappa_x: number;
-  kappa_y: number;
-  kappa_xy: number;
-}
-
-export interface CltRequest {
-  laminate: LaminateDto;
-  materials: Record<string, MaterialDto>;
-  loads: LoadsDto;
-  strains: StrainsDto;
-  use_strain: [boolean, boolean, boolean, boolean, boolean, boolean];
-}
-
-export interface StressStrainStateDto {
-  stress: [number, number, number];
-  strain: [number, number, number];
-}
-
-export type FailureType = "Undamaged" | "FiberFailure" | "MatrixFailure" | "GeneralMaterialFailure";
-
-export interface ReserveFactorDto {
-  failure_name: string;
-  minimal_reserve_factor: number;
-  failure_type: FailureType;
-}
-
-export interface LayerResultDto {
-  layer_number: number;
-  sss_lower: StressStrainStateDto;
-  sss_upper: StressStrainStateDto;
-  sss_lower_global: StressStrainStateDto;
-  sss_upper_global: StressStrainStateDto;
-  rr_lower: ReserveFactorDto;
-  rr_upper: ReserveFactorDto;
-  failed: boolean;
-}
-
-export interface EngineeringConstantsDto {
-  ex_simple: number;
-  ey_simple: number;
-  g_simple: number;
-  nuxy_simple: number;
-  nuyx_simple: number;
-  ex_fixed: number;
-  ey_fixed: number;
-  g_fixed: number;
-  nuxy_fixed: number;
-  nuyx_fixed: number;
-  ex_bend_simple: number;
-  ey_bend_simple: number;
-  g_bend_simple: number;
-  nuxy_bend_simple: number;
-  nuyx_bend_simple: number;
-  ex_bend_fixed: number;
-  ey_bend_fixed: number;
-  g_bend_fixed: number;
-  nuxy_bend_fixed: number;
-  nuyx_bend_fixed: number;
-  beta_d: number;
-  nu_d: number;
-  gamma_d: number;
-  delta_d: number;
-}
-
-export interface MassMomentsDto {
-  i0: number;
-  i1: number;
-  i2: number;
-}
-
-export interface LayerContributionDto {
-  layer_number: number;
-  angle_deg: number;
-  thickness: number;
-  zm: number;
-  /** Of the EXPANDED ply - the mirrored half of a symmetric laminate exists
-   *  only in the core's expansion, so this is where its material comes from. */
-  material_id: string;
-  criterion_id: string | null;
-  q_global: number[][];
-  a_contribution: number[][];
-  b_contribution: number[][];
-  d_contribution: number[][];
-}
-
-export interface CltResponse {
-  abd: number[][];
-  /** Inverse of `abd` - lets the UI show the "simple" engineering constants' derivation with real numbers. */
-  abd_inv: number[][];
-  tges: number;
-  is_symmetric: boolean;
-  area_weight: number;
-  mass_moments: MassMomentsDto | null;
-  loads: LoadsDto;
-  strains: StrainsDto;
-  engineering_constants: EngineeringConstantsDto;
-  /** The laminate's own expansion coefficients, [x, y, xy] - the strain a unit
-   *  change in temperature / moisture produces. */
-  alpha_global: number[];
-  beta_global: number[];
-  layer_contributions: LayerContributionDto[];
-  layer_results: LayerResultDto[];
-}
-
-export interface AngleSweepResponse {
-  angle_deg: number[];
-  a11: number[];
-  a12: number[];
-  a22: number[];
-  a66: number[];
-}
+export type AngleSweepResponse = GenAngleSweepResponse;
+export type BoundaryConditionId = GenBoundaryCondition;
+export type BucklingInputDto = GenBucklingInput;
+export type BucklingModeDto = GenBucklingModeDto;
+export type BucklingResponse = GenBucklingResponse;
+export type CltRequest = GenCltRequest;
+export type CltResponse = GenCltResponse;
+export type DMatrixKindId = GenDMatrixKind;
+export type DeformationInputDto = GenDeformationInput;
+export type DeformationResponse = GenDeformationResult;
+export type EngineeringConstantsDto = GenEngineeringConstantsDto;
+export type FailureEnvelopeResponse = GenFailureEnvelope;
+export type FailureType = GenFailureType;
+export type LaminateDto = GenLaminate;
+export type LastPlyFailureEventDto = GenLastPlyFailureEvent;
+export type LastPlyFailureInputDto = GenLastPlyFailureInput;
+export type LastPlyFailureIterationDto = GenLastPlyFailureIteration;
+export type LastPlyFailureResponse = GenLastPlyFailureResult;
+export type LayerContributionDto = GenLayerContributionDto;
+export type LayerDto = GenLayer;
+export type LayerResultDto = GenLayerResult;
+export type LoadsDto = GenLoads;
+export type MassMomentsDto = GenMassMomentsDto;
+export type MaterialDto = GenMaterial;
+export type NamedLoadDto = GenNamedLoad;
+export type PressureVesselInputDto = GenPressureVesselInput;
+export type PressureVesselResponse = GenPressureVesselResult;
+export type RadiusTypeId = GenRadiusType;
+export type ReserveFactorDto = GenReserveFactor;
+export type StrainsDto = GenStrains;
+export type StressStrainStateDto = GenStressStrainState;
 
 // Criterion ids and their additional-value keys, matching the `pub const`s in
 // elamx-core/core/src/failure/{mod,max_strain,tsai_wu,puck,fmc,ztl}.rs.
@@ -276,12 +174,6 @@ export const emptyStrains = (): StrainsDto => ({
   kappa_xy: 0,
 });
 
-// --- Plate buckling (elamx-core::plate) -------------------------------------
-// Mirrors BucklingRequest/BucklingResponse in elamx-core/wasm/src/lib.rs.
-
-/** Edge condition of one pair of opposite edges: S(imply supported), C(lamped), F(ree). */
-export type BoundaryConditionId = "SS" | "CC" | "CF" | "FF" | "SC" | "SF";
-
 export const BOUNDARY_CONDITIONS = [
   "SS",
   "CC",
@@ -290,9 +182,6 @@ export const BOUNDARY_CONDITIONS = [
   "SC",
   "SF",
 ] as const satisfies readonly BoundaryConditionId[];
-
-/** Which bending stiffness idealisation the plate is analysed with. */
-export type DMatrixKindId = "standard" | "special_orthotropic" | "d_tilde";
 
 export const D_MATRIX_KINDS = [
   { id: "standard", labelKey: "buckling.dMatrix.standard" },
@@ -303,145 +192,9 @@ export const D_MATRIX_KINDS = [
 /** eLamX2 caps the Ritz term counts here, and so do the ported integral tables. */
 export const MAX_RITZ_TERMS = 20;
 
-export interface BucklingInputDto {
-  length: number;
-  width: number;
-  n_x: number;
-  n_y: number;
-  n_xy: number;
-  bc_x: BoundaryConditionId;
-  bc_y: BoundaryConditionId;
-  m: number;
-  n: number;
-  d_matrix: DMatrixKindId;
-}
-
-export interface BucklingModeDto {
-  /** Load factor: the applied load flows times this buckle the plate. */
-  eigenvalue: number;
-  /** Modal amplitudes a_ij, m rows of n. */
-  shape: number[][];
-  /** w(x,y) on a square grid, rows along y, peak normalised to 1. */
-  surface: number[][] | null;
-}
-
-export interface BucklingResponse {
-  critical_factor: number | null;
-  n_crit: [number, number, number] | null;
-  modes: BucklingModeDto[];
-  symmetry_warning: boolean;
-}
-
-// --- Plate deformation (elamx-core::plate::deformation) ---------------------
-// Mirrors DeformationRequest / DeformationResult in elamx-core/wasm/src/lib.rs.
-
-/** A transverse load. Serde tags the variant with `kind` and flattens the
- *  name beside it, so the JSON is one flat object per load. */
-export type NamedLoadDto =
-  | { kind: "Surface"; name: string; force: number }
-  | { kind: "Point"; name: string; x: number; y: number; force: number };
-
-export interface DeformationInputDto {
-  length: number;
-  width: number;
-  bc_x: BoundaryConditionId;
-  bc_y: BoundaryConditionId;
-  m: number;
-  n: number;
-  d_matrix: DMatrixKindId;
-  loads: NamedLoadDto[];
-}
-
-export interface DeformationResponse {
-  /** Ritz coefficients, m rows of n. */
-  coefficients: number[][];
-  /** Deflection on a regular grid, rows along y - in real length units. */
-  surface: number[][];
-  max_deflection: number;
-  /** Where the maximum sits, as [x, y] on the plate. */
-  max_at: [number, number];
-  min_deflection: number;
-  symmetry_warning: boolean;
-}
-
-// --- Pressure vessel (elamx-core::clt::pressure_vessel) ---------------------
-// Mirrors PressureVesselRequest / PressureVesselResult in
-// elamx-core/wasm/src/lib.rs.
-
-/** Which radius the user measured; the analysis works on the mean one. */
-export type RadiusTypeId = "Inner" | "Mean" | "Outer";
-
 export const RADIUS_TYPES = [
   { id: "Inner", labelKey: "vessel.radius.inner" },
   { id: "Mean", labelKey: "vessel.radius.mean" },
   { id: "Outer", labelKey: "vessel.radius.outer" },
 ] as const satisfies readonly { id: RadiusTypeId; labelKey: MessageKey }[];
 
-export interface PressureVesselInputDto {
-  pressure: number;
-  radius: number;
-  radius_type: RadiusTypeId;
-}
-
-export interface PressureVesselResponse {
-  /** Derived from the given radius and the wall thickness. */
-  mean_radius: number;
-  /** The boiler-formula load, plus the moments the straight wall requires. */
-  loads: LoadsDto;
-  /** Axial strain in epsilon_x, hoop strain in epsilon_y; curvatures are zero. */
-  strains: StrainsDto;
-  layer_results: LayerResultDto[];
-}
-
-// --- Failure body (elamx-core::failure::envelope) ---------------------------
-// Mirrors FailureEnvelope in elamx-core/wasm/src/lib.rs.
-
-export interface FailureEnvelopeResponse {
-  /** Surface grid in the ply's local stress space, [sigma_par, sigma_nor, tau].
-   *  `null` is a direction the criterion could not evaluate. */
-  points: ([number, number, number] | null)[][];
-  polar_samples: number;
-  azimuth_samples: number;
-}
-
-// --- Last ply failure (elamx-core::clt::last_ply_failure) -------------------
-// Mirrors LastPlyFailureRequest / LastPlyFailureResult in
-// elamx-core/wasm/src/lib.rs.
-
-export interface LastPlyFailureInputDto {
-  loads: LoadsDto;
-  /** Factor a degraded ply's stiffness is multiplied by. */
-  degradation_factor: number;
-  /** Fibre-direction strain treated as the allowable one. */
-  epsilon_crit: number;
-  /** Knock-down on the reserve factor of an inter-fibre failure. */
-  j_a: number;
-  degrade_all_on_fibre_failure: boolean;
-}
-
-/** A reserve factor together with the degradation step it belongs to. */
-export interface LastPlyFailureEventDto {
-  reserve_factor: number;
-  iteration: number;
-}
-
-export interface LastPlyFailureIterationDto {
-  layer_results: LayerResultDto[];
-  /** Per ply, in stacking order, after this step. */
-  matrix_failed: boolean[];
-  fibre_failed: boolean[];
-  /** 1-based stacking position of the ply degraded in this step. */
-  layer_number: number;
-  reserve_factor: number;
-  failure_name: string;
-  failure_type: FailureType;
-}
-
-export interface LastPlyFailureResponse {
-  iterations: LastPlyFailureIterationDto[];
-  first_fibre_failure: LastPlyFailureEventDto | null;
-  first_matrix_failure: LastPlyFailureEventDto | null;
-  first_epsilon: LastPlyFailureEventDto | null;
-  exceedance_factor: LastPlyFailureEventDto | null;
-  fibre_before_matrix_failure: boolean;
-}

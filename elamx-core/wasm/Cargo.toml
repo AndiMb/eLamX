@@ -14,6 +14,11 @@ wasm-bindgen = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 console_error_panic_hook = "0.1"
+# See core/Cargo.toml: only the type-export test turns this on.
+ts-rs = { version = "12", optional = true }
+
+[features]
+ts = ["dep:ts-rs", "elamx-core/ts"]
 
 [lints]
 workspace = true

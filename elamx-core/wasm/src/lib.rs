@@ -33,6 +33,7 @@ pub fn init_panic_hook() {
 }
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct CltRequest {
     laminate: Laminate,
     materials: HashMap<String, Material>,
@@ -47,6 +48,7 @@ struct CltRequest {
 /// boundary. "Simple"/"fixed" = without/with Poisson restraint; "bend" =
 /// derived from bending rather than extensional stiffness.
 #[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct EngineeringConstantsDto {
     ex_simple: f64,
     ey_simple: f64,
@@ -109,6 +111,7 @@ impl From<&CltLaminate> for EngineeringConstantsDto {
 }
 
 #[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct MassMomentsDto {
     i0: f64,
     i1: f64,
@@ -128,6 +131,7 @@ impl From<MassMoments> for MassMomentsDto {
 /// One layer's contribution to the assembled A/B/D matrices - see
 /// [`LayerContribution`] in the core crate for the underlying formula.
 #[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct LayerContributionDto {
     layer_number: usize,
     angle_deg: f64,
@@ -162,6 +166,7 @@ impl From<LayerContribution> for LayerContributionDto {
 }
 
 #[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct CltResponse {
     abd: Vec<Vec<f64>>,
     /// Inverse of `abd` - exposed so a UI can show the "simple" (Poisson-free)
@@ -242,12 +247,14 @@ fn compute_clt_impl(request_json: &str) -> Result<String, String> {
 }
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct AngleSweepRequest {
     laminate: Laminate,
     materials: HashMap<String, Material>,
 }
 
 #[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct AngleSweepResponse {
     angle_deg: Vec<f64>,
     a11: Vec<f64>,
@@ -285,6 +292,7 @@ fn compute_angle_sweep_impl(request_json: &str, delta_angle_deg: f64) -> Result<
 }
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct BucklingRequest {
     laminate: Laminate,
     materials: HashMap<String, Material>,
@@ -292,6 +300,7 @@ struct BucklingRequest {
 }
 
 #[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct BucklingModeDto {
     eigenvalue: f64,
     /// Modal amplitudes a_ij (m rows of n). Feed these back into
@@ -305,6 +314,7 @@ struct BucklingModeDto {
 /// grid data for modes nobody is looking at, and lets the user switch the
 /// displayed mode without re-solving.
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct BucklingSurfaceRequest {
     input: BucklingInput,
     /// One mode's amplitudes, as returned in `BucklingModeDto::shape`.
@@ -314,6 +324,7 @@ struct BucklingSurfaceRequest {
 }
 
 #[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct BucklingResponse {
     critical_factor: Option<f64>,
     n_crit: Option<[f64; 3]>,
@@ -394,6 +405,7 @@ fn compute_buckling_surface_impl(request_json: &str) -> Result<String, String> {
 }
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct LastPlyFailureRequest {
     laminate: Laminate,
     materials: HashMap<String, Material>,
@@ -433,6 +445,7 @@ fn compute_last_ply_failure_impl(request_json: &str) -> Result<String, String> {
 }
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct DeformationRequest {
     laminate: Laminate,
     materials: HashMap<String, Material>,
@@ -463,6 +476,7 @@ fn compute_deformation_impl(request_json: &str) -> Result<String, String> {
 }
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct PressureVesselRequest {
     laminate: Laminate,
     materials: HashMap<String, Material>,
@@ -495,6 +509,7 @@ fn compute_pressure_vessel_impl(request_json: &str) -> Result<String, String> {
 }
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct FailureEnvelopeRequest {
     material: Material,
     /// Criterion id, as on a layer (`puck`, `max_stress`, ...).

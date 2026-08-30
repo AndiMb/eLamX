@@ -68,6 +68,23 @@ still have to translate.
 Note that numbers are formatted per locale (`1,234.5` vs `1.234,5`); parsing
 accepts both decimal separators regardless of language.
 
+### Regenerate the TypeScript bindings
+
+The types that cross the wasm boundary are not written twice. `web/src/lib/generated/`
+is produced from the Rust structs by [ts-rs](https://github.com/Aleph-Alpha/ts-rs)
+and committed, so the frontend builds without a Rust toolchain:
+
+```sh
+cd elamx-core
+cargo test --workspace --features ts
+```
+
+Run this after changing any type that a `compute_*` entry point takes or returns,
+and commit what changes. `web/src/lib/types.ts` gives those types the app's own
+names (`Dto` for a payload, `Id` for a string union) and holds what only the
+frontend has - the criterion catalog, the unit tables, the defaults. CI
+regenerates and fails on any difference.
+
 ### Run the Rust tests
 
 ```sh

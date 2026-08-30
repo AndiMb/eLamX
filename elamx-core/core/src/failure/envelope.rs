@@ -30,6 +30,7 @@ use serde::Serialize;
 /// produced an undefined result there). The original throws in that case and
 /// loses the whole body; keeping the hole lets the rest still be drawn.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct FailureEnvelope {
     pub points: Vec<Vec<Option<[f64; 3]>>>,
     /// Number of polar (theta) and azimuthal (phi) samples - the grid's shape,

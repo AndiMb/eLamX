@@ -51,6 +51,7 @@ use std::collections::HashMap;
 
 /// Everything the analysis needs besides the laminate itself.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct LastPlyFailureInput {
     /// The applied load, held constant over the whole analysis. Hygrothermal
     /// fields are not part of it - see the module documentation.
@@ -84,6 +85,7 @@ impl Default for LastPlyFailureInput {
 
 /// A reserve factor together with the iteration it was reached in.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct LastPlyFailureEvent {
     pub reserve_factor: f64,
     /// Zero-based iteration index, matching the original's output.
@@ -92,6 +94,7 @@ pub struct LastPlyFailureEvent {
 
 /// One degradation step.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct LastPlyFailureIteration {
     /// Every ply's stress/strain state and reserve factor, computed with the
     /// stiffnesses this iteration STARTED with (i.e. before its own
@@ -113,6 +116,7 @@ pub struct LastPlyFailureIteration {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct LastPlyFailureResult {
     /// The degradation path, oldest first.
     pub iterations: Vec<LastPlyFailureIteration>,

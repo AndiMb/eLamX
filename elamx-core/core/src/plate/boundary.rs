@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 /// The discriminants are eLamX2's combo-box indices (InputPanel.java's
 /// `boundary_cond` array) so saved files and this enum agree.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub enum BoundaryCondition {
     #[serde(rename = "SS")]
     SimplySimply,

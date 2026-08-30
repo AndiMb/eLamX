@@ -7,6 +7,7 @@ use uuid::Uuid;
 /// Ply material properties, corresponding to the Java `DefaultMaterial` (the only
 /// concrete `Material` implementation in the original application).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct Material {
     pub id: String,
     pub name: String,

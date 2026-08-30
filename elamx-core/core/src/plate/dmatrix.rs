@@ -13,6 +13,7 @@ use crate::clt::CltLaminate;
 use crate::mathtools::{self, Matrix};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 #[serde(rename_all = "snake_case")]
 pub enum DMatrixKind {
     /// The laminate's D matrix as-is. Assumes a symmetric laminate, since it

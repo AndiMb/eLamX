@@ -24,6 +24,7 @@ use crate::mathtools::{generalized_symmetric_eigen, EigenError};
 
 /// Everything the buckling calculation needs besides the laminate itself.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct BucklingInput {
     /// Plate extent in x, in mm.
     pub length: f64,
@@ -66,6 +67,7 @@ impl Default for BucklingInput {
 
 /// One buckling mode.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct BucklingMode {
     /// Load factor: the applied load flows multiplied by this buckle the plate.
     pub eigenvalue: f64,
@@ -75,6 +77,7 @@ pub struct BucklingMode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct BucklingResult {
     /// Smallest positive load factor, i.e. the critical one. `None` when no
     /// eigenvalue came out positive, which means the plate does not buckle

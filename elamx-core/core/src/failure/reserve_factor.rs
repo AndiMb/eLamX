@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 /// Which failure mechanism a reserve factor corresponds to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub enum FailureType {
     Undamaged,
     FiberFailure,
@@ -16,6 +17,7 @@ pub enum FailureType {
 /// governing reserve factor, which mechanism produced it, and a short name
 /// identifying the failure mode.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct ReserveFactor {
     pub failure_name: String,
     pub minimal_reserve_factor: f64,

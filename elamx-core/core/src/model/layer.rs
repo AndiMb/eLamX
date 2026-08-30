@@ -6,9 +6,14 @@ use uuid::Uuid;
 /// A single ply. `angle` is kept private so it can only be set through
 /// [`Layer::new`]/[`Layer::set_angle`], which normalize it to -90..=90 degrees.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct Layer {
     pub id: String,
     pub name: String,
+    // ts-rs prints "failed to parse serde attribute" for this one under
+    // `--features ts` and then ignores it, which is the right outcome: the
+    // deserializer normalises the angle on the way in, but the wire type is
+    // still a plain number and that is what it generates.
     #[serde(deserialize_with = "deserialize_normalized_angle")]
     angle: f64,
     pub thickness: f64,

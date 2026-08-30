@@ -28,6 +28,7 @@ use std::collections::HashMap;
 /// Which radius the user measured. The analysis works on the mean radius, so
 /// an inner or outer one is moved half a wall thickness.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub enum RadiusType {
     Inner,
     Mean,
@@ -35,6 +36,7 @@ pub enum RadiusType {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct PressureVesselInput {
     /// Internal pressure.
     pub pressure: f64,
@@ -66,6 +68,7 @@ impl PressureVesselInput {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct PressureVesselResult {
     /// The mean radius the analysis ran on - derived from the input radius and
     /// the wall thickness, so worth reporting rather than leaving implicit.

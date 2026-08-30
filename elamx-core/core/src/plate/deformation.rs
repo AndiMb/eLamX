@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 /// same way - the difference is only whether that projection is an integral or
 /// an evaluation.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 #[serde(tag = "kind")]
 pub enum TransverseLoad {
     /// Constant pressure over the whole plate.
@@ -39,6 +40,7 @@ pub enum TransverseLoad {
 /// original lets you name each load and lists them by name), so it travels
 /// with the input rather than being invented on the way out.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct NamedLoad {
     pub name: String,
     #[serde(flatten)]
@@ -91,6 +93,7 @@ impl TransverseLoad {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct DeformationInput {
     /// Plate extent in x, in mm.
     pub length: f64,
@@ -123,6 +126,7 @@ impl Default for DeformationInput {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct DeformationResult {
     /// Ritz coefficients, m rows of n - the deflection field's own definition.
     pub coefficients: Vec<Vec<f64>>,

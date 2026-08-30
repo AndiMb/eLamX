@@ -32,6 +32,7 @@ use serde::{Deserialize, Serialize};
 
 /// A whole `.elamx` document.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct Project {
     /// Format version from the `<elamx version="...">` attribute. Written back
     /// as read so a file does not silently change format generation.
@@ -53,6 +54,7 @@ pub struct Project {
 /// which is how one compares load cases on the same stack - hence lists, not
 /// single values.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct ProjectLaminate {
     pub laminate: Laminate,
     pub calculations: Vec<NamedCalculation>,
@@ -71,6 +73,7 @@ pub struct ProjectLaminate {
 
 /// One CLT load case.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct NamedCalculation {
     pub name: String,
     pub loads: Loads,
@@ -81,6 +84,7 @@ pub struct NamedCalculation {
 
 /// One plate-buckling analysis.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct NamedBuckling {
     pub name: String,
     pub input: BucklingInput,
@@ -88,6 +92,7 @@ pub struct NamedBuckling {
 
 /// One last-ply-failure analysis.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct NamedLastPlyFailure {
     pub name: String,
     pub input: LastPlyFailureInput,
@@ -95,6 +100,7 @@ pub struct NamedLastPlyFailure {
 
 /// One pressure-vessel analysis.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct NamedPressureVessel {
     pub name: String,
     pub input: PressureVesselInput,
@@ -102,6 +108,7 @@ pub struct NamedPressureVessel {
 
 /// One plate-deformation analysis.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct NamedDeformation {
     pub name: String,
     pub input: DeformationInput,
@@ -112,6 +119,7 @@ pub struct NamedDeformation {
 /// module data (spring-in, cutouts, ...) and under `<elamx>` for whole
 /// sections (`<fibres>`, `<matrices>`, `<optimizations>`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct RawElement {
     /// Element name, e.g. `springIn` or `fibres`.
     pub tag: String,
