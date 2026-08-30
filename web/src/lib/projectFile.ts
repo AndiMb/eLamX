@@ -13,7 +13,7 @@
 // them - every <calculation> in the file becomes a real load case. See
 // `CarryOver` in store/laminateAtoms.ts.
 
-import { loadElamxWasm } from "./wasm";
+import { elamx } from "./wasm";
 import { DEFAULT_CRITERION_ID, LOAD_FIELDS, STRAIN_FIELDS, type LayerRow } from "./constants";
 import {
   CRITERIA,
@@ -128,8 +128,7 @@ function asCriterionId(value: string | null): CriterionId {
 /** Parses `.elamx` XML into the app's state. Throws with the core's own
  *  message (which names the offending element) if the file cannot be read. */
 export async function importProject(xml: string): Promise<ProjectSnapshot> {
-  const wasm = await loadElamxWasm();
-  const project: ProjectDto = JSON.parse(wasm.import_elamx(xml));
+  const project: ProjectDto = JSON.parse(await elamx.import_elamx(xml));
 
   const bucklings: Record<string, BucklingInputDto> = {};
   const lastPlyFailures: Record<string, LastPlyFailureInputDto> = {};
@@ -209,7 +208,6 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
 
 /** Serialises the app's state to `.elamx` XML. */
 export async function exportProject(snapshot: ProjectSnapshot): Promise<string> {
-  const wasm = await loadElamxWasm();
 
   const project: ProjectDto = {
     version: snapshot.version || "1",
@@ -286,7 +284,7 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
     }),
   };
 
-  return wasm.export_elamx(JSON.stringify(project));
+  return await elamx.export_elamx(JSON.stringify(project));
 }
 
 /** Hands the XML to the browser as a download. */

@@ -29,7 +29,7 @@ import {
   type CltResponse,
   type LaminateDto,
 } from "../lib/types";
-import { loadElamxWasm } from "../lib/wasm";
+import { elamx } from "../lib/wasm";
 import {
   activeLoadCaseFamily,
   laminateConfigFamily,
@@ -126,8 +126,7 @@ export const variantResponseFamily = atomFamily((key: string) =>
     if (!loadCase) return null;
 
     const { laminate, materials } = get(laminateRequestFamily(laminateId));
-    const wasm = await loadElamxWasm();
-    const json = wasm.compute_clt(
+    const json = await elamx.compute_clt(
       JSON.stringify(buildCltRequest(laminate, materials, loadCase)),
     );
     return JSON.parse(json) as CltResponse;
@@ -138,16 +137,14 @@ export const loadableVariantFamily = atomFamily((key: string) =>
   loadableWithLastValue(variantResponseFamily(key)),
 );
 
-// Calls into the WASM core. Async only because loading the wasm module the
-// very first time is async; the actual computation is synchronous. Wrapped in
-// loadableWithLastValue() below so components never need to <Suspense> - and
-// so swapping this for a Web Worker call later (for genuinely expensive
-// computations) won't change any call site.
+// Calls into the WASM core, which now answers from a worker (see lib/wasm.ts).
+// The CLT itself is cheap - 0.3 ms for sixteen plies - and would not need one;
+// it goes the same way because one core instance beats two, and because
+// loadableWithLastValue() below already means components never <Suspense>.
 export const cltResponseFamily = atomFamily((laminateId: string) =>
   atom<Promise<CltResponse>>(async (get) => {
     const request = get(cltRequestFamily(laminateId));
-    const wasm = await loadElamxWasm();
-    const json = wasm.compute_clt(JSON.stringify(request));
+    const json = await elamx.compute_clt(JSON.stringify(request));
     return JSON.parse(json) as CltResponse;
   }),
 );
@@ -219,8 +216,7 @@ export const cltErrorFamily = atomFamily((laminateId: string) =>
 export const angleSweepFamily = atomFamily((laminateId: string) =>
   atom<Promise<AngleSweepResponse>>(async (get) => {
     const { laminate, materials } = get(cltRequestFamily(laminateId));
-    const wasm = await loadElamxWasm();
-    const json = wasm.compute_angle_sweep(JSON.stringify({ laminate, materials }), 5);
+    const json = await elamx.compute_angle_sweep(JSON.stringify({ laminate, materials }), 5);
     return JSON.parse(json) as AngleSweepResponse;
   }),
 );

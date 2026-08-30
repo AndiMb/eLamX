@@ -10,7 +10,7 @@ import { atomWithStorage, createJSONStorage, selectAtom } from "jotai/utils";
 import equal from "fast-deep-equal";
 import { loadableWithLastValue } from "../lib/loadable";
 import type { PressureVesselInputDto, PressureVesselResponse } from "../lib/types";
-import { loadElamxWasm } from "../lib/wasm";
+import { elamx } from "../lib/wasm";
 import { laminateRequestFamily } from "./derivedAtoms";
 
 // Mirrors elamx-core's PressureVesselInput::default, which mirrors the Java
@@ -41,8 +41,7 @@ export const pressureVesselResponseFamily = atomFamily((laminateId: string) =>
   atom<Promise<PressureVesselResponse>>(async (get) => {
     const { laminate, materials } = get(laminateRequestFamily(laminateId));
     const input = get(pressureVesselInputFamily(laminateId));
-    const wasm = await loadElamxWasm();
-    const json = wasm.compute_pressure_vessel(JSON.stringify({ laminate, materials, input }));
+    const json = await elamx.compute_pressure_vessel(JSON.stringify({ laminate, materials, input }));
     return JSON.parse(json) as PressureVesselResponse;
   }),
 );

@@ -15,7 +15,7 @@ import { atomWithStorage, createJSONStorage, selectAtom } from "jotai/utils";
 import equal from "fast-deep-equal";
 import { loadableWithLastValue } from "../lib/loadable";
 import { emptyLoads, type LastPlyFailureInputDto, type LastPlyFailureResponse } from "../lib/types";
-import { loadElamxWasm } from "../lib/wasm";
+import { elamx } from "../lib/wasm";
 import { laminateRequestFamily } from "./derivedAtoms";
 
 // The degradation parameters mirror elamx-core's LastPlyFailureInput::default,
@@ -54,8 +54,7 @@ export const lastPlyFailureResponseFamily = atomFamily((laminateId: string) =>
   atom<Promise<LastPlyFailureResponse>>(async (get) => {
     const { laminate, materials } = get(laminateRequestFamily(laminateId));
     const input = get(lastPlyFailureInputFamily(laminateId));
-    const wasm = await loadElamxWasm();
-    const json = wasm.compute_last_ply_failure(JSON.stringify({ laminate, materials, input }));
+    const json = await elamx.compute_last_ply_failure(JSON.stringify({ laminate, materials, input }));
     return JSON.parse(json) as LastPlyFailureResponse;
   }),
 );

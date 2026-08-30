@@ -11,7 +11,7 @@ import { atomWithStorage, createJSONStorage, selectAtom } from "jotai/utils";
 import equal from "fast-deep-equal";
 import { loadableWithLastValue } from "../lib/loadable";
 import type { BucklingInputDto, BucklingResponse } from "../lib/types";
-import { loadElamxWasm } from "../lib/wasm";
+import { elamx } from "../lib/wasm";
 import { laminateRequestFamily } from "./derivedAtoms";
 
 /** Grid resolution of the sampled mode-shape surface. */
@@ -56,18 +56,16 @@ export const bucklingInputFamily = atomFamily((laminateId: string) =>
   ),
 );
 
-// Async like cltResponseFamily, and for the same reason: only the very first
-// wasm load is actually asynchronous. The solve itself is synchronous, but it
-// is an (m*n)^3 eigenvalue problem - at the 20x20 maximum that is a 400x400
-// matrix, so this is the first calculation in the app expensive enough that
-// moving it to a Web Worker may become worthwhile. Keeping it behind the same
-// loadable shape means that change would not touch any call site.
+// The reason the worker exists. This is an (m*n)^3 eigenvalue problem - at the
+// 20x20 maximum a 400x400 matrix - and it is measured at 15 ms for ten terms,
+// 166 for fifteen and 792 for twenty. On the main thread that made the page
+// stop responding as soon as anyone followed the convergence warning's advice.
+// The loadable shape below is what made moving it a one-line change here.
 export const bucklingResponseFamily = atomFamily((laminateId: string) =>
   atom<Promise<BucklingResponse>>(async (get) => {
     const { laminate, materials } = get(laminateRequestFamily(laminateId));
     const input = get(bucklingInputFamily(laminateId));
-    const wasm = await loadElamxWasm();
-    const json = wasm.compute_buckling(JSON.stringify({ laminate, materials, input }));
+    const json = await elamx.compute_buckling(JSON.stringify({ laminate, materials, input }));
     return JSON.parse(json) as BucklingResponse;
   }),
 );
@@ -128,8 +126,7 @@ export const bucklingSurfaceFamily = atomFamily((laminateId: string) =>
     if (!modes || modes.length === 0) return null;
     const selected = Math.min(get(selectedBucklingModeFamily(laminateId)), modes.length - 1);
     const input = get(bucklingInputFamily(laminateId));
-    const wasm = await loadElamxWasm();
-    const json = wasm.compute_buckling_surface(
+    const json = await elamx.compute_buckling_surface(
       JSON.stringify({ input, shape: modes[selected].shape, samples: SURFACE_SAMPLES }),
     );
     return JSON.parse(json) as number[][];

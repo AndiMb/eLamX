@@ -8,7 +8,7 @@ import { atom } from "jotai";
 import { atomFamily } from "jotai-family";
 import { loadableWithLastValue } from "../lib/loadable";
 import type { FailureEnvelopeResponse } from "../lib/types";
-import { loadElamxWasm } from "../lib/wasm";
+import { elamx } from "../lib/wasm";
 import { materialsAtom } from "./materialsAtoms";
 
 /** Sample density handed to the core; 1.0 is the Java view's default. */
@@ -26,8 +26,7 @@ export const failureBodyFamily = atomFamily((key: FailureBodyKey) =>
     const material = get(materialsAtom).find((m) => m.id === materialId);
     if (!material) throw new Error(`material '${materialId}' not found`);
 
-    const wasm = await loadElamxWasm();
-    const json = wasm.compute_failure_envelope(
+    const json = await elamx.compute_failure_envelope(
       JSON.stringify({ material, criterion_id: criterionId, quality: ENVELOPE_QUALITY }),
     );
     return JSON.parse(json) as FailureEnvelopeResponse;

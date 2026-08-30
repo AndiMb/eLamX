@@ -9,7 +9,7 @@ import { atomWithStorage, createJSONStorage, selectAtom } from "jotai/utils";
 import equal from "fast-deep-equal";
 import { loadableWithLastValue } from "../lib/loadable";
 import type { DeformationInputDto, DeformationResponse, NamedLoadDto } from "../lib/types";
-import { loadElamxWasm } from "../lib/wasm";
+import { elamx } from "../lib/wasm";
 import { laminateRequestFamily } from "./derivedAtoms";
 
 // Mirrors elamx-core's DeformationInput::default, which mirrors the Java one -
@@ -45,8 +45,7 @@ export const deformationResponseFamily = atomFamily((laminateId: string) =>
   atom<Promise<DeformationResponse>>(async (get) => {
     const { laminate, materials } = get(laminateRequestFamily(laminateId));
     const input = get(deformationInputFamily(laminateId));
-    const wasm = await loadElamxWasm();
-    const json = wasm.compute_deformation(JSON.stringify({ laminate, materials, input }));
+    const json = await elamx.compute_deformation(JSON.stringify({ laminate, materials, input }));
     return JSON.parse(json) as DeformationResponse;
   }),
 );
