@@ -16,6 +16,7 @@ import { SafeNumberInput } from "./SafeNumberInput";
 import { BackLink } from "./BackLink";
 import { Sym } from "./Sym";
 import { ResponsiveTable, type ResponsiveTableColumn } from "./ResponsiveTable";
+import { MobileCollapse } from "./MobileCollapse";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { formatSignificant, NO_VALUE } from "../lib/numberFormat";
 import { failureModeLabel, useLocale, useT, type MessageKey } from "../i18n";
@@ -228,14 +229,19 @@ export function LastPlyFailureModuleContent({ laminateId }: { laminateId: string
 
       {path && path.length > 0 && (
         <section className="panel">
-          <h2>{t("lpf.path.title")}</h2>
-          <ResponsiveTable
-            variant="records"
-            columns={columns}
-            rows={path}
-            rowKey={(r) => r.index}
-          />
-          <p className="hint">{t("lpf.path.hint")}</p>
+          {/* One row per degradation step, so it grows with the stack: a
+              16-ply laminate degrades in 21 steps, which is 3700 px of cards
+              on a phone below the load factors that answer the question. */}
+          <MobileCollapse title={t("lpf.path.title")}>
+            <h2>{t("lpf.path.title")}</h2>
+            <ResponsiveTable
+              variant="records"
+              columns={columns}
+              rows={path}
+              rowKey={(r) => r.index}
+            />
+            <p className="hint">{t("lpf.path.hint")}</p>
+          </MobileCollapse>
         </section>
       )}
       </div>

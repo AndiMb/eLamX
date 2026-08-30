@@ -16,6 +16,7 @@ import { SafeNumberInput } from "./SafeNumberInput";
 import { BackLink } from "./BackLink";
 import { Sym } from "./Sym";
 import { ResponsiveTable, type ResponsiveTableColumn } from "./ResponsiveTable";
+import { MobileCollapse } from "./MobileCollapse";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { failureModeLabel, useLocale, useT } from "../i18n";
 
@@ -234,16 +235,20 @@ export function PressureVesselModuleContent({ laminateId }: { laminateId: string
 
           {layers && layers.length > 0 && (
             <section className="panel">
-              <h2>{t("vessel.layers.title")}</h2>
-              <ResponsiveTable
-                variant="records"
-                className="layer-results-table"
-                columns={columns}
-                rows={layers}
-                rowKey={(l) => l.layer_number}
-                rowClassName={(l) => (l.failed ? "failed" : undefined)}
-              />
-              <p className="hint">{t("vessel.layers.hint")}</p>
+              {/* Per ply, so it grows with the stack - same reason as the CLT
+                  page's ply results. */}
+              <MobileCollapse title={t("vessel.layers.title")}>
+                <h2>{t("vessel.layers.title")}</h2>
+                <ResponsiveTable
+                  variant="records"
+                  className="layer-results-table"
+                  columns={columns}
+                  rows={layers}
+                  rowKey={(l) => l.layer_number}
+                  rowClassName={(l) => (l.failed ? "failed" : undefined)}
+                />
+                <p className="hint">{t("vessel.layers.hint")}</p>
+              </MobileCollapse>
             </section>
           )}
 
