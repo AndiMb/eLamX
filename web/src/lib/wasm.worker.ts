@@ -15,6 +15,7 @@ const ENTRY_POINTS = [
   "compute_buckling",
   "compute_buckling_surface",
   "compute_deformation",
+  "compute_deformation_field",
   "compute_failure_envelope",
   "compute_last_ply_failure",
   "compute_pressure_vessel",

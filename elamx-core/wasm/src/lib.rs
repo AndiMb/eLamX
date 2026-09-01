@@ -17,9 +17,10 @@ use elamx_core::failure::{
 use elamx_core::mathtools;
 use elamx_core::model::{Laminate, Material};
 use elamx_core::project::{read_elamx, write_elamx, Project};
+use elamx_core::clt::LayerPosition;
 use elamx_core::plate::{
-    calculate_buckling, calculate_deformation, mode_surface, BucklingInput, DeformationInput,
-    DeformationResult,
+    calculate_buckling, calculate_deformation, evaluate_plate_field, mode_surface, BucklingInput,
+    DeformationInput, DeformationResult, PlateField, PlateFieldResult, PlateFieldSelection,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -477,6 +478,82 @@ fn compute_deformation_impl(request_json: &str) -> Result<String, String> {
 
 #[derive(Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+struct DeformationFieldRequest {
+    laminate: Laminate,
+    materials: HashMap<String, Material>,
+    input: DeformationInput,
+    /// The Ritz coefficients from a previous [`compute_deformation`]. Passing
+    /// the solution back rather than re-solving is what makes switching the
+    /// displayed quantity a redraw instead of another factorisation.
+    coefficients: Vec<Vec<f64>>,
+    field: PlateField,
+    /// Index into the EXPANDED stack, as the CLT response numbers it.
+    layer: usize,
+    position: LayerPosition,
+    /// Grid resolution, the same in both directions.
+    samples: usize,
+}
+
+/// Evaluates ONE result field over a deflected plate: a quantity, in a ply, at
+/// a position through that ply.
+///
+/// Deliberately one at a time. Twenty plies times three positions times seven
+/// quantities is 420 grids of several thousand values, and a caller wants one
+/// of them - the same reason [`compute_buckling_surface`] samples one mode
+/// rather than all of them.
+///
+/// Shaped by [`DeformationFieldRequest`]; the response is [`PlateFieldResult`]
+/// as JSON. Points the ply's failure criterion cannot evaluate come back as
+/// `null` in `values` rather than as a number.
+#[wasm_bindgen]
+pub fn compute_deformation_field(request_json: &str) -> Result<String, JsValue> {
+    compute_deformation_field_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_deformation_field_impl(request_json: &str) -> Result<String, String> {
+    let request: DeformationFieldRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+
+    // The coefficients are the caller's, so their shape is the caller's
+    // mistake to make: silently evaluating a grid that does not match m and n
+    // would return a field for a plate nobody asked about.
+    if request.coefficients.len() != request.input.m
+        || request
+            .coefficients
+            .iter()
+            .any(|row| row.len() != request.input.n)
+    {
+        return Err(format!(
+            "coefficient grid is {}x{}, but the input declares m={}, n={}",
+            request.coefficients.len(),
+            request.coefficients.first().map_or(0, |r| r.len()),
+            request.input.m,
+            request.input.n
+        ));
+    }
+
+    let clt = CltLaminate::new(&request.laminate, &request.materials).map_err(|e| e.to_string())?;
+    let criteria = default_criterion_registry();
+    let result: PlateFieldResult = evaluate_plate_field(
+        &clt,
+        &request.materials,
+        &criteria,
+        &request.input,
+        &request.coefficients,
+        PlateFieldSelection {
+            field: request.field,
+            layer: request.layer,
+            position: request.position,
+            samples: request.samples,
+        },
+    )
+    .map_err(|e| e.to_string())?;
+
+    serde_json::to_string(&result).map_err(|e| e.to_string())
+}
+
+#[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct PressureVesselRequest {
     laminate: Laminate,
     materials: HashMap<String, Material>,
@@ -775,6 +852,81 @@ mod tests {
                 "loads": [{loads}]{extra_input}
             }}}}"#
         )
+    }
+
+    /// Solves once, then asks for a field: the pair of calls the frontend
+    /// makes, and the only place their two request shapes have to agree.
+    fn field_request(field: &str, layer: usize, position: &str, samples: usize) -> String {
+        let solved = compute_deformation_impl(&deformation_request(
+            r#"{"kind":"Surface","name":"q","force":0.01}"#,
+            "",
+        ))
+        .expect("the plate should solve");
+        let coefficients = serde_json::from_str::<serde_json::Value>(&solved).unwrap()["coefficients"]
+            .to_string();
+
+        let base = deformation_request(r#"{"kind":"Surface","name":"q","force":0.01}"#, "");
+        let head = base.strip_suffix('}').unwrap();
+        format!(
+            r#"{head}, "coefficients": {coefficients}, "field": "{field}",
+               "layer": {layer}, "position": "{position}", "samples": {samples}}}"#
+        )
+    }
+
+    #[test]
+    fn compute_deformation_field_evaluates_one_quantity_in_one_ply() {
+        let response = compute_deformation_field_impl(&field_request("StressPar", 0, "Upper", 21))
+            .expect("the field should evaluate");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+
+        let values = parsed["values"].as_array().unwrap();
+        assert_eq!(values.len(), 21);
+        assert_eq!(values[0].as_array().unwrap().len(), 21);
+        // Simply supported and bending only: the edges carry no curvature in
+        // the direction along them, so the corner is unstressed.
+        assert!(values[0][0].as_f64().unwrap().abs() < 1e-9);
+        assert!(parsed["max"].as_f64().unwrap() > 0.0);
+        // Only the reserve factor names a failure mode.
+        assert!(parsed["failure"].is_null());
+    }
+
+    #[test]
+    fn compute_deformation_field_reports_the_mode_that_governs_the_reserve() {
+        let response =
+            compute_deformation_field_impl(&field_request("ReserveFactor", 0, "Upper", 11))
+                .expect("the reserve factor should evaluate");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+        let modes = parsed["failure"].as_array().unwrap();
+        assert_eq!(modes.len(), 11);
+        assert!(parsed["min"].as_f64().unwrap() > 0.0);
+    }
+
+    /// The deflection is the one field that does not belong to a ply, and it
+    /// has to come back at the resolution asked for rather than at the 41 the
+    /// solution happens to carry.
+    #[test]
+    fn compute_deformation_field_samples_the_deflection_at_the_requested_resolution() {
+        let response = compute_deformation_field_impl(&field_request("Deflection", 0, "Middle", 9))
+            .expect("the deflection should evaluate");
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+        assert_eq!(parsed["values"].as_array().unwrap().len(), 9);
+    }
+
+    #[test]
+    fn compute_deformation_field_rejects_coefficients_that_do_not_match_the_input() {
+        // A 2x2 grid against the m=10, n=10 the input declares.
+        let base = deformation_request(r#"{"kind":"Surface","name":"q","force":0.01}"#, "");
+        let head = base.strip_suffix('}').unwrap();
+        let request = format!(
+            r#"{head}, "coefficients": [[1.0, 2.0], [3.0, 4.0]], "field": "Deflection",
+               "layer": 0, "position": "Middle", "samples": 9}}"#
+        );
+        assert!(compute_deformation_field_impl(&request).is_err());
+    }
+
+    #[test]
+    fn compute_deformation_field_rejects_a_ply_that_is_not_there() {
+        assert!(compute_deformation_field_impl(&field_request("StrainPar", 99, "Upper", 9)).is_err());
     }
 
     #[test]

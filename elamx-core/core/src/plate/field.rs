@@ -80,8 +80,9 @@ impl PlateField {
 }
 
 /// Everything a field needs beyond the plate input and its solution.
+/// Not exported to TypeScript: the wasm request spells these out flat, so a
+/// nested type would only be a second name for the same four fields.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct PlateFieldSelection {
     pub field: PlateField,
     /// Index into the EXPANDED stack, 0-based from the bottom ply.
@@ -96,6 +97,11 @@ pub struct PlateFieldSelection {
 pub struct PlateFieldResult {
     /// Rows along y, columns along x. A point the criterion could not evaluate
     /// is NaN, not a number - see the note on the reserve factor below.
+    ///
+    /// The TypeScript type is overridden because JSON has no NaN: serde_json
+    /// writes those holes as `null`, and a generated type that promised
+    /// `number` would hand the frontend a null it never checked for.
+    #[cfg_attr(feature = "ts", ts(type = "Array<Array<number | null>>"))]
     pub values: Vec<Vec<f64>>,
     pub min: f64,
     pub max: f64,
