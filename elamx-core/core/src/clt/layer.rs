@@ -3,9 +3,11 @@
 
 use crate::mathtools::{self, Matrix};
 use crate::model::{Material, StressStrainState};
+use serde::{Deserialize, Serialize};
 
 /// Where within a layer's thickness a stress/strain state is evaluated.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub enum LayerPosition {
     Upper,
     Lower,

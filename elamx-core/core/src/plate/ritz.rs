@@ -80,41 +80,17 @@ pub fn surface(
     ny_samples: usize,
     scale: SurfaceScale,
 ) -> Vec<Vec<f64>> {
-    let m = coefficients.len();
-    let n = coefficients.first().map_or(0, |row| row.len());
-
-    // Precompute each shape function at every sample station: without this the
-    // sinh/cosh calls dominate, being evaluated m*n times per grid point.
-    let xs: Vec<Vec<f64>> = (0..m)
-        .map(|i| {
-            (0..nx_samples)
-                .map(|s| bx.wx(i, length * s as f64 / (nx_samples - 1).max(1) as f64))
-                .collect()
-        })
-        .collect();
-    let ys: Vec<Vec<f64>> = (0..n)
-        .map(|j| {
-            (0..ny_samples)
-                .map(|s| by.wx(j, width * s as f64 / (ny_samples - 1).max(1) as f64))
-                .collect()
-        })
-        .collect();
-
-    let mut field = vec![vec![0.0f64; nx_samples]; ny_samples];
-    for (i, xrow) in xs.iter().enumerate() {
-        for (j, yrow) in ys.iter().enumerate() {
-            let a = coefficients[i][j];
-            if a == 0.0 {
-                continue;
-            }
-            for (sy, &yv) in yrow.iter().enumerate() {
-                let ay = a * yv;
-                for (sx, &xv) in xrow.iter().enumerate() {
-                    field[sy][sx] += ay * xv;
-                }
-            }
-        }
-    }
+    let mut field = derivative_field(
+        coefficients,
+        length,
+        width,
+        bx,
+        by,
+        nx_samples,
+        ny_samples,
+        Derivative::Value,
+        Derivative::Value,
+    );
 
     if scale == SurfaceScale::Normalised {
         let peak = field
@@ -131,4 +107,82 @@ pub fn surface(
     }
 
     field
+}
+
+/// Which derivative of the shape functions one direction contributes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Derivative {
+    Value,
+    First,
+    Second,
+}
+
+/// The coefficient grid evaluated with the requested derivative in each
+/// direction: `(Value, Value)` is the deflection, `(Second, Value)` is w_xx,
+/// `(First, First)` is w_xy.
+///
+/// One function for all of them because the expensive part - evaluating every
+/// shape function at every station, so the sinh/cosh calls happen `m + n`
+/// times per grid line instead of `m * n` times per point - is the same
+/// whichever derivative is wanted, and three copies of that loop is three
+/// places for a transposed index to hide.
+///
+/// Rows run along y, columns along x, as everywhere else in this crate.
+#[allow(clippy::too_many_arguments)]
+pub fn derivative_field(
+    coefficients: &[Vec<f64>],
+    length: f64,
+    width: f64,
+    bx: &Boundary,
+    by: &Boundary,
+    nx_samples: usize,
+    ny_samples: usize,
+    dx: Derivative,
+    dy: Derivative,
+) -> Vec<Vec<f64>> {
+    let m = coefficients.len();
+    let n = coefficients.first().map_or(0, |row| row.len());
+
+    let xs = shape_stations(bx, m, length, nx_samples, dx);
+    let ys = shape_stations(by, n, width, ny_samples, dy);
+
+    let mut field = vec![vec![0.0f64; nx_samples]; ny_samples];
+    for (i, xrow) in xs.iter().enumerate() {
+        for (j, yrow) in ys.iter().enumerate() {
+            let a = coefficients[i][j];
+            if a == 0.0 {
+                continue;
+            }
+            for (sy, &yv) in yrow.iter().enumerate() {
+                let ay = a * yv;
+                for (sx, &xv) in xrow.iter().enumerate() {
+                    field[sy][sx] += ay * xv;
+                }
+            }
+        }
+    }
+    field
+}
+
+fn shape_stations(
+    b: &Boundary,
+    terms: usize,
+    span: f64,
+    samples: usize,
+    d: Derivative,
+) -> Vec<Vec<f64>> {
+    (0..terms)
+        .map(|i| {
+            (0..samples)
+                .map(|s| {
+                    let x = span * s as f64 / (samples - 1).max(1) as f64;
+                    match d {
+                        Derivative::Value => b.wx(i, x),
+                        Derivative::First => b.wdx(i, x),
+                        Derivative::Second => b.wdx2(i, x),
+                    }
+                })
+                .collect()
+        })
+        .collect()
 }

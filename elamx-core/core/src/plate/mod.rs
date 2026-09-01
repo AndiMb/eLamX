@@ -18,6 +18,7 @@ mod boundary_tables;
 pub mod buckling;
 pub mod deformation;
 pub mod dmatrix;
+pub mod field;
 pub mod ritz;
 
 pub use boundary::{Boundary, BoundaryCondition};
@@ -31,3 +32,7 @@ pub use deformation::{
     NamedLoad, TransverseLoad,
 };
 pub use dmatrix::DMatrixKind;
+pub use field::{
+    evaluate as evaluate_plate_field, PlateField, PlateFieldError, PlateFieldResult,
+    PlateFieldSelection, DEFAULT_SAMPLES, MAX_SAMPLES, MIN_SAMPLES,
+};

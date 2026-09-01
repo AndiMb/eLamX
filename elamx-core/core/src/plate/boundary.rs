@@ -212,6 +212,34 @@ impl Boundary {
             + self.t.c5[i]
     }
 
+    /// First derivative dX_i/dx, analytic.
+    ///
+    /// Differentiating the series term by term is exact - `cv/a` is the chain
+    /// rule and nothing else - so this inherits `wx`'s accuracy note above
+    /// unchanged: the same cancellation at a clamped far edge, neither worse
+    /// nor better. Used for the surface normals of the 3D view, where a wrong
+    /// slope shows as lighting that disagrees with the silhouette.
+    pub fn wdx(&self, i: usize, x: f64) -> f64 {
+        let k = self.t.cv[i] / self.a;
+        let s = self.t.cv[i] * x / self.a;
+        k * (self.t.c1[i] * s.cos() + self.t.c3[i] * s.cosh() - self.t.c2[i] * s.sin()
+            + self.t.c4[i] * s.sinh())
+    }
+
+    /// Second derivative d2X_i/dx2, analytic.
+    ///
+    /// This is what the plate curvatures are built from, and through them
+    /// every layer strain, layer stress and reserve factor the deformation
+    /// module reports. See the note on `wx`.
+    pub fn wdx2(&self, i: usize, x: f64) -> f64 {
+        let k = self.t.cv[i] / self.a;
+        let s = self.t.cv[i] * x / self.a;
+        k * k
+            * (self.t.c3[i] * s.sinh() + self.t.c4[i] * s.cosh()
+                - self.t.c1[i] * s.sin()
+                - self.t.c2[i] * s.cos())
+    }
+
     /// Integral over the full edge of X_i.
     pub fn ix(&self, i: usize) -> f64 {
         self.t.ix[i] * self.a
@@ -316,6 +344,109 @@ mod tests {
                 }
                 if code[1] != b'F' {
                     assert!(b.wx(i, a).abs() < tol, "{} w(a) term {i}", bc.code());
+                }
+            }
+        }
+    }
+
+    /// For SS the shape functions are plain sine half waves, so both
+    /// derivatives have a closed form to check against - no finite differences
+    /// and no tolerance guessing.
+    #[test]
+    fn simply_supported_derivatives_match_the_closed_form() {
+        let a = 2.0;
+        let b = Boundary::new(BoundaryCondition::SimplySimply, a);
+        for i in 0..20 {
+            let k = (i + 1) as f64 * std::f64::consts::PI / a;
+            for step in 0..=10 {
+                let x = a * step as f64 / 10.0;
+                assert!((b.wdx(i, x) - k * (k * x).cos()).abs() < 1e-10, "wdx term {i}");
+                assert!(
+                    (b.wdx2(i, x) + k * k * (k * x).sin()).abs() < 1e-9,
+                    "wdx2 term {i}"
+                );
+            }
+        }
+    }
+
+    /// The derivatives must belong to the same function `wx` evaluates. A
+    /// difference quotient is a weak check on its own, but it is the only one
+    /// that catches a sign or a chain-rule factor copied from the wrong term -
+    /// and those are exactly the mistakes a closed-form test written for SS
+    /// alone lets through, because they are off by a factor, not by a bit.
+    ///
+    /// Two things make it usable on a series that cancels. The step is 1e-3
+    /// rather than the 1e-4 that would be optimal against machine epsilon:
+    /// `wx` near a clamped far edge carries far more noise than that, and a
+    /// second difference divides it by h squared. And the tolerance is
+    /// measured against the NATURAL size of the derivative, (cv/a)^k times the
+    /// function's own amplitude, not against its value at the point - the
+    /// second derivative passes through zero, and a relative test there
+    /// compares noise with nothing.
+    #[test]
+    fn derivatives_agree_with_difference_quotients() {
+        let a = 1.3;
+        let h = 1e-3 * a;
+        for bc in BoundaryCondition::ALL {
+            let b = Boundary::new(bc, a);
+            // Only the terms where `wx` itself is sound; beyond those the
+            // quotient measures the cancellation rather than the slope.
+            for i in 0..6 {
+                let k = b.t.cv[i] / a;
+                let amplitude = (0..=20)
+                    .map(|s| b.wx(i, a * s as f64 / 20.0).abs())
+                    .fold(0.0f64, f64::max)
+                    .max(1e-12);
+                for step in 1..10 {
+                    let x = a * step as f64 / 10.0;
+                    let d1 = (b.wx(i, x + h) - b.wx(i, x - h)) / (2.0 * h);
+                    let d2 = (b.wx(i, x + h) - 2.0 * b.wx(i, x) + b.wx(i, x - h)) / (h * h);
+                    assert!(
+                        (b.wdx(i, x) - d1).abs() < 1e-3 * k * amplitude,
+                        "{} wdx term {i} at {x}",
+                        bc.code()
+                    );
+                    assert!(
+                        (b.wdx2(i, x) - d2).abs() < 1e-3 * k * k * amplitude,
+                        "{} wdx2 term {i} at {x}",
+                        bc.code()
+                    );
+                }
+            }
+        }
+    }
+
+    /// A clamped edge holds the slope at zero, a simply supported one holds
+    /// the curvature there. Both are properties of the shape functions rather
+    /// than of one table, so they hold for every condition that has such an
+    /// edge - and they are what the derivatives are FOR.
+    #[test]
+    fn derivatives_honour_the_edge_they_belong_to() {
+        let a = 1.7;
+        for bc in BoundaryCondition::ALL {
+            let b = Boundary::new(bc, a);
+            let code = bc.code().as_bytes();
+            // Same limit as `shape_functions_vanish_at_every_supported_edge`:
+            // past this the far-edge value is cancellation noise.
+            let terms = if bc == BoundaryCondition::ClampedClamped { 7 } else { 10 };
+            for i in 0..terms {
+                let amplitude = (0..=20)
+                    .map(|s| b.wx(i, a * s as f64 / 20.0).abs())
+                    .fold(0.0f64, f64::max)
+                    .max(1e-12);
+                let scale = (b.t.cv[i] / a) * amplitude;
+                if code[0] == b'C' {
+                    assert!(b.wdx(i, 0.0).abs() < 1e-8 * scale, "{} slope at 0, term {i}", bc.code());
+                }
+                if code[1] == b'C' {
+                    assert!(b.wdx(i, a).abs() < 1e-6 * scale, "{} slope at a, term {i}", bc.code());
+                }
+                if code[0] == b'S' {
+                    assert!(
+                        b.wdx2(i, 0.0).abs() < 1e-8 * scale * (b.t.cv[i] / a),
+                        "{} curvature at 0, term {i}",
+                        bc.code()
+                    );
                 }
             }
         }
