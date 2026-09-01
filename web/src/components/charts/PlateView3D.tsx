@@ -10,6 +10,8 @@ import {
 import { createPlateScene, type PlateScene } from "../../lib/plateScene/scene";
 import { buildPlateBody } from "../../lib/plateScene/body";
 import { buildColormap, rgbaOf, type ColormapKind } from "../../lib/plateScene/colormap";
+import { plateImageBlob, saveBlob } from "../../lib/plateScene/exportImage";
+import type { PlateLegendModel } from "./PlateLegend";
 import { EMPTY_MESH } from "../../lib/plateScene/annotation";
 import { supportEdges, supportMesh } from "../../lib/plateScene/supports";
 import {
@@ -123,6 +125,10 @@ export interface PlateView3DProps {
    * quantity being shown and this component does not know which one that is.
    */
   readoutText?: (probe: { x: number; y: number; value: number | null }) => string;
+  /** The colour bar, so the exported image carries it too (FR-13). */
+  legend?: PlateLegendModel | null;
+  /** Goes into the exported file's name. */
+  exportName?: string;
   ariaLabel: string;
 }
 
@@ -145,6 +151,8 @@ export const PlateView3D = memo(function PlateView3D({
   onToggleLayer,
   markers,
   readoutText,
+  legend,
+  exportName,
   ariaLabel,
 }: PlateView3DProps) {
   const t = useT();
@@ -470,6 +478,46 @@ export const PlateView3D = memo(function PlateView3D({
     [camera],
   );
 
+  const captionLine = t("plate3d.scales", {
+    deflection: formatSignificant(scales.deflection, 3, locale),
+    thickness: formatSignificant(scales.thickness, 3, locale),
+  });
+
+  const exportImage = useCallback(
+    async (factor: 1 | 2) => {
+      const canvas = canvasRef.current;
+      const scene = sceneRef.current;
+      if (!canvas || !scene) return;
+      const styles = getComputedStyle(canvas);
+      const blob = await plateImageBlob({
+        canvas,
+        scene,
+        scale: factor,
+        legend: legend
+          ? {
+              title: legend.unit ? `${legend.title} [${legend.unit}]` : legend.title,
+              ticks: legend.ticks,
+              table: buildColormap(colors, legend.kind),
+              anchor: legend.anchor,
+              range: legend.range,
+            }
+          : null,
+        captions: [captionLine, t("plate3d.export.size", { length, width })],
+        style: {
+          background: styles.backgroundColor,
+          ink: styles.color,
+          muted: styles.color,
+          border: styles.color,
+        },
+      });
+      // The export left the drawing buffer at the export size; the next frame
+      // is what puts it back to the size the element is shown at.
+      requestRender();
+      if (blob) saveBlob(blob, `${exportName ?? "plate"}-${factor}x.png`);
+    },
+    [legend, colors, captionLine, exportName, length, width, t, requestRender],
+  );
+
   const onPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId);
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -570,6 +618,7 @@ export const PlateView3D = memo(function PlateView3D({
         readout={readout}
         axes={axes}
         onStandardView={(view) => setCamera(STANDARD_VIEWS[view])}
+        onExport={exportImage}
         layers={layers}
         onToggle={onToggleLayer}
         available={{
@@ -580,12 +629,7 @@ export const PlateView3D = memo(function PlateView3D({
       {/* The picture is not to scale in two ways at once, so it says so in
           both. Without this the reader has a solid-looking body whose
           proportions are invented. */}
-      <p className="plate3d-scales">
-        {t("plate3d.scales", {
-          deflection: formatSignificant(scales.deflection, 3, locale),
-          thickness: formatSignificant(scales.thickness, 3, locale),
-        })}
-      </p>
+      <p className="plate3d-scales">{captionLine}</p>
     </div>
   );
 });

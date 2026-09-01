@@ -1,4 +1,4 @@
-import { Anchor, ArrowDownToLine, Frame, RotateCcw } from "lucide-react";
+import { Anchor, ArrowDownToLine, Download, Frame, RotateCcw } from "lucide-react";
 import type { StandardViewId } from "../../lib/gl/camera";
 import { useT, type MessageKey } from "../../i18n";
 
@@ -52,6 +52,8 @@ export interface PlateViewOverlayProps {
   layers: PlateViewLayers;
   onToggle: (layer: keyof PlateViewLayers) => void;
   onStandardView: (view: StandardViewId) => void;
+  /** Saves the picture, at the size on screen or at twice it (FR-13). */
+  onExport: (scale: 1 | 2) => void;
   /** Layers with nothing to show are offered as disabled rather than hidden,
    *  so the row of switches does not change length as the input changes. */
   available: { supports: boolean; loads: boolean };
@@ -91,6 +93,7 @@ export function PlateViewOverlay({
   layers,
   onToggle,
   onStandardView,
+  onExport,
   available,
 }: PlateViewOverlayProps) {
   const t = useT();
@@ -141,6 +144,21 @@ export function PlateViewOverlay({
             </button>
           );
         })}
+      </div>
+
+      <div className="plate3d-export" role="group" aria-label={t("plate3d.export")}>
+        {([1, 2] as const).map((factor) => (
+          <button
+            key={factor}
+            type="button"
+            onClick={() => onExport(factor)}
+            title={t(factor === 1 ? "plate3d.export.single" : "plate3d.export.double")}
+            aria-label={t(factor === 1 ? "plate3d.export.single" : "plate3d.export.double")}
+          >
+            <Download size={13} />
+            {factor}x
+          </button>
+        ))}
       </div>
 
       <div className="plate3d-views" role="group" aria-label={t("plate3d.views")}>

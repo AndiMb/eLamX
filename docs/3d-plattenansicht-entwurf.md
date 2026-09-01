@@ -112,13 +112,18 @@ web/src/lib/plateScene/      die Plattenwelt, ohne DOM
   colormap.ts      Wert -> Farbe, als 256er Tabelle
   frame.ts         wo die Platte im Weltraum liegt - eine Abbildung fuer alle
   annotation.ts    Kegel, Block, Linie: die Grundformen der Annotation
-  bounds.ts        Skalengrenzen, automatisch oder gesetzt (heute in scale.ts)
-  exaggeration.ts  Ueberhoehung fuer Durchbiegung und Dicke (heute in scale.ts)
+  legend.ts        Striche und Verankerung des Farbbalkens
+  exportImage.ts   Bild plus Legende als PNG (FR-13)
+  scale.ts         Ueberhoehungen und Skalengrenzen (war als bounds.ts und
+                   exaggeration.ts geplant; eine Datei reicht)
   scene.ts         build, update, draw, dispose
 
 web/src/components/charts/
-  PlateView3D.tsx        Canvas, Gesten, Overlay, Rueckfall
-  PlateViewOverlay.tsx   Beschriftungen und Ebenenschalter (DOM); spaeter Legende
+  PlateView3D.tsx        Canvas, Gesten, Overlay, Export, Rueckfall
+  PlateViewOverlay.tsx   Beschriftungen, Extremstellen, Abgriff, Achsenkreuz,
+                         Ebenenschalter, Standardansichten (alles DOM)
+  PlateLegend.tsx        der Farbbalken
+  PlateFieldControls.tsx Groesse, Lage, Position, Skalengrenzen
   PlateViewControls.tsx  Groesse, Lage, Position, Ebenen, Ueberhoehung
   BucklingPlate3D.tsx    bleibt - die Rueckfallebene (FR-15)
 
@@ -182,14 +187,15 @@ Zwei neue Einstiegspunkte. `compute_deformation` bleibt unverändert;
 Krümmungen gehören nicht dorthin, sie würden die Antwort verdreifachen, die bei
 jedem Tastendruck über den Worker geht.
 
+Gebaut wurde davon nur der zweite. `compute_plate_geometry` ist entfallen:
+die Normalen kommen aus den Neigungen des gezeichneten Feldes und nicht aus
+denen des echten (siehe `body.ts`), weil der Ueberhoehungsfaktor vor dem
+Normieren stehen muss - exakte Neigungen aus dem Kern haetten also gar nicht
+verwendet werden koennen. Die Geometrie ist stattdessen `compute_deformation_field`
+mit `field: Deflection`, was auch garantiert, dass Koerper und Werte auf
+demselben Raster liegen.
+
 ```rust
-// Geometrie: aendert sich mit Platte, Rand, Termzahl, Netzweite.
-// Fuer beide Module - die Beulmode ist derselbe Aufruf mit ihrem Eigenvektor.
-pub fn compute_plate_geometry(request_json: &str) -> Result<String, JsValue>;
-
-struct PlateGeometryRequest { input, coefficients, samples }
-struct PlateGeometryResponse { w, wx, wy }   // Neigungen -> exakte Normalen
-
 // Werte: aendert sich mit Groesse, Lage, Position. Geometrie bleibt stehen.
 pub fn compute_deformation_field(request_json: &str) -> Result<String, JsValue>;
 
@@ -287,22 +293,26 @@ liegen.
 | Schritt | Inhalt | Danach sichtbar |
 | --- | --- | --- |
 | 1 | gl/ + plateScene/body + PlateView3D, nur w | beleuchteter Körper mit Dicke, drehbar (FR-01, FR-10, FR-15) |
-| 2 | CR-01, CR-04, CR-05, compute_plate_geometry, Lagen | Schnittkante mit Lagen, exakte Normalen (FR-02) |
+| 2 | CR-01, CR-04, Lagen | Schnittkante mit Lagen, Faserschraffur (FR-02) |
 | 3 | Vorzeichennachweis, CR-02/03/06, compute_deformation_field | alle acht Größen, Legende (FR-03..05) - Roadmap-Punkt 1 |
-| 4 | supports.ts, loads.ts, Overlay - **gebaut** | Lager und Lasten im Bild (FR-06, FR-07, FR-09) |
+| 4 | supports.ts, loads.ts, Overlay | Lager und Lasten im Bild (FR-06, FR-07, FR-09) |
 | 5 | Abgriff, Ebenen, Export, Beulmodul | FR-08, FR-11, FR-12, FR-13, FR-14 |
 
-Schritt 0 (CR-00) ist entfallen, siehe oben. Gebaut sind Schritt 1 und
-Schritt 4.
+**Alle fünf Schritte sind gebaut.** Was unten noch von Vorhaben spricht, ist
+als Begründung stehen geblieben, nicht als Plan.
 
-Schritt 4 ist vorgezogen worden, weil er als einziger der offenen Schritte
-nichts aus dem Kern braucht: Lagerung und Lasten stehen bereits in der
-Eingabe, `supports.ts` und `loads.ts` sind reine Funktionen davon, und beide
-Module hängen ohnehin schon an derselben `PlateView3D`. Damit ist FR-07 ganz
-erledigt - auch die Kraftflüsse n_x/n_y/n_xy des Beulmoduls - und nicht nur
-der Querlast-Teil.
+Schritt 0 (CR-00) ist entfallen, siehe oben.
 
-Zwei Festlegungen aus dem Bauen, die im Entwurf oben nicht standen:
+Schritt 4 ist vorgezogen worden, weil er als einziger nichts aus dem Kern
+braucht: Lagerung und Lasten stehen bereits in der Eingabe, `supports.ts` und
+`loads.ts` sind reine Funktionen davon, und beide Module hängen ohnehin schon
+an derselben `PlateView3D`. Damit ist FR-07 ganz erledigt - auch die
+Kraftflüsse n_x/n_y/n_xy des Beulmoduls - und nicht nur der Querlast-Teil.
+
+## Was das Bauen entschieden hat
+
+Festlegungen, die im Entwurf oben nicht standen und die man am fertigen Bild
+nicht mehr ablesen kann:
 
 - **Verdeckte Annotation wird geisterhaft durchgezeichnet.** Eine Flächenlast
   mit positivem Vorzeichen drückt von unten; ihre Pfeile liegen dann korrekt
@@ -316,9 +326,40 @@ Zwei Festlegungen aus dem Bauen, die im Entwurf oben nicht standen:
   bewusst außerhalb der divergierenden Skala: ein Lastpfeil darf nie als Wert
   auf dem Körper zu lesen sein, neben dem er steht.
 
-Offen aus FR-12: die drei Schalter (Lagerung, Lasten, unverformte Platte)
-stehen im Bild, ihre Auswahl wird aber noch nicht je Laminat gespeichert - das
-gehört mit `plateViewAtoms.ts` in Schritt 5.
+- **Das Krümmungsvorzeichen ist κ = -w''**, nachgewiesen am Navier-Fall statt
+  aus Konvention übernommen: nur damit steht in der Plattenmitte die
+  lastabgewandte Seite unter Zug. Das weicht bewusst vom Original ab, das die
+  rohen zweiten Ableitungen einsetzt (siehe `plate/field.rs`).
+- **CR-05 brauchte nichts.** Die Lagenbeiträge der CLT-Antwort tragen den
+  aufgefalteten Stapel mit Winkel, Dicke und Mittelebene bereits - genau das,
+  was die Lagengeometrie braucht.
+- **CR-04 ist gemessen statt geschätzt.** Vom Klick bis zu den neuen Zahlen,
+  Worker-Weg eingerechnet, im softwaregerenderten Browser: Reservefaktor 40 ms
+  bei 41 x 41, 65 ms bei 81 x 81, Budget 150 ms. Deshalb ein Raster für alle
+  Größen - und der Wechsel zum Reservefaktor baut den Körper nicht neu.
+- **Körper und Werte teilen ein Raster.** Die Werte sind eine Farbe je Knoten;
+  ein Feld eine Stufe feiner würde die Platte mit fremden Zahlen einfärben.
+  Deshalb kommt auch die Durchbiegung aus `compute_deformation_field` und nicht
+  aus `DeformationResult::surface`, das bei festen 41 abtastet.
+- **Feld und Auswahl reisen zusammen.** Den Namen aus dem Ansichtszustand und
+  die Zahlen aus einem noch nachziehenden Atom zu lesen, zeigte einen
+  Bildlauf lang die Zahlen der einen Größe unter dem Namen der anderen - und
+  färbte die alten Werte mit der neuen Skala.
+- **Der Reservefaktor hat seine eigene Rampe**, bei 1,0 verankert und in der
+  Reichweite gedeckelt: am gelenkigen Rand ist die Spannung null und das
+  Kriterium meldet 1e16, und eine darüber gespannte Skala färbt die ganze
+  Platte neutral.
+- **Die Lagen der Schnittkante sind eigene Streifen.** Ein Knoten auf einer
+  Zwischenschicht gehört zu zwei Lagen und könnte nur den Faserwinkel einer
+  von beiden tragen. `CltLaminate` stapelt Lage 0 oben, die gezeichneten
+  Bänder laufen von unten - `plyGeometryOf` liefert die Abbildung dazwischen,
+  und ihr Test benutzt einen unsymmetrischen Stapel, weil ein symmetrischer
+  nicht durchfallen kann.
+- **Der Abgriff ist ein Marsch gegen das Höhenfeld**, nicht ein Strahl gegen
+  die Dreiecke: der Körper ist eine einwertige Fläche, und ein Marsch
+  antwortet in wenigen Dutzend Schritten statt in einem Schnitttest je Dreieck
+  je Zeigerbewegung. Sein Test verlangt, dass Projektion und Abgriff einander
+  umkehren.
 
 ## Risiken
 

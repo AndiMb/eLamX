@@ -68,6 +68,12 @@ export interface PlateScene {
   setStyle(style: PlateSceneStyle): void;
   setVisibility(visibility: PlateSceneVisibility): void;
   render(): void;
+  /**
+   * Renders once into a drawing buffer of exactly this size, for an export at
+   * a resolution the screen does not have. The next `render` puts the buffer
+   * back to the displayed size on its own.
+   */
+  renderAt(width: number, height: number): void;
   dispose(): void;
 }
 
@@ -159,6 +165,75 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
     loads: true,
   };
 
+  // One draw, whatever buffer it goes into - the screen, or an export at twice
+  // the resolution. Only the caller decides how big that buffer is.
+  const draw = () => {
+      const aspect = canvas.width / Math.max(1, canvas.height);
+      const projection = perspective(FIELD_OF_VIEW, aspect, NEAR_PLANE, FAR_PLANE);
+      const view = viewOf(camera);
+      const eye = eyeOf(camera);
+
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+      if (indexCount > 0) {
+        gl.useProgram(surfaceProgram.handle);
+        gl.uniformMatrix4fv(surfaceProgram.uniform("uProjection"), false, projection);
+        gl.uniformMatrix4fv(surfaceProgram.uniform("uView"), false, view);
+        gl.uniform2f(surfaceProgram.uniform("uBounds"), bounds[0], bounds[1]);
+        gl.uniform3f(surfaceProgram.uniform("uEye"), eye[0], eye[1], eye[2]);
+        gl.uniform3f(surfaceProgram.uniform("uHole"), style.hole[0], style.hole[1], style.hole[2]);
+        gl.uniform1f(surfaceProgram.uniform("uHighlightPly"), highlightedPly);
+        gl.uniform1f(surfaceProgram.uniform("uHatchScale"), HATCH_SCALE);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, colormap);
+        gl.uniform1i(surfaceProgram.uniform("uColormap"), 0);
+
+        // Push the filled surface back by a fraction of a depth unit so the ply
+        // interfaces drawn on it win the depth test. Offsetting the lines
+        // towards the camera instead would lift them off the body at grazing
+        // angles.
+        gl.enable(gl.POLYGON_OFFSET_FILL);
+        gl.polygonOffset(1, 1);
+        gl.bindVertexArray(solidVao);
+        gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_INT, 0);
+        gl.disable(gl.POLYGON_OFFSET_FILL);
+      }
+
+      if (supports.solidCount + loads.solidCount > 0) {
+        gl.useProgram(annotationProgram.handle);
+        gl.uniformMatrix4fv(annotationProgram.uniform("uProjection"), false, projection);
+        gl.uniformMatrix4fv(annotationProgram.uniform("uView"), false, view);
+        gl.uniform3f(annotationProgram.uniform("uEye"), eye[0], eye[1], eye[2]);
+        if (visibility.supports) supports.drawSolid(annotationProgram, style.supports);
+        if (visibility.loads) loads.drawSolid(annotationProgram, style.loads);
+      }
+
+      gl.useProgram(lineProgram.handle);
+      gl.uniformMatrix4fv(lineProgram.uniform("uProjection"), false, projection);
+      gl.uniformMatrix4fv(lineProgram.uniform("uView"), false, view);
+
+      if (visibility.supports) supports.drawLines(lineProgram, style.supports);
+      if (visibility.loads) loads.drawLines(lineProgram, style.loads);
+
+      if (visibility.plyLines && plyVertexCount > 0) {
+        gl.uniform4fv(lineProgram.uniform("uColor"), style.plyLines);
+        gl.bindVertexArray(plyVao);
+        gl.drawArrays(gl.LINES, 0, plyVertexCount);
+      }
+
+      if (visibility.outline && outlineVertexCount > 0) {
+        gl.uniform4fv(lineProgram.uniform("uColor"), style.outline);
+        gl.bindVertexArray(outlineVao);
+        gl.drawArrays(gl.LINES, 0, outlineVertexCount);
+      }
+
+      gl.bindVertexArray(null);
+  };
+
   return {
     // Geometry only. The values live in their own buffer and their own call,
     // because they change on their own schedule - see the note at the top.
@@ -226,70 +301,14 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
 
     render() {
       resizeToDisplay(gl, canvas);
-      const aspect = canvas.width / Math.max(1, canvas.height);
-      const projection = perspective(FIELD_OF_VIEW, aspect, NEAR_PLANE, FAR_PLANE);
-      const view = viewOf(camera);
-      const eye = eyeOf(camera);
+      draw();
+    },
 
-      gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      gl.enable(gl.DEPTH_TEST);
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-      if (indexCount > 0) {
-        gl.useProgram(surfaceProgram.handle);
-        gl.uniformMatrix4fv(surfaceProgram.uniform("uProjection"), false, projection);
-        gl.uniformMatrix4fv(surfaceProgram.uniform("uView"), false, view);
-        gl.uniform2f(surfaceProgram.uniform("uBounds"), bounds[0], bounds[1]);
-        gl.uniform3f(surfaceProgram.uniform("uEye"), eye[0], eye[1], eye[2]);
-        gl.uniform3f(surfaceProgram.uniform("uHole"), style.hole[0], style.hole[1], style.hole[2]);
-        gl.uniform1f(surfaceProgram.uniform("uHighlightPly"), highlightedPly);
-        gl.uniform1f(surfaceProgram.uniform("uHatchScale"), HATCH_SCALE);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, colormap);
-        gl.uniform1i(surfaceProgram.uniform("uColormap"), 0);
-
-        // Push the filled surface back by a fraction of a depth unit so the ply
-        // interfaces drawn on it win the depth test. Offsetting the lines
-        // towards the camera instead would lift them off the body at grazing
-        // angles.
-        gl.enable(gl.POLYGON_OFFSET_FILL);
-        gl.polygonOffset(1, 1);
-        gl.bindVertexArray(solidVao);
-        gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_INT, 0);
-        gl.disable(gl.POLYGON_OFFSET_FILL);
-      }
-
-      if (supports.solidCount + loads.solidCount > 0) {
-        gl.useProgram(annotationProgram.handle);
-        gl.uniformMatrix4fv(annotationProgram.uniform("uProjection"), false, projection);
-        gl.uniformMatrix4fv(annotationProgram.uniform("uView"), false, view);
-        gl.uniform3f(annotationProgram.uniform("uEye"), eye[0], eye[1], eye[2]);
-        if (visibility.supports) supports.drawSolid(annotationProgram, style.supports);
-        if (visibility.loads) loads.drawSolid(annotationProgram, style.loads);
-      }
-
-      gl.useProgram(lineProgram.handle);
-      gl.uniformMatrix4fv(lineProgram.uniform("uProjection"), false, projection);
-      gl.uniformMatrix4fv(lineProgram.uniform("uView"), false, view);
-
-      if (visibility.supports) supports.drawLines(lineProgram, style.supports);
-      if (visibility.loads) loads.drawLines(lineProgram, style.loads);
-
-      if (visibility.plyLines && plyVertexCount > 0) {
-        gl.uniform4fv(lineProgram.uniform("uColor"), style.plyLines);
-        gl.bindVertexArray(plyVao);
-        gl.drawArrays(gl.LINES, 0, plyVertexCount);
-      }
-
-      if (visibility.outline && outlineVertexCount > 0) {
-        gl.uniform4fv(lineProgram.uniform("uColor"), style.outline);
-        gl.bindVertexArray(outlineVao);
-        gl.drawArrays(gl.LINES, 0, outlineVertexCount);
-      }
-
-      gl.bindVertexArray(null);
+    renderAt(width, height) {
+      canvas.width = Math.max(1, Math.round(width));
+      canvas.height = Math.max(1, Math.round(height));
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      draw();
     },
 
     dispose() {

@@ -2909,6 +2909,37 @@ table.matrix td.block-d {
   color: var(--card);
 }
 
+/* Die Speichern-Tasten stehen bei den Ebenenschaltern, nicht bei den
+   Ansichten: beides sind Dinge, die man am Bild einstellt, bevor man es
+   mitnimmt. */
+.plate3d-export {
+  position: absolute;
+  top: 40px;
+  left: 6px;
+  display: flex;
+  gap: 3px;
+}
+
+.plate3d-export button {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.plate3d-export button:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
 /* Auch von der 2D-Rueckfallebene und vom Versagenskoerper benutzt, die keine
    Standardansichten haben. Die WebGL-Plattenansicht setzt ueber ihre
    isometrische Standardansicht zurueck. */
@@ -3058,15 +3089,20 @@ table.matrix td.block-d {
   display: flex;
   align-items: stretch;
   gap: var(--s-3);
+  /* Wrapping rather than a breakpoint: the two modules give this row very
+     different widths at the same viewport size - the buckling one has the
+     table of further modes beside it - so what decides is the space actually
+     there, not the size of the window. */
+  flex-wrap: wrap;
 }
 
 .plate3d-with-legend .plate3d {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 1 1 320px;
+  min-width: 240px;
 }
 
 .plate3d-legend {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   display: flex;
   flex-direction: column;
   gap: 6px;

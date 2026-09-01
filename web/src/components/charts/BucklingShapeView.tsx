@@ -7,6 +7,7 @@ import {
   selectedBucklingModeFamily,
 } from "../../store/bucklingAtoms";
 import { PlateView3D, type PlateViewLoad } from "./PlateView3D";
+import { PlateLegend, type PlateLegendModel } from "./PlateLegend";
 import { formatSignificant } from "../../lib/numberFormat";
 import { plyGeometryOf } from "../../lib/plateScene/plyGeometry";
 import { layerContributionsFamily } from "../../store/derivedAtoms";
@@ -34,6 +35,25 @@ export function BucklingShapeView({ laminateId }: { laminateId: string }) {
   // switched the supports off in one plate module means it for the plate, not
   // for one of its two analyses.
   const [view, setView] = useAtom(plateViewFamily(laminateId));
+  // A buckling mode is a shape without a size: `mode_surface` normalises it to
+  // a peak of one. The legend has to say so, because the picture looks exactly
+  // like the deformation module's - which reports real millimetres (FR-14).
+  const legend = useMemo<PlateLegendModel>(
+    () => ({
+      title: t("buckling.legend.title"),
+      unit: null,
+      ticks: [
+        { t: 0, text: "-1" },
+        { t: 0.5, text: "0" },
+        { t: 1, text: "+1" },
+      ],
+      anchor: 0.5,
+      range: t("buckling.legend.range"),
+      kind: "diverging",
+      gaps: 0,
+    }),
+    [t],
+  );
   // Held stable so the arrows are not rebuilt every time the mode picker or
   // the exaggeration slider moves; the flows themselves have not changed.
   const load = useMemo<PlateViewLoad>(
@@ -80,6 +100,7 @@ export function BucklingShapeView({ laminateId }: { laminateId: string }) {
       </div>
 
       {surface ? (
+        <div className="plate3d-with-legend">
         <PlateView3D
           surface={surface}
           length={input.length}
@@ -95,8 +116,12 @@ export function BucklingShapeView({ laminateId }: { laminateId: string }) {
           onToggleLayer={(layer) =>
             setView({ ...view, visible: { ...view.visible, [layer]: !view.visible[layer] } })
           }
+          legend={legend}
+          exportName={t("buckling.legend.title")}
           ariaLabel={t("buckling.plate3d.aria")}
         />
+        <PlateLegend model={legend} />
+        </div>
       ) : (
         <p className="hint">{t("results.computing")}</p>
       )}

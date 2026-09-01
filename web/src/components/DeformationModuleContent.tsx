@@ -33,7 +33,8 @@ import { plyGeometryOf } from "../lib/plateScene/plyGeometry";
 import { scaleBounds } from "../lib/plateScene/scale";
 import { plateFieldDefinition } from "../lib/plateFields";
 import { PlateFieldControls } from "./charts/PlateFieldControls";
-import { PlateLegend } from "./charts/PlateLegend";
+import { PlateLegend, type PlateLegendModel } from "./charts/PlateLegend";
+import { anchorFraction, legendTicks } from "../lib/plateScene/legend";
 import { useQuantityFormat } from "../lib/quantityFormat";
 import {
   loadablePlateFieldFamily,
@@ -97,18 +98,22 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
   // computed, not from the one the picker is on: while the next one is in
   // flight those two differ, and mixing them shows one quantity's numbers
   // under another's name.
+  const shownField = shown ? plateFieldDefinition(shown.field) : null;
+  const fieldScale = shownField?.scale ?? "diverging";
+
   // The core counts plies from the top, the drawn bands from the bottom.
   const highlightBand =
-    shown && plateFieldDefinition(shown.field).perPly
-      ? (plies.layerIndices.indexOf(shown.layer) ?? -1)
+    shown && shownField?.perPly
+      ? plies.layerIndices.indexOf(shown.layer)
       : null;
 
-  const fieldScale = shown ? plateFieldDefinition(shown.field).scale : "diverging";
   // The displayed quantity decides the unit, so the marks and the readout are
   // formatted here rather than inside a view that does not know what it shows.
-  const shownField = shown ? plateFieldDefinition(shown.field) : null;
   const valueFormat = useQuantityFormat(shownField?.category ?? "thickness");
   const positionFormat = useQuantityFormat("thickness");
+
+  const autoLimits = shown ? scaleBounds(fieldScale, shown.result.min, shown.result.max) : null;
+  const limits = view.bounds === "auto" ? autoLimits : view.bounds;
 
   const markers = useMemo(
     () =>
@@ -123,6 +128,25 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
     [shown, t, locale],
   );
 
+  // One model for the bar on screen and the one drawn into an exported image.
+  const legendModel = useMemo<PlateLegendModel | null>(() => {
+    if (!shown || !limits || !shownField) return null;
+    return {
+      title: t(shownField.labelKey),
+      unit: valueFormat.unit,
+      ticks: legendTicks(limits).map(({ t: at, value }) => ({
+        t: at,
+        text: valueFormat.compact(value),
+      })),
+      anchor: anchorFraction(fieldScale, limits),
+      range: `${valueFormat.compact(shown.result.min)} … ${valueFormat.compact(shown.result.max)}`,
+      kind: fieldScale,
+      gaps: shown.result.gaps,
+    };
+    // valueFormat is rebuilt on every render; its identity is not the signal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown, limits, shownField, fieldScale, t, locale]);
+
   const readoutText = useCallback(
     ({ x, y, value }: { x: number; y: number; value: number | null }) => {
       const at = { x: positionFormat.text(x), y: positionFormat.text(y) };
@@ -133,8 +157,6 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [t, locale, shownField?.category],
   );
-  const autoLimits = shown ? scaleBounds(fieldScale, shown.result.min, shown.result.max) : null;
-  const limits = view.bounds === "auto" ? autoLimits : view.bounds;
 
   const update = <K extends keyof DeformationInputDto>(key: K, value: DeformationInputDto[K]) =>
     setInput((c) => ({ ...c, [key]: value }));
@@ -407,6 +429,8 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
                   bcY={input.bc_y}
                   load={load}
                   markers={markers ? [...markers] : undefined}
+                  legend={legendModel}
+                  exportName={`${t(shownField?.labelKey ?? "plateField.deflection")}`}
                   readoutText={readoutText}
                   layers={view.visible}
                   onToggleLayer={(layer) =>
@@ -417,15 +441,7 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
                   }
                   ariaLabel={t("plate3d.aria.deformation")}
                 />
-                {shown && limits && (
-                  <PlateLegend
-                    field={shown.field}
-                    bounds={limits}
-                    min={shown.result.min}
-                    max={shown.result.max}
-                    gaps={shown.result.gaps}
-                  />
-                )}
+                {legendModel && <PlateLegend model={legendModel} />}
               </div>
               <p className="hint">{t("deformation.shape.hint")}</p>
             </section>
