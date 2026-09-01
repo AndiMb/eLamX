@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { Plus, TriangleAlert, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
@@ -34,6 +34,7 @@ import { scaleBounds } from "../lib/plateScene/scale";
 import { plateFieldDefinition } from "../lib/plateFields";
 import { PlateFieldControls } from "./charts/PlateFieldControls";
 import { PlateLegend } from "./charts/PlateLegend";
+import { useQuantityFormat } from "../lib/quantityFormat";
 import {
   loadablePlateFieldFamily,
   loadablePlateGeometryFamily,
@@ -103,6 +104,35 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
       : null;
 
   const fieldScale = shown ? plateFieldDefinition(shown.field).scale : "diverging";
+  // The displayed quantity decides the unit, so the marks and the readout are
+  // formatted here rather than inside a view that does not know what it shows.
+  const shownField = shown ? plateFieldDefinition(shown.field) : null;
+  const valueFormat = useQuantityFormat(shownField?.category ?? "thickness");
+  const positionFormat = useQuantityFormat("thickness");
+
+  const markers = useMemo(
+    () =>
+      shown
+        ? ([
+            { at: shown.result.min_at, kind: "min", text: t("plate3d.extreme.min", { value: valueFormat.compact(shown.result.min) }) },
+            { at: shown.result.max_at, kind: "max", text: t("plate3d.extreme.max", { value: valueFormat.compact(shown.result.max) }) },
+          ] as const)
+        : undefined,
+    // valueFormat is rebuilt on every render; its identity is not the signal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [shown, t, locale],
+  );
+
+  const readoutText = useCallback(
+    ({ x, y, value }: { x: number; y: number; value: number | null }) => {
+      const at = { x: positionFormat.text(x), y: positionFormat.text(y) };
+      return value === null
+        ? t("plate3d.readout.gap", at)
+        : t("plate3d.readout", { ...at, value: valueFormat.compact(value) });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, locale, shownField?.category],
+  );
   const autoLimits = shown ? scaleBounds(fieldScale, shown.result.min, shown.result.max) : null;
   const limits = view.bounds === "auto" ? autoLimits : view.bounds;
 
@@ -376,6 +406,8 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
                   bcX={input.bc_x}
                   bcY={input.bc_y}
                   load={load}
+                  markers={markers ? [...markers] : undefined}
+                  readoutText={readoutText}
                   layers={view.visible}
                   onToggleLayer={(layer) =>
                     setView({

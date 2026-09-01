@@ -2854,6 +2854,64 @@ table.matrix td.block-d {
   }
 }
 
+
+/* Die beiden Ueberhoehungen stehen im Bild, nicht daneben: ein Koerper mit
+   erfundenen Proportionen, dessen Faktoren nur in der Bildunterschrift stehen,
+   verliert sie beim ersten Bildschirmfoto. */
+.plate3d-scales {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  margin: 0;
+  padding: 2px 7px;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--card) 78%, transparent);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* Die Extremstellen und der Wert unter dem Zeiger sitzen wie die
+   Lastbeschriftungen im DOM, damit alles Geschriebene an einer Stelle
+   entsteht - und damit die Zahlen den Formateinstellungen folgen. */
+.plate3d-marker,
+.plate3d-readout {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 1px 6px;
+  border-radius: var(--radius-control);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.plate3d-marker {
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+/* Die beiden Enden der Skala tragen die Farben der Skala selbst, damit die
+   Marke ohne Beschriftung sagt, welches Ende sie meint. */
+.plate3d-marker-min {
+  border-color: var(--viz-diverging-neg);
+}
+
+.plate3d-marker-max {
+  border-color: var(--viz-diverging-pos);
+}
+
+.plate3d-readout {
+  background: var(--text);
+  color: var(--card);
+}
+
+/* Auch von der 2D-Rueckfallebene und vom Versagenskoerper benutzt, die keine
+   Standardansichten haben. Die WebGL-Plattenansicht setzt ueber ihre
+   isometrische Standardansicht zurueck. */
 .plate3d-reset {
   position: absolute;
   top: 6px;
@@ -2876,21 +2934,61 @@ table.matrix td.block-d {
   border-color: var(--accent);
 }
 
-/* Die beiden Ueberhoehungen stehen im Bild, nicht daneben: ein Koerper mit
-   erfundenen Proportionen, dessen Faktoren nur in der Bildunterschrift stehen,
-   verliert sie beim ersten Bildschirmfoto. */
-.plate3d-scales {
+.plate3d-views {
   position: absolute;
-  left: 8px;
-  bottom: 6px;
-  margin: 0;
-  padding: 2px 7px;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 3px;
+}
+
+.plate3d-views button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
   border-radius: var(--radius-control);
-  background: color-mix(in srgb, var(--card) 78%, transparent);
+  background: var(--card);
   color: var(--text-muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.plate3d-views button:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* Das Achsenkreuz sitzt in der freien Ecke - unten rechts, gegenueber den
+   Ueberhoehungsfaktoren. */
+.plate3d-axes {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 62px;
+  height: 62px;
   pointer-events: none;
+  overflow: visible;
+}
+
+.plate3d-axes line {
+  stroke: var(--viz-text-secondary);
+  stroke-width: 1.4;
+}
+
+.plate3d-axes text {
+  fill: var(--viz-text-secondary);
+  font-size: 11px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.plate3d-axis-dot {
+  fill: var(--viz-text-secondary);
 }
 
 /* Die Lastbeschriftungen liegen im DOM ueber der Zeichenflaeche, nicht in GL:

@@ -109,3 +109,29 @@ export function projectToScreen(
     depth: ndc[2],
   };
 }
+
+/**
+ * Where a world direction points on screen, as a unit vector in CSS
+ * coordinates (y downwards). Zero-length when the direction points straight at
+ * or away from the eye - which is the honest answer, and what the axis cross
+ * has to draw as a dot rather than as an arrow of arbitrary heading.
+ */
+export function screenDirectionOf(camera: OrbitCamera, axis: Vec3): [number, number] {
+  const view = viewOf(camera);
+  // The first two rows of the rotation are the camera's right and up axes.
+  const right = view[0] * axis[0] + view[4] * axis[1] + view[8] * axis[2];
+  const up = view[1] * axis[0] + view[5] * axis[1] + view[9] * axis[2];
+  return [right, -up];
+}
+
+/** The named viewpoints FR-10 asks for, in the camera's own three numbers. */
+export const STANDARD_VIEWS = {
+  // Straight down. Not exactly, because `lookAt` has no unique orientation on
+  // the axis itself - `clampElevation` holds it a hundredth short.
+  top: { azimuth: -Math.PI / 2, elevation: clampElevation(Math.PI / 2), distance: 2.4 },
+  front: { azimuth: -Math.PI / 2, elevation: 0, distance: 2.4 },
+  side: { azimuth: 0, elevation: 0, distance: 2.4 },
+  isometric: DEFAULT_ORBIT,
+} as const satisfies Record<string, OrbitCamera>;
+
+export type StandardViewId = keyof typeof STANDARD_VIEWS;

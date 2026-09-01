@@ -8,6 +8,8 @@ import {
   projectToScreen,
   viewProjectionOf,
   type OrbitCamera,
+  screenDirectionOf,
+  STANDARD_VIEWS,
 } from "./camera";
 
 const WIDTH = 600;
@@ -97,5 +99,44 @@ describe("clamps", () => {
     expect(clampDistance(0)).toBeGreaterThan(0);
     expect(clampDistance(1e6)).toBeLessThan(100);
     expect(clampDistance(2.6)).toBe(2.6);
+  });
+});
+
+describe("screenDirectionOf", () => {
+  it("flattens an axis pointing at the eye to nothing", () => {
+    // Looking along +x from azimuth 0: the x axis is straight at the camera,
+    // so it has no direction on screen and the cross must draw a dot rather
+    // than an arrow whose heading is made up.
+    const camera = { azimuth: 0, elevation: 0, distance: 3 };
+    const [x, y] = screenDirectionOf(camera, [1, 0, 0]);
+    expect(Math.hypot(x, y)).toBeCloseTo(0, 12);
+  });
+
+  it("puts z up the screen and y across it from the front", () => {
+    const camera = { azimuth: 0, elevation: 0, distance: 3 };
+    const [, zy] = screenDirectionOf(camera, [0, 0, 1]);
+    expect(zy).toBeCloseTo(-1, 12); // CSS y grows downwards
+    const [yx] = screenDirectionOf(camera, [0, 1, 0]);
+    expect(yx).toBeCloseTo(1, 12);
+  });
+
+  it("turns with the camera", () => {
+    const turned = screenDirectionOf({ azimuth: Math.PI / 2, elevation: 0, distance: 3 }, [1, 0, 0]);
+    expect(turned[0]).toBeCloseTo(-1, 12);
+  });
+});
+
+describe("STANDARD_VIEWS", () => {
+  it("keeps every one of them off the pole and within reach", () => {
+    for (const view of Object.values(STANDARD_VIEWS)) {
+      expect(clampElevation(view.elevation)).toBe(view.elevation);
+      expect(clampDistance(view.distance)).toBe(view.distance);
+    }
+  });
+
+  it("looks down from the top and level from the front", () => {
+    const down = screenDirectionOf(STANDARD_VIEWS.top, [0, 0, 1]);
+    expect(Math.hypot(...down)).toBeLessThan(0.05);
+    expect(STANDARD_VIEWS.front.elevation).toBe(0);
   });
 });

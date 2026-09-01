@@ -7,7 +7,6 @@ import {
   useState,
   type PointerEvent,
 } from "react";
-import { RotateCcw } from "lucide-react";
 import { createPlateScene, type PlateScene } from "../../lib/plateScene/scene";
 import { buildPlateBody } from "../../lib/plateScene/body";
 import { buildColormap, rgbaOf, type ColormapKind } from "../../lib/plateScene/colormap";
@@ -16,6 +15,7 @@ import { supportEdges, supportMesh } from "../../lib/plateScene/supports";
 import {
   edgeFlowArrows,
   heightSampler,
+  type HeightAt,
   loadMesh,
   NO_LOADS,
   transverseLoadArrows,
@@ -31,16 +31,21 @@ import {
   DEFAULT_ORBIT,
   orbitAfterDrag,
   projectToScreen,
+  screenDirectionOf,
+  STANDARD_VIEWS,
   viewProjectionOf,
   type OrbitCamera,
 } from "../../lib/gl/camera";
+import { pickPlate } from "../../lib/gl/pick";
 import { useChartColors } from "../../lib/chartColors";
 import { formatSignificant } from "../../lib/numberFormat";
 import { BucklingPlate3D } from "./BucklingPlate3D";
 import {
   PlateViewOverlay,
+  type PlateViewAxis,
   type PlateViewCaption,
   type PlateViewLayers,
+  type PlateViewMarker,
 } from "./PlateViewOverlay";
 import type { BoundaryConditionId, NamedLoadDto } from "../../lib/types";
 import { useLocale, useT } from "../../i18n";
@@ -105,6 +110,19 @@ export interface PlateView3DProps {
    */
   layers: PlateViewLayers;
   onToggleLayer: (layer: keyof PlateViewLayers) => void;
+  /**
+   * Extremes of the displayed field, marked where they sit (FR-11). Positions
+   * are plate coordinates from the corner at (0, 0), in the plate's own unit.
+   */
+  markers?: { at: [number, number]; text: string; kind: "min" | "max" }[];
+  /**
+   * What to write under the pointer. Given the point in plate coordinates and
+   * the value there, or null where the field could not be evaluated.
+   *
+   * A callback rather than a formatted string, because the unit belongs to the
+   * quantity being shown and this component does not know which one that is.
+   */
+  readoutText?: (probe: { x: number; y: number; value: number | null }) => string;
   ariaLabel: string;
 }
 
@@ -125,6 +143,8 @@ export const PlateView3D = memo(function PlateView3D({
   load,
   layers,
   onToggleLayer,
+  markers,
+  readoutText,
   ariaLabel,
 }: PlateView3DProps) {
   const t = useT();
@@ -140,6 +160,9 @@ export const PlateView3D = memo(function PlateView3D({
   // The captions are placed by the same projection the canvas draws with, so
   // they need the size the canvas is actually shown at.
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+
+  // Where the pointer last met the plate, or null when it was off it.
+  const [probe, setProbe] = useState<{ u: number; v: number; x: number; y: number } | null>(null);
 
   const drag = useRef<{ x: number; y: number; camera: OrbitCamera } | null>(null);
   const pinch = useRef<{ distance: number; cameraDistance: number } | null>(null);
@@ -188,6 +211,13 @@ export const PlateView3D = memo(function PlateView3D({
     [surface, length, width, thickness, plyKey, angleKey, scales, colours],
   );
 
+  // The drawn mid-surface, shared by the load arrows and the pointer probe:
+  // both have to land on the body the reader can see, not on the flat plate.
+  const sampler = useMemo<HeightAt>(
+    () => heightSampler(surface, scales.deflection, body.frame.scale),
+    [surface, scales.deflection, body.frame.scale],
+  );
+
   // The arrows are kept as arrows rather than only as triangles, because the
   // captions have to be anchored to the same points the heads sit on.
   const loadArrows = useMemo(() => {
@@ -195,12 +225,8 @@ export const PlateView3D = memo(function PlateView3D({
     if (load.kind === "inPlane") {
       return edgeFlowArrows(load.nx, load.ny, load.nxy, body.frame);
     }
-    return transverseLoadArrows(
-      load.loads,
-      body.frame,
-      heightSampler(surface, scales.deflection, body.frame.scale),
-    );
-  }, [load, body, surface, scales.deflection]);
+    return transverseLoadArrows(load.loads, body.frame, sampler);
+  }, [load, body, sampler]);
 
   const annotation = useMemo(
     () => ({
@@ -374,6 +400,76 @@ export const PlateView3D = memo(function PlateView3D({
     return placed;
   }, [loadArrows, camera, canvasSize, layers.loads, t, locale]);
 
+  const viewProjection = useMemo(
+    () =>
+      canvasSize.width > 0 && canvasSize.height > 0
+        ? viewProjectionOf(camera, canvasSize.width / canvasSize.height)
+        : null,
+    [camera, canvasSize],
+  );
+
+  /** A point on the plate, in the plate's own coordinates, to world. */
+  const worldAt = useCallback(
+    (x: number, y: number): [number, number, number] => {
+      const u = length > 0 ? x / length : 0.5;
+      const v = width > 0 ? y / width : 0.5;
+      return [
+        (u * 2 - 1) * body.frame.halfLength,
+        (v * 2 - 1) * body.frame.halfWidth,
+        sampler(u, v) + body.frame.halfThickness,
+      ];
+    },
+    [body.frame, length, width, sampler],
+  );
+
+  const project = useCallback(
+    (at: [number, number, number]) =>
+      viewProjection
+        ? projectToScreen(viewProjection, at, canvasSize.width, canvasSize.height)
+        : null,
+    [viewProjection, canvasSize],
+  );
+
+  const extremes = useMemo<PlateViewMarker[]>(() => {
+    if (!markers) return [];
+    const placed: PlateViewMarker[] = [];
+    for (const marker of markers) {
+      const at = project(worldAt(marker.at[0], marker.at[1]));
+      if (!at) continue;
+      placed.push({ key: marker.kind, kind: marker.kind, text: marker.text, x: at.x, y: at.y });
+    }
+    return placed;
+  }, [markers, project, worldAt]);
+
+  const readout = useMemo<PlateViewCaption | null>(() => {
+    if (!probe || !readoutText) return null;
+    const at = project(worldAt(probe.x, probe.y));
+    if (!at) return null;
+    const value = colours ? sampleGrid(colours, probe.u, probe.v) : sampleGrid(surface, probe.u, probe.v);
+    return {
+      key: "probe",
+      text: readoutText({ x: probe.x, y: probe.y, value }),
+      x: at.x,
+      // Lifted clear of the pointer, which would otherwise sit on the text.
+      y: at.y - 18,
+    };
+  }, [probe, readoutText, project, worldAt, colours, surface]);
+
+  const axes = useMemo<PlateViewAxis[]>(
+    () =>
+      (
+        [
+          ["x", [1, 0, 0]],
+          ["y", [0, 1, 0]],
+          ["z", [0, 0, 1]],
+        ] as [string, [number, number, number]][]
+      ).map(([label, axis]) => {
+        const [dx, dy] = screenDirectionOf(camera, axis);
+        return { label, dx, dy };
+      }),
+    [camera],
+  );
+
   const onPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId);
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -390,7 +486,11 @@ export const PlateView3D = memo(function PlateView3D({
   };
 
   const onPointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
-    if (!pointers.current.has(event.pointerId)) return;
+    if (!pointers.current.has(event.pointerId)) {
+      // Not a drag: read the value under the pointer instead (FR-11).
+      updateProbe(event);
+      return;
+    }
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     if (pinch.current && pointers.current.size === 2) {
@@ -409,6 +509,26 @@ export const PlateView3D = memo(function PlateView3D({
     const start = drag.current;
     if (!start) return;
     setCamera(orbitAfterDrag(start.camera, event.clientX - start.x, event.clientY - start.y));
+  };
+
+  const updateProbe = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (!readoutText) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const hit = pickPlate(
+      camera,
+      {
+        halfLength: body.frame.halfLength,
+        halfWidth: body.frame.halfWidth,
+        height: sampler,
+      },
+      event.clientX - rect.left,
+      event.clientY - rect.top,
+      rect.width,
+      rect.height,
+    );
+    setProbe(hit ? { u: hit.u, v: hit.v, x: hit.u * length, y: hit.v * width } : null);
   };
 
   const endPointer = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -442,9 +562,14 @@ export const PlateView3D = memo(function PlateView3D({
         onPointerMove={onPointerMove}
         onPointerUp={endPointer}
         onPointerCancel={endPointer}
+        onPointerLeave={() => setProbe(null)}
       />
       <PlateViewOverlay
         captions={captions}
+        markers={extremes}
+        readout={readout}
+        axes={axes}
+        onStandardView={(view) => setCamera(STANDARD_VIEWS[view])}
         layers={layers}
         onToggle={onToggleLayer}
         available={{
@@ -461,18 +586,20 @@ export const PlateView3D = memo(function PlateView3D({
           thickness: formatSignificant(scales.thickness, 3, locale),
         })}
       </p>
-      <button
-        type="button"
-        className="plate3d-reset"
-        onClick={() => setCamera(DEFAULT_ORBIT)}
-        title={t("buckling.plate3d.reset")}
-        aria-label={t("buckling.plate3d.reset")}
-      >
-        <RotateCcw size={14} />
-      </button>
     </div>
   );
 });
+
+/** Nearest sample of a grid at (u, v), or null where there is no answer. */
+function sampleGrid(grid: (number | null)[][], u: number, v: number): number | null {
+  const rows = grid.length;
+  const cols = rows > 0 ? grid[0].length : 0;
+  if (rows === 0 || cols === 0) return null;
+  const row = Math.round(Math.min(1, Math.max(0, v)) * (rows - 1));
+  const col = Math.round(Math.min(1, Math.max(0, u)) * (cols - 1));
+  const value = grid[row][col];
+  return value !== null && Number.isFinite(value) ? value : null;
+}
 
 /** `rgb(r, g, b)` or `rgba(...)` to three 0..1 channels. */
 function parseCssColor(value: string): [number, number, number] {
