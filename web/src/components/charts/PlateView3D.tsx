@@ -93,6 +93,13 @@ export interface PlateView3DProps {
    * picture that did not change.
    */
   load?: PlateViewLoad;
+  /**
+   * Which annotation layers are drawn. Owned by the caller so the choice can
+   * be persisted per laminate (FR-12) rather than resetting every time the
+   * module is left.
+   */
+  layers: PlateViewLayers;
+  onToggleLayer: (layer: keyof PlateViewLayers) => void;
   ariaLabel: string;
 }
 
@@ -109,6 +116,8 @@ export const PlateView3D = memo(function PlateView3D({
   bcX,
   bcY,
   load,
+  layers,
+  onToggleLayer,
   ariaLabel,
 }: PlateView3DProps) {
   const t = useT();
@@ -124,11 +133,6 @@ export const PlateView3D = memo(function PlateView3D({
   // The captions are placed by the same projection the canvas draws with, so
   // they need the size the canvas is actually shown at.
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-  const [layers, setLayers] = useState<PlateViewLayers>({
-    outline: true,
-    supports: true,
-    loads: true,
-  });
 
   const drag = useRef<{ x: number; y: number; camera: OrbitCamera } | null>(null);
   const pinch = useRef<{ distance: number; cameraDistance: number } | null>(null);
@@ -275,7 +279,12 @@ export const PlateView3D = memo(function PlateView3D({
   }, [colors, scale, generation, requestRender]);
 
   useEffect(() => {
-    sceneRef.current?.setVisibility({ plyLines: true, ...layers });
+    sceneRef.current?.setVisibility({
+      plyLines: true,
+      outline: layers.reference,
+      supports: layers.supports,
+      loads: layers.loads,
+    });
     requestRender();
   }, [layers, generation, requestRender]);
 
@@ -427,7 +436,7 @@ export const PlateView3D = memo(function PlateView3D({
       <PlateViewOverlay
         captions={captions}
         layers={layers}
-        onToggle={(layer) => setLayers((current) => ({ ...current, [layer]: !current[layer] }))}
+        onToggle={onToggleLayer}
         available={{
           supports: Boolean(bcX && bcY),
           loads: loadArrows.arrows.length > 0,

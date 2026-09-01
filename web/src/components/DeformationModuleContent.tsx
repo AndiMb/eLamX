@@ -78,7 +78,7 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
   // geometry only changes with the plate, the field every time the reader
   // picks another quantity. Both keep their last value while the next one is
   // computed, so switching does not blank the picture.
-  const view = useAtomValue(plateViewFamily(laminateId));
+  const [view, setView] = useAtom(plateViewFamily(laminateId));
   const fieldError = useAtomValue(plateFieldErrorFamily(laminateId));
   const geometryState = useAtomValue(loadablePlateGeometryFamily(laminateId));
   const fieldState = useAtomValue(loadablePlateFieldFamily(laminateId));
@@ -368,6 +368,13 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
                   bcX={input.bc_x}
                   bcY={input.bc_y}
                   load={load}
+                  layers={view.visible}
+                  onToggleLayer={(layer) =>
+                    setView({
+                      ...view,
+                      visible: { ...view.visible, [layer]: !view.visible[layer] },
+                    })
+                  }
                   ariaLabel={t("plate3d.aria.deformation")}
                 />
                 {shown && limits && (

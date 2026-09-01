@@ -23,10 +23,10 @@ export interface PlateViewCaption {
 }
 
 export interface PlateViewLayers {
-  /** The undeformed reference geometry (FR-09). */
-  outline: boolean;
   supports: boolean;
   loads: boolean;
+  /** The undeformed reference geometry (FR-09). */
+  reference: boolean;
 }
 
 export interface PlateViewOverlayProps {
@@ -45,7 +45,7 @@ const SWITCHES: {
 }[] = [
   { layer: "supports", labelKey: "plate3d.layer.supports", Icon: Anchor },
   { layer: "loads", labelKey: "plate3d.layer.loads", Icon: ArrowDownToLine },
-  { layer: "outline", labelKey: "plate3d.layer.reference", Icon: Frame },
+  { layer: "reference", labelKey: "plate3d.layer.reference", Icon: Frame },
 ];
 
 export function PlateViewOverlay({
@@ -70,7 +70,7 @@ export function PlateViewOverlay({
 
       <div className="plate3d-layers" role="group" aria-label={t("plate3d.layers")}>
         {SWITCHES.map(({ layer, labelKey, Icon }) => {
-          const enabled = layer === "outline" || available[layer];
+          const enabled = layer === "reference" || available[layer];
           const label = t(labelKey);
           return (
             <button

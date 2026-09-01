@@ -12,7 +12,7 @@
 // (A .tsx file, not .ts, only because useTx() below builds React elements.)
 import { Fragment, useCallback } from "react";
 import { atom, useAtomValue, useSetAtom } from "jotai";
-import { atomWithStorage } from "jotai/utils";
+import { atomWithStorage, createJSONStorage } from "jotai/utils";
 import type { ReactNode } from "react";
 import { en } from "./en";
 import { de } from "./de";
@@ -64,7 +64,26 @@ const initialLocale = detectInitialLocale();
 // effect), so it is never one render stale.
 let currentLocale: Locale = initialLocale;
 
-export const localeAtom = atomWithStorage<Locale>(STORAGE_KEY, initialLocale);
+// Storage is checked on the way IN as well as on the way out. Without this a
+// stored value that is not a locale - anything that once wrote the key wrongly
+// - indexes CATALOGS with nothing, and the first component to translate a
+// string takes the whole app down with it, on every load, with no way back
+// except the developer console. `detectInitialLocale` guards only the fallback
+// used when the key is absent; the stored value never passed through it.
+const localeStorage = (() => {
+  const base = createJSONStorage<Locale>(() => localStorage);
+  return {
+    ...base,
+    getItem(key: string, initialValue: Locale): Locale {
+      const stored = base.getItem(key, initialValue);
+      return isLocale(stored) ? stored : initialValue;
+    },
+  };
+})();
+
+export const localeAtom = atomWithStorage<Locale>(STORAGE_KEY, initialLocale, localeStorage, {
+  getOnInit: true,
+});
 
 /** The only supported way to change the language - see `currentLocale`. */
 export const setLocaleAtom = atom(null, (_get, set, locale: Locale) => {
@@ -79,7 +98,10 @@ const PLACEHOLDER = /\{(\w+)\}/g;
 export function translate(locale: Locale, key: MessageKey, params?: MessageParams): string {
   // `?? en[key]` is the runtime safety net behind the compile-time guarantee:
   // it also covers a catalog loaded from somewhere less typed later on.
-  const template = CATALOGS[locale][key] ?? en[key];
+  // The `?? en` on the catalog itself is the second line of the same defence:
+  // `translate` is exported and its argument is only a type, so a caller that
+  // never went through localeAtom cannot bring the app down either.
+  const template = (CATALOGS[locale] ?? en)[key] ?? en[key];
   if (!params) return template;
   return template.replace(PLACEHOLDER, (match, name: string) => {
     const value = params[name];
@@ -128,7 +150,7 @@ export function useTx(): (key: MessageKey, params: Record<string, ReactNode>) =>
   const locale = useAtomValue(localeAtom);
   return useCallback(
     (key: MessageKey, params: Record<string, ReactNode>) => {
-      const template = CATALOGS[locale][key] ?? en[key];
+      const template = (CATALOGS[locale] ?? en)[key] ?? en[key];
       // split() with a capturing group yields [text, name, text, name, ...],
       // so odd indices are the placeholder names. Index keys are safe here:
       // the array's length and order are fixed by the template, and it is

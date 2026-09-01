@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { en } from "./en";
 import { de } from "./de";
+import { translate, type Locale } from "./index";
 
 // TypeScript already guarantees that every catalog has every key: `Messages`
 // is derived from `en`, so a missing or misspelled key is a compile error.
@@ -40,5 +41,20 @@ describe("the message catalogs", () => {
       (key) => en[key].trim() === "" || de[key].trim() === "",
     );
     expect(empty).toEqual([]);
+  });
+});
+
+describe("translate", () => {
+  it("interpolates by name and leaves an unknown placeholder alone", () => {
+    expect(translate("en", "plateView.layerOption", { nr: 2, angle: 45 })).toBe("Ply 2 (45°)");
+    expect(translate("en", "plateView.layerOption", { nr: 2 })).toContain("{angle}");
+  });
+
+  it("falls back to English rather than taking the app down on a locale it does not have", () => {
+    // Not hypothetical: a stored `elamx.locale` that is not "en" or "de"
+    // indexed CATALOGS with nothing, and the first component to translate a
+    // string threw on every load, leaving a blank page and no way back except
+    // the developer console.
+    expect(translate("xx" as Locale, "app.title")).toBe(en["app.title"]);
   });
 });

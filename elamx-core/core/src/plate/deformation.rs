@@ -264,6 +264,8 @@ pub fn calculate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    // Only the accuracy measurement needs these, and only in a test build.
+    use super::super::ritz::{derivative_field, Derivative};
     use crate::model::{Laminate, Layer, Material};
     use std::collections::HashMap;
 
@@ -296,6 +298,99 @@ mod tests {
             d_matrix: DMatrixKind::Standard,
             loads: vec![load],
         }
+    }
+
+    /// How much of the `wx` cancellation actually reaches a reported number.
+    ///
+    /// The accuracy note on `Boundary::wx` measures the SHAPE FUNCTIONS: for a
+    /// clamped edge the far-edge value degrades from about term 10, reaching
+    /// the size of the function itself by term 20. What it does not say is how
+    /// much of that survives into a field, because the Ritz coefficients
+    /// weight the terms and fall off with the term index. That was left
+    /// unmeasured when the shape functions were deliberately kept as they are;
+    /// this is the measurement.
+    ///
+    /// The probe is the clamped edge itself, where the plate cannot move and
+    /// cannot tilt: every millimetre and every radian reported there is
+    /// contamination. Two orders are measured because each derivative
+    /// multiplies the high terms by cv/a, and the curvatures - and through
+    /// them every layer stress the module reports - are one order further up
+    /// again.
+    ///
+    /// Measured on Windows/MSVC:
+    ///
+    /// | terms | w / w_max | a * w_x / w_max |
+    /// | --- | --- | --- |
+    /// | 10 (the default) | 2e-7 | 6e-6 |
+    /// | 20 (the maximum) | 4e-5 | 1e-3 |
+    ///
+    /// So the default is clean, and even at the maximum the deflection is
+    /// unaffected in any digit a reader sees. The slope is about thirty times
+    /// worse than the deflection, which puts the curvature - one order further
+    /// again - at a few percent at 20 terms and at a few parts in ten thousand
+    /// at 10. That is the answer to the
+    /// question the decision left open: keeping the shape functions costs
+    /// nothing at the term counts anyone uses.
+    ///
+    /// The numbers are cancellation noise, so none of them is portable; a
+    /// build whose sinh/cosh round differently lands within an order of
+    /// magnitude. The bounds below are loose on purpose - they are here to
+    /// catch the day the noise stops being noise.
+    #[test]
+    fn the_shape_function_noise_that_reaches_the_field_is_small() {
+        for (terms, deflection_bound, slope_bound) in [(10, 1e-6, 1e-4), (MAX_TERMS, 1e-3, 1e-2)] {
+            let (deflection, slope) = clamped_edge_residuals(terms);
+            println!("{terms} terms: w = {deflection:e}, a*w_x = {slope:e}");
+            assert!(deflection < deflection_bound, "{terms} terms: w = {deflection:e}");
+            assert!(slope < slope_bound, "{terms} terms: a*w_x = {slope:e}");
+        }
+    }
+
+    /// What a clamped plate reports at its own clamped edge, where both should
+    /// be zero, relative to the deflection it actually has.
+    fn clamped_edge_residuals(terms: usize) -> (f64, f64) {
+        let plate = isotropic_plate(0.5, 4);
+        let input = DeformationInput {
+            bc_x: BoundaryCondition::ClampedClamped,
+            bc_y: BoundaryCondition::ClampedClamped,
+            m: terms,
+            n: terms,
+            ..simply_supported(NamedLoad::surface("q", 0.01))
+        };
+        let result = calculate(&plate, &input).unwrap();
+        let peak = result.max_deflection.abs().max(result.min_deflection.abs());
+
+        let rows = result.surface.len();
+        let cols = result.surface[0].len();
+        let mut edge: f64 = 0.0;
+        for row in 0..rows {
+            edge = edge.max(result.surface[row][0].abs());
+            edge = edge.max(result.surface[row][cols - 1].abs());
+        }
+        for col in 0..cols {
+            edge = edge.max(result.surface[0][col].abs());
+            edge = edge.max(result.surface[rows - 1][col].abs());
+        }
+
+        let bx = Boundary::new(input.bc_x, input.length);
+        let by = Boundary::new(input.bc_y, input.width);
+        let slope = derivative_field(
+            &result.coefficients,
+            input.length,
+            input.width,
+            &bx,
+            &by,
+            SURFACE_SAMPLES,
+            SURFACE_SAMPLES,
+            Derivative::First,
+            Derivative::Value,
+        );
+        let mut edge_slope: f64 = 0.0;
+        for row in slope.iter() {
+            edge_slope = edge_slope.max(row[0].abs()).max(row[cols - 1].abs());
+        }
+
+        (edge / peak, edge_slope * input.length / peak)
     }
 
     #[test]

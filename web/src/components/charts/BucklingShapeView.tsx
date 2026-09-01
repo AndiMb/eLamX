@@ -10,6 +10,7 @@ import { PlateView3D, type PlateViewLoad } from "./PlateView3D";
 import { formatSignificant } from "../../lib/numberFormat";
 import { plyGeometryOf } from "../../lib/plateScene/plyGeometry";
 import { layerContributionsFamily } from "../../store/derivedAtoms";
+import { plateViewFamily } from "../../store/plateViewAtoms";
 import { useLocale, useT } from "../../i18n";
 
 // Mode picker + the 3D plate. Kept separate from BucklingPlate3D so that
@@ -29,6 +30,10 @@ export function BucklingShapeView({ laminateId }: { laminateId: string }) {
   const surfaceState = useAtomValue(loadableBucklingSurfaceFamily(laminateId));
   const [zScale, setZScale] = useState(0.12);
   const plies = plyGeometryOf(useAtomValue(layerContributionsFamily(laminateId)));
+  // The same per-laminate view state the deformation module uses: a reader who
+  // switched the supports off in one plate module means it for the plate, not
+  // for one of its two analyses.
+  const [view, setView] = useAtom(plateViewFamily(laminateId));
   // Held stable so the arrows are not rebuilt every time the mode picker or
   // the exaggeration slider moves; the flows themselves have not changed.
   const load = useMemo<PlateViewLoad>(
@@ -85,6 +90,10 @@ export function BucklingShapeView({ laminateId }: { laminateId: string }) {
           bcX={input.bc_x}
           bcY={input.bc_y}
           load={load}
+          layers={view.visible}
+          onToggleLayer={(layer) =>
+            setView({ ...view, visible: { ...view.visible, [layer]: !view.visible[layer] } })
+          }
           ariaLabel={t("buckling.plate3d.aria")}
         />
       ) : (
