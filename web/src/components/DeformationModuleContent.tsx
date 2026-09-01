@@ -1,4 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useMemo } from "react";
 import { Plus, TriangleAlert, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
@@ -25,10 +26,12 @@ import { QuantityDisplay } from "./QuantityDisplay";
 import { SafeNumberInput } from "./SafeNumberInput";
 import { BackLink } from "./BackLink";
 import { Sym } from "./Sym";
-import { BucklingPlate3D } from "./charts/BucklingPlate3D";
+import { PlateView3D, type PlateViewLoad } from "./charts/PlateView3D";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { PlateCheckList } from "./PlateCheckList";
 import { hasBlockingCheck, plateChecks } from "../lib/plateChecks";
+import { plyGeometryOf } from "../lib/plateScene/plyGeometry";
+import { layerContributionsFamily } from "../store/derivedAtoms";
 import { useLocale, useT } from "../i18n";
 
 // The content behind the "deformation" entry in MODULE_REGISTRY: how far a
@@ -51,8 +54,17 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
   const checks = plateChecks(input);
   const blocked = hasBlockingCheck(checks);
   const loadableState = useAtomValue(loadableDeformationFamily(laminateId));
+  // The 3D body is drawn as the laminate it is, so it needs the expanded
+  // stack - thickness and where one ply ends and the next begins.
+  const plies = plyGeometryOf(useAtomValue(layerContributionsFamily(laminateId)));
   const addLoad = useSetAtom(addDeformationLoadAtom);
   const removeLoad = useSetAtom(removeDeformationLoadAtom);
+  // The list itself is the atom value, so this only changes when a load does -
+  // which is exactly when the arrows in the picture should be rebuilt.
+  const load = useMemo<PlateViewLoad>(
+    () => ({ kind: "transverse", loads: input.loads }),
+    [input.loads],
+  );
 
   const update = <K extends keyof DeformationInputDto>(key: K, value: DeformationInputDto[K]) =>
     setInput((c) => ({ ...c, [key]: value }));
@@ -300,14 +312,21 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
             <section className="panel">
               <h2>{t("deformation.shape.title")}</h2>
               {/* The same view as the buckling mode, on purpose: it is the same
-                  Ritz field. Its zScale exaggerates a NORMALISED height, so the
-                  field is normalised here and the real amplitude is read off
-                  the tiles above. */}
-              <BucklingPlate3D
-                surface={normalised(surface)}
+                  Ritz field. The exaggeration is a fraction of the shorter
+                  edge and is written into the picture, because the real
+                  amplitude is on the tiles above and the body is not to
+                  scale in either direction. */}
+              <PlateView3D
+                surface={surface}
                 length={input.length}
                 width={input.width}
-                zScale={0.15}
+                thickness={plies.thickness}
+                plyBoundaries={plies.boundaries}
+                deflectionFraction={0.15}
+                bcX={input.bc_x}
+                bcY={input.bc_y}
+                load={load}
+                ariaLabel={t("plate3d.aria.deformation")}
               />
               <p className="hint">{t("deformation.shape.hint")}</p>
             </section>
@@ -321,16 +340,6 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
 /** Above this fraction of the shorter edge, a linear plate theory is being
  *  asked a question it cannot answer. */
 const LARGE_DEFLECTION_FRACTION = 0.1;
-
-/** Peak-normalised copy, which is what the 3D view expects. */
-function normalised(surface: number[][]): number[][] {
-  let peak = 0;
-  for (const row of surface) {
-    for (const value of row) peak = Math.max(peak, Math.abs(value));
-  }
-  if (peak === 0) return surface;
-  return surface.map((row) => row.map((value) => value / peak));
-}
 
 // Same clamp as the buckling module: the core refuses anything outside
 // 1..MAX_RITZ_TERMS outright.

@@ -2876,6 +2876,84 @@ table.matrix td.block-d {
   border-color: var(--accent);
 }
 
+/* Die beiden Ueberhoehungen stehen im Bild, nicht daneben: ein Koerper mit
+   erfundenen Proportionen, dessen Faktoren nur in der Bildunterschrift stehen,
+   verliert sie beim ersten Bildschirmfoto. */
+.plate3d-scales {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  margin: 0;
+  padding: 2px 7px;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--card) 78%, transparent);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* Die Lastbeschriftungen liegen im DOM ueber der Zeichenflaeche, nicht in GL:
+   Text im Shader hiesse Schriftatlas und damit Verlust von Bildschirmleser,
+   Zahlenformat und Zweisprachigkeit. Positioniert wird ueber transform statt
+   ueber top/left, damit das Verschieben beim Drehen nicht in jedem Bild ein
+   Layout ausloest. */
+.plate3d-caption {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 1px 6px;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  color: var(--text);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Die Ebenenschalter sitzen der Zuruecksetz-Taste gegenueber, damit jede Ecke
+   des Fensters genau eine Aufgabe hat. */
+.plate3d-layers {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: flex;
+  gap: 3px;
+}
+
+.plate3d-layers button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.plate3d-layers button:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* Ein Schalter, der an ist, muss auch ohne Bildschirmleser als solcher zu
+   erkennen sein - aria-pressed allein sagt das nur der Vorlesesoftware. */
+.plate3d-layers button[aria-pressed="true"] {
+  color: var(--text);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--card));
+}
+
+.plate3d-layers button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .buckling-mode-picker {
   flex-wrap: wrap;
   gap: 8px 16px;

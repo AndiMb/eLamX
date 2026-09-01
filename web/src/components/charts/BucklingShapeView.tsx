@@ -1,13 +1,15 @@
 import { useAtom, useAtomValue } from "jotai";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   bucklingInputFamily,
   bucklingModeListFamily,
   loadableBucklingSurfaceFamily,
   selectedBucklingModeFamily,
 } from "../../store/bucklingAtoms";
-import { BucklingPlate3D } from "./BucklingPlate3D";
+import { PlateView3D, type PlateViewLoad } from "./PlateView3D";
 import { formatSignificant } from "../../lib/numberFormat";
+import { plyGeometryOf } from "../../lib/plateScene/plyGeometry";
+import { layerContributionsFamily } from "../../store/derivedAtoms";
 import { useLocale, useT } from "../../i18n";
 
 // Mode picker + the 3D plate. Kept separate from BucklingPlate3D so that
@@ -26,6 +28,13 @@ export function BucklingShapeView({ laminateId }: { laminateId: string }) {
   const [selected, setSelected] = useAtom(selectedBucklingModeFamily(laminateId));
   const surfaceState = useAtomValue(loadableBucklingSurfaceFamily(laminateId));
   const [zScale, setZScale] = useState(0.12);
+  const plies = plyGeometryOf(useAtomValue(layerContributionsFamily(laminateId)));
+  // Held stable so the arrows are not rebuilt every time the mode picker or
+  // the exaggeration slider moves; the flows themselves have not changed.
+  const load = useMemo<PlateViewLoad>(
+    () => ({ kind: "inPlane", nx: input.n_x, ny: input.n_y, nxy: input.n_xy }),
+    [input.n_x, input.n_y, input.n_xy],
+  );
 
   if (!modes || modes.length === 0) return null;
 
@@ -66,11 +75,17 @@ export function BucklingShapeView({ laminateId }: { laminateId: string }) {
       </div>
 
       {surface ? (
-        <BucklingPlate3D
+        <PlateView3D
           surface={surface}
           length={input.length}
           width={input.width}
-          zScale={zScale}
+          thickness={plies.thickness}
+          plyBoundaries={plies.boundaries}
+          deflectionFraction={zScale}
+          bcX={input.bc_x}
+          bcY={input.bc_y}
+          load={load}
+          ariaLabel={t("buckling.plate3d.aria")}
         />
       ) : (
         <p className="hint">{t("results.computing")}</p>
