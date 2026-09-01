@@ -7,7 +7,6 @@ import {
   deformationErrorFamily,
   deformationInputFamily,
   deformationSummaryFamily,
-  deformationSurfaceFamily,
   loadableDeformationFamily,
   removeDeformationLoadAtom,
 } from "../store/deformationAtoms";
@@ -31,6 +30,16 @@ import { HowWasThisComputed } from "./HowWasThisComputed";
 import { PlateCheckList } from "./PlateCheckList";
 import { hasBlockingCheck, plateChecks } from "../lib/plateChecks";
 import { plyGeometryOf } from "../lib/plateScene/plyGeometry";
+import { scaleBounds } from "../lib/plateScene/scale";
+import { plateFieldDefinition } from "../lib/plateFields";
+import { PlateFieldControls } from "./charts/PlateFieldControls";
+import { PlateLegend } from "./charts/PlateLegend";
+import {
+  loadablePlateFieldFamily,
+  loadablePlateGeometryFamily,
+  plateFieldErrorFamily,
+  plateViewFamily,
+} from "../store/plateViewAtoms";
 import { layerContributionsFamily } from "../store/derivedAtoms";
 import { useLocale, useT } from "../i18n";
 
@@ -47,7 +56,6 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
   const locale = useLocale();
   const [input, setInput] = useAtom(deformationInputFamily(laminateId));
   const summary = useAtomValue(deformationSummaryFamily(laminateId));
-  const surface = useAtomValue(deformationSurfaceFamily(laminateId));
   const error = useAtomValue(deformationErrorFamily(laminateId));
   // Same guard rails as the buckling module - the plate and its edges are the
   // same input, and eLamX 3.x checks both modules with the same code.
@@ -65,6 +73,32 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
     () => ({ kind: "transverse", loads: input.loads }),
     [input.loads],
   );
+
+  // The body and the colours on it are two calls on the same grid: the
+  // geometry only changes with the plate, the field every time the reader
+  // picks another quantity. Both keep their last value while the next one is
+  // computed, so switching does not blank the picture.
+  const view = useAtomValue(plateViewFamily(laminateId));
+  const fieldError = useAtomValue(plateFieldErrorFamily(laminateId));
+  const geometryState = useAtomValue(loadablePlateGeometryFamily(laminateId));
+  const fieldState = useAtomValue(loadablePlateFieldFamily(laminateId));
+  const geometry = geometryState.state === "hasData" ? geometryState.data : null;
+  const shown = fieldState.state === "hasData" ? fieldState.data : null;
+
+  // The deflection cannot carry holes - only a failure criterion refuses to
+  // answer - so a null here would be a bug in the core, not a gap in the data.
+  const body = useMemo(
+    () => geometry?.result.values.map((row) => row.map((v) => v ?? 0)) ?? null,
+    [geometry],
+  );
+
+  // Everything about the colours comes from the field that was actually
+  // computed, not from the one the picker is on: while the next one is in
+  // flight those two differ, and mixing them shows one quantity's numbers
+  // under another's name.
+  const fieldScale = shown ? plateFieldDefinition(shown.field).scale : "diverging";
+  const autoLimits = shown ? scaleBounds(fieldScale, shown.result.min, shown.result.max) : null;
+  const limits = view.bounds === "auto" ? autoLimits : view.bounds;
 
   const update = <K extends keyof DeformationInputDto>(key: K, value: DeformationInputDto[K]) =>
     setInput((c) => ({ ...c, [key]: value }));
@@ -308,26 +342,44 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
             </section>
           )}
 
-          {surface && surface.length > 1 && (
+          {body && body.length > 1 && (
             <section className="panel">
               <h2>{t("deformation.shape.title")}</h2>
+              <PlateFieldControls laminateId={laminateId} currentBounds={autoLimits} />
+              {/* A field can fail on its own - a criterion without its
+                  parameters, say - while the deflection above it is fine. */}
+              {fieldError && <p className="error">{t("deformation.error", { message: fieldError })}</p>}
               {/* The same view as the buckling mode, on purpose: it is the same
                   Ritz field. The exaggeration is a fraction of the shorter
                   edge and is written into the picture, because the real
                   amplitude is on the tiles above and the body is not to
                   scale in either direction. */}
-              <PlateView3D
-                surface={surface}
-                length={input.length}
-                width={input.width}
-                thickness={plies.thickness}
-                plyBoundaries={plies.boundaries}
-                deflectionFraction={0.15}
-                bcX={input.bc_x}
-                bcY={input.bc_y}
-                load={load}
-                ariaLabel={t("plate3d.aria.deformation")}
-              />
+              <div className="plate3d-with-legend">
+                <PlateView3D
+                  surface={body}
+                  length={input.length}
+                  width={input.width}
+                  thickness={plies.thickness}
+                  plyBoundaries={plies.boundaries}
+                  deflectionFraction={0.15}
+                  values={shown?.result.values}
+                  bounds={limits ?? undefined}
+                  scale={fieldScale}
+                  bcX={input.bc_x}
+                  bcY={input.bc_y}
+                  load={load}
+                  ariaLabel={t("plate3d.aria.deformation")}
+                />
+                {shown && limits && (
+                  <PlateLegend
+                    field={shown.field}
+                    bounds={limits}
+                    min={shown.result.min}
+                    max={shown.result.max}
+                    gaps={shown.result.gaps}
+                  />
+                )}
+              </div>
               <p className="hint">{t("deformation.shape.hint")}</p>
             </section>
           )}

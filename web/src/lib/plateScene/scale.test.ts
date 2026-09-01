@@ -4,6 +4,7 @@ import {
   autoDeflectionScale,
   autoThicknessScale,
   peakOf,
+  scaleBounds,
 } from "./scale";
 
 describe("peakOf", () => {
@@ -53,5 +54,39 @@ describe("autoBounds", () => {
   it("ignores holes", () => {
     expect(autoBounds([[NaN, -2, NaN]], "diverging")).toEqual([-2, 2]);
     expect(autoBounds([[NaN]], "diverging")).toEqual([-1, 1]);
+  });
+});
+
+describe("scaleBounds", () => {
+  it("centres a signed quantity on zero, whichever way the data leans", () => {
+    expect(scaleBounds("diverging", -3, 1)).toEqual([-3, 3]);
+    expect(scaleBounds("diverging", 0.5, 2)).toEqual([-2, 2]);
+  });
+
+  it("pins the reserve factor at 1.0 rather than at the middle of the data", () => {
+    const [low, high] = scaleBounds("reserve", 0.8, 1.1);
+    expect((low + high) / 2).toBeCloseTo(1, 12);
+    expect(low).toBeCloseTo(0.8, 12);
+  });
+
+  it("caps the reserve scale instead of stretching it over an unloaded edge", () => {
+    // A simply supported edge carries no stress, so the criterion reports a
+    // reserve of 1e16 there; without the cap the whole plate goes neutral and
+    // the one point that fails is invisible.
+    expect(scaleBounds("reserve", 0.5, 1e16)).toEqual([0, 2]);
+  });
+
+  it("never offers a negative reserve factor", () => {
+    expect(scaleBounds("reserve", -5, 1)[0]).toBe(0);
+  });
+
+  it("leaves a sequential scale on the data", () => {
+    expect(scaleBounds("sequential", 2, 7)).toEqual([2, 7]);
+    expect(scaleBounds("sequential", 3, 3)).toEqual([3, 4]);
+  });
+
+  it("gives a flat field a range rather than a point", () => {
+    expect(scaleBounds("diverging", 0, 0)).toEqual([-1, 1]);
+    expect(scaleBounds("reserve", 1, 1)).toEqual([0, 2]);
   });
 });

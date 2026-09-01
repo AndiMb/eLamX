@@ -10,7 +10,7 @@ import {
 import { RotateCcw } from "lucide-react";
 import { createPlateScene, type PlateScene } from "../../lib/plateScene/scene";
 import { buildPlateBody } from "../../lib/plateScene/body";
-import { buildColormap, rgbaOf } from "../../lib/plateScene/colormap";
+import { buildColormap, rgbaOf, type ColormapKind } from "../../lib/plateScene/colormap";
 import { EMPTY_MESH } from "../../lib/plateScene/annotation";
 import { supportEdges, supportMesh } from "../../lib/plateScene/supports";
 import {
@@ -74,6 +74,15 @@ export interface PlateView3DProps {
   plyBoundaries: number[];
   /** Peak deflection as a fraction of the shorter edge. */
   deflectionFraction: number;
+  /**
+   * What to colour the body by, on the SAME grid as `surface`. Omitted, the
+   * deflection colours itself, which is what the buckling module wants.
+   */
+  values?: (number | null)[][];
+  /** Colour scale limits. Omitted, they follow the values (FR-05). */
+  bounds?: [number, number];
+  /** Diverging about zero, or sequential. See `plateFields.ts`. */
+  scale?: ColormapKind;
   /** Condition of the two edges normal to x; omitted, no supports are drawn. */
   bcX?: BoundaryConditionId;
   /** Condition of the two edges normal to y. */
@@ -94,6 +103,9 @@ export const PlateView3D = memo(function PlateView3D({
   thickness,
   plyBoundaries,
   deflectionFraction,
+  values,
+  bounds,
+  scale = "diverging",
   bcX,
   bcY,
   load,
@@ -126,6 +138,18 @@ export const PlateView3D = memo(function PlateView3D({
   // these instead, so a recomputed-but-identical field does not rebuild a body.
   const plyKey = plyBoundaries.join(",");
 
+  // A field that does not match the body it would colour is one frame of a
+  // switch in flight - the two grids are separate async atoms and the coarser
+  // reserve-factor grid arrives before or after its geometry. Dropping it for
+  // that frame shows the previous colouring rather than a body full of holes.
+  const colours = useMemo(
+    () =>
+      values && values.length === surface.length && values[0]?.length === surface[0]?.length
+        ? values
+        : undefined,
+    [values, surface],
+  );
+
   const scales = useMemo(() => {
     const peak = peakOf(surface);
     return {
@@ -144,10 +168,11 @@ export const PlateView3D = memo(function PlateView3D({
         deflectionScale: scales.deflection,
         thicknessScale: scales.thickness,
         plyBoundaries,
+        values: colours,
       }),
     // plyBoundaries is covered by plyKey; listing it would rebuild on identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [surface, length, width, thickness, plyKey, scales],
+    [surface, length, width, thickness, plyKey, scales, colours],
   );
 
   // The arrows are kept as arrows rather than only as triangles, because the
@@ -219,9 +244,9 @@ export const PlateView3D = memo(function PlateView3D({
     const scene = sceneRef.current;
     if (!scene) return;
     scene.setBody(body);
-    scene.setValues(body.values, autoBounds(surface, "diverging"));
+    scene.setValues(body.values, bounds ?? autoBounds(colours ?? surface, scale));
     requestRender();
-  }, [body, surface, generation, requestRender]);
+  }, [body, surface, colours, bounds, scale, generation, requestRender]);
 
   useEffect(() => {
     sceneRef.current?.setAnnotation(annotation);
@@ -232,7 +257,7 @@ export const PlateView3D = memo(function PlateView3D({
     const scene = sceneRef.current;
     const canvas = canvasRef.current;
     if (!scene || !canvas) return;
-    scene.setColormap(buildColormap(colors, "diverging"));
+    scene.setColormap(buildColormap(colors, scale));
     // The line colours come from the canvas's own inherited `color`, which
     // App.css points at the same token the 2D charts use - one place decides
     // what "ink" means in either theme. The annotation is the exception: it
@@ -244,9 +269,10 @@ export const PlateView3D = memo(function PlateView3D({
       outline: [ink[0], ink[1], ink[2], 0.35],
       supports: rgbaOf(colors.annotation.support),
       loads: rgbaOf(colors.annotation.load),
+      hole: [ink[0], ink[1], ink[2], 1],
     });
     requestRender();
-  }, [colors, generation, requestRender]);
+  }, [colors, scale, generation, requestRender]);
 
   useEffect(() => {
     sceneRef.current?.setVisibility({ plyLines: true, ...layers });

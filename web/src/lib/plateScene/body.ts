@@ -39,12 +39,30 @@ export interface PlateBodyInput {
    * +0.5 inclusive. A single ply is therefore `[-0.5, 0.5]`.
    */
   plyBoundaries: number[];
+  /**
+   * What to colour the body by, on the same grid as `surface`. Omitted, the
+   * deflection colours itself.
+   *
+   * `null` is a point the core could not evaluate - a failure criterion that
+   * refused, not a zero - and it must stay distinguishable all the way to the
+   * shader, which is what `HOLE` is for.
+   */
+  values?: (number | null)[][];
 }
+
+/**
+ * The vertex value that means "no answer here".
+ *
+ * A sentinel rather than NaN: NaN survives neither the float attribute nor the
+ * shader arithmetic in any defined way, and a hole that quietly became a
+ * colour would read as a result.
+ */
+export const HOLE = -1e30;
 
 export interface PlateBody {
   positions: Float32Array;
   normals: Float32Array;
-  /** One value per vertex, in the units of `surface`. */
+  /** One value per vertex, in the units of the coloured field. */
   values: Float32Array;
   indices: Uint32Array;
   /** Ply interfaces on the side faces, as line segment pairs. */
@@ -63,6 +81,9 @@ interface Edge {
 
 export function buildPlateBody(input: PlateBodyInput): PlateBody {
   const { surface, length, width, deflectionScale } = input;
+  // Colour follows its own grid when one is given; the deflection is only the
+  // default because it is the field the body's shape already is.
+  const colours = input.values ?? surface;
   // World units: the longer plate edge is 1, centred on the origin. The camera
   // then needs no fitting pass and no knowledge of the plate's size.
   const frame = plateFrame(input);
@@ -130,7 +151,7 @@ export function buildPlateBody(input: PlateBodyInput): PlateBody {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const n = normals[r][c];
-      pushVertex(offset([px[c], py[r], pz[r][c]], n, halfThickness), n, surface[r][c]);
+      pushVertex(offset([px[c], py[r], pz[r][c]], n, halfThickness), n, valueAt(colours, r, c));
     }
   }
 
@@ -138,7 +159,7 @@ export function buildPlateBody(input: PlateBodyInput): PlateBody {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const n = normals[r][c];
-      pushVertex(offset([px[c], py[r], pz[r][c]], n, -halfThickness), neg(n), surface[r][c]);
+      pushVertex(offset([px[c], py[r], pz[r][c]], n, -halfThickness), neg(n), valueAt(colours, r, c));
     }
   }
 
@@ -184,8 +205,9 @@ export function buildPlateBody(input: PlateBodyInput): PlateBody {
       if (dot(side, edge.outward) < 0) side = neg(side);
 
       const mid: [number, number, number] = [px[c], py[r], pz[r][c]];
-      pushVertex(offset(mid, n, -halfThickness), side, surface[r][c]);
-      pushVertex(offset(mid, n, halfThickness), side, surface[r][c]);
+      const value = valueAt(colours, r, c);
+      pushVertex(offset(mid, n, -halfThickness), side, value);
+      pushVertex(offset(mid, n, halfThickness), side, value);
     }
 
     for (let i = 0; i < count - 1; i++) {
@@ -233,6 +255,12 @@ export function buildPlateBody(input: PlateBodyInput): PlateBody {
     outline,
     frame,
   };
+}
+
+/** A grid entry, with anything unevaluable mapped onto the sentinel. */
+function valueAt(grid: (number | null)[][], row: number, col: number): number {
+  const value = grid[row]?.[col];
+  return value === null || value === undefined || !Number.isFinite(value) ? HOLE : value;
 }
 
 function edgesOf(rows: number, cols: number): Edge[] {

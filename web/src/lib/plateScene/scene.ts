@@ -37,6 +37,8 @@ export interface PlateSceneStyle {
   outline: Rgba;
   supports: Rgba;
   loads: Rgba;
+  /** Points the core could not evaluate - a hole, not a value. */
+  hole: Rgba;
 }
 
 export interface PlateSceneVisibility {
@@ -132,6 +134,7 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
     outline: [0.5, 0.5, 0.5, 0.5],
     supports: [0.45, 0.45, 0.45, 1],
     loads: [0.2, 0.45, 0.8, 1],
+    hole: [0.6, 0.6, 0.6, 1],
   };
   let visibility: PlateSceneVisibility = {
     plyLines: true,
@@ -218,6 +221,7 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
         gl.uniformMatrix4fv(surfaceProgram.uniform("uView"), false, view);
         gl.uniform2f(surfaceProgram.uniform("uBounds"), bounds[0], bounds[1]);
         gl.uniform3f(surfaceProgram.uniform("uEye"), eye[0], eye[1], eye[2]);
+        gl.uniform3f(surfaceProgram.uniform("uHole"), style.hole[0], style.hole[1], style.hole[2]);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, colormap);
         gl.uniform1i(surfaceProgram.uniform("uColormap"), 0);

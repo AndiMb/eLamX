@@ -7,7 +7,7 @@
 
 import type { ChartColors } from "../chartColors";
 
-export type ColormapKind = "diverging" | "sequential";
+export type ColormapKind = "diverging" | "sequential" | "reserve";
 
 export const COLORMAP_STOPS = 256;
 
@@ -17,12 +17,20 @@ export const COLORMAP_STOPS = 256;
  * `diverging` runs negative - neutral - positive, which is what a deflection or
  * a stress needs: the sign is meaningful and zero is a real neutral point.
  * `sequential` runs neutral - accent for quantities with no natural middle.
+ * `reserve` runs danger - neutral - safe, for the reserve factor, whose
+ * meaningful middle is 1.0 rather than 0 and whose two directions are not
+ * "negative and positive" but "fails" and "holds". Borrowing the diverging
+ * scale for it would put its neutral colour at zero - nowhere near the value
+ * that decides anything - and colour a failing ply the same blue as a
+ * deflection downwards.
  */
 export function buildColormap(colors: ChartColors, kind: ColormapKind): Uint8Array {
   const neg = parseHex(colors.diverging.neg);
   const mid = parseHex(colors.diverging.mid);
   const pos = parseHex(colors.diverging.pos);
   const accent = parseHex(colors.surface);
+  const danger = parseHex(colors.status.danger);
+  const ok = parseHex(colors.status.ok);
 
   const table = new Uint8Array(COLORMAP_STOPS * 4);
   for (let i = 0; i < COLORMAP_STOPS; i++) {
@@ -32,7 +40,11 @@ export function buildColormap(colors: ChartColors, kind: ColormapKind): Uint8Arr
         ? t < 0.5
           ? mix(neg, mid, t * 2)
           : mix(mid, pos, (t - 0.5) * 2)
-        : mix(mid, accent, t);
+        : kind === "reserve"
+          ? t < 0.5
+            ? mix(danger, mid, t * 2)
+            : mix(mid, ok, (t - 0.5) * 2)
+          : mix(mid, accent, t);
     table[i * 4] = rgb[0];
     table[i * 4 + 1] = rgb[1];
     table[i * 4 + 2] = rgb[2];

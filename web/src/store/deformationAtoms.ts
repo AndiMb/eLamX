@@ -1,8 +1,10 @@
 // Plate-deformation state and results, one instance per laminate.
 //
-// The deflection field comes back with the result rather than being fetched
-// separately, unlike the buckling modes: there is exactly one field here, so
-// there is nothing to choose between and no reason to split the call.
+// The response carries the Ritz coefficients and a deflection field sampled at
+// a fixed resolution. The 3D view uses neither: it asks `plateViewAtoms` for a
+// field at the grid it actually draws on, because the body and the values
+// painted on it have to share one grid. What stays here is the solve and the
+// headline numbers that come straight out of it.
 import { atom } from "jotai";
 import { atomFamily } from "jotai-family";
 import { atomWithStorage, createJSONStorage, selectAtom } from "jotai/utils";
@@ -70,11 +72,6 @@ export const deformationSummaryFamily = atomFamily((laminateId: string) =>
     maxAt: r.max_at,
     symmetryWarning: r.symmetry_warning,
   })),
-);
-
-/** The sampled deflection field, for the 3D view. */
-export const deformationSurfaceFamily = atomFamily((laminateId: string) =>
-  selectFromResult(laminateId, (r) => r.surface),
 );
 
 export const deformationErrorFamily = atomFamily((laminateId: string) =>

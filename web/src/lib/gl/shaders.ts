@@ -24,7 +24,11 @@ void main() {
   vNormal = aNormal;
   vWorld = aPosition;
   float span = uBounds.y - uBounds.x;
-  vT = span > 0.0 ? clamp((aValue - uBounds.x) / span, 0.0, 1.0) : 0.5;
+  // Negative means "no answer here" - see HOLE in plateScene/body.ts. It
+  // travels as a value rather than as a second attribute because it has to
+  // survive interpolation: a triangle with one unevaluable corner should fade
+  // into the hole, not pretend the whole face is missing.
+  vT = aValue < -1.0e29 ? -1.0 : (span > 0.0 ? clamp((aValue - uBounds.x) / span, 0.0, 1.0) : 0.5);
   gl_Position = uProjection * uView * vec4(aPosition, 1.0);
 }
 `;
@@ -38,6 +42,8 @@ in float vT;
 
 uniform sampler2D uColormap;
 uniform vec3 uEye;
+/** What a point the core could not evaluate is painted with. */
+uniform vec3 uHole;
 
 out vec4 fragColor;
 
@@ -58,7 +64,7 @@ void main() {
   float lambert = abs(dot(n, key)) * 0.78 + abs(dot(n, fill)) * 0.16;
   float ambient = 0.24;
 
-  vec3 base = texture(uColormap, vec2(vT, 0.5)).rgb;
+  vec3 base = vT < 0.0 ? uHole : texture(uColormap, vec2(vT, 0.5)).rgb;
   vec3 color = base * (ambient + lambert);
 
   // A narrow specular gives the surface a material rather than a tint. Kept

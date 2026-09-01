@@ -2954,6 +2954,127 @@ table.matrix td.block-d {
   cursor: default;
 }
 
+/* Die Legende steht neben dem Bild, nicht darin: ueber dem Koerper wuerde sie
+   je nach Blickwinkel auf der Flaeche liegen, die sie erklaert. */
+.plate3d-with-legend {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s-3);
+}
+
+.plate3d-with-legend .plate3d {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.plate3d-legend {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 128px;
+  margin: var(--s-3) 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.plate3d-legend-title {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.plate3d-legend-unit {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.plate3d-legend-body {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  gap: 6px;
+  min-height: 180px;
+}
+
+.plate3d-legend-bar {
+  position: relative;
+  width: 18px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+/* Die Verankerung - null bei vorzeichenbehafteten Groessen, 1,0 beim
+   Reservefaktor. Ohne Marke muesste der Leser aus zwei Endbeschriftungen
+   ausrechnen, wo "sicher" anfaengt. */
+.plate3d-legend-anchor {
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  height: 0;
+  border-top: 1px solid var(--text);
+}
+
+.plate3d-legend-ticks {
+  position: relative;
+  flex: 1 1 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.plate3d-legend-ticks span {
+  position: absolute;
+  left: 0;
+  transform: translateY(50%);
+  white-space: nowrap;
+}
+
+.plate3d-legend-range,
+.plate3d-legend-gaps {
+  line-height: 1.35;
+}
+
+.plate3d-legend-gaps {
+  color: var(--text);
+}
+
+/* Auf dem Telefon steht die Legende unter dem Bild, damit dieses die volle
+   Breite behaelt. Der Balken bleibt senkrecht: sein Farbverlauf kommt als
+   Inline-Stil aus derselben Tabelle wie der Shader, und ihn hier zu drehen
+   hiesse, die Richtung an zwei Stellen zu wissen. */
+@media (max-width: 640px) {
+  .plate3d-with-legend {
+    flex-direction: column;
+  }
+
+  .plate3d-legend {
+    width: auto;
+    margin-top: 0;
+  }
+
+  .plate3d-legend-body {
+    min-height: 130px;
+  }
+}
+
+.plate-field-controls {
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: flex-end;
+}
+
+.plate-field-bounds-toggle {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.plate-field-controls .hint {
+  flex-basis: 100%;
+  margin: 0;
+}
+
 .buckling-mode-picker {
   flex-wrap: wrap;
   gap: 8px 16px;
