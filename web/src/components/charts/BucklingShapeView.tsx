@@ -86,6 +86,7 @@ export function BucklingShapeView({ laminateId }: { laminateId: string }) {
           width={input.width}
           thickness={plies.thickness}
           plyBoundaries={plies.boundaries}
+          plyAngles={plies.angles}
           deflectionFraction={zScale}
           bcX={input.bc_x}
           bcY={input.bc_y}

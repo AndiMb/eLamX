@@ -59,6 +59,8 @@ export const NO_ANNOTATION: PlateAnnotation = { supports: EMPTY_MESH, loads: EMP
 
 export interface PlateScene {
   setBody(body: PlateBody): void;
+  /** Which ply to lift out of the stack, or null for none (FR-02). */
+  setHighlightedPly(ply: number | null): void;
   setAnnotation(annotation: PlateAnnotation): void;
   setValues(values: Float32Array, bounds: [number, number]): void;
   setColormap(table: Uint8Array): void;
@@ -68,6 +70,15 @@ export interface PlateScene {
   render(): void;
   dispose(): void;
 }
+
+/**
+ * Hatch lines per world unit, where the plate's longer edge is one.
+ *
+ * Chosen so a 500 mm plate shows a fibre roughly every 3 mm: dense enough to
+ * read as material, coarse enough that a cut nearly along the fibres does not
+ * turn into a grey wash.
+ */
+const HATCH_SCALE = 160;
 
 export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
   const gl = createGl(canvas);
@@ -90,6 +101,8 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
   const normalBuffer = gl.createBuffer();
   const valueBuffer = gl.createBuffer();
   const indexBuffer = gl.createBuffer();
+  const plyAttributeBuffer = gl.createBuffer();
+  const fibreBuffer = gl.createBuffer();
   const plyBuffer = gl.createBuffer();
   const outlineBuffer = gl.createBuffer();
 
@@ -114,6 +127,8 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
   bindFloatAttribute(gl, positionBuffer, surfaceProgram.attrib("aPosition"), 3);
   bindFloatAttribute(gl, normalBuffer, surfaceProgram.attrib("aNormal"), 3);
   bindFloatAttribute(gl, valueBuffer, surfaceProgram.attrib("aValue"), 1);
+  bindFloatAttribute(gl, plyAttributeBuffer, surfaceProgram.attrib("aPly"), 1);
+  bindFloatAttribute(gl, fibreBuffer, surfaceProgram.attrib("aFibre"), 1);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
   gl.bindVertexArray(plyVao);
@@ -125,6 +140,7 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
   gl.bindVertexArray(null);
 
   let indexCount = 0;
+  let highlightedPly = -1;
   let plyVertexCount = 0;
   let outlineVertexCount = 0;
   let bounds: [number, number] = [-1, 1];
@@ -149,6 +165,8 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
     setBody(body) {
       upload(gl, positionBuffer, body.positions);
       upload(gl, normalBuffer, body.normals);
+      upload(gl, plyAttributeBuffer, body.plies);
+      upload(gl, fibreBuffer, body.fibres);
 
       gl.bindVertexArray(solidVao);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -168,6 +186,10 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
     setAnnotation(annotation) {
       supports.upload(annotation.supports);
       loads.upload(annotation.loads);
+    },
+
+    setHighlightedPly(ply) {
+      highlightedPly = ply ?? -1;
     },
 
     setValues(values, nextBounds) {
@@ -222,6 +244,8 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
         gl.uniform2f(surfaceProgram.uniform("uBounds"), bounds[0], bounds[1]);
         gl.uniform3f(surfaceProgram.uniform("uEye"), eye[0], eye[1], eye[2]);
         gl.uniform3f(surfaceProgram.uniform("uHole"), style.hole[0], style.hole[1], style.hole[2]);
+        gl.uniform1f(surfaceProgram.uniform("uHighlightPly"), highlightedPly);
+        gl.uniform1f(surfaceProgram.uniform("uHatchScale"), HATCH_SCALE);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, colormap);
         gl.uniform1i(surfaceProgram.uniform("uColormap"), 0);
@@ -273,6 +297,8 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
       gl.deleteBuffer(normalBuffer);
       gl.deleteBuffer(valueBuffer);
       gl.deleteBuffer(indexBuffer);
+      gl.deleteBuffer(plyAttributeBuffer);
+      gl.deleteBuffer(fibreBuffer);
       gl.deleteBuffer(plyBuffer);
       gl.deleteBuffer(outlineBuffer);
       supports.dispose();

@@ -72,6 +72,11 @@ export interface PlateView3DProps {
   thickness: number;
   /** Ply interfaces as fractions of the thickness, -0.5 to +0.5, ascending. */
   plyBoundaries: number[];
+  /** Fibre angle of each ply in radians, bottom-up - one fewer than there are
+   *  boundaries. Hatched onto the cut edge. */
+  plyAngles?: number[];
+  /** The ply whose result is being shown, lifted out of the stack (FR-02). */
+  highlightPly?: number | null;
   /** Peak deflection as a fraction of the shorter edge. */
   deflectionFraction: number;
   /**
@@ -109,6 +114,8 @@ export const PlateView3D = memo(function PlateView3D({
   width,
   thickness,
   plyBoundaries,
+  plyAngles,
+  highlightPly = null,
   deflectionFraction,
   values,
   bounds,
@@ -141,6 +148,7 @@ export const PlateView3D = memo(function PlateView3D({
   // Arrays as props are new objects on every render; the effects below key off
   // these instead, so a recomputed-but-identical field does not rebuild a body.
   const plyKey = plyBoundaries.join(",");
+  const angleKey = plyAngles?.join(",") ?? "";
 
   // A field that does not match the body it would colour is one frame of a
   // switch in flight - the two grids are separate async atoms and the coarser
@@ -172,11 +180,12 @@ export const PlateView3D = memo(function PlateView3D({
         deflectionScale: scales.deflection,
         thicknessScale: scales.thickness,
         plyBoundaries,
+        plyAngles,
         values: colours,
       }),
     // plyBoundaries is covered by plyKey; listing it would rebuild on identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [surface, length, width, thickness, plyKey, scales, colours],
+    [surface, length, width, thickness, plyKey, angleKey, scales, colours],
   );
 
   // The arrows are kept as arrows rather than only as triangles, because the
@@ -248,9 +257,10 @@ export const PlateView3D = memo(function PlateView3D({
     const scene = sceneRef.current;
     if (!scene) return;
     scene.setBody(body);
+    scene.setHighlightedPly(highlightPly);
     scene.setValues(body.values, bounds ?? autoBounds(colours ?? surface, scale));
     requestRender();
-  }, [body, surface, colours, bounds, scale, generation, requestRender]);
+  }, [body, surface, colours, bounds, scale, highlightPly, generation, requestRender]);
 
   useEffect(() => {
     sceneRef.current?.setAnnotation(annotation);

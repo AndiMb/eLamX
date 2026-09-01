@@ -96,6 +96,12 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
   // computed, not from the one the picker is on: while the next one is in
   // flight those two differ, and mixing them shows one quantity's numbers
   // under another's name.
+  // The core counts plies from the top, the drawn bands from the bottom.
+  const highlightBand =
+    shown && plateFieldDefinition(shown.field).perPly
+      ? (plies.layerIndices.indexOf(shown.layer) ?? -1)
+      : null;
+
   const fieldScale = shown ? plateFieldDefinition(shown.field).scale : "diverging";
   const autoLimits = shown ? scaleBounds(fieldScale, shown.result.min, shown.result.max) : null;
   const limits = view.bounds === "auto" ? autoLimits : view.bounds;
@@ -361,6 +367,8 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
                   width={input.width}
                   thickness={plies.thickness}
                   plyBoundaries={plies.boundaries}
+                  plyAngles={plies.angles}
+                  highlightPly={highlightBand}
                   deflectionFraction={0.15}
                   values={shown?.result.values}
                   bounds={limits ?? undefined}

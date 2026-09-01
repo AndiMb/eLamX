@@ -11,6 +11,10 @@ export const SURFACE_VERTEX = `#version 300 es
 in vec3 aPosition;
 in vec3 aNormal;
 in float aValue;
+/** Which ply this vertex is a cut through, or -1 for a face that is not one. */
+in float aPly;
+/** That ply's fibre angle, radians. */
+in float aFibre;
 
 uniform mat4 uView;
 uniform mat4 uProjection;
@@ -19,10 +23,15 @@ uniform vec2 uBounds;
 out vec3 vNormal;
 out vec3 vWorld;
 out float vT;
+out float vPly;
+out float vFibre;
 
 void main() {
   vNormal = aNormal;
   vWorld = aPosition;
+  // Constant across a ply strip, so nothing is interpolated between plies.
+  vPly = aPly;
+  vFibre = aFibre;
   float span = uBounds.y - uBounds.x;
   // Negative means "no answer here" - see HOLE in plateScene/body.ts. It
   // travels as a value rather than as a second attribute because it has to
@@ -39,13 +48,36 @@ precision highp float;
 in vec3 vNormal;
 in vec3 vWorld;
 in float vT;
+in float vPly;
+in float vFibre;
 
 uniform sampler2D uColormap;
 uniform vec3 uEye;
 /** What a point the core could not evaluate is painted with. */
 uniform vec3 uHole;
+/** The ply being evaluated, or -1 for none. */
+uniform float uHighlightPly;
+/** Hatch lines per world unit across the fibres. */
+uniform float uHatchScale;
 
 out vec4 fragColor;
+
+/**
+ * The fibre hatch on a cut edge.
+ *
+ * The phase runs ACROSS the fibres, so a cut along them shows continuous
+ * lines and a cut across them shows them densely - which is what a section
+ * through unidirectional material actually looks like, rather than a decorative
+ * pattern whose angle has to be decoded. Anti-aliased through fwidth, or a ply
+ * seen edge-on turns into moire.
+ */
+float fibreHatch(vec2 p, float angle) {
+  vec2 across = vec2(-sin(angle), cos(angle));
+  float phase = dot(p, across) * uHatchScale;
+  float wave = abs(fract(phase) - 0.5) * 2.0;
+  float width = max(fwidth(phase) * 1.5, 0.04);
+  return 1.0 - smoothstep(0.0, width, wave);
+}
 
 void main() {
   vec3 n = normalize(vNormal);
@@ -65,6 +97,19 @@ void main() {
   float ambient = 0.24;
 
   vec3 base = vT < 0.0 ? uHole : texture(uColormap, vec2(vT, 0.5)).rgb;
+
+  if (vPly >= 0.0) {
+    // Darken along the hatch rather than painting a second colour on it: the
+    // surface colour is carrying a result, and a hatch that replaced it would
+    // be a second reading of the same pixels.
+    base *= mix(1.0, 0.68, fibreHatch(vWorld.xy, vFibre));
+    // The evaluated ply, lifted towards white so it reads through whatever
+    // colour the result gave it.
+    if (abs(vPly - uHighlightPly) < 0.5) {
+      base = mix(base, vec3(1.0), 0.3);
+    }
+  }
+
   vec3 color = base * (ambient + lambert);
 
   // A narrow specular gives the surface a material rather than a tint. Kept

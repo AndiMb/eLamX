@@ -40,6 +40,12 @@ export interface PlateBodyInput {
    */
   plyBoundaries: number[];
   /**
+   * Fibre angle of each ply in radians, bottom-up - one fewer than there are
+   * boundaries. Drawn as a hatch on the cut edge, which is the only face where
+   * a ply's direction is visible at all.
+   */
+  plyAngles?: number[];
+  /**
    * What to colour the body by, on the same grid as `surface`. Omitted, the
    * deflection colours itself.
    *
@@ -59,11 +65,25 @@ export interface PlateBodyInput {
  */
 export const HOLE = -1e30;
 
+/** The ply index of a vertex that is not on a cut edge. */
+export const NO_PLY = -1;
+
 export interface PlateBody {
   positions: Float32Array;
   normals: Float32Array;
   /** One value per vertex, in the units of the coloured field. */
   values: Float32Array;
+  /**
+   * Which ply each vertex belongs to, or `NO_PLY` for the top and bottom
+   * faces, which are not a cut through anything.
+   *
+   * A vertex attribute rather than a draw call per ply: highlighting the
+   * evaluated ply is then a uniform, and a body with twenty plies is still one
+   * `drawElements`.
+   */
+  plies: Float32Array;
+  /** The fibre angle that belongs to that ply, in radians. */
+  fibres: Float32Array;
   indices: Uint32Array;
   /** Ply interfaces on the side faces, as line segment pairs. */
   plyLines: Float32Array;
@@ -133,16 +153,22 @@ export function buildPlateBody(input: PlateBodyInput): PlateBody {
   const positions: number[] = [];
   const normalOut: number[] = [];
   const values: number[] = [];
+  const plies: number[] = [];
+  const fibres: number[] = [];
   const indices: number[] = [];
 
   const pushVertex = (
     p: [number, number, number],
     n: [number, number, number],
     value: number,
+    ply = NO_PLY,
+    fibre = 0,
   ) => {
     positions.push(p[0], p[1], p[2]);
     normalOut.push(n[0], n[1], n[2]);
     values.push(value);
+    plies.push(ply);
+    fibres.push(fibre);
   };
 
   // --- top and bottom -----------------------------------------------------
@@ -183,39 +209,52 @@ export function buildPlateBody(input: PlateBodyInput): PlateBody {
 
   // --- side faces ---------------------------------------------------------
 
+  // One strip per ply rather than one per edge. The plies have to be separate
+  // geometry because each carries its own fibre angle and its own identity -
+  // a vertex on an interface belongs to two plies, and a shared one could
+  // only ever answer for one of them.
+  const boundaries = input.plyBoundaries;
+  const angles = input.plyAngles ?? [];
+
   for (const edge of edgesOf(rows, cols)) {
-    const base = positions.length / 3;
     const count = edge.samples.length;
 
-    for (let i = 0; i < count; i++) {
-      const [r, c] = edge.samples[i];
-      const [rPrev, cPrev] = edge.samples[Math.max(0, i - 1)];
-      const [rNext, cNext] = edge.samples[Math.min(count - 1, i + 1)];
+    for (let band = 0; band < boundaries.length - 1; band++) {
+      const base = positions.length / 3;
+      const lowerFraction = boundaries[band] * 2 * halfThickness;
+      const upperFraction = boundaries[band + 1] * 2 * halfThickness;
+      const fibre = angles[band] ?? 0;
 
-      const tangent: [number, number, number] = [
-        px[cNext] - px[cPrev],
-        py[rNext] - py[rPrev],
-        pz[rNext][cNext] - pz[rPrev][cPrev],
-      ];
+      for (let i = 0; i < count; i++) {
+        const [r, c] = edge.samples[i];
+        const [rPrev, cPrev] = edge.samples[Math.max(0, i - 1)];
+        const [rNext, cNext] = edge.samples[Math.min(count - 1, i + 1)];
 
-      const n = normals[r][c];
-      // The side face is ruled by the tangent and the thickness direction, so
-      // its normal is exactly their cross product - no approximation needed.
-      let side = unit(cross(tangent, n));
-      if (dot(side, edge.outward) < 0) side = neg(side);
+        const tangent: [number, number, number] = [
+          px[cNext] - px[cPrev],
+          py[rNext] - py[rPrev],
+          pz[rNext][cNext] - pz[rPrev][cPrev],
+        ];
 
-      const mid: [number, number, number] = [px[c], py[r], pz[r][c]];
-      const value = valueAt(colours, r, c);
-      pushVertex(offset(mid, n, -halfThickness), side, value);
-      pushVertex(offset(mid, n, halfThickness), side, value);
-    }
+        const n = normals[r][c];
+        // The side face is ruled by the tangent and the thickness direction,
+        // so its normal is exactly their cross product - no approximation.
+        let side = unit(cross(tangent, n));
+        if (dot(side, edge.outward) < 0) side = neg(side);
 
-    for (let i = 0; i < count - 1; i++) {
-      const lowerA = base + i * 2;
-      const upperA = lowerA + 1;
-      const lowerB = lowerA + 2;
-      const upperB = lowerA + 3;
-      indices.push(lowerA, lowerB, upperB, lowerA, upperB, upperA);
+        const mid: [number, number, number] = [px[c], py[r], pz[r][c]];
+        const value = valueAt(colours, r, c);
+        pushVertex(offset(mid, n, lowerFraction), side, value, band, fibre);
+        pushVertex(offset(mid, n, upperFraction), side, value, band, fibre);
+      }
+
+      for (let i = 0; i < count - 1; i++) {
+        const lowerA = base + i * 2;
+        const upperA = lowerA + 1;
+        const lowerB = lowerA + 2;
+        const upperB = lowerA + 3;
+        indices.push(lowerA, lowerB, upperB, lowerA, upperB, upperA);
+      }
     }
   }
 
@@ -223,7 +262,7 @@ export function buildPlateBody(input: PlateBodyInput): PlateBody {
 
   const plyLines: number[] = [];
   for (const edge of edgesOf(rows, cols)) {
-    for (const fraction of input.plyBoundaries) {
+    for (const fraction of boundaries) {
       const distance = fraction * 2 * halfThickness;
       for (let i = 0; i < edge.samples.length - 1; i++) {
         const [r0, c0] = edge.samples[i];
@@ -250,6 +289,8 @@ export function buildPlateBody(input: PlateBodyInput): PlateBody {
     positions: new Float32Array(positions),
     normals: new Float32Array(normalOut),
     values: new Float32Array(values),
+    plies: new Float32Array(plies),
+    fibres: new Float32Array(fibres),
     indices: new Uint32Array(indices),
     plyLines: new Float32Array(plyLines),
     outline,
@@ -281,6 +322,8 @@ function emptyBody(frame: PlateFrame): PlateBody {
     positions: new Float32Array(0),
     normals: new Float32Array(0),
     values: new Float32Array(0),
+    plies: new Float32Array(0),
+    fibres: new Float32Array(0),
     indices: new Uint32Array(0),
     plyLines: new Float32Array(0),
     outline: new Float32Array(0),

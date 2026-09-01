@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPlateBody, type PlateBodyInput } from "./body";
+import { buildPlateBody, NO_PLY, type PlateBodyInput } from "./body";
 
 // Tolerances are float32, not float64: everything that comes back out of a
 // PlateBody has been through a Float32Array on its way to a vertex buffer, so
@@ -62,12 +62,17 @@ describe("buildPlateBody", () => {
 
   it("counts vertices, triangles and lines the way the draw calls expect", () => {
     const body = buildPlateBody(base);
-    // top + bottom grids, then two vertices per sample along each of four edges
-    expect(body.positions.length / 3).toBe(2 * 9 + 4 * 3 * 2);
+    // Top and bottom grids, then each edge cut into one strip PER PLY - two
+    // plies here - with two vertices per sample. The plies cannot share their
+    // interface vertices: a vertex there belongs to two plies and could only
+    // ever carry one of their fibre angles.
+    expect(body.positions.length / 3).toBe(2 * 9 + 4 * 2 * 3 * 2);
     expect(body.values.length).toBe(body.positions.length / 3);
     expect(body.normals.length).toBe(body.positions.length);
-    // 2x2 quads on each face, plus 2 quads along each of the four edges
-    expect(body.indices.length).toBe((4 + 4 + 4 * 2) * 6);
+    expect(body.plies.length).toBe(body.positions.length / 3);
+    expect(body.fibres.length).toBe(body.positions.length / 3);
+    // 2x2 quads on each face, plus 2 quads per ply along each of four edges
+    expect(body.indices.length).toBe((4 + 4 + 4 * 2 * 2) * 6);
     // one polyline per edge and boundary, two segments each, two points each
     expect(body.plyLines.length).toBe(4 * 3 * 2 * 2 * 3);
     expect(body.outline.length).toBe(8 * 3);
@@ -156,5 +161,57 @@ describe("buildPlateBody", () => {
     const body = buildPlateBody({ ...base, surface: [[0]] });
     expect(body.positions.length).toBe(0);
     expect(body.indices.length).toBe(0);
+  });
+});
+
+describe("the ply attributes", () => {
+  const stacked: PlateBodyInput = {
+    ...base,
+    plyBoundaries: [-0.5, 0, 0.5],
+    plyAngles: [0, Math.PI / 2],
+  };
+
+  it("marks the top and bottom faces as belonging to no ply", () => {
+    const body = buildPlateBody(stacked);
+    // The two grids come first, and neither is a cut through anything.
+    for (let i = 0; i < 2 * 9; i++) expect(body.plies[i]).toBe(NO_PLY);
+  });
+
+  it("gives every side vertex its own ply and that ply's fibre angle", () => {
+    const body = buildPlateBody(stacked);
+    const seen = new Map<number, Set<number>>();
+    for (let i = 2 * 9; i < body.plies.length; i++) {
+      const ply = body.plies[i];
+      expect(ply).toBeGreaterThanOrEqual(0);
+      if (!seen.has(ply)) seen.set(ply, new Set());
+      seen.get(ply)!.add(body.fibres[i]);
+    }
+    expect([...seen.keys()].sort()).toEqual([0, 1]);
+    // One angle per ply, and the one that ply was given.
+    expect([...seen.get(0)!]).toEqual([0]);
+    expect([...seen.get(1)!].map((a) => Math.round(a * 1e6) / 1e6)).toEqual([
+      Math.round((Math.PI / 2) * 1e6) / 1e6,
+    ]);
+  });
+
+  it("puts each ply strip between its own two interfaces", () => {
+    const body = buildPlateBody(stacked);
+    const half = body.frame.halfThickness;
+    for (let i = 2 * 9; i < body.plies.length; i++) {
+      const z = vertex(body, i)[2];
+      // Ply 0 fills the lower half, ply 1 the upper.
+      if (body.plies[i] === 0) {
+        expect(z).toBeGreaterThanOrEqual(-half - 1e-7);
+        expect(z).toBeLessThanOrEqual(1e-7);
+      } else {
+        expect(z).toBeGreaterThanOrEqual(-1e-7);
+        expect(z).toBeLessThanOrEqual(half + 1e-7);
+      }
+    }
+  });
+
+  it("falls back to a single unangled ply when no angles are given", () => {
+    const body = buildPlateBody(base);
+    for (let i = 2 * 9; i < body.fibres.length; i++) expect(body.fibres[i]).toBe(0);
   });
 });
