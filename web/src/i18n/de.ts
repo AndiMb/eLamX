@@ -21,6 +21,7 @@ export const de: Messages = {
   "topbar.open.hint": ".elamx-Projektdatei öffnen",
   "topbar.save": "Speichern",
   "topbar.save.hint": "Projekt als .elamx-Datei speichern",
+  "topbar.save.toFile": "Speichern nach {file}",
   "project.readError": "{message}",
   "project.readError.title": "Diese Datei konnte nicht geöffnet werden",
   "project.dismiss": "Schließen",

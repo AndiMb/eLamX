@@ -31,6 +31,16 @@ export const projectVersionAtom = atom<string>("1");
 /** Name suggested when saving; taken from the opened file. */
 export const projectNameAtom = atom<string>("eLamX");
 
+/**
+ * Where the open project came from, or null when it did not come from a file
+ * with a path - which is every browser tab, since a page never learns one.
+ *
+ * Deliberately NOT persisted: a path is a fact about this machine and this
+ * session, and restoring one after a reload would offer to overwrite a file
+ * the reader may no longer have in mind.
+ */
+export const projectFilePathAtom = atom<string | null>(null);
+
 /** `<fibres>`, `<matrices>`, `<optimizations>` from the opened file, as raw
  *  XML. This app models none of them, but they are the user's data: without
  *  carrying them, opening a desktop project and saving it deleted its fibre

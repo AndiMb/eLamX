@@ -10,3 +10,9 @@
 
 # Claude Code local project config (personal, not project source).
 /.claude/
+
+# The desktop shell's own build products: Electron itself (~250 MB of
+# node_modules) and the installers it produces (~110 MB each). Both are
+# reproducible from desktop/package.json - see the README.
+/desktop/node_modules/
+/desktop/release/

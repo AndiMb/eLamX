@@ -1,0 +1,69 @@
+{
+  "name": "elamx-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Windows shell around the eLamX web app",
+  "main": "main.js",
+  "scripts": {
+    "build:web": "npm --prefix ../web run build",
+    "start": "npm run build:web && electron .",
+    "start:built": "electron .",
+    "pack": "npm run build:web && electron-builder --win --dir",
+    "dist": "npm run build:web && electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^44.1.1",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "de.elamx.desktop",
+    "productName": "eLamX",
+    "copyright": "eLamX",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "eLamX"
+    },
+    "portable": {
+      "artifactName": "eLamX-${version}-portable.exe"
+    },
+    "fileAssociations": [
+      {
+        "ext": "elamx",
+        "name": "eLamX project",
+        "description": "eLamX laminate project",
+        "role": "Editor"
+      }
+    ]
+  }
+}
