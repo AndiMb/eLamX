@@ -2,6 +2,41 @@
 
 A from-scratch web reimplementation of [eLamX](https://www.tu-dresden.de/ing/maschinenwesen/ilr/lft/elamx), the classical laminate theory (CLT) calculation tool for fiber-reinforced composites. The calculation core is ported from the original Java desktop application to Rust and compiled to WebAssembly; the UI is a new React/TypeScript frontend.
 
+![A rectangular plate of a 16-ply laminate under transverse load, coloured by the stress along the fibres, with its supports, its load and the colour bar](docs/images/plate-3d.png)
+
+## What it does
+
+A laminate is a stack of plies, each with its own material, thickness and fibre
+angle — and most of what an engineer wants to know about one follows from that
+stack: how stiff it is, what each ply carries, whether it fails, how far a plate
+of it bends, and at what load it buckles. eLamX Web does that arithmetic and
+then draws the answer.
+
+- **Six analyses per laminate** — layer-by-layer CLT with the ABD matrix and a
+  failure check per ply, last-ply-failure, plate buckling, plate deflection,
+  thin-walled pressure vessels, and the 3D failure body of a criterion. A
+  comparison view puts several laminates' key figures side by side.
+- **A plate you can actually look at** — the deflected laminate as a solid with
+  its real thickness and its plies visible at the cut edge, coloured by any of
+  eight result quantities, in any ply, at any face of it. The supports and the
+  loads are drawn where they act, the extremes are marked, and pointing at the
+  plate reads off the value.
+- **It answers to the original** — the calculation core is checked against
+  numbers produced by eLamX 3.x itself, and those numbers are in the repository.
+
+Nothing leaves the machine it is opened on: the core is WebAssembly, there is
+no server and no account. The same build runs in a browser tab and, wrapped in
+[a desktop program](#a-desktop-program), on Windows, Linux and macOS —
+**[ready-built installers are on the releases page](https://github.com/AndiMb/eLamX/releases/latest)**,
+unsigned, so your system will ask whether you meant it.
+
+| | |
+| --- | --- |
+| ![The stacking editor: sixteen plies with their angles, thicknesses and materials, beside a preview of the stack](docs/images/laminate.png) | ![The first buckling mode of a plate under uniaxial compression, with the load arrows on its edges](docs/images/buckling.png) |
+| The stack, edited where it is read. | The first buckling mode, and the load that causes it. |
+
+The interface is German and English; the screenshots show German.
+
 ## Structure
 
 - **`elamx-core/`** — Rust workspace.
