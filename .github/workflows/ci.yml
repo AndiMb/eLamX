@@ -38,13 +38,13 @@ jobs:
     name: Rust core
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Cargo.lock is not committed (see elamx-core/.gitignore), so the cache
       # key follows the manifests instead. A dependency bump therefore starts
       # from a cold cache rather than from a stale one.
       - name: Cache cargo registry and build output
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -81,10 +81,10 @@ jobs:
     name: Web frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Cache cargo registry and build output
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -105,7 +105,7 @@ jobs:
         working-directory: elamx-core/wasm
         run: wasm-pack build --target web --out-dir ../../web/src/wasm-pkg
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
