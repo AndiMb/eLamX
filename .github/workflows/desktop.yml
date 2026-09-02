@@ -159,3 +159,50 @@ jobs:
             desktop/release/*.dmg
             desktop/release/*.zip
           if-no-files-found: error
+
+  release:
+    name: Release
+    needs: package
+    # Only for a tag: a run started by hand produces artifacts to try out, not
+    # something to put a version number on.
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: elamx-*
+          merge-multiple: true
+
+      # `gh` rather than a third-party action: it is on the runner already, and
+      # a release is one command. No `--generate-notes`: on a first release it
+      # would paste the entire history above the thing people came for, which
+      # is the download table. Worth adding once there is a previous tag to
+      # generate the list against.
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'EOF'
+          Desktop builds of the eLamX web app for Windows, Linux and macOS.
+          The calculation core is the same WebAssembly module the web version
+          uses; the shell adds native Open and Save, a file association for
+          `.elamx`, and an image export that writes where you tell it to.
+
+          **None of these are code-signed.** Windows SmartScreen and macOS
+          Gatekeeper will warn about them, and you will have to say that you
+          meant it. Signing needs a certificate per platform, which this
+          project does not have.
+
+          | Platform | File |
+          | --- | --- |
+          | Windows | `eLamX Setup <version>.exe` (installer) or `eLamX-<version>-portable.exe` |
+          | Linux | `.AppImage` (mark executable and run) or `.deb` |
+          | macOS | `.dmg` - `arm64` for Apple silicon, `x64` for Intel |
+
+          EOF
+          gh release create "${GITHUB_REF_NAME}"             --title "eLamX ${GITHUB_REF_NAME}"             --notes-file notes.md             artifacts/*

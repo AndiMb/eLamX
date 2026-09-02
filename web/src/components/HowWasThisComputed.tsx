@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useAtomValue } from "jotai";
 import { ChevronDown, ChevronRight, GraduationCap } from "lucide-react";
 import { BlockMath } from "./Math";
@@ -26,9 +26,15 @@ export function HowWasThisComputed({ title, formula, substituted, children }: Ho
   const studentMode = useAtomValue(studentModeAtom);
   const [open, setOpen] = useState(studentMode);
 
-  useEffect(() => {
+  // Adjusted during render rather than in an effect. The effect this replaces
+  // committed the old state first and then immediately re-rendered with the
+  // new one, so a panel flipped visibly when the global switch moved; this
+  // way React discards the in-progress render and there is only one commit.
+  const [lastStudentMode, setLastStudentMode] = useState(studentMode);
+  if (studentMode !== lastStudentMode) {
+    setLastStudentMode(studentMode);
     setOpen(studentMode);
-  }, [studentMode]);
+  }
 
   return (
     <div className="how-computed">

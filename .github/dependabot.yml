@@ -1,0 +1,67 @@
+# Dependency updates, so they arrive as reviewable pull requests rather than
+# as an afternoon of `npm outdated` twice a year.
+#
+# Grouped on purpose. Ungrouped, this repository would open something like a
+# dozen pull requests a week - React and its types in three, Vite and its
+# plugin in two - and each one costs a full CI run. Grouped, a week's patches
+# arrive as one pull request per ecosystem that either goes green or does not.
+#
+# Majors stay separate everywhere. A major is a decision: TypeScript 7 replaced
+# the compiler with a native one, Electron majors move Chromium under the
+# application. Those want a build to look at and a moment's thought, not to be
+# swept in with a patch release of `@types/node`.
+
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Everything that cannot change behaviour on its own.
+      # Majors are not claimed by this group, so they arrive one per pull
+      # request - which is what makes them reviewable.
+      frontend-minor:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: npm
+    directory: /desktop
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      shell-minor:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Cargo.lock is not committed (see elamx-core/.gitignore), so what Dependabot
+  # can move here are the version requirements in the manifests. That is the
+  # right granularity anyway: a lockfile bump nobody would have noticed is not
+  # worth a pull request in a repository whose lockfile is not shared.
+  - package-ecosystem: cargo
+    directory: /elamx-core
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      core-minor:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # The workflows pin actions by major (`actions/checkout@v4`), so this is what
+  # notices when v5 exists - which is otherwise invisible until an action is
+  # deprecated and the build starts warning.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ["*"]

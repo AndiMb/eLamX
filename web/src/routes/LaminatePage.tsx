@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { ArrowDown, ArrowUp, ArrowUpDown, Copy, Layers, Plus, RotateCw, Trash2 } from "lucide-react";
@@ -131,10 +131,14 @@ export function LaminatePage() {
   // 0 on every selection change makes clear it's a fresh "set to..." action,
   // not a reflection of the newly-selected layers' current values.
   const selectionKey = selectedLayerIds.join(",");
-  useEffect(() => {
+  const [lastSelectionKey, setLastSelectionKey] = useState(selectionKey);
+  if (selectionKey !== lastSelectionKey) {
+    // During render, not in an effect: the fields would otherwise show the
+    // previous selection's numbers for one commit before being cleared.
+    setLastSelectionKey(selectionKey);
     setBulkAngle(0);
     setBulkThickness(0);
-  }, [selectionKey]);
+  }
 
   const toggleSelected = (layerId: string) => {
     setSelectedIds((prev) => {

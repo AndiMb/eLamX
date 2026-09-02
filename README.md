@@ -161,6 +161,12 @@ the macOS one is build-verified only, because starting a windowed application
 on a hosted macOS runner needs a login session that is not reliably present,
 and a failure for that reason would say nothing about the build.
 
+`.github/dependabot.yml` opens the dependency updates as pull requests, grouped
+by ecosystem so a week's patches arrive as one reviewable change per project
+rather than a dozen. Majors are deliberately left out of those groups: a major
+is a decision - TypeScript 7 replaced the compiler, an Electron major moves
+Chromium under the application - and wants a build to look at.
+
 Nothing is code-signed. That is a decision rather than an oversight — it costs
 a certificate per platform and, on macOS, notarisation on top — so the
 artifacts are fine to hand to a colleague and will be warned about by
