@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "description": "Desktop shell around the eLamX web app (Windows, Linux, macOS)",
+  "homepage": "https://github.com/AndiMb/eLamX",
+  "author": {
+    "name": "AndiMb",
+    "email": "AndiMb@users.noreply.github.com"
+  },
   "main": "main.js",
   "scripts": {
     "build:web": "npm --prefix ../web run build",
@@ -63,7 +68,8 @@
       ],
       "category": "Science",
       "synopsis": "Classical laminate theory for fibre-reinforced composites",
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "maintainer": "AndiMb <AndiMb@users.noreply.github.com>"
     },
     "mac": {
       "target": [
