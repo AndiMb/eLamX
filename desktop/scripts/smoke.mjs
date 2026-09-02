@@ -19,7 +19,7 @@
 // more thing between a build and the answer.
 
 import { spawn } from "node:child_process";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,31 +28,62 @@ const RELEASE = path.resolve(HERE, "..", "release");
 const PORT = Number(process.env.SMOKE_PORT ?? 9455);
 const TIMEOUT_MS = 90_000;
 
-/** Where electron-builder leaves the unpacked app on each platform. */
+/**
+ * The unpacked application, whatever electron-builder decided to call it.
+ *
+ * Guessing the name is what broke this the first time it ran on Linux: the
+ * executable there is named after the package, not after the product, and the
+ * two differ. So the names come out of package.json, and if none of them is
+ * found the error says what WAS there - one failed run should be enough to fix
+ * it, not two.
+ */
 function findExecutable() {
-  const candidates = [
-    ["win-unpacked", "eLamX.exe"],
-    ["linux-unpacked", "elamx"],
-    ["linux-unpacked", "eLamX"],
-  ].map(([dir, file]) => path.join(RELEASE, dir, file));
+  if (!existsSync(RELEASE)) {
+    throw new Error(`nothing under ${RELEASE} - run electron-builder before this`);
+  }
 
-  // macOS puts it inside a bundle whose directory carries the architecture,
-  // so it is looked up rather than spelled out.
-  if (existsSync(RELEASE)) {
-    for (const entry of readdirSync(RELEASE)) {
-      if (!entry.startsWith("mac")) continue;
-      const app = path.join(RELEASE, entry, "eLamX.app", "Contents", "MacOS", "eLamX");
-      candidates.push(app);
+  const manifest = JSON.parse(readFileSync(path.resolve(HERE, "..", "package.json"), "utf8"));
+  const product = manifest.build?.productName ?? manifest.name;
+  const names = new Set(
+    [product, product.toLowerCase(), manifest.name, manifest.build?.executableName]
+      .filter(Boolean)
+      .flatMap((name) => [name, `${name}.exe`]),
+  );
+
+  const found = [];
+  for (const entry of readdirSync(RELEASE)) {
+    const directory = path.join(RELEASE, entry);
+    if (!statSync(directory).isDirectory()) continue;
+
+    // Windows and Linux: the executable sits at the top of the unpacked tree.
+    if (entry.includes("unpacked")) {
+      for (const file of readdirSync(directory)) {
+        if (names.has(file)) found.push(path.join(directory, file));
+      }
+    }
+
+    // macOS: inside a bundle, in a directory whose name carries the
+    // architecture, so it is looked up rather than spelled out.
+    if (entry.startsWith("mac")) {
+      for (const bundle of readdirSync(directory)) {
+        if (!bundle.endsWith(".app")) continue;
+        const macos = path.join(directory, bundle, "Contents", "MacOS");
+        if (!existsSync(macos)) continue;
+        for (const file of readdirSync(macos)) found.push(path.join(macos, file));
+      }
     }
   }
 
-  const found = candidates.find((file) => existsSync(file) && statSync(file).isFile());
-  if (!found) {
+  const executable = found.find((file) => statSync(file).isFile());
+  if (!executable) {
+    const listing = readdirSync(RELEASE).join(", ") || "(empty)";
     throw new Error(
-      `no unpacked application under ${RELEASE} - run electron-builder before this`,
+      `no application named any of [${[...names].join(", ")}] under ${RELEASE}
+` +
+        `what is there: ${listing}`,
     );
   }
-  return found;
+  return executable;
 }
 
 async function pageTarget(deadline, child) {
