@@ -1,0 +1,161 @@
+# Desktop builds for Windows, Linux and macOS.
+#
+# Separate from ci.yml and deliberately NOT on every push: each run produces
+# something over 100 MB per platform, because Electron brings its own Chromium.
+# It runs when someone asks for it, and on a version tag.
+#
+# The WASM core is built once rather than three times. It is the same bytes on
+# every platform - `wasm32-unknown-unknown` does not care what compiled it - so
+# building it per matrix entry would mean a Rust toolchain on the Windows and
+# macOS runners for no difference in the output.
+#
+# Nothing here is code-signed. Unsigned is a decision, not an oversight: it
+# costs a certificate per platform and, on macOS, notarisation on top. The
+# artifacts are therefore fine for "send it to a colleague" and will be warned
+# about by SmartScreen and Gatekeeper on a stranger's machine.
+
+name: Desktop builds
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wasm:
+    name: WASM core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo registry and build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            elamx-core/target
+          key: wasm-${{ runner.os }}-${{ hashFiles('elamx-core/**/Cargo.toml') }}
+          restore-keys: wasm-${{ runner.os }}-
+
+      - name: Install wasm toolchain
+        run: |
+          rustup target add wasm32-unknown-unknown
+          curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+
+      - name: Build the WASM core
+        working-directory: elamx-core/wasm
+        run: wasm-pack build --target web --out-dir ../../web/src/wasm-pkg
+
+      # web/src/wasm-pkg/ is gitignored, so the packaging jobs cannot check it
+      # out - they take it from here instead.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wasm-pkg
+          path: web/src/wasm-pkg
+          retention-days: 1
+
+  package:
+    name: ${{ matrix.label }}
+    needs: wasm
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One platform failing should not hide whether the others build.
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: Windows
+            platform: --win
+            smoke: true
+          - os: ubuntu-latest
+            label: Linux
+            platform: --linux
+            smoke: true
+          - os: macos-latest
+            label: macOS
+            platform: --mac
+            # Not smoke-tested: starting a windowed application on a hosted
+            # macOS runner needs a login session that is not reliably there,
+            # and a test that fails for that reason would say nothing about
+            # the build. The macOS artifact is build-verified only.
+            smoke: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: wasm-pkg
+          path: web/src/wasm-pkg
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            desktop/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm ci
+
+      # `npm run build` is `tsc -b && vite build`, so a type error stops the
+      # packaging rather than being packaged.
+      - name: Build the frontend
+        working-directory: web
+        run: npm run build
+
+      - name: Install shell dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Package
+        working-directory: desktop
+        env:
+          # Without this electron-builder hunts for a signing identity in the
+          # keychain and fails the macOS build when it finds none.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npx electron-builder ${{ matrix.platform }} --publish never
+
+      # Packaging can succeed and still ship something that does not work: a
+      # stale bundle inside the package, a worker that will not start, a wasm
+      # module served as the wrong type. None of those show up in a build log -
+      # they show up as a window that opens and does nothing. So the packaged
+      # binary is started and asked whether a calculation comes back.
+      - name: Install a display for the smoke test
+        if: matrix.smoke && runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Smoke test the packaged application
+        if: matrix.smoke && runner.os == 'Linux'
+        working-directory: desktop
+        # The runner has no GPU and Electron's sandbox needs a user namespace
+        # that the hosted image does not always grant.
+        env:
+          SMOKE_EXTRA_ARGS: --no-sandbox --disable-gpu
+        run: xvfb-run -a node scripts/smoke.mjs
+
+      - name: Smoke test the packaged application
+        if: matrix.smoke && runner.os == 'Windows'
+        working-directory: desktop
+        run: node scripts/smoke.mjs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: elamx-${{ matrix.label }}
+          retention-days: 30
+          # The installers and the portable builds, not the unpacked trees they
+          # were made from - those are the same bytes again, uncompressed.
+          path: |
+            desktop/release/*.exe
+            desktop/release/*.AppImage
+            desktop/release/*.deb
+            desktop/release/*.dmg
+            desktop/release/*.zip
+          if-no-files-found: error

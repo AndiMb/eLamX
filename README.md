@@ -8,7 +8,7 @@ A from-scratch web reimplementation of [eLamX](https://www.tu-dresden.de/ing/mas
   - `core/` — the CLT calculation engine itself (materials, layers, laminates, ABD-matrix assembly, failure criteria and their 3D failure envelopes, reserve factors, last-ply-failure, pressure vessels), plus `plate/` for rectangular-plate analyses on top of a laminate (buckling and deformation, sharing the Ritz machinery in `plate/ritz.rs`; vibration, cutouts and stiffeners are not ported yet).
   - `wasm/` — thin `wasm-bindgen` bindings exposing `core` to the browser (JSON in, JSON out).
 - **`web/`** — React + TypeScript + Vite frontend. State is managed with Jotai (one reactive atom family per laminate/material), all calculations run client-side via the WASM module.
-- **`desktop/`** — an Electron shell that packages the built frontend as a Windows program. It adds nothing to the app: the same bundle runs in a browser tab, and the shell only supplies what a page cannot have — a real Open dialog, a Save that writes back to the file it opened, and a file association for `.elamx`.
+- **`desktop/`** — an Electron shell that packages the built frontend as a desktop program for Windows, Linux and macOS. It adds nothing to the app: the same bundle runs in a browser tab, and the shell only supplies what a page cannot have — a real Open dialog, a Save that writes back to the file it opened, and a file association for `.elamx`.
 
 ## Getting started
 
@@ -42,24 +42,33 @@ migrations and the comparison's bookkeeping. It runs in Node with a small
 `localStorage` stand-in (`src/test/setup.ts`) rather than a DOM - what needs a
 real browser is checked in one, where a jsdom stub would prove nothing.
 
-## A Windows program
+## A desktop program
 
 The frontend is a static bundle and runs in any browser, `web/dist/` on a web
 server included. `desktop/` wraps that same bundle in Electron for the case
-where a program is wanted rather than a page.
+where a program is wanted rather than a page — on Windows, Linux and macOS.
 
 ```sh
 cd desktop
 npm install
 npm start          # build the frontend, then run it in the shell
-npm run dist       # build the frontend, then produce installers in release/
+npm run dist       # Windows: installer + portable, into release/
+npm run dist:linux # AppImage + deb
+npm run dist:mac   # dmg + zip, x64 and arm64
+npm run smoke      # start the packaged app and check it works
 ```
 
-`npm run dist` writes two things to `desktop/release/`: an NSIS installer
-(`eLamX Setup <version>.exe`) and a portable single file
-(`eLamX-<version>-portable.exe`). Both are around 110 MB, because Electron
-brings its own Chromium — that is the price of not depending on what is
-installed on the machine.
+Each platform's build goes to `desktop/release/`. They are all around 110 MB,
+because Electron brings its own Chromium — that is the price of not depending
+on what is installed on the machine. A platform can only be built on itself;
+for all three at once, use the workflow below.
+
+`npm run smoke` is the check that packaging cannot make for itself. Packaging
+can succeed and still ship a stale bundle, a worker that will not start or a
+wasm module served as the wrong type — none of which produce an error at build
+time, only a window that opens and does nothing. So it starts the packaged
+binary, asks it whether it is where it should be, whether the page can reach
+Node (it must not), and whether a plate calculation comes back.
 
 Two details are worth knowing before changing anything there:
 
@@ -75,8 +84,9 @@ Two details are worth knowing before changing anything there:
   `web/src/lib/desktop.ts`, which returns `null` in a browser and is what every
   call site checks.
 
-The executables are **not code-signed**, so Windows SmartScreen will warn about
-them on another machine. That needs a certificate, not a change here.
+The executables are **not code-signed**, so Windows SmartScreen and macOS
+Gatekeeper will warn about them on another machine. That needs a certificate,
+not a change here.
 
 ## Languages
 
@@ -140,10 +150,21 @@ checked in, so the suite needs no Java installation - see
 frontend's lint, tests and typecheck/build on every push to `main` and on every
 pull request - the same commands documented above.
 
-The Windows installers are deliberately not built there: they are a 110 MB
-artifact per run, and nothing in CI can check the one thing that would justify
-the cost, which is that the program starts on a machine that is not this one.
-Build them from `desktop/` when there is a release to hand out.
+`.github/workflows/desktop.yml` builds the desktop applications for Windows,
+Linux and macOS. It runs on demand and on a version tag rather than on every
+push: each run produces over 100 MB per platform. The WASM core is built once
+and handed to the three packaging jobs, since `wasm32-unknown-unknown` output
+does not depend on what compiled it.
+
+The Windows and Linux artifacts are smoke-tested there (Linux under `xvfb`);
+the macOS one is build-verified only, because starting a windowed application
+on a hosted macOS runner needs a login session that is not reliably present,
+and a failure for that reason would say nothing about the build.
+
+Nothing is code-signed. That is a decision rather than an oversight — it costs
+a certificate per platform and, on macOS, notarisation on top — so the
+artifacts are fine to hand to a colleague and will be warned about by
+SmartScreen and Gatekeeper on a stranger's machine.
 
 ## License
 
