@@ -20,7 +20,9 @@ import {
   type BucklingInputDto,
   type CriterionId,
   type LastPlyFailureInputDto,
+  type FibreDto,
   type MaterialDto,
+  type MatrixMaterialDto,
   type DeformationInputDto,
   type PressureVesselInputDto,
 } from "./types";
@@ -37,10 +39,12 @@ import {
 interface ProjectDto {
   version: string;
   materials: MaterialDto[];
+  fibres: FibreDto[];
+  matrices: MatrixMaterialDto[];
   laminates: ProjectLaminateDto[];
-  /** `<fibres>`, `<matrices>`, `<optimizations>` as raw XML - sections the
-   *  core does not model and this app does not touch, carried so that saving
-   *  a desktop project does not delete its fibre materials. */
+  /** `<optimizations>` as raw XML - sections the core does not model and this
+   *  app does not touch, carried so that saving a desktop project does not
+   *  delete work the desktop put there. */
   unsupported_sections?: unknown[];
 }
 
@@ -105,6 +109,10 @@ interface DeformationEntryDto {
  *  that survives one has to survive the other. */
 export interface ProjectSnapshot {
   materials: MaterialDto[];
+  /** The constituents a micromechanic material is built from. Their own
+   *  catalogs, as in the file: they are not ply materials. */
+  fibres: FibreDto[];
+  matrices: MatrixMaterialDto[];
   laminates: LaminateConfig[];
   bucklings: Record<string, BucklingInputDto>;
   lastPlyFailures: Record<string, LastPlyFailureInputDto>;
@@ -196,6 +204,8 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
 
   return {
     materials: project.materials,
+    fibres: project.fibres ?? [],
+    matrices: project.matrices ?? [],
     laminates,
     bucklings,
     lastPlyFailures,
@@ -213,6 +223,8 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
     version: snapshot.version || "1",
     unsupported_sections: snapshot.unsupportedSections,
     materials: snapshot.materials,
+    fibres: snapshot.fibres,
+    matrices: snapshot.matrices,
     laminates: snapshot.laminates.map((config) => {
       const carry = config.carryOver ?? {};
 

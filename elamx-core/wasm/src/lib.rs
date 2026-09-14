@@ -15,6 +15,7 @@ use elamx_core::failure::{
     default_criterion_registry, failure_envelope, FailureEnvelope, DEFAULT_QUALITY,
 };
 use elamx_core::mathtools;
+use elamx_core::micromechanics::{self, Fibre, MatrixMaterial};
 use elamx_core::model::{Laminate, Material};
 use elamx_core::project::{read_elamx, write_elamx, Project};
 use elamx_core::clt::LayerPosition;
@@ -645,6 +646,43 @@ pub fn import_elamx(xml: &str) -> Result<String, JsValue> {
 fn import_elamx_impl(xml: &str) -> Result<String, String> {
     let project = read_elamx(xml).map_err(|e| e.to_string())?;
     serde_json::to_string(&project).map_err(|e| e.to_string())
+}
+
+#[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+struct MicroMechanicsRequest {
+    /// The whole catalog, not one material: the frontend edits a fibre and
+    /// wants every material built on it to follow, and doing that in one call
+    /// keeps the "which materials does this fibre affect" question on this
+    /// side of the boundary.
+    materials: Vec<Material>,
+    fibres: Vec<Fibre>,
+    matrices: Vec<MatrixMaterial>,
+}
+
+/// Recomputes the basic properties of every material that has a micromechanic
+/// definition, and returns the whole catalog.
+///
+/// Materials without one come back untouched, so the caller can hand over its
+/// list as it stands rather than filtering first.
+#[wasm_bindgen]
+pub fn resolve_micromechanics(request_json: &str) -> Result<String, JsValue> {
+    resolve_micromechanics_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn resolve_micromechanics_impl(request_json: &str) -> Result<String, String> {
+    let request: MicroMechanicsRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let mut materials = request.materials;
+    micromechanics::resolve(&mut materials, &request.fibres, &request.matrices).map_err(
+        |missing| {
+            format!(
+                "Material '{}': {} '{}' fehlt",
+                missing.material, missing.kind, missing.id
+            )
+        },
+    )?;
+    serde_json::to_string(&materials).map_err(|e| e.to_string())
 }
 
 /// Serialises a project back to `.elamx` XML, in the element order and number

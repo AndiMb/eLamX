@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route } from "react-router-dom";
 import { useIsMobile } from "./lib/useIsMobile";
 import { useApplyTheme } from "./lib/useApplyTheme";
 import { useApplyLocale } from "./i18n/useApplyLocale";
+import { useResolvedMicromechanics } from "./store/useResolvedMicromechanics";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { BottomTabs } from "./components/BottomTabs";
@@ -10,6 +11,7 @@ import { LaminatePage } from "./routes/LaminatePage";
 import { ModulePage, MaterialModulePage, ProjectModulePage } from "./routes/ModulePage";
 import { MaterialPage } from "./routes/MaterialPage";
 import { MaterialListPage } from "./routes/MaterialListPage";
+import { FibrePage, MatrixPage } from "./routes/ConstituentPage";
 import { FormatSettingsPage } from "./routes/FormatSettingsPage";
 import "./App.css";
 
@@ -23,6 +25,8 @@ function AppRoutes() {
       <Route path="/materials" element={<MaterialListPage />} />
       <Route path="/materials/:materialId" element={<MaterialPage />} />
       <Route path="/materials/:materialId/modules/:moduleId" element={<MaterialModulePage />} />
+      <Route path="/fibres/:fibreId" element={<FibrePage />} />
+      <Route path="/matrices/:matrixId" element={<MatrixPage />} />
       <Route path="/settings/format" element={<FormatSettingsPage />} />
     </Routes>
   );
@@ -36,6 +40,7 @@ function Shell() {
   const isMobile = useIsMobile();
   useApplyTheme();
   useApplyLocale();
+  useResolvedMicromechanics();
 
   if (isMobile) {
     return (

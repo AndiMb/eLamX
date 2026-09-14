@@ -13,6 +13,7 @@ import type {
 } from "../lib/types";
 import type { ProjectSnapshot } from "../lib/projectFile";
 import { bucklingInputFamily, bucklingStorageKey } from "./bucklingAtoms";
+import { fibresAtom, matricesAtom } from "./micromechanicsAtoms";
 import { lastPlyFailureInputFamily, lastPlyFailureStorageKey } from "./lastPlyFailureAtoms";
 import { pressureVesselInputFamily, pressureVesselStorageKey } from "./pressureVesselAtoms";
 import { deformationInputFamily, deformationStorageKey } from "./deformationAtoms";
@@ -89,6 +90,8 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
   }
   return {
     materials: get(materialsAtom),
+    fibres: get(fibresAtom),
+    matrices: get(matricesAtom),
     laminates,
     bucklings,
     lastPlyFailures,
@@ -119,6 +122,8 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
   }
 
   set(materialsAtom, project.materials);
+  set(fibresAtom, project.fibres);
+  set(matricesAtom, project.matrices);
   set(projectVersionAtom, project.version);
   set(projectSectionsAtom, project.unsupportedSections);
 

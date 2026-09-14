@@ -44,6 +44,10 @@ import type { PressureVesselResult as GenPressureVesselResult } from "./generate
 import type { RadiusType as GenRadiusType } from "./generated/RadiusType";
 import type { ReserveFactor as GenReserveFactor } from "./generated/ReserveFactor";
 import type { Strains as GenStrains } from "./generated/Strains";
+import type { Fibre as GenFibre } from "./generated/Fibre";
+import type { MatrixMaterial as GenMatrixMaterial } from "./generated/MatrixMaterial";
+import type { MicroMechanics as GenMicroMechanics } from "./generated/MicroMechanics";
+import type { Model as GenMicroModel } from "./generated/Model";
 import type { Stiffener as GenStiffener } from "./generated/Stiffener";
 import type { StiffenerDirection as GenStiffenerDirection } from "./generated/StiffenerDirection";
 import type { StressStrainState as GenStressStrainState } from "./generated/StressStrainState";
@@ -80,6 +84,10 @@ export type PressureVesselInputDto = GenPressureVesselInput;
 export type PressureVesselResponse = GenPressureVesselResult;
 export type RadiusTypeId = GenRadiusType;
 export type ReserveFactorDto = GenReserveFactor;
+export type FibreDto = GenFibre;
+export type MatrixMaterialDto = GenMatrixMaterial;
+export type MicroMechanicsDto = GenMicroMechanics;
+export type MicroModelId = GenMicroModel;
 export type StiffenerDto = GenStiffener;
 export type StiffenerDirectionId = GenStiffenerDirection;
 export type StrainsDto = GenStrains;
@@ -198,6 +206,40 @@ export const D_MATRIX_KINDS = [
   { id: "special_orthotropic", labelKey: "buckling.dMatrix.specialOrthotropic" },
   { id: "d_tilde", labelKey: "buckling.dMatrix.dTilde" },
 ] as const satisfies readonly { id: DMatrixKindId; labelKey: MessageKey }[];
+
+/**
+ * The micromechanical models, in the order eLamX lists them.
+ *
+ * `manual` is a model only in the sense that it occupies the same dropdown:
+ * it predicts nothing and leaves the typed value alone. The other seven agree
+ * on the density, the stiffness along the fibre and the Poisson's ratio, and
+ * differ only across the fibre and in shear - which is why the choice is made
+ * per property rather than once per material.
+ */
+export const MICRO_MODELS = [
+  { id: "manual", labelKey: "micro.model.manual" },
+  { id: "rule_of_mixture", labelKey: "micro.model.ruleOfMixture" },
+  { id: "abolinsh", labelKey: "micro.model.abolinsh" },
+  { id: "chamis", labelKey: "micro.model.chamis" },
+  { id: "halpin_tsai", labelKey: "micro.model.halpinTsai" },
+  { id: "hopkins_chamis", labelKey: "micro.model.hopkinsChamis" },
+  { id: "puck", labelKey: "micro.model.puck" },
+  { id: "hsb_37102_02", labelKey: "micro.model.hsb" },
+] as const satisfies readonly { id: MicroModelId; labelKey: MessageKey }[];
+
+/** The five properties a micromechanic material predicts, and the field on
+ *  `MicroMechanicsDto` that chooses each one's model. */
+export const MICRO_PROPERTIES = [
+  { property: "rho", model: "rho_model", labelKey: "micro.property.rho" },
+  { property: "e_par", model: "e_par_model", labelKey: "micro.property.ePar" },
+  { property: "e_nor", model: "e_nor_model", labelKey: "micro.property.eNor" },
+  { property: "nue12", model: "nue12_model", labelKey: "micro.property.nue12" },
+  { property: "g", model: "g_model", labelKey: "micro.property.g" },
+] as const satisfies readonly {
+  property: keyof MaterialDto;
+  model: keyof MicroMechanicsDto;
+  labelKey: MessageKey;
+}[];
 
 export const STIFFENER_DIRECTIONS = [
   { id: "x", labelKey: "stiffener.direction.x" },

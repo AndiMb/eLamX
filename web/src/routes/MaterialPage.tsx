@@ -2,12 +2,22 @@ import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { Diamond } from "lucide-react";
 import { materialsAtom } from "../store/materialsAtoms";
-import { MAX_STRAIN_KEYS, TSAI_WU_KEYS, PUCK_KEYS, FMC_KEYS, ZTL_KEYS, type MaterialDto } from "../lib/types";
+import {
+  MAX_STRAIN_KEYS,
+  MICRO_PROPERTIES,
+  TSAI_WU_KEYS,
+  PUCK_KEYS,
+  FMC_KEYS,
+  ZTL_KEYS,
+  type MaterialDto,
+} from "../lib/types";
 import { Quantity } from "../components/Quantity";
+import { QuantityDisplay } from "../components/QuantityDisplay";
 import { SafeNumberInput } from "../components/SafeNumberInput";
 import { BackLink } from "../components/BackLink";
 import { useT } from "../i18n";
 import { ModuleList } from "../components/ModuleList";
+import { MicroMechanicsPanel } from "../components/MicroMechanicsPanel";
 
 export function MaterialPage() {
   const t = useT();
@@ -26,6 +36,31 @@ export function MaterialPage() {
   const updateName = (name: string) => {
     setMaterials((ms) => ms.map((m) => (m.id === material.id ? { ...m, name } : m)));
   };
+
+  // A property a micromechanical model drives is shown, not offered: typing
+  // into it would be overwritten by the next recompute, which is the kind of
+  // field that makes a reader distrust the whole page. `manual` is a model
+  // choice too, and means exactly "leave this one editable".
+  const predicted = (property: keyof MaterialDto) => {
+    const micro = material.micro;
+    if (!micro) return false;
+    const entry = MICRO_PROPERTIES.find((p) => p.property === property);
+    return entry !== undefined && micro[entry.model] !== "manual";
+  };
+
+  const basic = (
+    property: "e_par" | "e_nor" | "nue12" | "g" | "rho",
+    category: "stiffness" | "poissonRatio" | "density",
+  ) =>
+    predicted(property) ? (
+      <QuantityDisplay category={category} value={material[property]} />
+    ) : (
+      <Quantity
+        category={category}
+        value={material[property]}
+        onChange={(v) => update(property, v)}
+      />
+    );
 
   const updateAdditionalValue = (key: string, value: number) => {
     setMaterials((ms) =>
@@ -54,23 +89,30 @@ export function MaterialPage() {
             <span className="field-label">
               E<sub>&#8741;</sub>
             </span>
-            <Quantity category="stiffness" value={material.e_par} onChange={(v) => update("e_par", v)} />
+            {basic("e_par", "stiffness")}
           </label>
           <label>
             <span className="field-label">
               E<sub>&perp;</sub>
             </span>
-            <Quantity category="stiffness" value={material.e_nor} onChange={(v) => update("e_nor", v)} />
+            {basic("e_nor", "stiffness")}
           </label>
           <label>
             <span className="field-label">
               &nu;<sub>12</sub>
             </span>
-            <Quantity category="poissonRatio" value={material.nue12} onChange={(v) => update("nue12", v)} />
+            {basic("nue12", "poissonRatio")}
           </label>
           <label>
             <span className="field-label">G</span>
-            <Quantity category="stiffness" value={material.g} onChange={(v) => update("g", v)} />
+            {basic("g", "stiffness")}
+          </label>
+          {/* The density had no field until micromechanics arrived, which
+              predicts it: the laminate's mass moments were computed from a
+              number nobody could see, let alone correct. */}
+          <label>
+            <span className="field-label">&rho;</span>
+            {basic("rho", "density")}
           </label>
         </div>
 
@@ -78,6 +120,8 @@ export function MaterialPage() {
             identically zero no matter what dT/dH the user enters - alpha and
             beta are the only things that turn a state change into a load. */}
       </section>
+
+      <MicroMechanicsPanel material={material} />
 
       <section className="panel">
         <h2>{t("material.hygrothermal")}</h2>

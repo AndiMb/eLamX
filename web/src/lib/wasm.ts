@@ -33,11 +33,40 @@ let fallback: Promise<typeof import("../wasm-pkg/elamx_wasm.js")> | null = null;
 function loadInThread() {
   if (!fallback) {
     fallback = import("../wasm-pkg/elamx_wasm.js").then(async (mod) => {
-      await mod.default();
+      // wasm-bindgen's `--target web` init fetches the .wasm beside the JS.
+      // Under Node that fetch fails ("not implemented... yet..."), so the test
+      // suite could not call the core at all and every wasm-backed atom went
+      // unchecked. Reading the file and handing over the bytes is the same
+      // init, and it is what lets a store test compare against the real
+      // calculation instead of a stand-in for it.
+      await mod.default(isNode() ? { module_or_path: await readWasm() } : undefined);
       return mod;
     });
   }
   return fallback;
+}
+
+// Reached through `globalThis` and behind variable specifiers, so that the
+// app's tsconfig - which has no Node types on purpose, this being browser
+// code - does not have to grow them for three lines that never run in a
+// browser, and so that the bundler leaves the imports alone.
+function isNode(): boolean {
+  return (
+    (globalThis as { process?: { versions?: { node?: string } } }).process?.versions?.node !==
+    undefined
+  );
+}
+
+async function readWasm(): Promise<Uint8Array> {
+  const fsModule = "node:fs/promises";
+  const urlModule = "node:url";
+  const { readFile } = (await import(/* @vite-ignore */ fsModule)) as {
+    readFile: (path: string) => Promise<Uint8Array>;
+  };
+  const { fileURLToPath } = (await import(/* @vite-ignore */ urlModule)) as {
+    fileURLToPath: (url: URL) => string;
+  };
+  return readFile(fileURLToPath(new URL("../wasm-pkg/elamx_wasm_bg.wasm", import.meta.url)));
 }
 
 function startWorker(): Worker | null {
@@ -95,6 +124,7 @@ export const elamx = {
   compute_failure_envelope: (request: string) => call("compute_failure_envelope", [request]),
   compute_last_ply_failure: (request: string) => call("compute_last_ply_failure", [request]),
   compute_pressure_vessel: (request: string) => call("compute_pressure_vessel", [request]),
+  resolve_micromechanics: (request: string) => call("resolve_micromechanics", [request]),
   import_elamx: (xml: string) => call("import_elamx", [xml]),
   export_elamx: (project: string) => call("export_elamx", [project]),
 };

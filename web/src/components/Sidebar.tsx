@@ -1,7 +1,18 @@
 import { useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { NavLink, useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronRight, Copy, Diamond, Layers, Plus, Ruler, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Diamond,
+  Droplet,
+  Layers,
+  Plus,
+  Ruler,
+  Spline,
+  Trash2,
+} from "lucide-react";
 import {
   addLaminateAtom,
   duplicateLaminateAtom,
@@ -11,8 +22,13 @@ import {
   usedMaterialIdsAtom,
 } from "../store/laminateAtoms";
 import { materialsAtom } from "../store/materialsAtoms";
+import {
+  dependentMaterialsAtom,
+  fibresAtom,
+  matricesAtom,
+} from "../store/micromechanicsAtoms";
 import { expandedLaminateIdsAtom } from "../store/uiAtoms";
-import { defaultMaterial } from "../lib/constants";
+import { defaultFibre, defaultMaterial, defaultMatrix } from "../lib/constants";
 import { modulePath, modulesOfScope } from "../lib/moduleRegistry";
 import { useT } from "../i18n";
 
@@ -154,10 +170,112 @@ function LaminateTreeItem({ id }: { id: string }) {
   );
 }
 
+/**
+ * The fibres and the matrices, as two lists of the same shape.
+ *
+ * They sit under the materials because that is what they are for: a fibre is
+ * not a ply material and appears in no laminate - it exists to be combined
+ * with a matrix into one. Kept out of the materials list for the same reason,
+ * and out of the laminates entirely.
+ *
+ * A constituent a material is built on cannot be deleted; the button says
+ * which materials are in the way rather than just refusing.
+ */
+function ConstituentSection<T extends { id: string; name: string }>({
+  title,
+  addLabel,
+  route,
+  icon: Icon,
+  items,
+  setItems,
+  create,
+}: {
+  title: string;
+  addLabel: string;
+  route: string;
+  icon: typeof Diamond;
+  items: T[];
+  setItems: (update: (items: T[]) => T[]) => void;
+  create: (nr: number) => T;
+}) {
+  const t = useT();
+  const navigate = useNavigate();
+  const dependentsOf = useAtomValue(dependentMaterialsAtom);
+
+  const add = () => {
+    const created = create(items.length + 1);
+    setItems((list) => [...list, created]);
+    navigate(`${route}/${created.id}`);
+  };
+
+  return (
+    <section className="tree-section">
+      <div className="tree-section-header">
+        <h3>{title}</h3>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={add}
+          aria-label={addLabel}
+          title={addLabel}
+        >
+          <Plus size={16} />
+        </button>
+      </div>
+      <ul className="tree-list">
+        {items.map((item) => {
+          const dependents = dependentsOf(item.id);
+          return (
+            <li key={item.id}>
+              <div className="tree-node-row">
+                <NavLink
+                  to={`${route}/${item.id}`}
+                  className={({ isActive }) => `tree-node${isActive ? " active" : ""}`}
+                >
+                  <Icon size={16} strokeWidth={1.75} />
+                  <RenameableLabel
+                    name={item.name}
+                    onRename={(name) =>
+                      setItems((list) =>
+                        list.map((entry) => (entry.id === item.id ? { ...entry, name } : entry)),
+                      )
+                    }
+                  />
+                </NavLink>
+                <span className="tree-node-actions">
+                  <button
+                    type="button"
+                    className="icon-button danger"
+                    onClick={() => setItems((list) => list.filter((entry) => entry.id !== item.id))}
+                    disabled={dependents.length > 0}
+                    aria-label={t("constituent.delete")}
+                    title={
+                      dependents.length > 0
+                        ? t("constituent.usedBy", {
+                            count: dependents.length,
+                            names: dependents.map((m) => m.name).join(", "),
+                          })
+                        : t("constituent.delete")
+                    }
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 export function Sidebar() {
   const t = useT();
   const laminateIds = useAtomValue(laminateIdsAtom);
   const [materials, setMaterials] = useAtom(materialsAtom);
+  const [fibres, setFibres] = useAtom(fibresAtom);
+  const [matrices, setMatrices] = useAtom(matricesAtom);
   // Which materials show their modules. Session state like the laminates'
   // (see expandedLaminateIdsAtom), not part of the document.
   const [expandedMaterialIds, setExpandedMaterialIds] = useState<Set<string>>(new Set());
@@ -321,6 +439,26 @@ export function Sidebar() {
           })}
         </ul>
       </section>
+
+      <ConstituentSection
+        title={t("nav.fibres")}
+        addLabel={t("fibre.add")}
+        route="/fibres"
+        icon={Spline}
+        items={fibres}
+        setItems={setFibres}
+        create={(nr) => defaultFibre(crypto.randomUUID(), t("default.fibreName", { nr }))}
+      />
+
+      <ConstituentSection
+        title={t("nav.matrices")}
+        addLabel={t("matrix.add")}
+        route="/matrices"
+        icon={Droplet}
+        items={matrices}
+        setItems={setMatrices}
+        create={(nr) => defaultMatrix(crypto.randomUUID(), t("default.matrixName", { nr }))}
+      />
 
       {/* The comparison surface belongs to the project, not to one laminate -
           it is the one place that looks at several at once. */}

@@ -18,6 +18,19 @@ describe("the unit catalog", () => {
     }
   });
 
+  /// eLamX works in mm-N-t, so a density of 1.6e-9 is 1.6 g/cm^3 and not
+  /// 1.6 mg/cm^3. The table said kg/mm^3 for a while and nothing caught it,
+  /// because nothing displayed a density until the micromechanics module
+  /// predicted one. Anchoring the two derived units to a real composite is
+  /// what stops that from happening twice.
+  it("reads a composite's density in the unit system eLamX uses", () => {
+    const units = CATEGORY_DEFINITIONS.density.units ?? [];
+    const gPerCm3 = units.find((u) => u.id === "g_cm3");
+    const kgPerM3 = units.find((u) => u.id === "kg_m3");
+    expect(gPerCm3?.fromCanonical(1.6e-9)).toBeCloseTo(1.6, 9);
+    expect(kgPerM3?.fromCanonical(1.6e-9)).toBeCloseTo(1600, 6);
+  });
+
   it("names a default unit exactly when it has units to choose from", () => {
     for (const category of categories) {
       const def = CATEGORY_DEFINITIONS[category];

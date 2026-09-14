@@ -19,6 +19,7 @@ const ENTRY_POINTS = [
   "compute_failure_envelope",
   "compute_last_ply_failure",
   "compute_pressure_vessel",
+  "resolve_micromechanics",
   "import_elamx",
   "export_elamx",
 ] as const;

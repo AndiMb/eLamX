@@ -1,4 +1,11 @@
-import { DEFAULT_ADDITIONAL_VALUES, type CriterionId, type MaterialDto } from "./types";
+import {
+  DEFAULT_ADDITIONAL_VALUES,
+  type CriterionId,
+  type FibreDto,
+  type MaterialDto,
+  type MatrixMaterialDto,
+  type MicroMechanicsDto,
+} from "./types";
 import type { SymbolSpec } from "./symbols";
 import { t } from "../i18n";
 
@@ -77,6 +84,8 @@ export function defaultMaterial(): MaterialDto {
     r_nor_com: 150,
     r_shear: 70,
     additional_values: { ...DEFAULT_ADDITIONAL_VALUES },
+    // Typed in, not predicted - see store/micromechanicsAtoms.
+    micro: null,
   };
 }
 
@@ -89,4 +98,45 @@ export function defaultLayers(materialId: string): LayerRow[] {
     materialId,
     criterionId: DEFAULT_CRITERION_ID,
   }));
+}
+
+// A carbon fibre and an epoxy, so a newly added constituent is a plausible one
+// rather than a column of zeros. Same call as the default material above: the
+// numbers are a starting point, not a claim about a product.
+export function defaultFibre(id: string, name: string): FibreDto {
+  return {
+    id,
+    name,
+    e_par: 230000,
+    e_nor: 15000,
+    nue12: 0.28,
+    g: 15000,
+    g13: 0,
+    g23: 0,
+    rho: 1.78e-9,
+    alpha_t_par: -5e-7,
+    alpha_t_nor: 1e-5,
+    beta_par: 0,
+    beta_nor: 0,
+  };
+}
+
+export function defaultMatrix(id: string, name: string): MatrixMaterialDto {
+  // No shear modulus: it follows from E and nue, in the core and in eLamX.
+  return { id, name, e: 3400, nue: 0.35, rho: 1.2e-9, alpha: 6.5e-5, beta: 0.3 };
+}
+
+/** What switching a material to "derive from fibre and matrix" starts from:
+ *  the rule of mixtures everywhere, which is the Java constructor's choice. */
+export function defaultMicroMechanics(fibreId: string, matrixId: string): MicroMechanicsDto {
+  return {
+    fibre_id: fibreId,
+    matrix_id: matrixId,
+    phi: 0.6,
+    rho_model: "rule_of_mixture",
+    e_par_model: "rule_of_mixture",
+    e_nor_model: "rule_of_mixture",
+    nue12_model: "rule_of_mixture",
+    g_model: "rule_of_mixture",
+  };
 }

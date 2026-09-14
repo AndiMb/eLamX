@@ -98,10 +98,17 @@ const angleUnits: UnitOption[] = [
   scaling("rad", "rad", 180 / Math.PI),
 ];
 
+// t/mm³ canonical, and not kg/mm³ as this table first said. eLamX works in
+// the mm-N-t system - stiffnesses in MPa, lengths in mm, so masses in tonnes -
+// and labels its own density fields `[t/mm³]` throughout. Its materials carry
+// rho ≈ 1.6e-9, which is 1.6 g/cm³ in that system and 1.6 mg/cm³ in the one
+// this table assumed. Nothing displayed a density until the micromechanics
+// module predicted one, which is why the factor of a thousand had nowhere to
+// show up.
 const densityUnits: UnitOption[] = [
-  identity("kg_mm3", "kg/mm³"),
-  scaling("kg_m3", "kg/m³", 1e-9),
-  scaling("g_cm3", "g/cm³", 1e-6),
+  identity("t_mm3", "t/mm³"),
+  scaling("kg_m3", "kg/m³", 1e-12),
+  scaling("g_cm3", "g/cm³", 1e-9),
 ];
 
 const forceUnits: UnitOption[] = [
