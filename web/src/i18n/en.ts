@@ -698,4 +698,28 @@ export const en = {
   "strainShape.undeformed": "This load case moves nothing.",
   "strainShape.hint": "A square of this laminate under the load case above, displaced by the six numbers the CLT solved for — the three mid-plane strains and the three curvatures. The dashed outline is where it started; the colour is how far each point moved. An unsymmetric layup twisting under a pure tensile load is the B matrix doing what the table above says it does.",
 
+
+  // --- Laminate failure body -----------------------------------------------
+  "module.laminateFailure.label": "Laminate failure body",
+  "module.laminateFailure.description": "Which combinations of load flow this stacking sequence can carry",
+  "laminateFailure.intro": "Every point on this surface is a combination of nₓ, nᵧ and nₓᵧ at which the laminate fails. Inside it the stack holds; outside it does not. The colour says which ply gives out in that direction.",
+  "laminateFailure.title": "Load-carrying surface",
+  "laminateFailure.kind": "Failure definition",
+  "laminateFailure.kind.firstPly": "First ply failure",
+  "laminateFailure.kind.final": "Final failure",
+  "laminateFailure.kind.hint.first_ply": "The load at which the first ply fails, in any mode. The conservative surface, and the one a certification case is usually argued against.",
+  "laminateFailure.kind.hint.final": "The load is pushed on past the first failure: a ply that fails between its fibres loses its transverse and shear stiffness, the laminate is reassembled without it, and the sweep continues until a fibre breaks or every ply has failed. Always at or outside the first-ply surface.",
+  "laminateFailure.resolution": "Resolution",
+  "laminateFailure.resolution.coarse": "Coarse (fast)",
+  "laminateFailure.resolution.fine": "Fine (slow)",
+  "laminateFailure.computing": "Sweeping the load directions — this is the most expensive calculation in the app, one failure criterion per ply per direction.",
+  "laminateFailure.error": "Surface not computable: {message}",
+  "laminateFailure.ply": "Ply {nr} ({angle}°)",
+  "laminateFailure.hint": "Drag to rotate, scroll or pinch to zoom. Each axis is scaled to its own extent, so the shape shows where the laminate is weak relative to itself — the numbers are in the table below.",
+  "laminateFailure.axes.title": "Where the surface crosses the axes",
+  "laminateFailure.axes.flow": "Load flow",
+  "laminateFailure.axes.positive": "positive",
+  "laminateFailure.axes.negative": "negative",
+  "laminateFailure.axes.hint": "The load the laminate carries in each direction on its own, with the other two at zero, in N/mm. These are the six numbers the picture is read for; everything between them is a combined load.",
+
 } as const;

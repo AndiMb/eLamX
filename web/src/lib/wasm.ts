@@ -125,6 +125,8 @@ export const elamx = {
   compute_vibration_surface: (request: string) =>
     call("compute_vibration_surface", [request]),
   compute_failure_envelope: (request: string) => call("compute_failure_envelope", [request]),
+  compute_laminate_envelope: (request: string) =>
+    call("compute_laminate_envelope", [request]),
   compute_last_ply_failure: (request: string) => call("compute_last_ply_failure", [request]),
   compute_pressure_vessel: (request: string) => call("compute_pressure_vessel", [request]),
   resolve_micromechanics: (request: string) => call("resolve_micromechanics", [request]),

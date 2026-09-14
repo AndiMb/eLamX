@@ -65,11 +65,21 @@ export interface FailureBodySurface {
   points: ([number, number, number] | null)[][];
   /** Wireframe colour when this body is not the solid one. */
   color?: string;
+  /**
+   * A base colour per grid cell, same layout as `points`, for a surface whose
+   * patches mean different things - the laminate body colours each direction
+   * by the ply that governs there, which is the whole reading: it says WHICH
+   * ply limits the laminate, and not only by how much.
+   *
+   * Only the solid body uses it; a wireframe is one colour by definition.
+   */
+  cellColors?: (string | null)[][];
 }
 
 export const FailureBody3D = memo(function FailureBody3D({
   bodies,
   markers,
+  axisLabels = ["σ∥", "σ⊥", "τ"],
 }: {
   /**
    * The bodies to draw, in order. The FIRST is drawn as a solid shaded
@@ -84,6 +94,8 @@ export const FailureBody3D = memo(function FailureBody3D({
    */
   bodies: FailureBodySurface[];
   markers: StressMarker[];
+  /** What the three axes are. Stress for a ply, load flows for a laminate. */
+  axisLabels?: [string, string, string];
 }) {
   const t = useT();
   const colors = useChartColors();
@@ -191,10 +203,11 @@ export const FailureBody3D = memo(function FailureBody3D({
         const lambert = Math.abs((n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]) / len);
 
         const projected = raw.map(to2d);
+        const cell = solid.cellColors?.[r]?.[c];
         quads.push({
           points: projected.map((p) => ({ x: p.x, y: p.y })),
           depth: projected.reduce((s, p) => s + p.depth, 0) / 4,
-          fill: shade(base, 0.45 + 0.55 * lambert),
+          fill: shade(cell ? parseHex(cell) : base, 0.45 + 0.55 * lambert),
         });
       }
     }
@@ -251,9 +264,9 @@ export const FailureBody3D = memo(function FailureBody3D({
     // it rather than on top of the surface.
     const AXIS_REACH = 1.25;
     const axes: { end: [number, number, number]; label: string }[] = [
-      { end: [spanPar * AXIS_REACH, 0, 0], label: "σ∥" },
-      { end: [0, spanNor * AXIS_REACH, 0], label: "σ⊥" },
-      { end: [0, 0, spanShear * AXIS_REACH], label: "τ" },
+      { end: [spanPar * AXIS_REACH, 0, 0], label: axisLabels[0] },
+      { end: [0, spanNor * AXIS_REACH, 0], label: axisLabels[1] },
+      { end: [0, 0, spanShear * AXIS_REACH], label: axisLabels[2] },
     ];
 
     ctx.save();
@@ -305,7 +318,7 @@ export const FailureBody3D = memo(function FailureBody3D({
       ctx.fillText(marker.label, point.x + 7, point.y + 3);
       ctx.restore();
     }
-  }, [bodies, markers, camera, colors]);
+  }, [bodies, markers, camera, colors, axisLabels]);
 
   useEffect(() => {
     draw();

@@ -24,6 +24,9 @@ import type { DeformationResult as GenDeformationResult } from "./generated/Defo
 import type { EngineeringConstantsDto as GenEngineeringConstantsDto } from "./generated/EngineeringConstantsDto";
 import type { FailureEnvelope as GenFailureEnvelope } from "./generated/FailureEnvelope";
 import type { FailureType as GenFailureType } from "./generated/FailureType";
+import type { LaminateEnvelope as GenLaminateEnvelope } from "./generated/LaminateEnvelope";
+import type { LaminateEnvelopeInput as GenLaminateEnvelopeInput } from "./generated/LaminateEnvelopeInput";
+import type { LaminateFailureKind as GenLaminateFailureKind } from "./generated/LaminateFailureKind";
 import type { Laminate as GenLaminate } from "./generated/Laminate";
 import type { LastPlyFailureEvent as GenLastPlyFailureEvent } from "./generated/LastPlyFailureEvent";
 import type { LastPlyFailureInput as GenLastPlyFailureInput } from "./generated/LastPlyFailureInput";
@@ -68,6 +71,9 @@ export type EngineeringConstantsDto = GenEngineeringConstantsDto;
 export type FailureEnvelopeResponse = GenFailureEnvelope;
 export type FailureType = GenFailureType;
 export type LaminateDto = GenLaminate;
+export type LaminateEnvelopeResponse = GenLaminateEnvelope;
+export type LaminateEnvelopeInputDto = GenLaminateEnvelopeInput;
+export type LaminateFailureKindId = GenLaminateFailureKind;
 export type LastPlyFailureEventDto = GenLastPlyFailureEvent;
 export type LastPlyFailureInputDto = GenLastPlyFailureInput;
 export type LastPlyFailureIterationDto = GenLastPlyFailureIteration;
@@ -244,6 +250,11 @@ export const MICRO_PROPERTIES = [
   model: keyof MicroMechanicsDto;
   labelKey: MessageKey;
 }[];
+
+export const LAMINATE_FAILURE_KINDS = [
+  { id: "first_ply", labelKey: "laminateFailure.kind.firstPly" },
+  { id: "final", labelKey: "laminateFailure.kind.final" },
+] as const satisfies readonly { id: LaminateFailureKindId; labelKey: MessageKey }[];
 
 export const STIFFENER_DIRECTIONS = [
   { id: "x", labelKey: "stiffener.direction.x" },

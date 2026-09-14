@@ -677,4 +677,28 @@ export const de: Messages = {
   "strainShape.undeformed": "Dieser Lastfall bewegt nichts.",
   "strainShape.hint": "Ein Quadrat aus diesem Laminat unter dem Lastfall oben, verschoben um die sechs Größen, die die CLT gelöst hat — die drei Mittelflächendehnungen und die drei Krümmungen. Die gestrichelte Umrandung ist der Ausgangszustand, die Farbe die zurückgelegte Strecke. Wenn sich ein unsymmetrischer Aufbau unter reinem Zug verdrillt, tut die B-Matrix genau das, was die Tabelle darüber sagt.",
 
+
+  // --- Laminat-Versagenskoerper --------------------------------------------
+  "module.laminateFailure.label": "Laminat-Versagenskörper",
+  "module.laminateFailure.description": "Welche Kombinationen von Schnittlasten dieser Lagenaufbau trägt",
+  "laminateFailure.intro": "Jeder Punkt dieser Fläche ist eine Kombination aus nₓ, nᵧ und nₓᵧ, bei der das Laminat versagt. Innerhalb hält der Aufbau, außerhalb nicht. Die Farbe sagt, welche Lage in dieser Richtung nachgibt.",
+  "laminateFailure.title": "Tragfähigkeitsfläche",
+  "laminateFailure.kind": "Versagensdefinition",
+  "laminateFailure.kind.firstPly": "First Ply Failure",
+  "laminateFailure.kind.final": "Final Failure",
+  "laminateFailure.kind.hint.first_ply": "Die Last, bei der die erste Lage versagt, in welchem Modus auch immer. Die konservative Fläche, und die, gegen die ein Nachweis üblicherweise geführt wird.",
+  "laminateFailure.kind.hint.final": "Die Last wird über das erste Versagen hinaus gesteigert: eine Lage mit Zwischenfaserbruch verliert ihre Quer- und Schubsteifigkeit, das Laminat wird ohne sie neu zusammengesetzt, und es geht weiter, bis eine Faser bricht oder alle Lagen versagt haben. Liegt immer auf oder außerhalb der First-Ply-Fläche.",
+  "laminateFailure.resolution": "Auflösung",
+  "laminateFailure.resolution.coarse": "Grob (schnell)",
+  "laminateFailure.resolution.fine": "Fein (langsam)",
+  "laminateFailure.computing": "Die Lastrichtungen werden abgetastet — das ist die aufwendigste Rechnung der App, ein Versagenskriterium je Lage und Richtung.",
+  "laminateFailure.error": "Fläche nicht berechenbar: {message}",
+  "laminateFailure.ply": "Lage {nr} ({angle}°)",
+  "laminateFailure.hint": "Ziehen zum Drehen, Scrollen oder Zwei-Finger-Geste zum Zoomen. Jede Achse ist auf ihre eigene Ausdehnung skaliert; die Form zeigt also, wo das Laminat relativ zu sich selbst schwach ist — die Zahlen stehen in der Tabelle darunter.",
+  "laminateFailure.axes.title": "Schnittpunkte mit den Achsen",
+  "laminateFailure.axes.flow": "Schnittlast",
+  "laminateFailure.axes.positive": "positiv",
+  "laminateFailure.axes.negative": "negativ",
+  "laminateFailure.axes.hint": "Die Last, die das Laminat in jeder Richtung allein trägt, die anderen beiden auf null, in N/mm. Das sind die sechs Zahlen, wegen derer das Bild gelesen wird; alles dazwischen ist eine kombinierte Last.",
+
 };

@@ -9,6 +9,7 @@ import { ModuleContextBar } from "../components/ModuleContextBar";
 import { PressureVesselModuleContent } from "../components/PressureVesselModuleContent";
 import { DeformationModuleContent } from "../components/DeformationModuleContent";
 import { VibrationModuleContent } from "../components/VibrationModuleContent";
+import { LaminateFailureModuleContent } from "../components/LaminateFailureModuleContent";
 import { useT } from "../i18n";
 
 // Dispatches on :moduleId via MODULE_REGISTRY. A new module type gets a new
@@ -105,6 +106,8 @@ function ModuleBody({ laminateId, moduleId }: { laminateId: string; moduleId: Mo
       return <DeformationModuleContent laminateId={laminateId} />;
     case "vibration":
       return <VibrationModuleContent laminateId={laminateId} />;
+    case "laminateFailure":
+      return <LaminateFailureModuleContent laminateId={laminateId} />;
     default:
       return <p className="empty-note">{t("modules.unknown")}</p>;
   }

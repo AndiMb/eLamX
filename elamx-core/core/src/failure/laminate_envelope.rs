@@ -198,6 +198,14 @@ pub fn laminate_envelope(
 }
 
 /// Pushes the load along one direction until the laminate fails.
+///
+/// A note for whoever next finds the numbers suspiciously round: they are.
+/// Once every ply but one has been degraded, the survivor carries the whole
+/// load flow, so its MEAN stress is exactly `n / t` - and with a round
+/// thickness that makes the failure load round too. It is equilibrium, not a
+/// clamp. The surface also stops responding to the fibre modulus for the same
+/// reason: a max-stress fibre failure happens at `eps = R / E`, and the load
+/// is `A eps = (E t)(R / E) = R t`, with E cancelling out.
 #[allow(clippy::too_many_arguments)]
 fn along(
     working: &Laminate,

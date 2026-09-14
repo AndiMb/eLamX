@@ -15,6 +15,7 @@ import {
   Columns3,
   Cylinder,
   Diamond,
+  Globe,
   Layers2,
   Spline,
   Waves,
@@ -29,6 +30,7 @@ export type ModuleType =
   | "lastPlyFailure"
   | "pressureVessel"
   | "failureBody"
+  | "laminateFailure"
   | "compare";
 
 /**
@@ -93,6 +95,13 @@ export const MODULE_REGISTRY: Record<ModuleType, ModuleDefinition> = {
     labelKey: "module.pressureVessel.label",
     icon: Cylinder,
     descriptionKey: "module.pressureVessel.description",
+  },
+  laminateFailure: {
+    id: "laminateFailure",
+    scope: "laminate",
+    labelKey: "module.laminateFailure.label",
+    icon: Globe,
+    descriptionKey: "module.laminateFailure.description",
   },
   failureBody: {
     id: "failureBody",
