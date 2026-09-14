@@ -12,7 +12,8 @@ use elamx_core::clt::{
     MassMoments, PressureVesselInput, PressureVesselResult, Strains,
 };
 use elamx_core::failure::{
-    default_criterion_registry, failure_envelope, FailureEnvelope, DEFAULT_QUALITY,
+    default_criterion_registry, failure_envelope, laminate_envelope, FailureEnvelope,
+    LaminateEnvelope, LaminateEnvelopeInput, DEFAULT_QUALITY,
 };
 use elamx_core::mathtools;
 use elamx_core::micromechanics::{self, Fibre, MatrixMaterial};
@@ -775,6 +776,35 @@ fn resolve_micromechanics_impl(request_json: &str) -> Result<String, String> {
         },
     )?;
     serde_json::to_string(&materials).map_err(|e| e.to_string())
+}
+
+#[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+struct LaminateEnvelopeRequest {
+    laminate: Laminate,
+    materials: HashMap<String, Material>,
+    input: LaminateEnvelopeInput,
+}
+
+/// The failure surface of a whole laminate, in load space.
+///
+/// Expensive by construction - one criterion evaluation per ply, per ply
+/// surface, per direction, and for final failure per degradation step on top
+/// of that. The resolution is in the request precisely so the caller can trade
+/// it off; see `LaminateEnvelopeInput`.
+#[wasm_bindgen]
+pub fn compute_laminate_envelope(request_json: &str) -> Result<String, JsValue> {
+    compute_laminate_envelope_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_laminate_envelope_impl(request_json: &str) -> Result<String, String> {
+    let request: LaminateEnvelopeRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let registry = default_criterion_registry();
+    let envelope: LaminateEnvelope =
+        laminate_envelope(&request.laminate, &request.materials, &registry, &request.input)
+            .map_err(|e| e.to_string())?;
+    serde_json::to_string(&envelope).map_err(|e| e.to_string())
 }
 
 /// Serialises a project back to `.elamx` XML, in the element order and number

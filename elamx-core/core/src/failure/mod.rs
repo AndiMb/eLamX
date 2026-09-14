@@ -18,6 +18,7 @@ mod fibre_failure;
 mod fmc;
 mod hashin;
 mod hoffman;
+mod laminate_envelope;
 mod max_strain;
 mod max_stress;
 mod mayes;
@@ -36,6 +37,10 @@ pub use fibre_failure::FibreFailure;
 pub use fmc::{Fmc, M as FMC_M, MUE_SP as FMC_MUE_SP};
 pub use hashin::Hashin;
 pub use hoffman::Hoffman;
+pub use laminate_envelope::{
+    laminate_envelope, LaminateEnvelope, LaminateEnvelopeError, LaminateEnvelopeInput,
+    LaminateEnvelopePoint, LaminateFailureKind,
+};
 pub use max_strain::{MaxStrain, EPS_X, EPS_Y, GAMMA_XY, GLOBAL_LOCAL};
 pub use max_stress::MaxStress;
 pub use mayes::Mayes;
