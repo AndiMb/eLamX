@@ -83,6 +83,98 @@ const MATERIALS = [
   }, 1.0),
 ];
 
+// --- Micromechanics ---------------------------------------------------------
+// A micromechanic material computes rho, E_par, E_nor, nue12 and G from a
+// fibre, a matrix and a fibre volume fraction, with one model choice per
+// property. The batch output prints E11, E22, v12 and G12 per layer, so this
+// is the one way those models can be compared against the original at all.
+//
+// Two things about the stored values matter for reading the cases below:
+//
+//  - **The values a model drives are written as 1.0 on purpose.** eLamX's
+//    reader loads them and then throws them away: `getEpar()` asks the model
+//    unless the model is the manual-input dummy. Writing an absurd number
+//    there is what makes this suite prove the models are EVALUATED rather than
+//    read - a port that trusted the file would report 1.0 MPa and fail loudly.
+//  - The values a `manual` choice drives are the real ones, because there the
+//    stored number IS the answer.
+//
+// There is no `rho_micromechmodel` tag anywhere: the original writes four
+// model tags and no density one, so the density model does not survive a save.
+const MICRO = {
+  manual:         "de.elamx.micromechanics.models.ManualInputDummyModel",
+  rule_of_mixture:"de.elamx.micromechanics.models.Mischungsregel_m",
+  abolinsh:       "de.elamx.micromechanics.addmicromechanicmodels.Abolinsh",
+  chamis:         "de.elamx.micromechanics.addmicromechanicmodels.Chamis",
+  halpin_tsai:    "de.elamx.micromechanics.addmicromechanicmodels.HalpinTsai",
+  hopkins_chamis: "de.elamx.micromechanics.addmicromechanicmodels.HopkinsChamis",
+  puck:           "de.elamx.micromechanics.addmicromechanicmodels.Puck",
+  hsb_37102_02:   "de.elamx.micromechanics.addmicromechanicmodels.HSB3710202",
+};
+
+/** What a model-driven property is stored as. See the note above. */
+const IGNORED = 1.0;
+
+const FIBRES = [
+  {
+    id: "f-carbon", name: "GM-C-Faser",
+    e_par: 230000.0, e_nor: 15000.0, nue12: 0.28, g: 15000.0, g13: 0.0, g23: 0.0,
+    rho: 1.78e-9, alpha_t_par: -5.0e-7, alpha_t_nor: 1.0e-5, beta_par: 0.0, beta_nor: 0.0,
+  },
+  {
+    // Isotropic-ish, and far stiffer across the filament than the carbon one -
+    // the ratio E_f / E_m is what decides where HSB 37102-02 runs into its own
+    // square root, so the two fibres put that guard on both sides.
+    id: "f-glass", name: "GM-Glas-Faser",
+    e_par: 73000.0, e_nor: 73000.0, nue12: 0.22, g: 30000.0, g13: 0.0, g23: 0.0,
+    rho: 2.55e-9, alpha_t_par: 5.0e-6, alpha_t_nor: 5.0e-6, beta_par: 0.0, beta_nor: 0.0,
+  },
+];
+
+const MATRICES = [
+  { id: "x-epoxy", name: "GM-Epoxid", e: 3400.0, nue: 0.35, rho: 1.2e-9, alpha: 6.5e-5, beta: 0.3 },
+  { id: "x-peek", name: "GM-PEEK", e: 3600.0, nue: 0.40, rho: 1.3e-9, alpha: 4.7e-5, beta: 0.1 },
+];
+
+// One material per model, so a wrong formula shows up as its own failure
+// rather than as one of nine. `mm-gemischt` uses a different model for each
+// property, which is the only case that can catch the four choices being
+// read in the wrong order; `mm-manuell` leaves two of them typed in.
+function micro(id, name, fibre, matrix, phi, models, manual = {}) {
+  return {
+    id, name, fibre, matrix, phi, models,
+    e_par: manual.e_par ?? IGNORED,
+    e_nor: manual.e_nor ?? IGNORED,
+    nue12: manual.nue12 ?? IGNORED,
+    g: manual.g ?? IGNORED,
+    rho: IGNORED,
+    // Typed in whatever the models do - no model in eLamX predicts them.
+    g13: 4000.0, g23: 3000.0,
+    alpha_t_par: 2.0e-6, alpha_t_nor: 3.0e-5, beta_par: 0.01, beta_nor: 0.3,
+    r_par_ten: 1800.0, r_par_com: 1100.0, r_nor_ten: 55.0, r_nor_com: 190.0, r_shear: 85.0,
+  };
+}
+
+const uniform = (model) => ({ e_par: model, e_nor: model, nue12: model, g: model });
+
+const MICRO_MATERIALS = [
+  micro("mm-rom", "GM-MM-Mischungsregel", "f-carbon", "x-epoxy", 0.60, uniform("rule_of_mixture")),
+  micro("mm-abolinsh", "GM-MM-Abolinsh", "f-carbon", "x-epoxy", 0.55, uniform("abolinsh")),
+  micro("mm-chamis", "GM-MM-Chamis", "f-carbon", "x-epoxy", 0.65, uniform("chamis")),
+  micro("mm-halpin", "GM-MM-HalpinTsai", "f-carbon", "x-peek", 0.50, uniform("halpin_tsai")),
+  micro("mm-hopkins", "GM-MM-HopkinsChamis", "f-carbon", "x-epoxy", 0.45, uniform("hopkins_chamis")),
+  micro("mm-puck", "GM-MM-Puck", "f-carbon", "x-epoxy", 0.62, uniform("puck")),
+  micro("mm-hsb", "GM-MM-HSB", "f-glass", "x-peek", 0.58, uniform("hsb_37102_02")),
+  micro("mm-gemischt", "GM-MM-Gemischt", "f-glass", "x-epoxy", 0.66, {
+    e_par: "rule_of_mixture", e_nor: "chamis", nue12: "rule_of_mixture", g: "halpin_tsai",
+  }),
+  // Two properties typed in, two predicted: the stored numbers are the answer
+  // for the first pair and ignored for the second, in one material.
+  micro("mm-manuell", "GM-MM-Manuell", "f-carbon", "x-epoxy", 0.60, {
+    e_par: "rule_of_mixture", e_nor: "manual", nue12: "rule_of_mixture", g: "manual",
+  }, { e_nor: 8200.0, g: 4100.0 }),
+];
+
 // --- Plate buckling ---------------------------------------------------------
 // Boundary conditions are stored in .elamx as the INDEX into eLamX's own
 // array (InputPanel.boundary_cond); elamx-core names them instead. The
@@ -397,6 +489,30 @@ const CASES = [
     ],
   },
   {
+    // One layer per micromechanic material, so that every model's E11, E22,
+    // v12 and G12 is printed once by the original. The stack is otherwise
+    // deliberately dull - all plies at 0 deg and the same criterion - because
+    // what is under test is the material, not the laminate: a CLT calculation
+    // rides along only to give the ABD matrix something to disagree about if a
+    // model were off.
+    name: "GM-Mikromechanik",
+    symmetric: false, withMiddleLayer: false, invertZ: false, offset: 0.0,
+    layers: [
+      layer(0, 0.125, "mm-rom", "max_stress"),
+      layer(0, 0.125, "mm-abolinsh", "max_stress"),
+      layer(0, 0.125, "mm-chamis", "max_stress"),
+      layer(0, 0.125, "mm-halpin", "max_stress"),
+      layer(0, 0.125, "mm-hopkins", "max_stress"),
+      layer(0, 0.125, "mm-puck", "max_stress"),
+      layer(0, 0.125, "mm-hsb", "max_stress"),
+      layer(0, 0.125, "mm-gemischt", "max_stress"),
+      layer(0, 0.125, "mm-manuell", "max_stress"),
+    ],
+    calculations: [
+      { name: "GM-MM-Zug", loads: loads({ n_x: 300, m_y: 10 }) },
+    ],
+  },
+  {
     // Mixed boundary conditions: eps_x and gamma_xy prescribed (their loads are
     // solved for), the remaining four degrees of freedom load-prescribed.
     name: "GM-DehnungVorgegeben",
@@ -520,7 +636,57 @@ function elamxXml() {
     );
     out.push("        </material>");
   });
+  MICRO_MATERIALS.forEach((m) => {
+    out.push(
+      `        <material class="de.elamx.micromechanics.MicroMechanicMaterial" name="${esc(m.name)}" uuid="${m.id}">`,
+    );
+    out.push(`            <fibre>${m.fibre}</fibre>`);
+    out.push(`            <matrix>${m.matrix}</matrix>`);
+    out.push(`            <phi>${num(m.phi)}</phi>`);
+    const tags = [
+      ["Epar", m.e_par], ["Enor", m.e_nor], ["nue12", m.nue12], ["G", m.g],
+      ["G13", m.g13], ["G23", m.g23], ["rho", m.rho],
+      ["alphaTPar", m.alpha_t_par], ["alphaTNor", m.alpha_t_nor],
+      ["betaPar", m.beta_par], ["betaNor", m.beta_nor],
+      ["RParTen", m.r_par_ten], ["RParCom", m.r_par_com],
+      ["RNorTen", m.r_nor_ten], ["RNorCom", m.r_nor_com], ["RShear", m.r_shear],
+    ];
+    tags.forEach(([t, v]) => out.push(`            <${t}>${num(v)}</${t}>`));
+    out.push(`            <Epar_micromechmodel>${MICRO[m.models.e_par]}</Epar_micromechmodel>`);
+    out.push(`            <Enor_micromechmodel>${MICRO[m.models.e_nor]}</Enor_micromechmodel>`);
+    out.push(`            <Nue12_micromechmodel>${MICRO[m.models.nue12]}</Nue12_micromechmodel>`);
+    out.push(`            <G_micromechmodel>${MICRO[m.models.g]}</G_micromechmodel>`);
+    out.push("        </material>");
+  });
   out.push("    </materials>");
+
+  out.push("    <fibres>");
+  FIBRES.forEach((f) => {
+    out.push(
+      `        <fibre class="de.elamx.micromechanics.Fiber" name="${esc(f.name)}" uuid="${f.id}">`,
+    );
+    [
+      ["Epar", f.e_par], ["Enor", f.e_nor], ["nue12", f.nue12], ["G", f.g],
+      ["G13", f.g13], ["G23", f.g23], ["rho", f.rho],
+      ["alphaTPar", f.alpha_t_par], ["alphaTNor", f.alpha_t_nor],
+      ["betaPar", f.beta_par], ["betaNor", f.beta_nor],
+    ].forEach(([t, v]) => out.push(`            <${t}>${num(v)}</${t}>`));
+    out.push("        </fibre>");
+  });
+  out.push("    </fibres>");
+
+  out.push("    <matrices>");
+  MATRICES.forEach((m) => {
+    out.push(
+      `        <matrix class="de.elamx.micromechanics.Matrix" name="${esc(m.name)}" uuid="${m.id}">`,
+    );
+    // No <G>: the Java class derives it from E and nue.
+    [["E", m.e], ["nue", m.nue], ["rho", m.rho], ["alpha", m.alpha], ["beta", m.beta]].forEach(
+      ([t, v]) => out.push(`            <${t}>${num(v)}</${t}>`),
+    );
+    out.push("        </matrix>");
+  });
+  out.push("    </matrices>");
   out.push("</elamx>");
   return out.join("\n") + "\n";
 }
@@ -540,6 +706,30 @@ function inputJson() {
       r_par_ten: m.r_par_ten, r_par_com: m.r_par_com,
       r_nor_ten: m.r_nor_ten, r_nor_com: m.r_nor_com, r_shear: m.r_shear,
       additional_values: additional,
+      micro: null,
+    };
+  });
+  MICRO_MATERIALS.forEach((m) => {
+    materials[m.id] = {
+      id: m.id, name: m.name,
+      e_par: m.e_par, e_nor: m.e_nor, nue12: m.nue12, g: m.g, g13: m.g13, g23: m.g23,
+      rho: m.rho,
+      alpha_t_par: m.alpha_t_par, alpha_t_nor: m.alpha_t_nor,
+      beta_par: m.beta_par, beta_nor: m.beta_nor,
+      r_par_ten: m.r_par_ten, r_par_com: m.r_par_com,
+      r_nor_ten: m.r_nor_ten, r_nor_com: m.r_nor_com, r_shear: m.r_shear,
+      additional_values: {},
+      micro: {
+        fibre_id: m.fibre,
+        matrix_id: m.matrix,
+        phi: m.phi,
+        // Never stored, so always what eLamX falls back to.
+        rho_model: "rule_of_mixture",
+        e_par_model: m.models.e_par,
+        e_nor_model: m.models.e_nor,
+        nue12_model: m.models.nue12,
+        g_model: m.models.g,
+      },
     };
   });
 
@@ -590,7 +780,10 @@ function inputJson() {
     })),
   }));
 
-  return JSON.stringify({ materials, laminates }, null, 2) + "\n";
+  return (
+    JSON.stringify({ materials, fibres: FIBRES, matrices: MATRICES, laminates }, null, 2) +
+    "\n"
+  );
 }
 
 // elamx-core tags the profile with `profile` and flattens its parameters into

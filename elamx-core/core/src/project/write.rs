@@ -12,6 +12,7 @@ use super::{
 };
 use crate::clt::RadiusType;
 use crate::plate::{Stiffener, StiffenerGeometry, TransverseLoad};
+use crate::micromechanics::{Fibre, MatrixMaterial};
 use crate::model::{Laminate, Material};
 
 /// Serialises a project to `.elamx` XML.
@@ -31,6 +32,28 @@ pub fn write_elamx(project: &Project) -> String {
         write_material(material, &mut out);
     }
     out.push_str("    </materials>\n");
+
+    // After `<materials>`, which is the order eLamX 3.x writes them in, and
+    // only when there is something to write: an empty `<fibres/>` in a project
+    // that never had one would be a diff against the desktop for nothing.
+    if !project.fibres.is_empty() {
+        out.push_str("    <fibres>
+");
+        for fibre in &project.fibres {
+            write_fibre(fibre, &mut out);
+        }
+        out.push_str("    </fibres>
+");
+    }
+    if !project.matrices.is_empty() {
+        out.push_str("    <matrices>
+");
+        for matrix in &project.matrices {
+            write_matrix(matrix, &mut out);
+        }
+        out.push_str("    </matrices>
+");
+    }
 
     // Sections the reader kept verbatim, in the order the file had them -
     // after `<materials>`, which is where eLamX 3.x writes them.
@@ -246,12 +269,70 @@ fn write_pressure_vessel(analysis: &NamedPressureVessel, out: &mut String) {
     out.push_str("            </pressurevessel>\n");
 }
 
-fn write_material(material: &Material, out: &mut String) {
+fn write_fibre(fibre: &Fibre, out: &mut String) {
     out.push_str(&format!(
-        "        <material class=\"de.elamx.laminate.DefaultMaterial\" name=\"{}\" uuid=\"{}\">\n",
+        "        <fibre class=\"de.elamx.micromechanics.Fiber\" name=\"{}\" uuid=\"{}\">\n",
+        escape(&fibre.name),
+        escape(&fibre.id)
+    ));
+    for (name, value) in [
+        ("Epar", fibre.e_par),
+        ("Enor", fibre.e_nor),
+        ("nue12", fibre.nue12),
+        ("G", fibre.g),
+        ("G13", fibre.g13),
+        ("G23", fibre.g23),
+        ("rho", fibre.rho),
+        ("alphaTPar", fibre.alpha_t_par),
+        ("alphaTNor", fibre.alpha_t_nor),
+        ("betaPar", fibre.beta_par),
+        ("betaNor", fibre.beta_nor),
+    ] {
+        tag(out, 12, name, &num(value));
+    }
+    out.push_str("        </fibre>\n");
+}
+
+fn write_matrix(matrix: &MatrixMaterial, out: &mut String) {
+    out.push_str(&format!(
+        "        <matrix class=\"de.elamx.micromechanics.Matrix\" name=\"{}\" uuid=\"{}\">\n",
+        escape(&matrix.name),
+        escape(&matrix.id)
+    ));
+    // No <G>: it follows from E and nue, and eLamX has never written one.
+    for (name, value) in [
+        ("E", matrix.e),
+        ("nue", matrix.nue),
+        ("rho", matrix.rho),
+        ("alpha", matrix.alpha),
+        ("beta", matrix.beta),
+    ] {
+        tag(out, 12, name, &num(value));
+    }
+    out.push_str("        </matrix>\n");
+}
+
+fn write_material(material: &Material, out: &mut String) {
+    let class = match material.micro {
+        Some(_) => "de.elamx.micromechanics.MicroMechanicMaterial",
+        None => "de.elamx.laminate.DefaultMaterial",
+    };
+    out.push_str(&format!(
+        "        <material class=\"{class}\" name=\"{}\" uuid=\"{}\">\n",
         escape(&material.name),
         escape(&material.id)
     ));
+
+    // First, in the original's order: which fibre, which matrix, how much of
+    // each. The properties below are then the numbers those produced - eLamX
+    // writes the COMPUTED values, not whatever was typed in before a model
+    // was chosen, and that is what lets a program without the micromechanics
+    // module still open the file and get the same laminate.
+    if let Some(micro) = &material.micro {
+        tag(out, 12, "fibre", &escape(&micro.fibre_id));
+        tag(out, 12, "matrix", &escape(&micro.matrix_id));
+        tag(out, 12, "phi", &num(micro.phi));
+    }
     for (name, value) in [
         ("Epar", material.e_par),
         ("Enor", material.e_nor),
@@ -271,6 +352,21 @@ fn write_material(material: &Material, out: &mut String) {
         ("RShear", material.r_shear),
     ] {
         tag(out, 12, name, &num(value));
+    }
+
+    // The model choice, after the values it produced. No `rho_micromechmodel`:
+    // the original writes none, so one written here would be a tag eLamX
+    // ignores and this crate would then read back as something the desktop
+    // never stored.
+    if let Some(micro) = &material.micro {
+        for (name, model) in [
+            ("Epar_micromechmodel", micro.e_par_model),
+            ("Enor_micromechmodel", micro.e_nor_model),
+            ("Nue12_micromechmodel", micro.nue12_model),
+            ("G_micromechmodel", micro.g_model),
+        ] {
+            tag(out, 12, name, naming::micro_model_to_java(model));
+        }
     }
 
     // Sorted, because `additional_values` is a HashMap and an arbitrary order

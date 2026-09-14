@@ -6,9 +6,9 @@ Technische Universitaet Dresden
 Professur fuer Luftfahrzeugtechnik
 https://tu-dresden.de/mw/ilr/lft
 
-Timestamp: Mon Sep 14 22:01:38 CEST 2026
+Timestamp: Mon Sep 14 22:39:01 CEST 2026
 
-Processed file (MD5): C:\Temp2\Claude\eLamX2\elamx-core\core\tests\golden\reference.elamx (2a1fce8cda6f2120521d1a9991837154)
+Processed file (MD5): C:\Temp2\Claude\eLamX2\elamx-core\core\tests\golden\reference.elamx (2b5b419f95d87272010e0d7a35df68dc)
 
 
 ********************************************************************************
@@ -316,6 +316,477 @@ Local layer results :
                     lower  1.13246E+01  3.54733E+01 -2.16460E+00 -7.73792E-06  3.76989E-03 -4.81022E-04  1.70634E+00
     5  -3.00000E-01 upper  2.40204E+02  2.53846E+01  1.69993E+01  1.64056E-03  2.12159E-03  3.77763E-03  2.15831E+00
                     lower  2.03687E+02  1.75852E+01  2.53322E+01  1.40094E-03  1.37718E-03  5.62938E-03  2.46090E+00
+
+
+********************************************************************************
+******************************LAMINATE INFORMATION******************************
+********************************GM-Mikromechanik********************************
+********************************************************************************
+Selected Lay-up :
+Lay-up is not symmetric
+Total number of layers = 9
+Total thickness        = 1.125
+Layer   name                          thickness           angle
+                                      (nominal)           (deg)
+         ---top---
+   1 :  Lage 1                        0.12500               0.0
+   2 :  Lage 2                        0.12500               0.0
+   3 :  Lage 3                        0.12500               0.0
+   4 :  Lage 4                        0.12500               0.0
+   5 :  Lage 5                        0.12500               0.0
+   6 :  Lage 6                        0.12500               0.0
+   7 :  Lage 7                        0.12500               0.0
+   8 :  Lage 8                        0.12500               0.0
+   9 :  Lage 9                        0.12500               0.0
+         ---bottom---
+
+_______________________________________________________________________________
+
+Material data :
+Layer 1 : 
+  E11      = 139360.0        E22      = 6343.3    
+  v12      = 0.30800         v21      = 0.01402   
+  G12      = 2796.1          rho      = 0.00000   
+  a11      = 2.0000E-06      a22      = 3.0000E-05
+  b11      = 1.0000E-02      b22      = 3.0000E-01
+  S11T     = 1800.0          S22T     = 55.0      
+  S11C     = 1100.0          S22C     = 190.0     
+  S12      = 85.0            Crit.    = maximum Stress                
+  alpha (Autodesk Helius Hashin) = 1.00000   
+  G1c(LS-DYNA Daimler-Camanho) = 0.28000   
+  lambda_min (Puck)          = 0.50000   
+  F12_star (TsaiWu)          = -0.50000  
+  alpha_0 (LaRC03 ANSYS)     = 53.00000  
+  p_spc (Puck)               = 0.30000   
+  beta (Chang-Chang MAT054 LS-DYNA) = 0.00000   
+  F12_star (ZTL)             = -0.50000  
+  G1c(LaRC03 ANSYS)          = 0.28000   
+  R_mt (Rotem)               = 50.00000  
+  F12_star (Tsai-Wu Autodesk Helius) = -0.50000  
+  eps_x (MaxStrain)          = 0.00300   
+  eps_y (MaxStrain)          = 0.00300   
+  F12_star (TsaiWu Abaqus)   = -0.50000  
+  beta (TsaiWu MAT055 LS-DYNA) = 0.00000   
+  R_mc (Rotem)               = 50.00000  
+  gamma_xy (MaxStrain)       = 0.00600   
+  G2c(LS-DYNA Daimler-Camanho) = 0.79000   
+  mue_sp (FMC)               = 0.15000   
+  sigma_biax (Tsai-Wu Autodesk Helius) = 0.00000   
+  G2c(LaRC03 ANSYS)          = 0.79000   
+  Global (MaxStrain)         = 0.30000   
+  p_spt (Puck)               = 0.35000   
+  E_m (Rotem)                = 4500.00000
+  alpha_0 (Daimler-Pinho LS-DYNA) = 53.00000  
+  m (FMC)                    = 3.10000   
+  a0 (Puck)                  = 0.50000   
+  R23(Helius Hashin)         = 150.00000 
+  sigma_biax (TsaiWu Abaqus) = 0.00000   
+Layer 2 : 
+  E11      = 128030.0        E22      = 6255.7    
+  v12      = 0.31150         v21      = 0.01522   
+  G12      = 3446.5          rho      = 0.00000   
+  a11      = 2.0000E-06      a22      = 3.0000E-05
+  b11      = 1.0000E-02      b22      = 3.0000E-01
+  S11T     = 1800.0          S22T     = 55.0      
+  S11C     = 1100.0          S22C     = 190.0     
+  S12      = 85.0            Crit.    = maximum Stress                
+  alpha (Autodesk Helius Hashin) = 1.00000   
+  G1c(LS-DYNA Daimler-Camanho) = 0.28000   
+  lambda_min (Puck)          = 0.50000   
+  F12_star (TsaiWu)          = -0.50000  
+  alpha_0 (LaRC03 ANSYS)     = 53.00000  
+  p_spc (Puck)               = 0.30000   
+  beta (Chang-Chang MAT054 LS-DYNA) = 0.00000   
+  F12_star (ZTL)             = -0.50000  
+  G1c(LaRC03 ANSYS)          = 0.28000   
+  R_mt (Rotem)               = 50.00000  
+  F12_star (Tsai-Wu Autodesk Helius) = -0.50000  
+  eps_x (MaxStrain)          = 0.00300   
+  eps_y (MaxStrain)          = 0.00300   
+  F12_star (TsaiWu Abaqus)   = -0.50000  
+  beta (TsaiWu MAT055 LS-DYNA) = 0.00000   
+  R_mc (Rotem)               = 50.00000  
+  gamma_xy (MaxStrain)       = 0.00600   
+  G2c(LS-DYNA Daimler-Camanho) = 0.79000   
+  mue_sp (FMC)               = 0.15000   
+  sigma_biax (Tsai-Wu Autodesk Helius) = 0.00000   
+  G2c(LaRC03 ANSYS)          = 0.79000   
+  Global (MaxStrain)         = 0.30000   
+  p_spt (Puck)               = 0.35000   
+  E_m (Rotem)                = 4500.00000
+  alpha_0 (Daimler-Pinho LS-DYNA) = 53.00000  
+  m (FMC)                    = 3.10000   
+  a0 (Puck)                  = 0.50000   
+  R23(Helius Hashin)         = 150.00000 
+  sigma_biax (TsaiWu Abaqus) = 0.00000   
+Layer 3 : 
+  E11      = 150690.0        E22      = 9030.1    
+  v12      = 0.30450         v21      = 0.01825   
+  G12      = 4816.3          rho      = 0.00000   
+  a11      = 2.0000E-06      a22      = 3.0000E-05
+  b11      = 1.0000E-02      b22      = 3.0000E-01
+  S11T     = 1800.0          S22T     = 55.0      
+  S11C     = 1100.0          S22C     = 190.0     
+  S12      = 85.0            Crit.    = maximum Stress                
+  alpha (Autodesk Helius Hashin) = 1.00000   
+  G1c(LS-DYNA Daimler-Camanho) = 0.28000   
+  lambda_min (Puck)          = 0.50000   
+  F12_star (TsaiWu)          = -0.50000  
+  alpha_0 (LaRC03 ANSYS)     = 53.00000  
+  p_spc (Puck)               = 0.30000   
+  beta (Chang-Chang MAT054 LS-DYNA) = 0.00000   
+  F12_star (ZTL)             = -0.50000  
+  G1c(LaRC03 ANSYS)          = 0.28000   
+  R_mt (Rotem)               = 50.00000  
+  F12_star (Tsai-Wu Autodesk Helius) = -0.50000  
+  eps_x (MaxStrain)          = 0.00300   
+  eps_y (MaxStrain)          = 0.00300   
+  F12_star (TsaiWu Abaqus)   = -0.50000  
+  beta (TsaiWu MAT055 LS-DYNA) = 0.00000   
+  R_mc (Rotem)               = 50.00000  
+  gamma_xy (MaxStrain)       = 0.00600   
+  G2c(LS-DYNA Daimler-Camanho) = 0.79000   
+  mue_sp (FMC)               = 0.15000   
+  sigma_biax (Tsai-Wu Autodesk Helius) = 0.00000   
+  G2c(LaRC03 ANSYS)          = 0.79000   
+  Global (MaxStrain)         = 0.30000   
+  p_spt (Puck)               = 0.35000   
+  E_m (Rotem)                = 4500.00000
+  alpha_0 (Daimler-Pinho LS-DYNA) = 53.00000  
+  m (FMC)                    = 3.10000   
+  a0 (Puck)                  = 0.50000   
+  R23(Helius Hashin)         = 150.00000 
+  sigma_biax (TsaiWu Abaqus) = 0.00000   
+Layer 4 : 
+  E11      = 116800.0        E22      = 7330.9    
+  v12      = 0.34000         v21      = 0.02134   
+  G12      = 3155.8          rho      = 0.00000   
+  a11      = 2.0000E-06      a22      = 3.0000E-05
+  b11      = 1.0000E-02      b22      = 3.0000E-01
+  S11T     = 1800.0          S22T     = 55.0      
+  S11C     = 1100.0          S22C     = 190.0     
+  S12      = 85.0            Crit.    = maximum Stress                
+  alpha (Autodesk Helius Hashin) = 1.00000   
+  G1c(LS-DYNA Daimler-Camanho) = 0.28000   
+  lambda_min (Puck)          = 0.50000   
+  F12_star (TsaiWu)          = -0.50000  
+  alpha_0 (LaRC03 ANSYS)     = 53.00000  
+  p_spc (Puck)               = 0.30000   
+  beta (Chang-Chang MAT054 LS-DYNA) = 0.00000   
+  F12_star (ZTL)             = -0.50000  
+  G1c(LaRC03 ANSYS)          = 0.28000   
+  R_mt (Rotem)               = 50.00000  
+  F12_star (Tsai-Wu Autodesk Helius) = -0.50000  
+  eps_x (MaxStrain)          = 0.00300   
+  eps_y (MaxStrain)          = 0.00300   
+  F12_star (TsaiWu Abaqus)   = -0.50000  
+  beta (TsaiWu MAT055 LS-DYNA) = 0.00000   
+  R_mc (Rotem)               = 50.00000  
+  gamma_xy (MaxStrain)       = 0.00600   
+  G2c(LS-DYNA Daimler-Camanho) = 0.79000   
+  mue_sp (FMC)               = 0.15000   
+  sigma_biax (Tsai-Wu Autodesk Helius) = 0.00000   
+  G2c(LaRC03 ANSYS)          = 0.79000   
+  Global (MaxStrain)         = 0.30000   
+  p_spt (Puck)               = 0.35000   
+  E_m (Rotem)                = 4500.00000
+  alpha_0 (Daimler-Pinho LS-DYNA) = 53.00000  
+  m (FMC)                    = 3.10000   
+  a0 (Puck)                  = 0.50000   
+  R23(Helius Hashin)         = 150.00000 
+  sigma_biax (TsaiWu Abaqus) = 0.00000   
+Layer 5 : 
+  E11      = 105370.0        E22      = 5858.7    
+  v12      = 0.31850         v21      = 0.01771   
+  G12      = 2605.8          rho      = 0.00000   
+  a11      = 2.0000E-06      a22      = 3.0000E-05
+  b11      = 1.0000E-02      b22      = 3.0000E-01
+  S11T     = 1800.0          S22T     = 55.0      
+  S11C     = 1100.0          S22C     = 190.0     
+  S12      = 85.0            Crit.    = maximum Stress                
+  alpha (Autodesk Helius Hashin) = 1.00000   
+  G1c(LS-DYNA Daimler-Camanho) = 0.28000   
+  lambda_min (Puck)          = 0.50000   
+  F12_star (TsaiWu)          = -0.50000  
+  alpha_0 (LaRC03 ANSYS)     = 53.00000  
+  p_spc (Puck)               = 0.30000   
+  beta (Chang-Chang MAT054 LS-DYNA) = 0.00000   
+  F12_star (ZTL)             = -0.50000  
+  G1c(LaRC03 ANSYS)          = 0.28000   
+  R_mt (Rotem)               = 50.00000  
+  F12_star (Tsai-Wu Autodesk Helius) = -0.50000  
+  eps_x (MaxStrain)          = 0.00300   
+  eps_y (MaxStrain)          = 0.00300   
+  F12_star (TsaiWu Abaqus)   = -0.50000  
+  beta (TsaiWu MAT055 LS-DYNA) = 0.00000   
+  R_mc (Rotem)               = 50.00000  
+  gamma_xy (MaxStrain)       = 0.00600   
+  G2c(LS-DYNA Daimler-Camanho) = 0.79000   
+  mue_sp (FMC)               = 0.15000   
+  sigma_biax (Tsai-Wu Autodesk Helius) = 0.00000   
+  G2c(LaRC03 ANSYS)          = 0.79000   
+  Global (MaxStrain)         = 0.30000   
+  p_spt (Puck)               = 0.35000   
+  E_m (Rotem)                = 4500.00000
+  alpha_0 (Daimler-Pinho LS-DYNA) = 53.00000  
+  m (FMC)                    = 3.10000   
+  a0 (Puck)                  = 0.50000   
+  R23(Helius Hashin)         = 150.00000 
+  sigma_biax (TsaiWu Abaqus) = 0.00000   
+Layer 6 : 
+  E11      = 143892.0        E22      = 11211.8   
+  v12      = 0.30660         v21      = 0.02389   
+  G12      = 5558.3          rho      = 0.00000   
+  a11      = 2.0000E-06      a22      = 3.0000E-05
+  b11      = 1.0000E-02      b22      = 3.0000E-01
+  S11T     = 1800.0          S22T     = 55.0      
+  S11C     = 1100.0          S22C     = 190.0     
+  S12      = 85.0            Crit.    = maximum Stress                
+  alpha (Autodesk Helius Hashin) = 1.00000   
+  G1c(LS-DYNA Daimler-Camanho) = 0.28000   
+  lambda_min (Puck)          = 0.50000   
+  F12_star (TsaiWu)          = -0.50000  
+  alpha_0 (LaRC03 ANSYS)     = 53.00000  
+  p_spc (Puck)               = 0.30000   
+  beta (Chang-Chang MAT054 LS-DYNA) = 0.00000   
+  F12_star (ZTL)             = -0.50000  
+  G1c(LaRC03 ANSYS)          = 0.28000   
+  R_mt (Rotem)               = 50.00000  
+  F12_star (Tsai-Wu Autodesk Helius) = -0.50000  
+  eps_x (MaxStrain)          = 0.00300   
+  eps_y (MaxStrain)          = 0.00300   
+  F12_star (TsaiWu Abaqus)   = -0.50000  
+  beta (TsaiWu MAT055 LS-DYNA) = 0.00000   
+  R_mc (Rotem)               = 50.00000  
+  gamma_xy (MaxStrain)       = 0.00600   
+  G2c(LS-DYNA Daimler-Camanho) = 0.79000   
+  mue_sp (FMC)               = 0.15000   
+  sigma_biax (Tsai-Wu Autodesk Helius) = 0.00000   
+  G2c(LaRC03 ANSYS)          = 0.79000   
+  Global (MaxStrain)         = 0.30000   
+  p_spt (Puck)               = 0.35000   
+  E_m (Rotem)                = 4500.00000
+  alpha_0 (Daimler-Pinho LS-DYNA) = 53.00000  
+  m (FMC)                    = 3.10000   
+  a0 (Puck)                  = 0.50000   
+  R23(Helius Hashin)         = 150.00000 
+  sigma_biax (TsaiWu Abaqus) = 0.00000   
+Layer 7 : 
+  E11      = 43852.0         E22      = 11151.1   
+  v12      = 0.29560         v21      = 0.07517   
+  G12      = 4062.0          rho      = 0.00000   
+  a11      = 2.0000E-06      a22      = 3.0000E-05
+  b11      = 1.0000E-02      b22      = 3.0000E-01
+  S11T     = 1800.0          S22T     = 55.0      
+  S11C     = 1100.0          S22C     = 190.0     
+  S12      = 85.0            Crit.    = maximum Stress                
+  alpha (Autodesk Helius Hashin) = 1.00000   
+  G1c(LS-DYNA Daimler-Camanho) = 0.28000   
+  lambda_min (Puck)          = 0.50000   
+  F12_star (TsaiWu)          = -0.50000  
+  alpha_0 (LaRC03 ANSYS)     = 53.00000  
+  p_spc (Puck)               = 0.30000   
+  beta (Chang-Chang MAT054 LS-DYNA) = 0.00000   
+  F12_star (ZTL)             = -0.50000  
+  G1c(LaRC03 ANSYS)          = 0.28000   
+  R_mt (Rotem)               = 50.00000  
+  F12_star (Tsai-Wu Autodesk Helius) = -0.50000  
+  eps_x (MaxStrain)          = 0.00300   
+  eps_y (MaxStrain)          = 0.00300   
+  F12_star (TsaiWu Abaqus)   = -0.50000  
+  beta (TsaiWu MAT055 LS-DYNA) = 0.00000   
+  R_mc (Rotem)               = 50.00000  
+  gamma_xy (MaxStrain)       = 0.00600   
+  G2c(LS-DYNA Daimler-Camanho) = 0.79000   
+  mue_sp (FMC)               = 0.15000   
+  sigma_biax (Tsai-Wu Autodesk Helius) = 0.00000   
+  G2c(LaRC03 ANSYS)          = 0.79000   
+  Global (MaxStrain)         = 0.30000   
+  p_spt (Puck)               = 0.35000   
+  E_m (Rotem)                = 4500.00000
+  alpha_0 (Daimler-Pinho LS-DYNA) = 53.00000  
+  m (FMC)                    = 3.10000   
+  a0 (Puck)                  = 0.50000   
+  R23(Helius Hashin)         = 150.00000 
+  sigma_biax (TsaiWu Abaqus) = 0.00000   
+Layer 8 : 
+  E11      = 49336.0         E22      = 15082.0   
+  v12      = 0.26420         v21      = 0.08077   
+  G12      = 5146.3          rho      = 0.00000   
+  a11      = 2.0000E-06      a22      = 3.0000E-05
+  b11      = 1.0000E-02      b22      = 3.0000E-01
+  S11T     = 1800.0          S22T     = 55.0      
+  S11C     = 1100.0          S22C     = 190.0     
+  S12      = 85.0            Crit.    = maximum Stress                
+  alpha (Autodesk Helius Hashin) = 1.00000   
+  G1c(LS-DYNA Daimler-Camanho) = 0.28000   
+  lambda_min (Puck)          = 0.50000   
+  F12_star (TsaiWu)          = -0.50000  
+  alpha_0 (LaRC03 ANSYS)     = 53.00000  
+  p_spc (Puck)               = 0.30000   
+  beta (Chang-Chang MAT054 LS-DYNA) = 0.00000   
+  F12_star (ZTL)             = -0.50000  
+  G1c(LaRC03 ANSYS)          = 0.28000   
+  R_mt (Rotem)               = 50.00000  
+  F12_star (Tsai-Wu Autodesk Helius) = -0.50000  
+  eps_x (MaxStrain)          = 0.00300   
+  eps_y (MaxStrain)          = 0.00300   
+  F12_star (TsaiWu Abaqus)   = -0.50000  
+  beta (TsaiWu MAT055 LS-DYNA) = 0.00000   
+  R_mc (Rotem)               = 50.00000  
+  gamma_xy (MaxStrain)       = 0.00600   
+  G2c(LS-DYNA Daimler-Camanho) = 0.79000   
+  mue_sp (FMC)               = 0.15000   
+  sigma_biax (Tsai-Wu Autodesk Helius) = 0.00000   
+  G2c(LaRC03 ANSYS)          = 0.79000   
+  Global (MaxStrain)         = 0.30000   
+  p_spt (Puck)               = 0.35000   
+  E_m (Rotem)                = 4500.00000
+  alpha_0 (Daimler-Pinho LS-DYNA) = 53.00000  
+  m (FMC)                    = 3.10000   
+  a0 (Puck)                  = 0.50000   
+  R23(Helius Hashin)         = 150.00000 
+  sigma_biax (TsaiWu Abaqus) = 0.00000   
+Layer 9 : 
+  E11      = 139360.0        E22      = 8200.0    
+  v12      = 0.30800         v21      = 0.01812   
+  G12      = 4100.0          rho      = 0.00000   
+  a11      = 2.0000E-06      a22      = 3.0000E-05
+  b11      = 1.0000E-02      b22      = 3.0000E-01
+  S11T     = 1800.0          S22T     = 55.0      
+  S11C     = 1100.0          S22C     = 190.0     
+  S12      = 85.0            Crit.    = maximum Stress                
+  alpha (Autodesk Helius Hashin) = 1.00000   
+  G1c(LS-DYNA Daimler-Camanho) = 0.28000   
+  lambda_min (Puck)          = 0.50000   
+  F12_star (TsaiWu)          = -0.50000  
+  alpha_0 (LaRC03 ANSYS)     = 53.00000  
+  p_spc (Puck)               = 0.30000   
+  beta (Chang-Chang MAT054 LS-DYNA) = 0.00000   
+  F12_star (ZTL)             = -0.50000  
+  G1c(LaRC03 ANSYS)          = 0.28000   
+  R_mt (Rotem)               = 50.00000  
+  F12_star (Tsai-Wu Autodesk Helius) = -0.50000  
+  eps_x (MaxStrain)          = 0.00300   
+  eps_y (MaxStrain)          = 0.00300   
+  F12_star (TsaiWu Abaqus)   = -0.50000  
+  beta (TsaiWu MAT055 LS-DYNA) = 0.00000   
+  R_mc (Rotem)               = 50.00000  
+  gamma_xy (MaxStrain)       = 0.00600   
+  G2c(LS-DYNA Daimler-Camanho) = 0.79000   
+  mue_sp (FMC)               = 0.15000   
+  sigma_biax (Tsai-Wu Autodesk Helius) = 0.00000   
+  G2c(LaRC03 ANSYS)          = 0.79000   
+  Global (MaxStrain)         = 0.30000   
+  p_spt (Puck)               = 0.35000   
+  E_m (Rotem)                = 4500.00000
+  alpha_0 (Daimler-Pinho LS-DYNA) = 53.00000  
+  m (FMC)                    = 3.10000   
+  a0 (Puck)                  = 0.50000   
+  R23(Helius Hashin)         = 150.00000 
+  sigma_biax (TsaiWu Abaqus) = 0.00000   
+
+_______________________________________________________________________________
+
+ABD-Matrix (Stiffness matrix):
+    128014.2        3064.7           0.0        6563.1        -169.0           0.0
+      3064.7       10171.1           0.0        -169.0        -678.7           0.0
+         0.0           0.0        4460.9           0.0           0.0        -175.1
+      6563.1        -169.0           0.0       14114.5         310.3           0.0
+      -169.0        -678.7           0.0         310.3        1047.9           0.0
+         0.0           0.0        -175.1           0.0           0.0         458.7
+
+_______________________________________________________________________________
+
+abd-Matrix (Flexibility matrix):
+   8.0658280845E-06    -2.4369527985E-06     0.0000000000E+00    -3.7983306036E-06     8.4710033702E-07     0.0000000000E+00
+  -2.4369527985E-06     1.0349488839E-04     0.0000000000E+00     9.1348168609E-07     6.6363138981E-05     0.0000000000E+00
+   0.0000000000E+00     0.0000000000E+00     2.2758117155E-04     0.0000000000E+00     0.0000000000E+00     8.6887358238E-05
+  -3.7983306036E-06     9.1348168609E-07     0.0000000000E+00     7.3102324224E-05    -2.1665199683E-05     0.0000000000E+00
+   8.4710033702E-07     6.6363138981E-05     0.0000000000E+00    -2.1665199683E-05     1.0037987458E-03     0.0000000000E+00
+   0.0000000000E+00     0.0000000000E+00     8.6887358238E-05     0.0000000000E+00     0.0000000000E+00     2.2130647492E-03
+
+_______________________________________________________________________________
+
+Effective Stiffness :
+
+          with Poisson effect        without Poisson effect
+         Membrane      Flexural      Membrane      Flexural
+  Exx  = 110204.3      115290.2      113790.4      118957.1  
+  Eyy  = 8588.7        8396.1        9041.0        8831.9    
+  Gxy  = 3905.8        3808.3        3965.2        3866.2    
+  vxy  = 0.30213       0.29637       -             -         
+  vyx  = 0.02355       0.02158       -             -         
+
+Non-dimensional parameters :
+  beta_D   =  3.1923538632E-01
+  nu_D     =  8.0675750731E-02
+  gamma_D  =  0.0000000000E+00
+  delta_D  =  0.0000000000E+00
+
+
+********************************************************************************
+************************CLASSICAL LAMINATED PLATE THEORY************************
+***********************************GM-MM-Zug************************************
+********************************************************************************
+
+Mechanical loads :
+
+  nxx  = 3.0000000000E+02 
+  nyy  = 0.0000000000E+00 
+  nxy  = 0.0000000000E+00 
+  mxx  = 0.0000000000E+00 
+  myy  = 1.0000000000E+01 
+  mxy  = 0.0000000000E+00 
+
+_______________________________________________________________________________
+
+Hygrothermal loads :
+
+nxx,th = 0.0000000000E+00 
+nyy,th = 0.0000000000E+00 
+nxy,th = 0.0000000000E+00 
+mxx,th = 0.0000000000E+00 
+myy,th = 0.0000000000E+00 
+mxy,th = 0.0000000000E+00 
+
+deltaT = 0.0000000000E+00 
+deltac = 0.0000000000E+00  %
+
+_______________________________________________________________________________
+
+Global strains :
+
+  exx  = 2.4282194287E-03 
+  eyy  = -6.7454449747E-05
+  gxy  = 0.0000000000E+00 
+  kxx  = -1.3561511779E-03
+  kyy  = 1.0292117559E-02 
+  kxy  = 0.0000000000E+00 
+
+_______________________________________________________________________________
+
+Local layer results :
+
+  No.      zmi                 s11          s22          s12          e11          e22          e12          RF
+    1   5.00000E-01 upper  2.44322E+02  3.97206E+01  0.00000E+00  1.66538E-03  5.72186E-03  0.00000E+00  1.38467E+00
+                    lower  2.65524E+02  3.18571E+01  0.00000E+00  1.83490E-03  4.43535E-03  0.00000E+00  1.72646E+00
+    2   3.75000E-01 upper  2.44726E+02  3.14712E+01  0.00000E+00  1.83490E-03  4.43535E-03  0.00000E+00  1.74763E+00
+                    lower  2.64014E+02  2.37167E+01  0.00000E+00  2.00442E-03  3.14883E-03  0.00000E+00  2.31904E+00
+    3   2.50000E-01 upper  3.12441E+02  3.41354E+01  0.00000E+00  2.00442E-03  3.14883E-03  0.00000E+00  1.61123E+00
+                    lower  3.34571E+02  2.29219E+01  0.00000E+00  2.17394E-03  1.86232E-03  0.00000E+00  2.39945E+00
+    4   1.25000E-01 upper  2.60448E+02  1.92104E+01  0.00000E+00  2.17394E-03  1.86232E-03  0.00000E+00  2.86303E+00
+                    lower  2.77162E+02  1.01358E+01  0.00000E+00  2.34346E-03  5.75803E-04  0.00000E+00  5.42631E+00
+    5   0.00000E+00 upper  2.49412E+02  7.79027E+00  0.00000E+00  2.34346E-03  5.75803E-04  0.00000E+00  7.06009E+00
+                    lower  2.64961E+02  5.28340E-01  0.00000E+00  2.51298E-03 -7.10712E-04  0.00000E+00  6.79346E+00
+    6  -1.25000E-01 upper  3.61805E+02  6.75044E-01  0.00000E+00  2.51298E-03 -7.10712E-04  0.00000E+00  4.97506E+00
+                    lower  3.81922E+02 -1.32685E+01  0.00000E+00  2.68250E-03 -1.99723E-03  0.00000E+00  4.71301E+00
+    7  -2.50000E-01 upper  1.13573E+02 -1.37342E+01  0.00000E+00  2.68250E-03 -1.99723E-03  0.00000E+00  1.38341E+01
+                    lower  1.16839E+02 -2.78348E+01  0.00000E+00  2.85202E-03 -3.28374E-03  0.00000E+00  6.82599E+00
+    8  -3.75000E-01 upper  1.30405E+02 -3.89931E+01  0.00000E+00  2.85202E-03 -3.28374E-03  0.00000E+00  4.87265E+00
+                    lower  1.33713E+02 -5.81292E+01  0.00000E+00  3.02154E-03 -4.57026E-03  0.00000E+00  3.26858E+00
+    9  -5.00000E-01 upper  4.11837E+02 -3.00124E+01  0.00000E+00  3.02154E-03 -4.57026E-03  0.00000E+00  4.37066E+00
+                    lower  4.32327E+02 -4.01905E+01  0.00000E+00  3.19105E-03 -5.85677E-03  0.00000E+00  4.16352E+00
 
 
 ********************************************************************************

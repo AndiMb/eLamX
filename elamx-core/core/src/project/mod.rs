@@ -9,14 +9,16 @@
 //! LaminateLoadSaveImpl,DefaultMaterialLoadSaveImpl}.java plus one
 //! `LoadSaveLaminateHook` per calculation module.
 //!
-//! What is covered: materials, laminates with their layers, CLT calculations,
-//! buckling, deformation, last-ply-failure and pressure-vessel analyses -
+//! What is covered: materials (including the micromechanic ones and the
+//! fibres and matrices they are built from), laminates with their layers, CLT
+//! calculations, buckling, deformation, last-ply-failure and pressure-vessel
+//! analyses -
 //! everything the ported calculation modules need. Everything else is
 //! **preserved verbatim** on read and written back unchanged, so opening and
 //! saving a file in the web version does not silently destroy what the desktop
 //! put there. That holds at both levels the format has: module data under a
 //! laminate (vibration, cutouts, spring-in, stiffeners) and whole sections
-//! under the root (`<fibres>`, `<matrices>`, `<optimizations>`).
+//! under the root (`<optimizations>`).
 
 pub mod naming;
 mod read;
@@ -26,6 +28,7 @@ pub use read::{read_elamx, ReadError};
 pub use write::write_elamx;
 
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, Strains};
+use crate::micromechanics::{Fibre, MatrixMaterial};
 use crate::model::{Laminate, Material};
 use crate::plate::{BucklingInput, DeformationInput};
 use serde::{Deserialize, Serialize};
@@ -38,13 +41,20 @@ pub struct Project {
     /// as read so a file does not silently change format generation.
     pub version: String,
     pub materials: Vec<Material>,
+    /// Fibre materials, from `<fibres>`. Not ply materials: they only exist to
+    /// be combined with a matrix into one.
+    #[serde(default)]
+    pub fibres: Vec<Fibre>,
+    /// Matrix materials, from `<matrices>`.
+    #[serde(default)]
+    pub matrices: Vec<MatrixMaterial>,
     pub laminates: Vec<ProjectLaminate>,
-    /// Top-level sections this crate does not model - `<fibres>`,
-    /// `<matrices>`, `<optimizations>` - as raw XML, in file order.
+    /// Top-level sections this crate does not model - `<optimizations>` - as
+    /// raw XML, in file order.
     ///
-    /// Without this, opening a desktop project and saving it again deleted
-    /// the user's fibre and matrix materials: they belong to the project, not
-    /// to a laminate, so `unsupported_modules` never saw them.
+    /// `<fibres>` and `<matrices>` used to travel this way too, which is how
+    /// they survived a save before micromechanics was ported; they are read
+    /// properly now.
     #[serde(default)]
     pub unsupported_sections: Vec<RawElement>,
 }

@@ -86,6 +86,17 @@ most of this, so the list cannot quietly rot:
   valid) and an unsymmetric one (where it is not, and eLamX computes it anyway).
   Compared per analysis: the D matrix actually used, the critical load flows and
   the *complete* eigenvalue spectrum - up to 144 values per analysis.
+- **Micromechanics**: all seven predicting models plus the manual-input dummy,
+  one ply each, across two fibres and two matrices and fibre volume fractions
+  from 0.45 to 0.66. One material uses a different model for each of its four
+  properties, which is the only case that can catch the model choices being
+  read in the wrong order, and one leaves two of them typed in. What is
+  compared is the ply's E11, E22, v12 and G12 as the batch printed them - and
+  the reference file stores `1.0` for every model-driven property on purpose,
+  because eLamX ignores what is stored and asks the model. A port that trusted
+  the file would report 1.0 MPa. The density has no check: it prints as
+  `%10.5f` and a real one is about 1e-9, so the original writes `0.00000` for
+  every material in the file.
 - **Stiffeners**, on five of those buckling analyses: all three profiles (direct
   input, I and T), both directions, a case with two stiffeners of different
   profiles at once, a torsion-only case (I = 0, so only the G·J term acts), and
@@ -133,6 +144,11 @@ them: `j_a != 1` is only visible where an inter-fibre failure actually happens,
 and the default-parameter quirk only where a material's parameter differs from
 the criterion's default (the MaxStrain global/local flag on `m-gfk`). Adding a
 case that removes either would make the suite quietly weaker.
+
+For the micromechanics, swapping the fibre and the matrix inside `chamis` in
+`src/micromechanics/mod.rs` turns `material_data_matches_elamx` red on three
+comparisons - the Chamis material's E22 and G12 and the mixed material's E22,
+which is exactly the set that model drives.
 
 For the stiffeners the same standard is met by the crudest fault there is:
 dropping the `add_stiffener_stiffness` call from `plate::buckling::calculate`

@@ -13,6 +13,7 @@ use super::{
     Project, ProjectLaminate, RawElement,
 };
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, RadiusType, Strains};
+use crate::micromechanics::{self, Fibre, MatrixMaterial, MicroMechanics, Model};
 use crate::model::{Laminate, Layer, Material};
 use crate::plate::{
     BucklingInput, DeformationInput, NamedLoad, Stiffener, StiffenerDirection, StiffenerGeometry,
@@ -70,7 +71,7 @@ pub fn read_elamx(xml: &str) -> Result<Project> {
 
     let version = root.attribute("version").unwrap_or("1").to_string();
 
-    let materials = match child(root, "materials") {
+    let mut materials = match child(root, "materials") {
         Some(node) => node
             .children()
             .filter(|n| n.has_tag_name("material"))
@@ -78,6 +79,34 @@ pub fn read_elamx(xml: &str) -> Result<Project> {
             .collect::<Result<Vec<_>>>()?,
         None => Vec::new(),
     };
+
+    let fibres = match child(root, "fibres") {
+        Some(node) => node
+            .children()
+            .filter(|n| n.has_tag_name("fibre"))
+            .map(read_fibre)
+            .collect::<Result<Vec<_>>>()?,
+        None => Vec::new(),
+    };
+
+    let matrices = match child(root, "matrices") {
+        Some(node) => node
+            .children()
+            .filter(|n| n.has_tag_name("matrix"))
+            .map(read_matrix)
+            .collect::<Result<Vec<_>>>()?,
+        None => Vec::new(),
+    };
+
+    // Before the laminates, which resolve their layers against these: a
+    // micromechanic material's stored properties are a cache eLamX itself
+    // recomputes on every read of them, so they are recomputed here too.
+    micromechanics::resolve(&mut materials, &fibres, &matrices).map_err(|missing| {
+        ReadError::Unknown {
+            context: format!("Material '{}', {}", missing.material, missing.kind),
+            value: missing.id,
+        }
+    })?;
 
     let laminates = match child(root, "laminates") {
         Some(node) => node
@@ -88,14 +117,15 @@ pub fn read_elamx(xml: &str) -> Result<Project> {
         None => Vec::new(),
     };
 
-    // `<fibres>`, `<matrices>`, `<optimizations>` - sections that belong to
-    // the project rather than to a laminate. This crate models none of them,
-    // so they travel as raw XML: dropping them would delete a real file's
-    // fibre and matrix materials on the next save.
+    // Sections that belong to the project rather than to a laminate and that
+    // this crate does not model - `<optimizations>` today. They travel as raw
+    // XML: dropping them would delete real work on the next save.
     let unsupported_sections = root
         .children()
         .filter(|n| n.is_element())
-        .filter(|n| !n.has_tag_name("materials") && !n.has_tag_name("laminates"))
+        .filter(|n| {
+            !["materials", "laminates", "fibres", "matrices"].contains(&n.tag_name().name())
+        })
         .map(|n| RawElement {
             tag: n.tag_name().name().to_string(),
             xml: serialise(n),
@@ -105,6 +135,8 @@ pub fn read_elamx(xml: &str) -> Result<Project> {
     Ok(Project {
         version,
         materials,
+        fibres,
+        matrices,
         laminates,
         unsupported_sections,
     })
@@ -113,6 +145,88 @@ pub fn read_elamx(xml: &str) -> Result<Project> {
 // ---------------------------------------------------------------------------
 // Materials
 // ---------------------------------------------------------------------------
+
+fn read_fibre(node: Node) -> Result<Fibre> {
+    let name = attr(node, "name").unwrap_or_default().to_string();
+    let ctx = format!("Fasermaterial '{name}'");
+    Ok(Fibre {
+        id: attr(node, "uuid").unwrap_or_default().to_string(),
+        name,
+        e_par: number(node, "Epar", &ctx)?,
+        e_nor: number(node, "Enor", &ctx)?,
+        nue12: number(node, "nue12", &ctx)?,
+        g: number(node, "G", &ctx)?,
+        // The Java reader defaults these two to zero when the tag is missing,
+        // which is how a file written before they existed still opens.
+        g13: optional_number(node, "G13", &ctx)?.unwrap_or(0.0),
+        g23: optional_number(node, "G23", &ctx)?.unwrap_or(0.0),
+        rho: number(node, "rho", &ctx)?,
+        alpha_t_par: number(node, "alphaTPar", &ctx)?,
+        alpha_t_nor: number(node, "alphaTNor", &ctx)?,
+        beta_par: number(node, "betaPar", &ctx)?,
+        beta_nor: number(node, "betaNor", &ctx)?,
+    })
+}
+
+fn read_matrix(node: Node) -> Result<MatrixMaterial> {
+    let name = attr(node, "name").unwrap_or_default().to_string();
+    let ctx = format!("Matrixmaterial '{name}'");
+    // No <G>: the Java class derives it from E and nue and refuses to be told
+    // otherwise, so the file has never carried one.
+    Ok(MatrixMaterial {
+        id: attr(node, "uuid").unwrap_or_default().to_string(),
+        name,
+        e: number(node, "E", &ctx)?,
+        nue: number(node, "nue", &ctx)?,
+        rho: number(node, "rho", &ctx)?,
+        alpha: number(node, "alpha", &ctx)?,
+        beta: number(node, "beta", &ctx)?,
+    })
+}
+
+/// The micromechanic half of a `<material>`, or `None` for a plain one.
+///
+/// Told apart by the `class` attribute, as the original does - the two kinds
+/// live in the same `<materials>` list and share most of their tags.
+fn read_micro_mechanics(node: Node, ctx: &str) -> Result<Option<MicroMechanics>> {
+    if attr(node, "class") != Some("de.elamx.micromechanics.MicroMechanicMaterial") {
+        return Ok(None);
+    }
+
+    let id = |tag: &str| -> Result<String> {
+        text(node, tag)
+            .map(str::to_string)
+            .ok_or_else(|| ReadError::Missing {
+                context: ctx.to_string(),
+                what: tag.to_string(),
+            })
+    };
+
+    let model = |tag: &str| -> Result<Model> {
+        match text(node, tag) {
+            Some(java) => naming::micro_model_from_java(java).ok_or_else(|| ReadError::Unknown {
+                context: format!("{ctx}, <{tag}>"),
+                value: java.to_string(),
+            }),
+            // What eLamX substitutes for a missing or unresolvable model.
+            None => Ok(Model::RuleOfMixture),
+        }
+    };
+
+    Ok(Some(MicroMechanics {
+        fibre_id: id("fibre")?,
+        matrix_id: id("matrix")?,
+        phi: number(node, "phi", ctx)?,
+        // The density's model is not in the format: the writer stores four
+        // model tags and no `rho_micromechmodel`, so a saved material comes
+        // back on the rule of mixtures however it was set.
+        rho_model: Model::RuleOfMixture,
+        e_par_model: model("Epar_micromechmodel")?,
+        e_nor_model: model("Enor_micromechmodel")?,
+        nue12_model: model("Nue12_micromechmodel")?,
+        g_model: model("G_micromechmodel")?,
+    }))
+}
 
 fn read_material(node: Node) -> Result<Material> {
     let id = attr(node, "uuid").unwrap_or_default().to_string();
@@ -140,13 +254,17 @@ fn read_material(node: Node) -> Result<Material> {
     material.r_nor_ten = optional_number(node, "RNorTen", &ctx)?.unwrap_or(0.0);
     material.set_r_nor_com(optional_number(node, "RNorCom", &ctx)?.unwrap_or(0.0));
     material.set_r_shear(optional_number(node, "RShear", &ctx)?.unwrap_or(0.0));
+    material.micro = read_micro_mechanics(node, &ctx)?;
 
     // Everything else is an additional value. Parameters the ported criteria
     // read are translated to this crate's keys; the rest keep their Java name
     // so that writing the file back does not drop them.
-    const FIXED: [&str; 16] = [
+    // The micromechanic tags are listed too: they are read above, and a
+    // `<fibre>` holding a UUID would otherwise be parsed as a number and fail.
+    const FIXED: [&str; 23] = [
         "Epar", "Enor", "nue12", "G", "G13", "G23", "rho", "alphaTPar", "alphaTNor", "betaPar",
-        "betaNor", "RParTen", "RParCom", "RNorTen", "RNorCom", "RShear",
+        "betaNor", "RParTen", "RParCom", "RNorTen", "RNorCom", "RShear", "fibre", "matrix", "phi",
+        "Epar_micromechmodel", "Enor_micromechmodel", "Nue12_micromechmodel", "G_micromechmodel",
     ];
     for extra in node.children().filter(|n| n.is_element()) {
         let tag = extra.tag_name().name();

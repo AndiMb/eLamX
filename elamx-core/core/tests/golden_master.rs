@@ -25,6 +25,7 @@ use elamx_core::clt::{
     LastPlyFailureInput, Loads, Strains,
 };
 use elamx_core::failure::{default_criterion_registry, FailureType};
+use elamx_core::micromechanics::{Fibre, MatrixMaterial};
 use elamx_core::model::{Laminate, Material};
 use elamx_core::plate::{calculate_buckling, BoundaryCondition, BucklingInput, DMatrixKind};
 use serde::Deserialize;
@@ -37,6 +38,10 @@ use std::collections::HashMap;
 #[derive(Deserialize)]
 struct GoldenInput {
     materials: HashMap<String, Material>,
+    #[serde(default)]
+    fibres: Vec<Fibre>,
+    #[serde(default)]
+    matrices: Vec<MatrixMaterial>,
     laminates: Vec<GoldenLaminate>,
 }
 
@@ -101,6 +106,10 @@ struct ExpectedLaminate {
     nuxy: [f64; 2],
     nuyx: [f64; 2],
     non_dimensional: [f64; 4],
+    /// Per stored layer, in stacking order: E11, E22, v12, G12 as the original
+    /// printed them. The only place a micromechanic model's result is visible
+    /// in the batch output at all.
+    material_data: Vec<[f64; 4]>,
 }
 
 #[derive(Debug, Default)]
@@ -312,6 +321,12 @@ fn values_after_eq(line: &str) -> Vec<f64> {
         .collect()
 }
 
+/// Every number on a line, in order. For the material-data block, where the
+/// writer puts two labelled quantities on one line.
+fn numbers_in(line: &str) -> Vec<f64> {
+    line.split_whitespace().filter_map(try_parse_f64).collect()
+}
+
 fn parse_matrix(lines: &[&str], start: usize) -> Vec<f64> {
     let mut values = Vec::with_capacity(36);
     for row in &lines[start..start + 6] {
@@ -389,6 +404,16 @@ fn parse_reference(text: &str) -> Parsed {
                     lam.nuxy = values_after_eq(l).try_into().expect("vxy: 2 Werte erwartet");
                 } else if l.trim_start().starts_with("vyx  =") {
                     lam.nuyx = values_after_eq(l).try_into().expect("vyx: 2 Werte erwartet");
+                } else if l.trim_start().starts_with("E11") {
+                    // Two quantities per line, each with its own '=', so
+                    // `values_after_eq` (which stops at the second one) is the
+                    // wrong tool here: take every number on the line instead.
+                    let values = numbers_in(l);
+                    lam.material_data.push([values[0], values[1], 0.0, 0.0]);
+                } else if l.trim_start().starts_with("v12") {
+                    lam.material_data.last_mut().expect("v12 ohne E11")[2] = numbers_in(l)[0];
+                } else if l.trim_start().starts_with("G12") {
+                    lam.material_data.last_mut().expect("G12 ohne E11")[3] = numbers_in(l)[0];
                 } else if l.trim_start().starts_with("beta_D") {
                     lam.non_dimensional[0] = value_after_eq(l);
                 } else if l.trim_start().starts_with("nu_D") {
@@ -634,11 +659,21 @@ type Loaded = (
 
 fn load() -> Loaded {
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/golden");
-    let input: GoldenInput = serde_json::from_str(
+    let mut input: GoldenInput = serde_json::from_str(
         &std::fs::read_to_string(format!("{dir}/reference.input.json"))
             .expect("reference.input.json fehlt - siehe tests/golden/README.md"),
     )
     .expect("reference.input.json ist kein gültiges JSON");
+    // The JSON stores what the .elamx stores, which for a model-driven
+    // property is a placeholder eLamX ignores. Resolving here is the same step
+    // `project::read_elamx` takes, and it is what makes every test below see
+    // the ply the original computed rather than the one the file wrote down.
+    {
+        let mut resolved: Vec<Material> = input.materials.values().cloned().collect();
+        elamx_core::micromechanics::resolve(&mut resolved, &input.fibres, &input.matrices)
+            .expect("Faser oder Matrix einer mikromechanischen Lage fehlt");
+        input.materials = resolved.into_iter().map(|m| (m.id.clone(), m)).collect();
+    }
     let text = std::fs::read_to_string(format!("{dir}/reference.txt"))
         .expect("reference.txt fehlt - siehe tests/golden/README.md");
     let (laminates, calculations, bucklings, last_ply_failures) = parse_reference(&text);
@@ -670,6 +705,62 @@ fn expected_last_ply_failure<'a>(
     all.iter()
         .find(|l| l.name == name)
         .unwrap_or_else(|| panic!("Last-Ply-Failure-Analyse '{name}' nicht in reference.txt"))
+}
+
+/// The ply properties the original printed, per layer.
+///
+/// For a plain material this only restates the file. For a micromechanic one
+/// it is the whole test: eLamX ignores the values stored beside the models and
+/// asks the models instead - the reference file stores 1.0 there on purpose,
+/// so any number below that is right had to be COMPUTED, by both sides, from
+/// the fibre and the matrix.
+///
+/// The density is not among them. It prints as `%10.5f` and a real one is
+/// about 1e-9 t/mm^3, so the original writes `0.00000` for every material in
+/// the file; there is nothing to compare. Its rule is one line and is covered
+/// by the unit tests in `micromechanics`.
+#[test]
+fn material_data_matches_elamx() {
+    let (input, expected_all, _, _, _) = load();
+    let mut report = Report::default();
+
+    let mut micro_layers = 0;
+    for case in &input.laminates {
+        let name = &case.laminate.name;
+        let expected = expected_laminate(&expected_all, name);
+        let stacking = case.laminate.layers_in_stacking_order();
+        report.eq(
+            format!("{name}/Materialdaten Lagenzahl"),
+            stacking.len(),
+            expected.material_data.len(),
+        );
+
+        for (index, layer) in stacking.iter().enumerate() {
+            let material = input
+                .materials
+                .get(layer.material_id)
+                .unwrap_or_else(|| panic!("{name}: Material '{}' fehlt", layer.material_id));
+            if material.micro.is_some() {
+                micro_layers += 1;
+            }
+
+            let want = expected.material_data[index];
+            let what = format!("{name}/Lage {}/{}", index + 1, material.name);
+            // Absolute floors, no relative part: these print with a fixed
+            // number of decimals, so the tolerance is the printed precision.
+            let one = tolerances::ONE_DECIMAL;
+            let five = tolerances::FIVE_DECIMALS;
+            report.close(format!("{what}/E11"), material.e_par, want[0], one, 0.0);
+            report.close(format!("{what}/E22"), material.e_nor, want[1], one, 0.0);
+            report.close(format!("{what}/v12"), material.nue12, want[2], five, 0.0);
+            report.close(format!("{what}/G12"), material.g, want[3], one, 0.0);
+        }
+    }
+
+    // A silently empty micromechanics section would make this test pass by
+    // checking nothing but the materials that were already covered.
+    assert!(micro_layers >= 9, "nur {micro_layers} mikromechanische Lagen geprüft");
+    report.finish("Materialdaten");
 }
 
 /// The stacking sequence, symmetry expansion, offset handling and every

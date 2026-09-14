@@ -12,6 +12,7 @@
 //! eLamX2/Classical_Laminated_Plate_Theory_UI/.../buckling/LoadSaveLaminateHookImpl.java
 
 use crate::failure;
+use crate::micromechanics::Model;
 use crate::plate::{BoundaryCondition, DMatrixKind};
 
 /// Failure criteria: `(core id, Java class name)`.
@@ -65,6 +66,24 @@ const D_MATRIX: &[(DMatrixKind, &str)] = &[
     (DMatrixKind::Standard, "de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl"),
     (DMatrixKind::SpecialOrthotropic, "de.elamx.clt.plate.dmatrix.SpecialOrthotropicDMatrixServiceImpl"),
     (DMatrixKind::DTilde, "de.elamx.clt.plate.dmatrix.DtildeDMatrixServiceImpl"),
+];
+
+/// Micromechanical models: `(model, Java class name)`.
+///
+/// Two packages, because the rule of mixtures and the manual-input dummy ship
+/// with the program while the other six come from the separately deployed
+/// `AdditionalMicroMechanicModels`. eLamX's reader falls back to the rule of
+/// mixtures for a name it cannot resolve - silently, and for each of the four
+/// stored model choices independently; this crate reports the name instead.
+const MICRO_MODELS: &[(Model, &str)] = &[
+    (Model::Manual, "de.elamx.micromechanics.models.ManualInputDummyModel"),
+    (Model::RuleOfMixture, "de.elamx.micromechanics.models.Mischungsregel_m"),
+    (Model::Abolinsh, "de.elamx.micromechanics.addmicromechanicmodels.Abolinsh"),
+    (Model::Chamis, "de.elamx.micromechanics.addmicromechanicmodels.Chamis"),
+    (Model::HalpinTsai, "de.elamx.micromechanics.addmicromechanicmodels.HalpinTsai"),
+    (Model::HopkinsChamis, "de.elamx.micromechanics.addmicromechanicmodels.HopkinsChamis"),
+    (Model::Puck, "de.elamx.micromechanics.addmicromechanicmodels.Puck"),
+    (Model::Hsb3710202, "de.elamx.micromechanics.addmicromechanicmodels.HSB3710202"),
 ];
 
 /// Stiffener profiles: `(profile code, Java class name)`.
@@ -121,6 +140,18 @@ pub fn d_matrix_to_java(kind: DMatrixKind) -> &'static str {
         .expect("every DMatrixKind has a Java class name")
 }
 
+pub fn micro_model_from_java(java: &str) -> Option<Model> {
+    MICRO_MODELS.iter().find(|(_, j)| *j == java).map(|(m, _)| *m)
+}
+
+pub fn micro_model_to_java(model: Model) -> &'static str {
+    MICRO_MODELS
+        .iter()
+        .find(|(m, _)| *m == model)
+        .map(|(_, j)| *j)
+        .expect("every micromechanical model has a Java class name")
+}
+
 pub fn stiffener_profile_from_java(java: &str) -> Option<&'static str> {
     STIFFENER_PROFILES.iter().find(|(_, j)| *j == java).map(|(c, _)| *c)
 }
@@ -160,6 +191,10 @@ mod tests {
             assert_eq!(d_matrix_to_java(*kind), *java);
             assert_eq!(d_matrix_from_java(java), Some(*kind));
         }
+        for (model, java) in MICRO_MODELS {
+            assert_eq!(micro_model_to_java(*model), *java);
+            assert_eq!(micro_model_from_java(java), Some(*model));
+        }
         for (code, java) in STIFFENER_PROFILES {
             assert_eq!(stiffener_profile_to_java(code), Some(*java));
             assert_eq!(stiffener_profile_from_java(java), Some(*code));
@@ -190,6 +225,9 @@ mod tests {
         for bc in BoundaryCondition::ALL {
             assert!(BOUNDARY.contains(&bc), "{bc:?} fehlt");
         }
+        for model in Model::ALL {
+            assert!(MICRO_MODELS.iter().any(|(m, _)| *m == model), "{model:?} fehlt");
+        }
     }
 
     /// A profile that can be calculated but not written would be lost on the
@@ -217,6 +255,7 @@ mod tests {
         assert_eq!(criterion_from_java("de.example.NotACriterion"), None);
         assert_eq!(d_matrix_from_java("de.example.NotAService"), None);
         assert_eq!(stiffener_profile_from_java("de.example.NotAProfile"), None);
+        assert_eq!(micro_model_from_java("de.example.NotAModel"), None);
         assert_eq!(boundary_from_index(99), None);
     }
 }

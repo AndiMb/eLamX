@@ -1,5 +1,6 @@
 //! Ply material properties. Reference: eLamX2/Laminate/src/de/elamx/laminate/{Material,DefaultMaterial}.java
 
+use crate::micromechanics::MicroMechanics;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -49,6 +50,24 @@ pub struct Material {
 
     /// Extra named values used by specific failure criteria (e.g. Puck's p_par_ten).
     pub additional_values: HashMap<String, f64>,
+
+    /// Set when this material's basic properties are PREDICTED from a fibre
+    /// and a matrix rather than typed in (see `crate::micromechanics`).
+    ///
+    /// The Java model has two classes here, `DefaultMaterial` and
+    /// `MicroMechanicMaterial`, and says in a comment on the second why: a
+    /// NetBeans `Lookup` for the base class would return the subclass too, so
+    /// the two could not be told apart. That constraint does not exist here,
+    /// and a ply material is a ply material - every analysis in this crate
+    /// wants the same numbers out of it either way. So the derivation rides
+    /// along beside the numbers instead of forking the type.
+    ///
+    /// The numbers themselves stay authoritative: the file stores what the
+    /// models computed, exactly as eLamX writes it, and recomputing happens
+    /// when the fibre, the matrix, the volume fraction or a model changes -
+    /// not on every read.
+    #[serde(default)]
+    pub micro: Option<MicroMechanics>,
 }
 
 impl Material {
@@ -83,6 +102,7 @@ impl Material {
             r_nor_com: 0.0,
             r_shear: 0.0,
             additional_values: HashMap::new(),
+            micro: None,
         }
     }
 

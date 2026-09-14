@@ -41,6 +41,16 @@ fn reads_the_reference_file_as_the_generator_wrote_it() {
     for material in &project.materials {
         let e = &expected_materials[&material.id];
         assert_eq!(material.name, e["name"].as_str().unwrap(), "Name von {}", material.id);
+        // A micromechanic material's five basic properties are RECOMPUTED on
+        // read - the file stores what the models produced last time, and the
+        // reference file deliberately stores a placeholder there instead (see
+        // golden/generate.mjs). What the reader has to get right for them is
+        // the definition; that the numbers come out as eLamX's do is
+        // `material_data_matches_elamx`.
+        let derived: &[&str] = match material.micro {
+            Some(_) => &["e_par", "e_nor", "nue12", "g", "rho"],
+            None => &[],
+        };
         for (field, value) in [
             ("e_par", material.e_par),
             ("e_nor", material.e_nor),
@@ -59,7 +69,34 @@ fn reads_the_reference_file_as_the_generator_wrote_it() {
             ("r_nor_com", material.r_nor_com),
             ("r_shear", material.r_shear),
         ] {
+            if derived.contains(&field) {
+                continue;
+            }
             assert_eq!(value, e[field].as_f64().unwrap(), "{}.{field}", material.id);
+        }
+
+        if let Some(micro) = &material.micro {
+            let em = &e["micro"];
+            assert_eq!(micro.fibre_id, em["fibre_id"].as_str().unwrap(), "{}", material.id);
+            assert_eq!(micro.matrix_id, em["matrix_id"].as_str().unwrap(), "{}", material.id);
+            assert_eq!(micro.phi, em["phi"].as_f64().unwrap(), "{}", material.id);
+            for (field, model) in [
+                ("e_par_model", micro.e_par_model),
+                ("e_nor_model", micro.e_nor_model),
+                ("nue12_model", micro.nue12_model),
+                ("g_model", micro.g_model),
+                // Not stored by the format at all, so always the fallback.
+                ("rho_model", micro.rho_model),
+            ] {
+                assert_eq!(
+                    serde_json::to_value(model).unwrap(),
+                    em[field],
+                    "{}.{field}",
+                    material.id
+                );
+            }
+        } else {
+            assert!(e["micro"].is_null(), "{}: unerwartete Mikromechanik", material.id);
         }
 
         let extras = e["additional_values"].as_object().unwrap();
@@ -318,15 +355,9 @@ fn keeps_project_sections_it_cannot_interpret() {
 <elamx version="1">
     <laminates/>
     <materials/>
-    <fibres>
-        <fibre class="de.elamx.micromechanics.Fiber" name="Neues Fasermaterial" uuid="9fec">
-            <Epar>230000.0</Epar>
-            <Enor>15000.0</Enor>
-            <nue12>0.23</nue12>
-        </fibre>
-    </fibres>
-    <matrices/>
-    <optimizations/>
+    <optimizations>
+        <optimization name="Test"/>
+    </optimizations>
 </elamx>"#;
 
     let project = read_elamx(xml).unwrap();
@@ -335,19 +366,79 @@ fn keeps_project_sections_it_cannot_interpret() {
         .iter()
         .map(|s| s.tag.as_str())
         .collect();
-    assert_eq!(tags, ["fibres", "matrices", "optimizations"]);
+    assert_eq!(tags, ["optimizations"]);
 
     let written = write_elamx(&project);
-    assert!(written.contains("name=\"Neues Fasermaterial\""));
-    assert!(written.contains("<Epar>230000.0</Epar>"));
-    assert!(written.contains("<nue12>0.23</nue12>"));
-    assert!(written.contains("<matrices/>"));
-    assert!(written.contains("<optimizations/>"));
+    assert!(written.contains("<optimization name=\"Test\"/>"));
 
     // And once more, so that saving a file that this version wrote does not
     // lose them either.
     let again = read_elamx(&written).unwrap();
-    assert_eq!(again.unsupported_sections.len(), 3);
+    assert_eq!(again.unsupported_sections.len(), 1);
+}
+
+/// Fibres and matrices used to travel as raw XML, which kept them alive but
+/// left them unreadable. They are real objects now, and this is the check that
+/// the promotion did not cost the round trip that the raw form guaranteed.
+#[test]
+fn reads_and_writes_fibres_and_matrices() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<elamx version="1">
+    <laminates/>
+    <materials/>
+    <fibres>
+        <fibre class="de.elamx.micromechanics.Fiber" name="Neues Fasermaterial" uuid="9fec">
+            <Epar>230000.0</Epar>
+            <Enor>15000.0</Enor>
+            <nue12>0.23</nue12>
+            <G>30000.0</G>
+            <G13>0.0</G13>
+            <G23>0.0</G23>
+            <rho>1.8E-9</rho>
+            <alphaTPar>-5.0E-7</alphaTPar>
+            <alphaTNor>1.0E-5</alphaTNor>
+            <betaPar>0.0</betaPar>
+            <betaNor>0.0</betaNor>
+        </fibre>
+    </fibres>
+    <matrices>
+        <matrix class="de.elamx.micromechanics.Matrix" name="Neues Matrixmaterial" uuid="1a2b">
+            <E>3400.0</E>
+            <nue>0.35</nue>
+            <rho>1.2E-9</rho>
+            <alpha>6.5E-5</alpha>
+            <beta>0.3</beta>
+        </matrix>
+    </matrices>
+</elamx>"#;
+
+    let project = read_elamx(xml).unwrap();
+    assert_eq!(project.fibres.len(), 1);
+    assert_eq!(project.matrices.len(), 1);
+    assert_eq!(project.fibres[0].name, "Neues Fasermaterial");
+    assert_eq!(project.fibres[0].e_par, 230000.0);
+    assert_eq!(project.fibres[0].alpha_t_par, -5.0e-7);
+    assert_eq!(project.matrices[0].e, 3400.0);
+    assert_eq!(project.matrices[0].alpha, 6.5e-5);
+    // The shear modulus is derived rather than stored.
+    assert!((project.matrices[0].g() - 3400.0 / 2.7).abs() < 1e-9);
+
+    // They are no longer raw sections, and the round trip still holds.
+    assert!(project.unsupported_sections.is_empty());
+    let written = write_elamx(&project);
+    let matrix_block = written
+        .split_once("<matrices>")
+        .and_then(|(_, rest)| rest.split_once("</matrices>"))
+        .expect("<matrices> im geschriebenen Projekt")
+        .0;
+    assert!(
+        !matrix_block.contains("<G>"),
+        "eLamX schreibt kein <G> in ein Matrixmaterial"
+    );
+    let again = read_elamx(&written).unwrap();
+    assert_eq!(again.fibres, project.fibres);
+    assert_eq!(again.matrices, project.matrices);
+    assert_eq!(written, write_elamx(&again));
 }
 
 /// Likewise for material parameters belonging to criteria this crate has not
