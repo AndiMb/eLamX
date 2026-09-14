@@ -12,6 +12,7 @@ use super::boundary::{Boundary, BoundaryCondition};
 use super::boundary_tables::MAX_TERMS;
 use super::dmatrix::DMatrixKind;
 use super::ritz::{add_plate_stiffness, surface, SurfaceScale};
+use super::stiffener::{add_stiffener_stiffness, Stiffener};
 use crate::clt::CltLaminate;
 use crate::mathtools;
 use serde::{Deserialize, Serialize};
@@ -106,6 +107,12 @@ pub struct DeformationInput {
     pub n: usize,
     pub d_matrix: DMatrixKind,
     pub loads: Vec<NamedLoad>,
+    /// Beam stiffeners glued to the plate - see plate::stiffener. Defaulted on
+    /// deserialisation so a request or a file written before they existed
+    /// still reads as a plate without any.
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub stiffeners: Vec<Stiffener>,
 }
 
 impl Default for DeformationInput {
@@ -121,6 +128,7 @@ impl Default for DeformationInput {
             n: 10,
             d_matrix: DMatrixKind::Standard,
             loads: vec![NamedLoad::surface("q", 0.01)],
+            stiffeners: Vec::new(),
         }
     }
 }
@@ -205,6 +213,7 @@ pub fn calculate(
     let d = input.d_matrix.matrix(laminate);
     let mut k = vec![vec![0.0; size]; size];
     add_plate_stiffness(&mut k, &d, input.m, input.n, &bx, &by);
+    add_stiffener_stiffness(&mut k, &input.stiffeners, input.m, input.n, &bx, &by);
 
     let mut f = vec![0.0; size];
     for load in &input.loads {
@@ -297,6 +306,7 @@ mod tests {
             n: 12,
             d_matrix: DMatrixKind::Standard,
             loads: vec![load],
+            stiffeners: Vec::new(),
         }
     }
 

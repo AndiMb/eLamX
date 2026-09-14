@@ -368,6 +368,104 @@
                 <n>10</n>
                 <dmatrixservice>de.elamx.clt.plate.dmatrix.SpecialOrthotropicDMatrixServiceImpl</dmatrixservice>
             </buckling>
+            <buckling name="GM-Beul-VersteifFrei">
+                <n_x>-1.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <length>500.0</length>
+                <width>500.0</width>
+                <bcx>0</bcx>
+                <bcy>0</bcy>
+                <m>10</m>
+                <n>10</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl</dmatrixservice>
+                <Stiffener name="Frei-x" classname="de.elamx.clt.plateui.stiffenerui.DefaultStiffenerProperties">
+                    <position>80.0</position>
+                    <direction>1</direction>
+                    <E>70000.0</E>
+                    <I>27000.0</I>
+                    <G>27000.0</G>
+                    <J>270.0</J>
+                    <Rho>2.7e-9</Rho>
+                    <A>90.0</A>
+                </Stiffener>
+            </buckling>
+            <buckling name="GM-Beul-VersteifTorsion">
+                <n_x>-1.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <length>500.0</length>
+                <width>500.0</width>
+                <bcx>0</bcx>
+                <bcy>0</bcy>
+                <m>10</m>
+                <n>10</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl</dmatrixservice>
+                <Stiffener name="Torsion-x" classname="de.elamx.clt.plateui.stiffenerui.DefaultStiffenerProperties">
+                    <position>0.0</position>
+                    <direction>1</direction>
+                    <E>70000.0</E>
+                    <I>0.0</I>
+                    <G>27000.0</G>
+                    <J>50000.0</J>
+                    <Rho>2.7e-9</Rho>
+                    <A>90.0</A>
+                </Stiffener>
+            </buckling>
+            <buckling name="GM-Beul-VersteifI">
+                <n_x>-1.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <length>600.0</length>
+                <width>400.0</width>
+                <bcx>0</bcx>
+                <bcy>0</bcy>
+                <m>8</m>
+                <n>8</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl</dmatrixservice>
+                <Stiffener name="Blech-y" classname="de.elamx.clt.plate.AdditionalStiffeners.I_StiffenerProperties">
+                    <position>-75.0</position>
+                    <direction>2</direction>
+                    <w1>35.0</w1>
+                    <t1>2.5</t1>
+                    <E>72000.0</E>
+                    <G>27500.0</G>
+                    <Rho>2.7e-9</Rho>
+                </Stiffener>
+            </buckling>
+            <buckling name="GM-Beul-VersteifTKreuz">
+                <n_x>-1.0</n_x>
+                <n_y>-0.3</n_y>
+                <n_xy>0.0</n_xy>
+                <length>600.0</length>
+                <width>400.0</width>
+                <bcx>0</bcx>
+                <bcy>0</bcy>
+                <m>8</m>
+                <n>8</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl</dmatrixservice>
+                <Stiffener name="T-x" classname="de.elamx.clt.plate.AdditionalStiffeners.T_StiffenerProperties">
+                    <position>0.0</position>
+                    <direction>1</direction>
+                    <w1>24.0</w1>
+                    <t1>2.0</t1>
+                    <w2>30.0</w2>
+                    <t2>3.0</t2>
+                    <E>70000.0</E>
+                    <G>27000.0</G>
+                    <Rho>2.7e-9</Rho>
+                </Stiffener>
+                <Stiffener name="Frei-y" classname="de.elamx.clt.plateui.stiffenerui.DefaultStiffenerProperties">
+                    <position>120.0</position>
+                    <direction>2</direction>
+                    <E>210000.0</E>
+                    <I>12000.0</I>
+                    <G>81000.0</G>
+                    <J>900.0</J>
+                    <Rho>7.85e-9</Rho>
+                    <A>60.0</A>
+                </Stiffener>
+            </buckling>
             <lastplyfailure name="GM-LPF-Sym">
                 <n_x>300.0</n_x>
                 <n_y>0.0</n_y>
@@ -445,6 +543,38 @@
                 <m>6</m>
                 <n>9</n>
                 <dmatrixservice>de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl</dmatrixservice>
+            </buckling>
+            <buckling name="GM-Beul-VersteifCF">
+                <n_x>-1.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <length>800.0</length>
+                <width>400.0</width>
+                <bcx>2</bcx>
+                <bcy>4</bcy>
+                <m>6</m>
+                <n>9</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl</dmatrixservice>
+                <Stiffener name="Rand-x" classname="de.elamx.clt.plate.AdditionalStiffeners.I_StiffenerProperties">
+                    <position>150.0</position>
+                    <direction>1</direction>
+                    <w1>40.0</w1>
+                    <t1>3.0</t1>
+                    <E>70000.0</E>
+                    <G>27000.0</G>
+                    <Rho>2.7e-9</Rho>
+                </Stiffener>
+                <Stiffener name="Rand-y" classname="de.elamx.clt.plate.AdditionalStiffeners.T_StiffenerProperties">
+                    <position>-280.0</position>
+                    <direction>2</direction>
+                    <w1>20.0</w1>
+                    <t1>2.0</t1>
+                    <w2>25.0</w2>
+                    <t2>2.5</t2>
+                    <E>70000.0</E>
+                    <G>27000.0</G>
+                    <Rho>2.7e-9</Rho>
+                </Stiffener>
             </buckling>
             <lastplyfailure name="GM-LPF-Offset">
                 <n_x>250.0</n_x>

@@ -14,7 +14,9 @@ use super::{
 };
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, RadiusType, Strains};
 use crate::model::{Laminate, Layer, Material};
-use crate::plate::{BucklingInput, DeformationInput, NamedLoad};
+use crate::plate::{
+    BucklingInput, DeformationInput, NamedLoad, Stiffener, StiffenerDirection, StiffenerGeometry,
+};
 use roxmltree::{Document, Node};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -335,6 +337,7 @@ fn read_buckling(node: Node, parent: &str) -> Result<NamedBuckling> {
         m: number(node, "m", &ctx)? as usize,
         n: number(node, "n", &ctx)? as usize,
         d_matrix,
+        stiffeners: read_stiffeners(node, &ctx)?,
     };
 
     Ok(NamedBuckling { name, input })
@@ -426,8 +429,83 @@ fn read_deformation(node: Node, parent: &str) -> Result<NamedDeformation> {
             n: number(node, "n", &ctx)? as usize,
             d_matrix,
             loads,
+            stiffeners: read_stiffeners(node, &ctx)?,
         },
     })
+}
+
+/// The `<Stiffener>` children of a buckling or deformation element.
+///
+/// The profile is identified by Java class name, and its geometry parameters
+/// are written under their own property names - `LoadSaveStiffeners` derives
+/// both from the service's `getPropertyDefinitions()` by reflection, so the tag
+/// names ARE the Java field names, capital letters and all.
+fn read_stiffeners(node: Node, parent: &str) -> Result<Vec<Stiffener>> {
+    let mut stiffeners = Vec::new();
+    for element in node.children().filter(|n| n.is_element()) {
+        if element.tag_name().name() != "Stiffener" {
+            continue;
+        }
+        let name = attr(element, "name").unwrap_or_default().to_string();
+        let ctx = format!("{parent}, Versteifung '{name}'");
+
+        let class = attr(element, "classname").ok_or_else(|| ReadError::Missing {
+            context: ctx.clone(),
+            what: "classname".to_string(),
+        })?;
+        let profile =
+            naming::stiffener_profile_from_java(class).ok_or_else(|| ReadError::Unknown {
+                context: format!("{ctx}, Profil"),
+                value: class.to_string(),
+            })?;
+
+        let index = number(element, "direction", &ctx)? as i32;
+        let direction =
+            StiffenerDirection::from_java_index(index).ok_or_else(|| ReadError::Unknown {
+                context: format!("{ctx}, <direction>"),
+                value: index.to_string(),
+            })?;
+
+        let v = |tag: &str| number(element, tag, &ctx);
+        let geometry = match profile {
+            // No <z>: the direct input does not list it among its properties,
+            // so eLamX never writes one - see plate::stiffener on why nothing
+            // misses it.
+            "direct" => StiffenerGeometry::Direct {
+                e: v("E")?,
+                i: v("I")?,
+                g: v("G")?,
+                j: v("J")?,
+                a: v("A")?,
+                rho: v("Rho")?,
+            },
+            "i_profile" => StiffenerGeometry::IProfile {
+                w1: v("w1")?,
+                t1: v("t1")?,
+                e: v("E")?,
+                g: v("G")?,
+                rho: v("Rho")?,
+            },
+            "t_profile" => StiffenerGeometry::TProfile {
+                w1: v("w1")?,
+                t1: v("t1")?,
+                w2: v("w2")?,
+                t2: v("t2")?,
+                e: v("E")?,
+                g: v("G")?,
+                rho: v("Rho")?,
+            },
+            other => unreachable!("unmapped stiffener profile '{other}'"),
+        };
+
+        stiffeners.push(Stiffener {
+            name,
+            direction,
+            position: number(element, "position", &ctx)?,
+            geometry,
+        });
+    }
+    Ok(stiffeners)
 }
 
 fn read_pressure_vessel(node: Node, parent: &str) -> Result<NamedPressureVessel> {

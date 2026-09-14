@@ -86,6 +86,13 @@ most of this, so the list cannot quietly rot:
   valid) and an unsymmetric one (where it is not, and eLamX computes it anyway).
   Compared per analysis: the D matrix actually used, the critical load flows and
   the *complete* eigenvalue spectrum - up to 144 values per analysis.
+- **Stiffeners**, on five of those buckling analyses: all three profiles (direct
+  input, I and T), both directions, a case with two stiffeners of different
+  profiles at once, a torsion-only case (I = 0, so only the G·J term acts), and
+  a case on mixed clamped/free edges, where the shape functions are the
+  hyperbolic ones and are sampled at the stiffener's line rather than
+  integrated. Deformation has no batch output, but it adds the *same*
+  contribution to the *same* stiffness matrix, so these cover it too.
 
 ## Tolerances
 
@@ -126,6 +133,11 @@ them: `j_a != 1` is only visible where an inter-fibre failure actually happens,
 and the default-parameter quirk only where a material's parameter differs from
 the criterion's default (the MaxStrain global/local flag on `m-gfk`). Adding a
 case that removes either would make the suite quietly weaker.
+
+For the stiffeners the same standard is met by the crudest fault there is:
+dropping the `add_stiffener_stiffness` call from `plate::buckling::calculate`
+turns `buckling_matches_elamx` red. That is what says the stiffener cases carry
+weight rather than merely running.
 
 ## Also a fixture for the `.elamx` reader and writer
 

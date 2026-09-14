@@ -8,6 +8,7 @@
 //! reproduce what something else produced.
 
 use elamx_core::clt::RadiusType;
+use elamx_core::plate::Stiffener;
 use elamx_core::project::{read_elamx, write_elamx, Project, ReadError};
 use serde_json::Value;
 
@@ -154,6 +155,12 @@ fn reads_the_reference_file_as_the_generator_wrote_it() {
                 "{}: Biegesteifigkeit",
                 buck.name
             );
+            // Through serde rather than comparing Values: the generator writes
+            // whole numbers as integers, which are not == to the same f64 as
+            // JSON values but deserialise into the same Stiffener.
+            let expected: Vec<Stiffener> =
+                serde_json::from_value(ei["stiffeners"].clone()).expect("Versteifungen");
+            assert_eq!(buck.input.stiffeners, expected, "{}: Versteifungen", buck.name);
         }
 
         let expected_lpf = e["last_ply_failures"].as_array().unwrap();
@@ -237,6 +244,9 @@ fn written_file_uses_the_original_element_names() {
         "<deltat>",
         "<buckling name=",
         "<dmatrixservice>de.elamx.clt.plate.dmatrix.DtildeDMatrixServiceImpl</dmatrixservice>",
+        "<Stiffener name=\"Frei-x\" classname=\"de.elamx.clt.plateui.stiffenerui.DefaultStiffenerProperties\">",
+        "classname=\"de.elamx.clt.plate.AdditionalStiffeners.I_StiffenerProperties\"",
+        "classname=\"de.elamx.clt.plate.AdditionalStiffeners.T_StiffenerProperties\"",
         "<lastplyfailure name=",
         "<degradationFactor>",
         "<degradeAllOnFibreFailure>",

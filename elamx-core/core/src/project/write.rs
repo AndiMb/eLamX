@@ -11,7 +11,7 @@ use super::{
     Project, ProjectLaminate,
 };
 use crate::clt::RadiusType;
-use crate::plate::TransverseLoad;
+use crate::plate::{Stiffener, StiffenerGeometry, TransverseLoad};
 use crate::model::{Laminate, Material};
 
 /// Serialises a project to `.elamx` XML.
@@ -152,6 +152,7 @@ fn write_buckling(buckling: &NamedBuckling, out: &mut String) {
     tag(out, 16, "m", &b.m.to_string());
     tag(out, 16, "n", &b.n.to_string());
     tag(out, 16, "dmatrixservice", naming::d_matrix_to_java(b.d_matrix));
+    write_stiffeners(&b.stiffeners, out);
     out.push_str("            </buckling>\n");
 }
 
@@ -220,6 +221,7 @@ fn write_deformation(analysis: &NamedDeformation, out: &mut String) {
         }
     }
 
+    write_stiffeners(&input.stiffeners, out);
     out.push_str("            </deformation>\n");
 }
 
@@ -286,6 +288,56 @@ fn write_material(material: &Material, out: &mut String) {
 }
 
 // ---------------------------------------------------------------------------
+
+/// The `<Stiffener>` children, after the analysis input and after the loads -
+/// the position `LoadSaveLaminateHookImpl.store` puts them in.
+///
+/// The property tag names are the Java field names, because `LoadSaveStiffeners`
+/// derives them by reflection from `getPropertyDefinitions()`; their ORDER is
+/// that array's order, so a file written here is a small diff against one
+/// written by eLamX rather than a reshuffle.
+fn write_stiffeners(stiffeners: &[Stiffener], out: &mut String) {
+    for stiffener in stiffeners {
+        let class = naming::stiffener_profile_to_java(stiffener.geometry.code())
+            .expect("every stiffener profile has a Java class name");
+        out.push_str(&format!(
+            "                <Stiffener name=\"{}\" classname=\"{}\">
+",
+            escape(&stiffener.name),
+            class
+        ));
+        tag(out, 20, "position", &num(stiffener.position));
+        tag(out, 20, "direction", &stiffener.direction.java_index().to_string());
+        match stiffener.geometry {
+            StiffenerGeometry::Direct { e, i, g, j, a, rho } => {
+                for (name, value) in [("E", e), ("I", i), ("G", g), ("J", j), ("Rho", rho), ("A", a)]
+                {
+                    tag(out, 20, name, &num(value));
+                }
+            }
+            StiffenerGeometry::IProfile { w1, t1, e, g, rho } => {
+                for (name, value) in [("w1", w1), ("t1", t1), ("E", e), ("G", g), ("Rho", rho)] {
+                    tag(out, 20, name, &num(value));
+                }
+            }
+            StiffenerGeometry::TProfile { w1, t1, w2, t2, e, g, rho } => {
+                for (name, value) in [
+                    ("w1", w1),
+                    ("t1", t1),
+                    ("w2", w2),
+                    ("t2", t2),
+                    ("E", e),
+                    ("G", g),
+                    ("Rho", rho),
+                ] {
+                    tag(out, 20, name, &num(value));
+                }
+            }
+        }
+        out.push_str("                </Stiffener>
+");
+    }
+}
 
 fn tag(out: &mut String, indent: usize, name: &str, value: &str) {
     out.push_str(&" ".repeat(indent));

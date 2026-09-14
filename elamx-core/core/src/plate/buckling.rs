@@ -19,11 +19,12 @@ use super::boundary::{Boundary, BoundaryCondition};
 use super::boundary_tables::MAX_TERMS;
 use super::dmatrix::DMatrixKind;
 use super::ritz::{add_plate_stiffness, surface, SurfaceScale};
+use super::stiffener::{add_stiffener_stiffness, Stiffener};
 use crate::clt::CltLaminate;
 use crate::mathtools::{generalized_symmetric_eigen, EigenError};
 
 /// Everything the buckling calculation needs besides the laminate itself.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct BucklingInput {
     /// Plate extent in x, in mm.
@@ -45,6 +46,15 @@ pub struct BucklingInput {
     pub n: usize,
     /// Which bending stiffness matrix the plate is analysed with.
     pub d_matrix: DMatrixKind,
+    /// Beam stiffeners glued to the plate. They only add to the stiffness
+    /// matrix, never to the geometric one - a stiffener in eLamX carries no
+    /// in-plane load of its own.
+    ///
+    /// Defaulted on deserialisation so that a request or a file written before
+    /// stiffeners existed still reads as a plate without any.
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub stiffeners: Vec<Stiffener>,
 }
 
 impl Default for BucklingInput {
@@ -61,6 +71,7 @@ impl Default for BucklingInput {
             m: 10,
             n: 10,
             d_matrix: DMatrixKind::Standard,
+            stiffeners: Vec::new(),
         }
     }
 }
@@ -200,6 +211,7 @@ pub fn calculate(laminate: &CltLaminate, input: &BucklingInput) -> Result<Buckli
     let mut k = vec![vec![0.0f64; size]; size];
     let mut kg = vec![vec![0.0f64; size]; size];
     add_plate_stiffness(&mut k, &d, m, n, &bx, &by);
+    add_stiffener_stiffness(&mut k, &input.stiffeners, m, n, &bx, &by);
     add_geometric_stiffness(&mut kg, input.n_x, input.n_y, input.n_xy, m, n, &bx, &by);
 
     let solution = generalized_symmetric_eigen(&kg, &k, size)?;
@@ -332,6 +344,7 @@ mod tests {
             m: 8,
             n: 8,
             d_matrix: DMatrixKind::Standard,
+            stiffeners: Vec::new(),
         };
         let result = calculate(&plate, &input).unwrap();
         let factor = result.critical_factor.expect("plate should buckle");
@@ -367,6 +380,7 @@ mod tests {
             m: 8,
             n: 8,
             d_matrix: DMatrixKind::Standard,
+            stiffeners: Vec::new(),
         };
         let factor = calculate(&plate, &input).unwrap().critical_factor.unwrap();
         let expected = 4.0 * std::f64::consts::PI.powi(2) * d_iso / (b * b);
@@ -393,7 +407,7 @@ mod tests {
             &BucklingInput {
                 bc_x: BoundaryCondition::ClampedClamped,
                 bc_y: BoundaryCondition::ClampedClamped,
-                ..base
+                ..base.clone()
             },
         )
         .unwrap()
@@ -441,7 +455,7 @@ mod tests {
             ..Default::default()
         };
         let f1 = calculate(&plate, &base).unwrap().critical_factor.unwrap();
-        let f2 = calculate(&plate, &BucklingInput { n_x: -2.0, ..base })
+        let f2 = calculate(&plate, &BucklingInput { n_x: -2.0, ..base.clone() })
             .unwrap()
             .critical_factor
             .unwrap();
@@ -461,11 +475,11 @@ mod tests {
             bc_y: BoundaryCondition::SimplySimply,
             ..Default::default()
         };
-        let coarse = calculate(&plate, &BucklingInput { m: 4, n: 4, ..base })
+        let coarse = calculate(&plate, &BucklingInput { m: 4, n: 4, ..base.clone() })
             .unwrap()
             .critical_factor
             .unwrap();
-        let fine = calculate(&plate, &BucklingInput { m: 10, n: 10, ..base })
+        let fine = calculate(&plate, &BucklingInput { m: 10, n: 10, ..base.clone() })
             .unwrap()
             .critical_factor
             .unwrap();

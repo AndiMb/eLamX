@@ -417,7 +417,8 @@
             "bc_y": "SS",
             "m": 10,
             "n": 10,
-            "d_matrix": "d_tilde"
+            "d_matrix": "d_tilde",
+            "stiffeners": []
           },
           "d_matrix_label": "D-tilde matrix"
         },
@@ -433,7 +434,8 @@
             "bc_y": "SS",
             "m": 10,
             "n": 10,
-            "d_matrix": "standard"
+            "d_matrix": "standard",
+            "stiffeners": []
           },
           "d_matrix_label": "Original D matrix"
         }
@@ -609,7 +611,8 @@
             "bc_y": "SS",
             "m": 10,
             "n": 10,
-            "d_matrix": "standard"
+            "d_matrix": "standard",
+            "stiffeners": []
           },
           "d_matrix_label": "Original D matrix"
         },
@@ -625,7 +628,8 @@
             "bc_y": "CC",
             "m": 8,
             "n": 8,
-            "d_matrix": "standard"
+            "d_matrix": "standard",
+            "stiffeners": []
           },
           "d_matrix_label": "Original D matrix"
         },
@@ -641,7 +645,8 @@
             "bc_y": "SS",
             "m": 12,
             "n": 12,
-            "d_matrix": "standard"
+            "d_matrix": "standard",
+            "stiffeners": []
           },
           "d_matrix_label": "Original D matrix"
         },
@@ -657,9 +662,142 @@
             "bc_y": "SS",
             "m": 10,
             "n": 10,
-            "d_matrix": "special_orthotropic"
+            "d_matrix": "special_orthotropic",
+            "stiffeners": []
           },
           "d_matrix_label": "D matrix with D_{16} = D_{26} = 0"
+        },
+        {
+          "name": "GM-Beul-VersteifFrei",
+          "input": {
+            "length": 500,
+            "width": 500,
+            "n_x": -1,
+            "n_y": 0,
+            "n_xy": 0,
+            "bc_x": "SS",
+            "bc_y": "SS",
+            "m": 10,
+            "n": 10,
+            "d_matrix": "standard",
+            "stiffeners": [
+              {
+                "name": "Frei-x",
+                "direction": "x",
+                "position": 80,
+                "profile": "direct",
+                "e": 70000,
+                "i": 27000,
+                "g": 27000,
+                "j": 270,
+                "rho": 2.7e-9,
+                "a": 90
+              }
+            ]
+          },
+          "d_matrix_label": "Original D matrix"
+        },
+        {
+          "name": "GM-Beul-VersteifTorsion",
+          "input": {
+            "length": 500,
+            "width": 500,
+            "n_x": -1,
+            "n_y": 0,
+            "n_xy": 0,
+            "bc_x": "SS",
+            "bc_y": "SS",
+            "m": 10,
+            "n": 10,
+            "d_matrix": "standard",
+            "stiffeners": [
+              {
+                "name": "Torsion-x",
+                "direction": "x",
+                "position": 0,
+                "profile": "direct",
+                "e": 70000,
+                "i": 0,
+                "g": 27000,
+                "j": 50000,
+                "rho": 2.7e-9,
+                "a": 90
+              }
+            ]
+          },
+          "d_matrix_label": "Original D matrix"
+        },
+        {
+          "name": "GM-Beul-VersteifI",
+          "input": {
+            "length": 600,
+            "width": 400,
+            "n_x": -1,
+            "n_y": 0,
+            "n_xy": 0,
+            "bc_x": "SS",
+            "bc_y": "SS",
+            "m": 8,
+            "n": 8,
+            "d_matrix": "standard",
+            "stiffeners": [
+              {
+                "name": "Blech-y",
+                "direction": "y",
+                "position": -75,
+                "profile": "i_profile",
+                "w1": 35,
+                "t1": 2.5,
+                "e": 72000,
+                "g": 27500,
+                "rho": 2.7e-9
+              }
+            ]
+          },
+          "d_matrix_label": "Original D matrix"
+        },
+        {
+          "name": "GM-Beul-VersteifTKreuz",
+          "input": {
+            "length": 600,
+            "width": 400,
+            "n_x": -1,
+            "n_y": -0.3,
+            "n_xy": 0,
+            "bc_x": "SS",
+            "bc_y": "SS",
+            "m": 8,
+            "n": 8,
+            "d_matrix": "standard",
+            "stiffeners": [
+              {
+                "name": "T-x",
+                "direction": "x",
+                "position": 0,
+                "profile": "t_profile",
+                "w1": 24,
+                "t1": 2,
+                "w2": 30,
+                "t2": 3,
+                "e": 70000,
+                "g": 27000,
+                "rho": 2.7e-9
+              },
+              {
+                "name": "Frei-y",
+                "direction": "y",
+                "position": 120,
+                "profile": "direct",
+                "e": 210000,
+                "i": 12000,
+                "g": 81000,
+                "j": 900,
+                "rho": 7.85e-9,
+                "a": 60
+              }
+            ]
+          },
+          "d_matrix_label": "Original D matrix"
         }
       ],
       "last_ply_failures": [
@@ -805,7 +943,50 @@
             "bc_y": "SC",
             "m": 6,
             "n": 9,
-            "d_matrix": "standard"
+            "d_matrix": "standard",
+            "stiffeners": []
+          },
+          "d_matrix_label": "Original D matrix"
+        },
+        {
+          "name": "GM-Beul-VersteifCF",
+          "input": {
+            "length": 800,
+            "width": 400,
+            "n_x": -1,
+            "n_y": 0,
+            "n_xy": 0,
+            "bc_x": "CF",
+            "bc_y": "SC",
+            "m": 6,
+            "n": 9,
+            "d_matrix": "standard",
+            "stiffeners": [
+              {
+                "name": "Rand-x",
+                "direction": "x",
+                "position": 150,
+                "profile": "i_profile",
+                "w1": 40,
+                "t1": 3,
+                "e": 70000,
+                "g": 27000,
+                "rho": 2.7e-9
+              },
+              {
+                "name": "Rand-y",
+                "direction": "y",
+                "position": -280,
+                "profile": "t_profile",
+                "w1": 20,
+                "t1": 2,
+                "w2": 25,
+                "t2": 2.5,
+                "e": 70000,
+                "g": 27000,
+                "rho": 2.7e-9
+              }
+            ]
           },
           "d_matrix_label": "Original D matrix"
         }
@@ -937,7 +1118,8 @@
             "bc_y": "CC",
             "m": 7,
             "n": 7,
-            "d_matrix": "d_tilde"
+            "d_matrix": "d_tilde",
+            "stiffeners": []
           },
           "d_matrix_label": "D-tilde matrix"
         }
@@ -1104,7 +1286,8 @@
             "bc_y": "SS",
             "m": 10,
             "n": 10,
-            "d_matrix": "d_tilde"
+            "d_matrix": "d_tilde",
+            "stiffeners": []
           },
           "d_matrix_label": "D-tilde matrix"
         }

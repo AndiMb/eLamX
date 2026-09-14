@@ -9,9 +9,9 @@
 //! eigensolver in mathtools::eigen, so it slots in beside these two rather
 //! than replacing anything. Cutouts are their own problem.
 //!
-//! Stiffeners (the Java `Stiffener/` subtree) are also not ported: they are an
-//! additive contribution to the stiffness matrix with their own property model
-//! and UI, independent of everything below.
+//! Stiffeners live in `stiffener`: an additive contribution to the same
+//! stiffness matrix, which is why both analyses carry a list of them and
+//! neither had to change anywhere else.
 
 pub mod boundary;
 mod boundary_tables;
@@ -20,6 +20,7 @@ pub mod deformation;
 pub mod dmatrix;
 pub mod field;
 pub mod ritz;
+pub mod stiffener;
 
 pub use boundary::{Boundary, BoundaryCondition};
 pub use boundary_tables::MAX_TERMS;
@@ -35,4 +36,7 @@ pub use dmatrix::DMatrixKind;
 pub use field::{
     evaluate as evaluate_plate_field, PlateField, PlateFieldError, PlateFieldResult,
     PlateFieldSelection, DEFAULT_SAMPLES, MAX_SAMPLES, MIN_SAMPLES,
+};
+pub use stiffener::{
+    add_stiffener_stiffness, Stiffener, StiffenerDirection, StiffenerGeometry,
 };

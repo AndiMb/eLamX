@@ -102,7 +102,40 @@ const buckling = (name, o) => ({
   name,
   length: 500, width: 500, n_x: -1, n_y: 0, n_xy: 0,
   bc_x: "SS", bc_y: "SS", m: 10, n: 10, d_matrix: "standard",
+  stiffeners: [],
   ...o,
+});
+
+// --- Stiffeners -------------------------------------------------------------
+// Stored as a <Stiffener> child of the analysis, identified by the Java class
+// name of its property service - and resolved through Lookup, so a profile
+// whose module is not installed is dropped SILENTLY on load. The class names
+// therefore have to be right to the letter, and the two profiles only exist at
+// all because AdditionalStiffeners is deployed with the program.
+//
+// The property tag names below are the Java field names, because
+// LoadSaveStiffeners writes them by reflection from getPropertyDefinitions();
+// the order is that array's order. `direct` writes no <z>: the direct input
+// does not list it among its properties, so eLamX never stores one.
+const STIFFENER = {
+  direct: {
+    java: "de.elamx.clt.plateui.stiffenerui.DefaultStiffenerProperties",
+    props: ["E", "I", "G", "J", "Rho", "A"],
+  },
+  i_profile: {
+    java: "de.elamx.clt.plate.AdditionalStiffeners.I_StiffenerProperties",
+    props: ["w1", "t1", "E", "G", "Rho"],
+  },
+  t_profile: {
+    java: "de.elamx.clt.plate.AdditionalStiffeners.T_StiffenerProperties",
+    props: ["w1", "t1", "w2", "t2", "E", "G", "Rho"],
+  },
+};
+
+const DIRECTION_INDEX = { x: 1, y: 2 };
+
+const stiffener = (name, profile, direction, position, values) => ({
+  name, profile, direction, position, ...values,
 });
 
 // --- Last ply failure -------------------------------------------------------
@@ -202,6 +235,57 @@ const CASES = [
       buckling("GM-Beul-CC-Biax", { length: 600, width: 400, n_y: -0.5, bc_x: "CC", bc_y: "CC", m: 8, n: 8 }),
       buckling("GM-Beul-Schub", { length: 500, width: 300, n_x: 0, n_xy: 1, m: 12, n: 12 }),
       buckling("GM-Beul-SpecOrtho", { d_matrix: "special_orthotropic" }),
+      // Stiffeners. One analysis per thing that can go wrong: the profile
+      // formulas, the two directions, the two terms of the contribution, and
+      // the summation over a list.
+      //
+      // The direct input is the reference case - its four numbers go into the
+      // stiffness matrix untouched, so a disagreement here is in the assembly,
+      // not in a section formula. Off-centre and along x, so a swapped
+      // direction or a position measured from the wrong edge shows up.
+      buckling("GM-Beul-VersteifFrei", {
+        stiffeners: [
+          stiffener("Frei-x", "direct", "x", 80.0, {
+            E: 70000.0, I: 27000.0, G: 27000.0, J: 270.0, Rho: 2.7e-9, A: 90.0,
+          }),
+        ],
+      }),
+      // Torsion alone: I = 0 leaves only the G*J term, which rides on the
+      // SLOPE of the shape functions across the stiffener rather than on their
+      // value. Without this the two terms could compensate each other.
+      buckling("GM-Beul-VersteifTorsion", {
+        stiffeners: [
+          stiffener("Torsion-x", "direct", "x", 0.0, {
+            E: 70000.0, I: 0.0, G: 27000.0, J: 5.0e4, Rho: 2.7e-9, A: 90.0,
+          }),
+        ],
+      }),
+      // The blade profile, along y, on a rectangular plate - so a transposed
+      // index in the y branch cannot hide behind a square plate, and the
+      // computed I and J are checked rather than given.
+      buckling("GM-Beul-VersteifI", {
+        length: 600, width: 400, m: 8, n: 8,
+        stiffeners: [
+          stiffener("Blech-y", "i_profile", "y", -75.0, {
+            w1: 35.0, t1: 2.5, E: 72000.0, G: 27500.0, Rho: 2.7e-9,
+          }),
+        ],
+      }),
+      // Two stiffeners at once, of different profiles and directions: the T
+      // profile (whose I and J are the most involved of the three) along x at
+      // the centre, and a direct one along y. Checks that the contributions
+      // add rather than replace.
+      buckling("GM-Beul-VersteifTKreuz", {
+        length: 600, width: 400, n_y: -0.3, m: 8, n: 8,
+        stiffeners: [
+          stiffener("T-x", "t_profile", "x", 0.0, {
+            w1: 24.0, t1: 2.0, w2: 30.0, t2: 3.0, E: 70000.0, G: 27000.0, Rho: 2.7e-9,
+          }),
+          stiffener("Frei-y", "direct", "y", 120.0, {
+            E: 210000.0, I: 1.2e4, G: 81000.0, J: 900.0, Rho: 7.85e-9, A: 60.0,
+          }),
+        ],
+      }),
     ],
   },
   {
@@ -225,6 +309,22 @@ const CASES = [
     ],
     bucklings: [
       buckling("GM-Beul-CF-SC", { length: 800, width: 400, bc_x: "CF", bc_y: "SC", m: 6, n: 9 }),
+      // The same mixed edges, now with a stiffener on them. This is the case
+      // the sampled shape functions can actually get wrong: for a clamped or
+      // free edge they are the hyperbolic ones, where wx and wdx are a
+      // difference of large terms - unlike the sine series of a simply
+      // supported edge, which is exact everywhere.
+      buckling("GM-Beul-VersteifCF", {
+        length: 800, width: 400, bc_x: "CF", bc_y: "SC", m: 6, n: 9,
+        stiffeners: [
+          stiffener("Rand-x", "i_profile", "x", 150.0, {
+            w1: 40.0, t1: 3.0, E: 70000.0, G: 27000.0, Rho: 2.7e-9,
+          }),
+          stiffener("Rand-y", "t_profile", "y", -280.0, {
+            w1: 20.0, t1: 2.0, w2: 25.0, t2: 2.5, E: 70000.0, G: 27000.0, Rho: 2.7e-9,
+          }),
+        ],
+      }),
     ],
   },
   {
@@ -375,6 +475,14 @@ function elamxXml() {
       out.push(`                <m>${b.m}</m>`);
       out.push(`                <n>${b.n}</n>`);
       out.push(`                <dmatrixservice>${D_MATRIX[b.d_matrix].java}</dmatrixservice>`);
+      (b.stiffeners ?? []).forEach((st) => {
+        const def = STIFFENER[st.profile];
+        out.push(`                <Stiffener name="${esc(st.name)}" classname="${def.java}">`);
+        out.push(`                    <position>${num(st.position)}</position>`);
+        out.push(`                    <direction>${DIRECTION_INDEX[st.direction]}</direction>`);
+        for (const k of def.props) out.push(`                    <${k}>${num(st[k])}</${k}>`);
+        out.push("                </Stiffener>");
+      });
       out.push("            </buckling>");
     });
     (c.lastPlyFailures ?? []).forEach((l) => {
@@ -461,9 +569,9 @@ function inputJson() {
       strains: calc.strains ?? strains(),
       use_strain: calc.useStrain ?? NO_STRAIN,
     })),
-    bucklings: (c.bucklings ?? []).map(({ name, d_matrix, ...input }) => ({
+    bucklings: (c.bucklings ?? []).map(({ name, d_matrix, stiffeners, ...input }) => ({
       name,
-      input: { ...input, d_matrix },
+      input: { ...input, d_matrix, stiffeners: (stiffeners ?? []).map(stiffenerJson) },
       // Printed by the batch output as "D-matrix option:", so the Rust test can
       // catch eLamX's silent fallback to the standard D matrix.
       d_matrix_label: D_MATRIX[d_matrix].label,
@@ -485,6 +593,17 @@ function inputJson() {
   return JSON.stringify({ materials, laminates }, null, 2) + "\n";
 }
 
+// elamx-core tags the profile with `profile` and flattens its parameters into
+// the stiffener. The parameter names above are the Java ones, because the XML
+// needs them spelled exactly so; Rust spells the same quantities lower case.
+const stiffenerJson = ({ profile, name, direction, position, ...params }) => ({
+  name,
+  direction,
+  position,
+  profile,
+  ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k.toLowerCase(), v])),
+});
+
 // elamx-core's Loads carries the resulting hygrothermal force vector in the
 // same struct as the applied load, and its Deserialize wants every field.
 const loadsJson = (l) => ({ ...l, nt_x: 0, nt_y: 0, nt_xy: 0, mt_x: 0, mt_y: 0, mt_xy: 0 });
@@ -504,10 +623,15 @@ writeFileSync(join(HERE, "reference.input.json"), inputJson());
 const layerCount = CASES.reduce((n, c) => n + c.layers.length, 0);
 const calcCount = CASES.reduce((n, c) => n + c.calculations.length, 0);
 const buckCount = CASES.reduce((n, c) => n + (c.bucklings ?? []).length, 0);
+const stiffCount = CASES.reduce(
+  (n, c) => n + (c.bucklings ?? []).reduce((k, b) => k + (b.stiffeners ?? []).length, 0),
+  0,
+);
 const lpfCount = CASES.reduce((n, c) => n + (c.lastPlyFailures ?? []).length, 0);
 console.log(
   `reference.elamx + reference.input.json geschrieben: ` +
     `${CASES.length} Laminate, ${layerCount} gespeicherte Lagen, ${calcCount} Berechnungen, ` +
-    `${buckCount} Beulanalysen, ${lpfCount} Last-Ply-Failure-Analysen, ` +
+    `${buckCount} Beulanalysen (davon ${stiffCount} Versteifungen), ` +
+    `${lpfCount} Last-Ply-Failure-Analysen, ` +
     `${ALL_CRITERIA.length} Kriterien abgedeckt.`,
 );

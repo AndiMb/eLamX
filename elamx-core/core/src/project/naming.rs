@@ -67,6 +67,21 @@ const D_MATRIX: &[(DMatrixKind, &str)] = &[
     (DMatrixKind::DTilde, "de.elamx.clt.plate.dmatrix.DtildeDMatrixServiceImpl"),
 ];
 
+/// Stiffener profiles: `(profile code, Java class name)`.
+///
+/// Note where the classes live: the direct input is part of the plate UI
+/// module, the two profiles come from the separately deployed
+/// `AdditionalStiffeners`. A file written by an eLamX without that module
+/// installed can therefore only carry the direct input - and a file that names
+/// a profile eLamX cannot resolve loses that stiffener *silently*
+/// (`LoadSaveStiffeners.load` just skips it). This crate refuses instead, for
+/// the reason the module header gives.
+const STIFFENER_PROFILES: &[(&str, &str)] = &[
+    ("direct", "de.elamx.clt.plateui.stiffenerui.DefaultStiffenerProperties"),
+    ("i_profile", "de.elamx.clt.plate.AdditionalStiffeners.I_StiffenerProperties"),
+    ("t_profile", "de.elamx.clt.plate.AdditionalStiffeners.T_StiffenerProperties"),
+];
+
 /// Edge conditions are stored as the index into eLamX's own `boundary_cond`
 /// array (`plateui/buckling/InputPanel`), so the ORDER here is the file format.
 const BOUNDARY: [BoundaryCondition; 6] = [
@@ -106,6 +121,14 @@ pub fn d_matrix_to_java(kind: DMatrixKind) -> &'static str {
         .expect("every DMatrixKind has a Java class name")
 }
 
+pub fn stiffener_profile_from_java(java: &str) -> Option<&'static str> {
+    STIFFENER_PROFILES.iter().find(|(_, j)| *j == java).map(|(c, _)| *c)
+}
+
+pub fn stiffener_profile_to_java(code: &str) -> Option<&'static str> {
+    STIFFENER_PROFILES.iter().find(|(c, _)| *c == code).map(|(_, j)| *j)
+}
+
 pub fn boundary_from_index(index: usize) -> Option<BoundaryCondition> {
     BOUNDARY.get(index).copied()
 }
@@ -121,6 +144,7 @@ pub fn boundary_to_index(bc: BoundaryCondition) -> usize {
 mod tests {
     use super::*;
     use crate::failure::default_criterion_registry;
+    use crate::plate::StiffenerGeometry;
 
     #[test]
     fn round_trip_every_mapping() {
@@ -135,6 +159,10 @@ mod tests {
         for (kind, java) in D_MATRIX {
             assert_eq!(d_matrix_to_java(*kind), *java);
             assert_eq!(d_matrix_from_java(java), Some(*kind));
+        }
+        for (code, java) in STIFFENER_PROFILES {
+            assert_eq!(stiffener_profile_to_java(code), Some(*java));
+            assert_eq!(stiffener_profile_from_java(java), Some(*code));
         }
         for (index, bc) in BOUNDARY.iter().enumerate() {
             assert_eq!(boundary_to_index(*bc), index);
@@ -164,10 +192,31 @@ mod tests {
         }
     }
 
+    /// A profile that can be calculated but not written would be lost on the
+    /// next save, so every variant needs a class name.
+    #[test]
+    fn every_stiffener_profile_is_mapped() {
+        let all = [
+            StiffenerGeometry::Direct { e: 0.0, i: 0.0, g: 0.0, j: 0.0, a: 0.0, rho: 0.0 },
+            StiffenerGeometry::IProfile { w1: 0.0, t1: 0.0, e: 0.0, g: 0.0, rho: 0.0 },
+            StiffenerGeometry::TProfile {
+                w1: 0.0, t1: 0.0, w2: 0.0, t2: 0.0, e: 0.0, g: 0.0, rho: 0.0,
+            },
+        ];
+        for geometry in all {
+            assert!(
+                stiffener_profile_to_java(geometry.code()).is_some(),
+                "Profil '{}' hat keinen Java-Klassennamen",
+                geometry.code()
+            );
+        }
+    }
+
     #[test]
     fn unknown_names_are_rejected_rather_than_defaulted() {
         assert_eq!(criterion_from_java("de.example.NotACriterion"), None);
         assert_eq!(d_matrix_from_java("de.example.NotAService"), None);
+        assert_eq!(stiffener_profile_from_java("de.example.NotAProfile"), None);
         assert_eq!(boundary_from_index(99), None);
     }
 }
