@@ -28,6 +28,7 @@ import { Sym } from "./Sym";
 import { PlateView3D, type PlateViewLoad } from "./charts/PlateView3D";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { PlateCheckList } from "./PlateCheckList";
+import { StiffenerPanel } from "./StiffenerPanel";
 import { hasBlockingCheck, plateChecks } from "../lib/plateChecks";
 import { plyGeometryOf } from "../lib/plateScene/plyGeometry";
 import { scaleBounds } from "../lib/plateScene/scale";
@@ -329,6 +330,13 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
             </label>
           </div>
           <p className="hint">{t("buckling.terms.hint", { max: MAX_RITZ_TERMS })}</p>
+
+          <StiffenerPanel
+            stiffeners={input.stiffeners}
+            onChange={(stiffeners) => update("stiffeners", stiffeners)}
+            length={input.length}
+            width={input.width}
+          />
         </section>
 
         <div className="module-results">
@@ -428,6 +436,7 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
                   bcX={input.bc_x}
                   bcY={input.bc_y}
                   load={load}
+                  stiffeners={input.stiffeners}
                   markers={markers ? [...markers] : undefined}
                   legend={legendModel}
                   exportName={`${t(shownField?.labelKey ?? "plateField.deflection")}`}

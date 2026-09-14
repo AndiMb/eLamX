@@ -25,6 +25,7 @@ import { Sym } from "./Sym";
 import { BucklingShapeView } from "./charts/BucklingShapeView";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { PlateCheckList } from "./PlateCheckList";
+import { StiffenerPanel } from "./StiffenerPanel";
 import { hasBlockingCheck, plateChecks } from "../lib/plateChecks";
 import { formatFixed, formatSignificant, isFiniteResult } from "../lib/numberFormat";
 import { useLocale, useT } from "../i18n";
@@ -188,6 +189,13 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
           </label>
         </div>
         <p className="hint">{t("buckling.terms.hint", { max: MAX_RITZ_TERMS })}</p>
+
+        <StiffenerPanel
+          stiffeners={input.stiffeners}
+          onChange={(stiffeners) => update("stiffeners", stiffeners)}
+          length={input.length}
+          width={input.width}
+        />
       </section>
 
       <div className="module-results">

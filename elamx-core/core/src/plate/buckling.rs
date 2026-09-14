@@ -53,7 +53,6 @@ pub struct BucklingInput {
     /// Defaulted on deserialisation so that a request or a file written before
     /// stiffeners existed still reads as a plate without any.
     #[serde(default)]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub stiffeners: Vec<Stiffener>,
 }
 

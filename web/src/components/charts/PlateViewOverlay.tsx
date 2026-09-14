@@ -1,4 +1,4 @@
-import { Anchor, ArrowDownToLine, Download, Frame, RotateCcw } from "lucide-react";
+import { Anchor, ArrowDownToLine, Download, Frame, RotateCcw, Rows3 } from "lucide-react";
 import type { StandardViewId } from "../../lib/gl/camera";
 import { useT, type MessageKey } from "../../i18n";
 
@@ -32,6 +32,8 @@ export interface PlateViewMarker extends PlateViewCaption {
 export interface PlateViewLayers {
   supports: boolean;
   loads: boolean;
+  /** The beam stiffeners standing on the plate. */
+  stiffeners: boolean;
   /** The undeformed reference geometry (FR-09). */
   reference: boolean;
 }
@@ -56,7 +58,7 @@ export interface PlateViewOverlayProps {
   onExport: (scale: 1 | 2) => void;
   /** Layers with nothing to show are offered as disabled rather than hidden,
    *  so the row of switches does not change length as the input changes. */
-  available: { supports: boolean; loads: boolean };
+  available: { supports: boolean; loads: boolean; stiffeners: boolean };
 }
 
 const SWITCHES: {
@@ -66,6 +68,7 @@ const SWITCHES: {
 }[] = [
   { layer: "supports", labelKey: "plate3d.layer.supports", Icon: Anchor },
   { layer: "loads", labelKey: "plate3d.layer.loads", Icon: ArrowDownToLine },
+  { layer: "stiffeners", labelKey: "plate3d.layer.stiffeners", Icon: Rows3 },
   { layer: "reference", labelKey: "plate3d.layer.reference", Icon: Frame },
 ];
 

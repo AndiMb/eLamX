@@ -40,7 +40,7 @@ The interface is German and English; the screenshots show German.
 ## Structure
 
 - **`elamx-core/`** — Rust workspace.
-  - `core/` — the CLT calculation engine itself (materials, layers, laminates, ABD-matrix assembly, failure criteria and their 3D failure envelopes, reserve factors, last-ply-failure, pressure vessels), plus `plate/` for rectangular-plate analyses on top of a laminate (buckling and deformation, sharing the Ritz machinery in `plate/ritz.rs`; vibration, cutouts and stiffeners are not ported yet).
+  - `core/` — the CLT calculation engine itself (materials, layers, laminates, ABD-matrix assembly, failure criteria and their 3D failure envelopes, reserve factors, last-ply-failure, pressure vessels), plus `plate/` for rectangular-plate analyses on top of a laminate (buckling and deformation, sharing the Ritz machinery in `plate/ritz.rs` and the beam stiffeners in `plate/stiffener.rs`; vibration and cutouts are not ported yet).
   - `wasm/` — thin `wasm-bindgen` bindings exposing `core` to the browser (JSON in, JSON out).
 - **`web/`** — React + TypeScript + Vite frontend. State is managed with Jotai (one reactive atom family per laminate/material), all calculations run client-side via the WASM module.
 - **`desktop/`** — an Electron shell that packages the built frontend as a desktop program for Windows, Linux and macOS. It adds nothing to the app: the same bundle runs in a browser tab, and the shell only supplies what a page cannot have — a real Open dialog, a Save that writes back to the file it opened, and a file association for `.elamx`.

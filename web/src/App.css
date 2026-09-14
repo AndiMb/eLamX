@@ -1047,6 +1047,14 @@ table.compare-table thead th {
 
 /* Wo ein Feld breiter sein muss als eine Zahl - lange Auswahllisten wie die
    Biegesteifigkeits-Variante - traegt es .wide und bekommt zwei Spalten. */
+/* Eine Anmerkung unter den Feldern, nicht neben ihnen: sie gehoert zu allen
+   und nicht zu einem. */
+.field-grid > .field-grid-note {
+  grid-column: 1 / -1;
+  max-width: 100%;
+  margin: 0;
+}
+
 .field-grid > .wide {
   grid-column: span 2;
   max-width: 100%;

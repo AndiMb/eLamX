@@ -10,6 +10,7 @@ import { atomFamily } from "jotai-family";
 import { atomWithStorage, createJSONStorage, selectAtom } from "jotai/utils";
 import equal from "fast-deep-equal";
 import { loadableWithLastValue } from "../lib/loadable";
+import { withStiffeners } from "../lib/stiffeners";
 import type { DeformationInputDto, DeformationResponse, NamedLoadDto } from "../lib/types";
 import { elamx } from "../lib/wasm";
 import { laminateRequestFamily } from "./derivedAtoms";
@@ -27,10 +28,18 @@ export function defaultDeformationInput(): DeformationInputDto {
     n: 10,
     d_matrix: "standard",
     loads: [{ kind: "Surface", name: "q", force: 0.01 }],
+    stiffeners: [],
   };
 }
 
-const storage = createJSONStorage<DeformationInputDto>(() => localStorage);
+// Wrapped for the same reason as the buckling input: anything persisted before
+// stiffeners existed has no list, and the editor reads it before the core does.
+const json = createJSONStorage<DeformationInputDto>(() => localStorage);
+const storage = {
+  ...json,
+  getItem: (key: string, initial: DeformationInputDto) =>
+    withStiffeners(json.getItem(key, initial)),
+};
 
 export const deformationStorageKey = (laminateId: string) => `elamx.deformation.${laminateId}`;
 

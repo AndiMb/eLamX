@@ -44,6 +44,8 @@ import type { PressureVesselResult as GenPressureVesselResult } from "./generate
 import type { RadiusType as GenRadiusType } from "./generated/RadiusType";
 import type { ReserveFactor as GenReserveFactor } from "./generated/ReserveFactor";
 import type { Strains as GenStrains } from "./generated/Strains";
+import type { Stiffener as GenStiffener } from "./generated/Stiffener";
+import type { StiffenerDirection as GenStiffenerDirection } from "./generated/StiffenerDirection";
 import type { StressStrainState as GenStressStrainState } from "./generated/StressStrainState";
 
 export type AngleSweepResponse = GenAngleSweepResponse;
@@ -78,6 +80,8 @@ export type PressureVesselInputDto = GenPressureVesselInput;
 export type PressureVesselResponse = GenPressureVesselResult;
 export type RadiusTypeId = GenRadiusType;
 export type ReserveFactorDto = GenReserveFactor;
+export type StiffenerDto = GenStiffener;
+export type StiffenerDirectionId = GenStiffenerDirection;
 export type StrainsDto = GenStrains;
 export type StressStrainStateDto = GenStressStrainState;
 
@@ -194,6 +198,41 @@ export const D_MATRIX_KINDS = [
   { id: "special_orthotropic", labelKey: "buckling.dMatrix.specialOrthotropic" },
   { id: "d_tilde", labelKey: "buckling.dMatrix.dTilde" },
 ] as const satisfies readonly { id: DMatrixKindId; labelKey: MessageKey }[];
+
+export const STIFFENER_DIRECTIONS = [
+  { id: "x", labelKey: "stiffener.direction.x" },
+  { id: "y", labelKey: "stiffener.direction.y" },
+] as const satisfies readonly { id: StiffenerDirectionId; labelKey: MessageKey }[];
+
+/**
+ * The stiffener profiles, and which numbers each one asks for.
+ *
+ * The field names are the Rust ones, because the whole object is what crosses
+ * the wasm boundary; the order is the order eLamX's own property sheet lists
+ * them in. `direct` is the odd one out on purpose - it takes the section
+ * properties themselves rather than a geometry to compute them from, which is
+ * why its fields carry units the others' do not.
+ */
+export const STIFFENER_PROFILES = [
+  {
+    id: "direct",
+    labelKey: "stiffener.profile.direct",
+    fields: ["e", "i", "g", "j", "rho", "a"],
+  },
+  { id: "i_profile", labelKey: "stiffener.profile.i", fields: ["w1", "t1", "e", "g", "rho"] },
+  {
+    id: "t_profile",
+    labelKey: "stiffener.profile.t",
+    fields: ["w1", "t1", "w2", "t2", "e", "g", "rho"],
+  },
+] as const satisfies readonly {
+  id: StiffenerDto["profile"];
+  labelKey: MessageKey;
+  fields: readonly string[];
+}[];
+
+export type StiffenerProfileId = (typeof STIFFENER_PROFILES)[number]["id"];
+export type StiffenerFieldId = (typeof STIFFENER_PROFILES)[number]["fields"][number];
 
 /** eLamX2 caps the Ritz term counts here, and so do the ported integral tables. */
 export const MAX_RITZ_TERMS = 20;

@@ -33,6 +33,8 @@ export interface MeshBuilder {
   cone(apex: Vec3, direction: Vec3, length: number, radius: number, sides?: number): void;
   /** Rectangular block, `half` measured along each of the three `axes`. */
   box(centre: Vec3, axes: readonly [Vec3, Vec3, Vec3], half: readonly [number, number, number]): void;
+  /** One flat quad, corners in order. Both sides are lit, so winding is free. */
+  quad(a: Vec3, b: Vec3, c: Vec3, d: Vec3): void;
   line(a: Vec3, b: Vec3): void;
   build(): AnnotationMesh;
 }
@@ -97,6 +99,8 @@ export function meshBuilder(): MeshBuilder {
       quad(c[0], c[4], c[7], c[3]);
       quad(c[1], c[2], c[6], c[5]);
     },
+
+    quad,
 
     line(a, b) {
       lines.push(a[0], a[1], a[2], b[0], b[1], b[2]);

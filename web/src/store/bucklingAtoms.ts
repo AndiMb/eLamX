@@ -10,6 +10,7 @@ import { atomFamily } from "jotai-family";
 import { atomWithStorage, createJSONStorage, selectAtom } from "jotai/utils";
 import equal from "fast-deep-equal";
 import { loadableWithLastValue } from "../lib/loadable";
+import { withStiffeners } from "../lib/stiffeners";
 import type { BucklingInputDto, BucklingResponse } from "../lib/types";
 import { elamx } from "../lib/wasm";
 import { laminateRequestFamily } from "./derivedAtoms";
@@ -38,10 +39,17 @@ export function defaultBucklingInput(): BucklingInputDto {
     m: 10,
     n: 10,
     d_matrix: "standard",
+    stiffeners: [],
   };
 }
 
-const storage = createJSONStorage<BucklingInputDto>(() => localStorage);
+// Wrapped rather than used raw: an input persisted before stiffeners existed
+// has no list at all, and the editor reads it before the core ever sees it.
+const json = createJSONStorage<BucklingInputDto>(() => localStorage);
+const storage = {
+  ...json,
+  getItem: (key: string, initial: BucklingInputDto) => withStiffeners(json.getItem(key, initial)),
+};
 
 export const bucklingStorageKey = (laminateId: string) => `elamx.buckling.${laminateId}`;
 

@@ -29,7 +29,7 @@ export interface PlateViewState {
   position: LayerPositionId;
   /** Colour scale limits, or automatic from the field itself (FR-05). */
   bounds: [number, number] | "auto";
-  visible: { supports: boolean; loads: boolean; reference: boolean };
+  visible: { supports: boolean; loads: boolean; stiffeners: boolean; reference: boolean };
 }
 
 export function defaultPlateViewState(): PlateViewState {
@@ -38,7 +38,7 @@ export function defaultPlateViewState(): PlateViewState {
     layer: 0,
     position: "Upper",
     bounds: "auto",
-    visible: { supports: true, loads: true, reference: true },
+    visible: { supports: true, loads: true, stiffeners: true, reference: true },
   };
 }
 

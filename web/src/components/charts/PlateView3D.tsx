@@ -14,6 +14,7 @@ import { plateImageBlob, saveBlob } from "../../lib/plateScene/exportImage";
 import type { PlateLegendModel } from "./PlateLegend";
 import { EMPTY_MESH } from "../../lib/plateScene/annotation";
 import { supportEdges, supportMesh } from "../../lib/plateScene/supports";
+import { stiffenerMesh, stiffenerRibbons } from "../../lib/plateScene/stiffeners";
 import {
   edgeFlowArrows,
   heightSampler,
@@ -49,7 +50,7 @@ import {
   type PlateViewLayers,
   type PlateViewMarker,
 } from "./PlateViewOverlay";
-import type { BoundaryConditionId, NamedLoadDto } from "../../lib/types";
+import type { BoundaryConditionId, NamedLoadDto, StiffenerDto } from "../../lib/types";
 import { useLocale, useT } from "../../i18n";
 
 // The plate as a solid body: real laminate thickness, visible ply interfaces,
@@ -106,6 +107,12 @@ export interface PlateView3DProps {
    */
   load?: PlateViewLoad;
   /**
+   * Beam stiffeners glued to the plate. Drawn following the deflected surface,
+   * because that is how the analysis couples them - see plateScene/stiffeners.
+   * Hold it stable across renders for the same reason as `load`.
+   */
+  stiffeners?: readonly StiffenerDto[];
+  /**
    * Which annotation layers are drawn. Owned by the caller so the choice can
    * be persisted per laminate (FR-12) rather than resetting every time the
    * module is left.
@@ -147,6 +154,7 @@ export const PlateView3D = memo(function PlateView3D({
   bcX,
   bcY,
   load,
+  stiffeners,
   layers,
   onToggleLayer,
   markers,
@@ -241,8 +249,11 @@ export const PlateView3D = memo(function PlateView3D({
       supports:
         bcX && bcY ? supportMesh(supportEdges(bcX, bcY, body.frame), body.frame) : EMPTY_MESH,
       loads: loadMesh(loadArrows),
+      stiffeners: stiffeners?.length
+        ? stiffenerMesh(stiffenerRibbons(stiffeners, body.frame, sampler))
+        : EMPTY_MESH,
     }),
-    [bcX, bcY, body, loadArrows],
+    [bcX, bcY, body, loadArrows, stiffeners, sampler],
   );
 
   const requestRender = useCallback(() => {
@@ -317,6 +328,7 @@ export const PlateView3D = memo(function PlateView3D({
       outline: [ink[0], ink[1], ink[2], 0.35],
       supports: rgbaOf(colors.annotation.support),
       loads: rgbaOf(colors.annotation.load),
+      stiffeners: rgbaOf(colors.annotation.stiffener),
       hole: [ink[0], ink[1], ink[2], 1],
     });
     requestRender();
@@ -328,6 +340,7 @@ export const PlateView3D = memo(function PlateView3D({
       outline: layers.reference,
       supports: layers.supports,
       loads: layers.loads,
+      stiffeners: layers.stiffeners,
     });
     requestRender();
   }, [layers, generation, requestRender]);
@@ -624,6 +637,7 @@ export const PlateView3D = memo(function PlateView3D({
         available={{
           supports: Boolean(bcX && bcY),
           loads: loadArrows.arrows.length > 0,
+          stiffeners: Boolean(stiffeners?.length),
         }}
       />
       {/* The picture is not to scale in two ways at once, so it says so in

@@ -111,7 +111,6 @@ pub struct DeformationInput {
     /// deserialisation so a request or a file written before they existed
     /// still reads as a plate without any.
     #[serde(default)]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub stiffeners: Vec<Stiffener>,
 }
 

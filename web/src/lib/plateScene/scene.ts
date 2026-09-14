@@ -37,6 +37,7 @@ export interface PlateSceneStyle {
   outline: Rgba;
   supports: Rgba;
   loads: Rgba;
+  stiffeners: Rgba;
   /** Points the core could not evaluate - a hole, not a value. */
   hole: Rgba;
 }
@@ -47,15 +48,22 @@ export interface PlateSceneVisibility {
   outline: boolean;
   supports: boolean;
   loads: boolean;
+  stiffeners: boolean;
 }
 
-/** What is drawn beside the plate itself: how it is held, and what pushes it. */
+/** What is drawn beside the plate itself: how it is held, what pushes it, and
+ *  what is glued to it. */
 export interface PlateAnnotation {
   supports: AnnotationMesh;
   loads: AnnotationMesh;
+  stiffeners: AnnotationMesh;
 }
 
-export const NO_ANNOTATION: PlateAnnotation = { supports: EMPTY_MESH, loads: EMPTY_MESH };
+export const NO_ANNOTATION: PlateAnnotation = {
+  supports: EMPTY_MESH,
+  loads: EMPTY_MESH,
+  stiffeners: EMPTY_MESH,
+};
 
 export interface PlateScene {
   setBody(body: PlateBody): void;
@@ -121,6 +129,7 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
   // lit solid (symbols, arrowheads) plus flat lines (hatching, dashes, shafts).
   const supports = createLayer(gl, annotationProgram, lineProgram);
   const loads = createLayer(gl, annotationProgram, lineProgram);
+  const stiffeners = createLayer(gl, annotationProgram, lineProgram);
 
   gl.bindTexture(gl.TEXTURE_2D, colormap);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -156,6 +165,7 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
     outline: [0.5, 0.5, 0.5, 0.5],
     supports: [0.45, 0.45, 0.45, 1],
     loads: [0.2, 0.45, 0.8, 1],
+    stiffeners: [0.55, 0.38, 0.18, 1],
     hole: [0.6, 0.6, 0.6, 1],
   };
   let visibility: PlateSceneVisibility = {
@@ -163,6 +173,7 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
     outline: true,
     supports: true,
     loads: true,
+    stiffeners: true,
   };
 
   // One draw, whatever buffer it goes into - the screen, or an export at twice
@@ -203,13 +214,14 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
         gl.disable(gl.POLYGON_OFFSET_FILL);
       }
 
-      if (supports.solidCount + loads.solidCount > 0) {
+      if (supports.solidCount + loads.solidCount + stiffeners.solidCount > 0) {
         gl.useProgram(annotationProgram.handle);
         gl.uniformMatrix4fv(annotationProgram.uniform("uProjection"), false, projection);
         gl.uniformMatrix4fv(annotationProgram.uniform("uView"), false, view);
         gl.uniform3f(annotationProgram.uniform("uEye"), eye[0], eye[1], eye[2]);
         if (visibility.supports) supports.drawSolid(annotationProgram, style.supports);
         if (visibility.loads) loads.drawSolid(annotationProgram, style.loads);
+        if (visibility.stiffeners) stiffeners.drawSolid(annotationProgram, style.stiffeners);
       }
 
       gl.useProgram(lineProgram.handle);
@@ -218,6 +230,7 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
 
       if (visibility.supports) supports.drawLines(lineProgram, style.supports);
       if (visibility.loads) loads.drawLines(lineProgram, style.loads);
+      if (visibility.stiffeners) stiffeners.drawLines(lineProgram, style.stiffeners);
 
       if (visibility.plyLines && plyVertexCount > 0) {
         gl.uniform4fv(lineProgram.uniform("uColor"), style.plyLines);
@@ -261,6 +274,7 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
     setAnnotation(annotation) {
       supports.upload(annotation.supports);
       loads.upload(annotation.loads);
+      stiffeners.upload(annotation.stiffeners);
     },
 
     setHighlightedPly(ply) {
@@ -322,6 +336,7 @@ export function createPlateScene(canvas: HTMLCanvasElement): PlateScene | null {
       gl.deleteBuffer(outlineBuffer);
       supports.dispose();
       loads.dispose();
+      stiffeners.dispose();
       gl.deleteVertexArray(solidVao);
       gl.deleteVertexArray(plyVao);
       gl.deleteVertexArray(outlineVao);

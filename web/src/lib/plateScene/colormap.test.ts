@@ -6,7 +6,7 @@ const colors: ChartColors = {
   diverging: { neg: "#2a78d6", mid: "#f0efec", pos: "#e34948" },
   surface: "#2a78d6",
   status: { ok: "#1baf7a", danger: "#e34948" },
-  annotation: { support: "#48505f", load: "#eb6834" },
+  annotation: { support: "#48505f", load: "#eb6834", stiffener: "#8a6a2f" },
 };
 
 describe("buildColormap", () => {

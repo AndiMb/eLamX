@@ -2,6 +2,7 @@
 import type { BoundaryCondition } from "./BoundaryCondition";
 import type { DMatrixKind } from "./DMatrixKind";
 import type { NamedLoad } from "./NamedLoad";
+import type { Stiffener } from "./Stiffener";
 
 export type DeformationInput = { 
 /**
@@ -15,4 +16,10 @@ width: number, bc_x: BoundaryCondition, bc_y: BoundaryCondition,
 /**
  * Ritz terms in x and y.
  */
-m: number, n: number, d_matrix: DMatrixKind, loads: Array<NamedLoad>, };
+m: number, n: number, d_matrix: DMatrixKind, loads: Array<NamedLoad>, 
+/**
+ * Beam stiffeners glued to the plate - see plate::stiffener. Defaulted on
+ * deserialisation so a request or a file written before they existed
+ * still reads as a plate without any.
+ */
+stiffeners: Array<Stiffener>, };

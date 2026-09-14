@@ -112,6 +112,7 @@ export function BucklingShapeView({ laminateId }: { laminateId: string }) {
           bcX={input.bc_x}
           bcY={input.bc_y}
           load={load}
+          stiffeners={input.stiffeners}
           layers={view.visible}
           onToggleLayer={(layer) =>
             setView({ ...view, visible: { ...view.visible, [layer]: !view.visible[layer] } })
