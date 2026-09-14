@@ -275,6 +275,72 @@ pub fn add_stiffener_stiffness(
     }
 }
 
+/// Adds every stiffener's contribution to the Ritz MASS matrix.
+///
+/// Port of `Stiffenerx.addMass` and `Stiffenery.addMass`. Negative entries,
+/// like the plate's own mass matrix - see `plate::vibration` on why the solver
+/// wants them that way.
+///
+/// **One quirk of the original is reproduced here and is very likely a bug.**
+/// `Stiffenerx.addMass` measures the stiffener's line with
+/// `position + bx.getA()/2`, where every other method in that class - and the
+/// whole of `Stiffenery` - uses the boundary the stiffener is positioned
+/// ACROSS. For an x stiffener that is `by`. On a square plate the two agree
+/// and nothing shows; on a rectangular one the stiffener's mass is placed on a
+/// different line than its stiffness, and if `position + a/2` lands outside
+/// `[0, b]` the shape functions are evaluated beyond their interval.
+///
+/// It is reproduced rather than fixed because the port follows the original
+/// and this analysis has no batch output to check either choice against; the
+/// divergence is real and has been raised. `the_x_stiffeners_mass_sits_on_the_java_line`
+/// pins it, and is the test that will go red if it is ever fixed upstream.
+pub fn add_stiffener_mass(
+    mass: &mut [Vec<f64>],
+    stiffeners: &[Stiffener],
+    m: usize,
+    n: usize,
+    bx: &Boundary,
+    by: &Boundary,
+) {
+    for stiffener in stiffeners {
+        let rho_a = stiffener.geometry.rho() * stiffener.geometry.a();
+        if rho_a == 0.0 {
+            continue;
+        }
+
+        let (along, across, runs_along_x) = match stiffener.direction {
+            StiffenerDirection::X => (bx, by, true),
+            StiffenerDirection::Y => (by, bx, false),
+        };
+        // Always `bx`, for both directions - that is the quirk documented
+        // above, not a simplification.
+        let t_pos = stiffener.position + bx.length() / 2.0;
+
+        let terms_across = if runs_along_x { n } else { m };
+        let w: Vec<f64> = (0..terms_across).map(|i| across.wx(i, t_pos)).collect();
+
+        let mut row = 0;
+        for pp in 0..m {
+            for qq in 0..n {
+                let (along_var, across_var) = if runs_along_x { (pp, qq) } else { (qq, pp) };
+                let mut col = 0;
+                for ii in 0..m {
+                    for jj in 0..n {
+                        let (along_disp, across_disp) =
+                            if runs_along_x { (ii, jj) } else { (jj, ii) };
+                        mass[row][col] -= rho_a
+                            * along.ixx(along_disp, along_var)
+                            * w[across_disp]
+                            * w[across_var];
+                        col += 1;
+                    }
+                }
+                row += 1;
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -412,6 +478,51 @@ mod tests {
         let k = assemble(&[s], 4, 4);
         let peak = k.iter().flat_map(|r| r.iter()).fold(0.0f64, |a, v| a.max(v.abs()));
         assert!(peak < 1e-9, "expected no contribution, peak was {peak}");
+    }
+
+    /// The mass matrix is symmetric and negative, like the plate's own.
+    #[test]
+    fn the_mass_contribution_is_symmetric_and_negative() {
+        let bx = Boundary::new(BoundaryCondition::SimplySimply, 400.0);
+        let by = Boundary::new(BoundaryCondition::SimplySimply, 400.0);
+        for direction in StiffenerDirection::ALL {
+            let mut mass = vec![vec![0.0; 20]; 20];
+            add_stiffener_mass(&mut mass, &[blade(direction, 30.0)], 4, 5, &bx, &by);
+            for (r, row) in mass.iter().enumerate() {
+                for (c, value) in row.iter().enumerate() {
+                    assert!((value - mass[c][r]).abs() <= 1e-12 * value.abs().max(1.0));
+                }
+            }
+            // The diagonal is an integral of squares, so its sign is decided
+            // entirely by the leading minus.
+            assert!(mass.iter().enumerate().all(|(i, row)| row[i] <= 0.0));
+        }
+    }
+
+    /// Where eLamX puts an x stiffener's MASS, which is not where it puts its
+    /// stiffness. See the note on `add_stiffener_mass`: the original measures
+    /// the line with the plate's length instead of its width. Reproduced on
+    /// purpose; this is the test that fails first if it is fixed upstream.
+    #[test]
+    fn the_x_stiffeners_mass_sits_on_the_java_line() {
+        // 400 long, 200 wide, and a stiffener at y = 0 - the centre line. Its
+        // stiffness lands at y = 0 + 200/2 = 100, its mass at 0 + 400/2 = 200,
+        // which is the far EDGE of a simply supported plate, where every shape
+        // function vanishes. So the mass contribution is identically zero.
+        let bx = Boundary::new(BoundaryCondition::SimplySimply, 400.0);
+        let by = Boundary::new(BoundaryCondition::SimplySimply, 200.0);
+        let stiffener = [blade(StiffenerDirection::X, 0.0)];
+
+        let mut mass = vec![vec![0.0; 16]; 16];
+        add_stiffener_mass(&mut mass, &stiffener, 4, 4, &bx, &by);
+        let peak = mass.iter().flat_map(|r| r.iter()).fold(0.0f64, |a, v| a.max(v.abs()));
+        assert!(peak < 1e-9, "eLamX places this mass on the edge; peak was {peak}");
+
+        // The stiffness, on the same input, is anything but zero.
+        let mut k = vec![vec![0.0; 16]; 16];
+        add_stiffener_stiffness(&mut k, &stiffener, 4, 4, &bx, &by);
+        let stiffness_peak = k.iter().flat_map(|r| r.iter()).fold(0.0f64, |a, v| a.max(v.abs()));
+        assert!(stiffness_peak > 1.0, "{stiffness_peak}");
     }
 
     /// Two identical stiffeners at the same place are exactly one of twice the

@@ -121,6 +121,9 @@ export const elamx = {
   compute_buckling_surface: (request: string) => call("compute_buckling_surface", [request]),
   compute_deformation: (request: string) => call("compute_deformation", [request]),
   compute_deformation_field: (request: string) => call("compute_deformation_field", [request]),
+  compute_vibration: (request: string) => call("compute_vibration", [request]),
+  compute_vibration_surface: (request: string) =>
+    call("compute_vibration_surface", [request]),
   compute_failure_envelope: (request: string) => call("compute_failure_envelope", [request]),
   compute_last_ply_failure: (request: string) => call("compute_last_ply_failure", [request]),
   compute_pressure_vessel: (request: string) => call("compute_pressure_vessel", [request]),

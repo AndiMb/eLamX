@@ -23,6 +23,7 @@ import {
   type FibreDto,
   type MaterialDto,
   type MatrixMaterialDto,
+  type VibrationInputDto,
   type DeformationInputDto,
   type PressureVesselInputDto,
 } from "./types";
@@ -55,6 +56,7 @@ interface ProjectLaminateDto {
   last_ply_failures: LastPlyFailureEntryDto[];
   pressure_vessels: PressureVesselEntryDto[];
   deformations: DeformationEntryDto[];
+  vibrations?: VibrationEntryDto[];
   unsupported_modules?: unknown[];
 }
 
@@ -104,6 +106,11 @@ interface DeformationEntryDto {
   input: DeformationInputDto;
 }
 
+interface VibrationEntryDto {
+  name: string;
+  input: VibrationInputDto;
+}
+
 /** A whole session: what a file turns into on open, and what a save turns
  *  back into a file. The same shape in both directions on purpose - anything
  *  that survives one has to survive the other. */
@@ -118,6 +125,7 @@ export interface ProjectSnapshot {
   lastPlyFailures: Record<string, LastPlyFailureInputDto>;
   pressureVessels: Record<string, PressureVesselInputDto>;
   deformations: Record<string, DeformationInputDto>;
+  vibrations: Record<string, VibrationInputDto>;
   version: string;
   /** Project-level sections carried through untouched - see ProjectDto. */
   unsupportedSections: unknown[];
@@ -142,12 +150,14 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
   const lastPlyFailures: Record<string, LastPlyFailureInputDto> = {};
   const pressureVessels: Record<string, PressureVesselInputDto> = {};
   const deformations: Record<string, DeformationInputDto> = {};
+  const vibrations: Record<string, VibrationInputDto> = {};
   const laminates = project.laminates.map((entry) => {
     const dto = entry.laminate;
     const [buckling, ...extraBucklings] = entry.bucklings;
     const [lastPlyFailure, ...extraLastPlyFailures] = entry.last_ply_failures ?? [];
     const [pressureVessel, ...extraPressureVessels] = entry.pressure_vessels ?? [];
     const [deformation, ...extraDeformations] = entry.deformations ?? [];
+    const [vibration, ...extraVibrations] = entry.vibrations ?? [];
 
     // Every <calculation> becomes a load case, in file order. A file with none
     // still opens - it gets the default case, the same one a new laminate has.
@@ -187,6 +197,8 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
         lastPlyFailureName: lastPlyFailure?.name,
         pressureVesselName: pressureVessel?.name,
         deformationName: deformation?.name,
+        vibrationName: vibration?.name,
+        extraVibrations,
         extraBucklings,
         extraLastPlyFailures,
         extraPressureVessels,
@@ -199,6 +211,7 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
     if (lastPlyFailure) lastPlyFailures[dto.id] = lastPlyFailure.input;
     if (pressureVessel) pressureVessels[dto.id] = pressureVessel.input;
     if (deformation) deformations[dto.id] = deformation.input;
+    if (vibration) vibrations[dto.id] = vibration.input;
     return config;
   });
 
@@ -211,6 +224,7 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
     lastPlyFailures,
     pressureVessels,
     deformations,
+    vibrations,
     version: project.version,
     unsupportedSections: project.unsupported_sections ?? [],
   };
@@ -248,6 +262,7 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
       const lastPlyFailure = snapshot.lastPlyFailures[config.id];
       const pressureVessel = snapshot.pressureVessels[config.id];
       const deformation = snapshot.deformations[config.id];
+      const vibration = snapshot.vibrations[config.id];
 
       return {
         laminate: {
@@ -290,6 +305,12 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
             ? [{ name: carry.deformationName ?? "Plattenverformung", input: deformation }]
             : []),
           ...((carry.extraDeformations ?? []) as DeformationEntryDto[]),
+        ],
+        vibrations: [
+          ...(vibration
+            ? [{ name: carry.vibrationName ?? "Plattenschwingung", input: vibration }]
+            : []),
+          ...((carry.extraVibrations ?? []) as VibrationEntryDto[]),
         ],
         unsupported_modules: carry.unsupportedModules ?? [],
       };

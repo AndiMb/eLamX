@@ -190,6 +190,18 @@ const D_MATRIX = {
   d_tilde:             { java: DM + "DtildeDMatrixServiceImpl",             label: "D-tilde matrix" },
 };
 
+// A vibration analysis is the buckling input without the load flows. It has
+// no batch output - eLamX prints nothing for it - so what these cases prove is
+// the FORMAT: that the element this crate writes is one the original still
+// reads, which the rewrite check at the end of the README exercises.
+const vibration = (name, o) => ({
+  name,
+  length: 500, width: 500,
+  bc_x: "SS", bc_y: "SS", m: 10, n: 10, d_matrix: "standard",
+  stiffeners: [],
+  ...o,
+});
+
 const buckling = (name, o) => ({
   name,
   length: 500, width: 500, n_x: -1, n_y: 0, n_xy: 0,
@@ -399,6 +411,23 @@ const CASES = [
     lastPlyFailures: [
       lastPlyFailure("GM-LPF-Offset", { n_x: 250, m_x: 12, j_a: 0.8 }),
     ],
+    // Two vibration analyses: a plain one and one carrying stiffeners, which
+    // is the only module whose <Stiffener> children have to survive beside a
+    // module the batch mode never prints.
+    vibrations: [
+      vibration("GM-Schwing-SS", {}),
+      vibration("GM-Schwing-CC-Versteift", {
+        length: 700, width: 350, bc_x: "CC", bc_y: "SC", m: 8, n: 9, d_matrix: "d_tilde",
+        stiffeners: [
+          stiffener("Schwing-x", "i_profile", "x", 60.0, {
+            w1: 25.0, t1: 2.0, E: 70000.0, G: 27000.0, Rho: 2.7e-9,
+          }),
+          stiffener("Schwing-y", "direct", "y", -100.0, {
+            E: 70000.0, I: 18000.0, G: 27000.0, J: 300.0, Rho: 2.7e-9, A: 75.0,
+          }),
+        ],
+      }),
+    ],
     bucklings: [
       buckling("GM-Beul-CF-SC", { length: 800, width: 400, bc_x: "CF", bc_y: "SC", m: 6, n: 9 }),
       // The same mixed edges, now with a stiffener on them. This is the case
@@ -601,6 +630,25 @@ function elamxXml() {
       });
       out.push("            </buckling>");
     });
+    (c.vibrations ?? []).forEach((v) => {
+      out.push(`            <vibration name="${esc(v.name)}">`);
+      out.push(`                <length>${num(v.length)}</length>`);
+      out.push(`                <width>${num(v.width)}</width>`);
+      out.push(`                <bcx>${BOUNDARY.indexOf(v.bc_x)}</bcx>`);
+      out.push(`                <bcy>${BOUNDARY.indexOf(v.bc_y)}</bcy>`);
+      out.push(`                <m>${v.m}</m>`);
+      out.push(`                <n>${v.n}</n>`);
+      out.push(`                <dmatrixservice>${D_MATRIX[v.d_matrix].java}</dmatrixservice>`);
+      (v.stiffeners ?? []).forEach((st) => {
+        const def = STIFFENER[st.profile];
+        out.push(`                <Stiffener name="${esc(st.name)}" classname="${def.java}">`);
+        out.push(`                    <position>${num(st.position)}</position>`);
+        out.push(`                    <direction>${DIRECTION_INDEX[st.direction]}</direction>`);
+        for (const k of def.props) out.push(`                    <${k}>${num(st[k])}</${k}>`);
+        out.push("                </Stiffener>");
+      });
+      out.push("            </vibration>");
+    });
     (c.lastPlyFailures ?? []).forEach((l) => {
       out.push(`            <lastplyfailure name="${esc(l.name)}">`);
       for (const k of ["n_x", "n_y", "n_xy", "m_x", "m_y", "m_xy"]) {
@@ -759,6 +807,10 @@ function inputJson() {
       strains: calc.strains ?? strains(),
       use_strain: calc.useStrain ?? NO_STRAIN,
     })),
+    vibrations: (c.vibrations ?? []).map(({ name, d_matrix, stiffeners, ...input }) => ({
+      name,
+      input: { ...input, d_matrix, stiffeners: (stiffeners ?? []).map(stiffenerJson) },
+    })),
     bucklings: (c.bucklings ?? []).map(({ name, d_matrix, stiffeners, ...input }) => ({
       name,
       input: { ...input, d_matrix, stiffeners: (stiffeners ?? []).map(stiffenerJson) },
@@ -816,6 +868,7 @@ writeFileSync(join(HERE, "reference.input.json"), inputJson());
 const layerCount = CASES.reduce((n, c) => n + c.layers.length, 0);
 const calcCount = CASES.reduce((n, c) => n + c.calculations.length, 0);
 const buckCount = CASES.reduce((n, c) => n + (c.bucklings ?? []).length, 0);
+const vibCount = CASES.reduce((n, c) => n + (c.vibrations ?? []).length, 0);
 const stiffCount = CASES.reduce(
   (n, c) => n + (c.bucklings ?? []).reduce((k, b) => k + (b.stiffeners ?? []).length, 0),
   0,
@@ -825,6 +878,7 @@ console.log(
   `reference.elamx + reference.input.json geschrieben: ` +
     `${CASES.length} Laminate, ${layerCount} gespeicherte Lagen, ${calcCount} Berechnungen, ` +
     `${buckCount} Beulanalysen (davon ${stiffCount} Versteifungen), ` +
+    `${vibCount} Schwingungsanalysen, ` +
     `${lpfCount} Last-Ply-Failure-Analysen, ` +
     `${ALL_CRITERIA.length} Kriterien abgedeckt.`,
 );

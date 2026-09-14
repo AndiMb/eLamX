@@ -105,6 +105,12 @@ most of this, so the list cannot quietly rot:
   integrated. Deformation has no batch output, but it adds the *same*
   contribution to the *same* stiffness matrix, so these cover it too.
 
+- **Plate vibration**: two analyses, one of them with stiffeners. No numbers
+  are compared, because the batch mode prints none for this module - what they
+  cover is the `<vibration>` element, and the check that matters is the rewrite
+  below: the same file, written back out by `elamx-core`, still opens in the
+  Java program and computes identically.
+
 ## Tolerances
 
 Derived from the batch writer's own `printf` format strings
@@ -195,10 +201,17 @@ parser in `golden_master.rs` works around all three:
 ## Not covered by the batch mode
 
 eLamX's batch mode implements `BatchRunService` for three modules only: the CLT
-calculation, buckling, and last-ply-failure - which is exactly what
-`elamx-core` implements today, so the current port is fully covered. Everything
-else in the original (pressure vessel, spring-in, cutouts, optimization,
-micromechanics, deformation, vibration) has no batch output and will need one
-before it can be validated this way. That is worth knowing before choosing what
-to port next: those modules can be checked against analytical cases and against
-the desktop GUI by hand, but not by this suite.
+calculation, buckling, and last-ply-failure. Everything else in the original
+(pressure vessel, spring-in, cutouts, optimization, deformation, vibration) has
+no batch output of its own - though the general output turned out to print more
+than expected: its `Material data :` block gives every ply's E11, E22, v12 and
+G12, which is how the micromechanical models are compared against the original
+without micromechanics having a batch module. Before deciding a module cannot
+be validated this way, check what the general output already prints for it.
+
+What is left over - the pressure vessel, the plate deformation and the plate
+vibration - can be checked against closed-form cases and against the desktop
+GUI by hand, but not by this suite. Their INPUTS still belong in the reference
+file even so: a `<deformation>` or `<vibration>` element that this crate writes
+wrongly would stop the Java program from opening the file at all, and the
+rewrite check above catches that.

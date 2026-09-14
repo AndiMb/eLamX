@@ -20,8 +20,9 @@ use elamx_core::model::{Laminate, Material};
 use elamx_core::project::{read_elamx, write_elamx, Project};
 use elamx_core::clt::LayerPosition;
 use elamx_core::plate::{
-    calculate_buckling, calculate_deformation, evaluate_plate_field, mode_surface, BucklingInput,
-    DeformationInput, DeformationResult, PlateField, PlateFieldResult, PlateFieldSelection,
+    calculate_buckling, calculate_deformation, calculate_vibration, evaluate_plate_field,
+    mode_surface, vibration_mode_surface, BucklingInput, DeformationInput, DeformationResult,
+    PlateField, PlateFieldResult, PlateFieldSelection, VibrationInput,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -646,6 +647,75 @@ pub fn import_elamx(xml: &str) -> Result<String, JsValue> {
 fn import_elamx_impl(xml: &str) -> Result<String, String> {
     let project = read_elamx(xml).map_err(|e| e.to_string())?;
     serde_json::to_string(&project).map_err(|e| e.to_string())
+}
+
+#[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+struct VibrationRequest {
+    laminate: Laminate,
+    materials: HashMap<String, Material>,
+    input: VibrationInput,
+}
+
+#[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+struct VibrationSurfaceRequest {
+    input: VibrationInput,
+    /// One mode's amplitudes, as returned in the response's `shape`.
+    shape: Vec<Vec<f64>>,
+    /// Grid resolution per direction.
+    samples: usize,
+}
+
+/// The natural frequencies of a rectangular plate cut from this laminate.
+///
+/// Shaped by [`VibrationRequest`]; the response is `VibrationResult` as the
+/// core defines it, mode shapes and all - unlike buckling, which trims the
+/// shapes out, because a vibration mode list is the same size and the
+/// frontend wants the same thing from it.
+#[wasm_bindgen]
+pub fn compute_vibration(request_json: &str) -> Result<String, JsValue> {
+    compute_vibration_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_vibration_impl(request_json: &str) -> Result<String, String> {
+    let request: VibrationRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let clt = CltLaminate::new(&request.laminate, &request.materials)
+        .map_err(|e| e.to_string())?;
+    let result = calculate_vibration(&clt, &request.input).map_err(|e| e.to_string())?;
+    serde_json::to_string(&result).map_err(|e| e.to_string())
+}
+
+/// Samples one vibration mode's displacement field on a square grid,
+/// normalised to a peak of 1. Rows run along y.
+#[wasm_bindgen]
+pub fn compute_vibration_surface(request_json: &str) -> Result<String, JsValue> {
+    compute_vibration_surface_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_vibration_surface_impl(request_json: &str) -> Result<String, String> {
+    let request: VibrationSurfaceRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+
+    if request.samples < 2 {
+        return Err("samples must be at least 2".to_string());
+    }
+    if request.shape.len() != request.input.m
+        || request.shape.iter().any(|row| row.len() != request.input.n)
+    {
+        return Err(format!(
+            "mode shape is {}x{}, but the input declares m={}, n={}",
+            request.shape.len(),
+            request.shape.first().map_or(0, |r| r.len()),
+            request.input.m,
+            request.input.n
+        ));
+    }
+
+    let surface =
+        vibration_mode_surface(&request.shape, &request.input, request.samples, request.samples);
+    serde_json::to_string(&surface).map_err(|e| e.to_string())
 }
 
 #[derive(Deserialize)]

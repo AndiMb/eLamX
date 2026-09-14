@@ -576,6 +576,43 @@
                     <Rho>2.7e-9</Rho>
                 </Stiffener>
             </buckling>
+            <vibration name="GM-Schwing-SS">
+                <length>500.0</length>
+                <width>500.0</width>
+                <bcx>0</bcx>
+                <bcy>0</bcy>
+                <m>10</m>
+                <n>10</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl</dmatrixservice>
+            </vibration>
+            <vibration name="GM-Schwing-CC-Versteift">
+                <length>700.0</length>
+                <width>350.0</width>
+                <bcx>1</bcx>
+                <bcy>4</bcy>
+                <m>8</m>
+                <n>9</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.DtildeDMatrixServiceImpl</dmatrixservice>
+                <Stiffener name="Schwing-x" classname="de.elamx.clt.plate.AdditionalStiffeners.I_StiffenerProperties">
+                    <position>60.0</position>
+                    <direction>1</direction>
+                    <w1>25.0</w1>
+                    <t1>2.0</t1>
+                    <E>70000.0</E>
+                    <G>27000.0</G>
+                    <Rho>2.7e-9</Rho>
+                </Stiffener>
+                <Stiffener name="Schwing-y" classname="de.elamx.clt.plateui.stiffenerui.DefaultStiffenerProperties">
+                    <position>-100.0</position>
+                    <direction>2</direction>
+                    <E>70000.0</E>
+                    <I>18000.0</I>
+                    <G>27000.0</G>
+                    <J>300.0</J>
+                    <Rho>2.7e-9</Rho>
+                    <A>75.0</A>
+                </Stiffener>
+            </vibration>
             <lastplyfailure name="GM-LPF-Offset">
                 <n_x>250.0</n_x>
                 <n_y>0.0</n_y>

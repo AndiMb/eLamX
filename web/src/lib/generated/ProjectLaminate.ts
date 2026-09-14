@@ -5,6 +5,7 @@ import type { NamedCalculation } from "./NamedCalculation";
 import type { NamedDeformation } from "./NamedDeformation";
 import type { NamedLastPlyFailure } from "./NamedLastPlyFailure";
 import type { NamedPressureVessel } from "./NamedPressureVessel";
+import type { NamedVibration } from "./NamedVibration";
 import type { RawElement } from "./RawElement";
 
 /**
@@ -13,7 +14,7 @@ import type { RawElement } from "./RawElement";
  * which is how one compares load cases on the same stack - hence lists, not
  * single values.
  */
-export type ProjectLaminate = { laminate: Laminate, calculations: Array<NamedCalculation>, bucklings: Array<NamedBuckling>, last_ply_failures: Array<NamedLastPlyFailure>, pressure_vessels: Array<NamedPressureVessel>, deformations: Array<NamedDeformation>, 
+export type ProjectLaminate = { laminate: Laminate, calculations: Array<NamedCalculation>, bucklings: Array<NamedBuckling>, last_ply_failures: Array<NamedLastPlyFailure>, pressure_vessels: Array<NamedPressureVessel>, deformations: Array<NamedDeformation>, vibrations: Array<NamedVibration>, 
 /**
  * Module data from modules this crate does not implement, kept as raw XML
  * so a read/write cycle is lossless. Order is the order in the file.

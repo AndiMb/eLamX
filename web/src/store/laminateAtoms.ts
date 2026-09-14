@@ -42,10 +42,13 @@ export interface CarryOver {
   pressureVesselName?: string;
   /** Name of the deformation analysis its input came from. */
   deformationName?: string;
+  /** Name of the vibration analysis its input came from. */
+  vibrationName?: string;
   extraBucklings?: unknown[];
   extraLastPlyFailures?: unknown[];
   extraPressureVessels?: unknown[];
   extraDeformations?: unknown[];
+  extraVibrations?: unknown[];
   unsupportedModules?: unknown[];
 }
 

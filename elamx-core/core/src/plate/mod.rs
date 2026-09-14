@@ -1,13 +1,14 @@
 //! Rectangular-plate analyses on top of a CLT laminate.
 //! Reference: eLamX2/Classical_Laminated_Plate_Theory_Plate/src/de/elamx/clt/plate/
 //!
-//! Buckling and deformation are implemented, and share the Ritz machinery in
-//! `ritz` (the stiffness assembly and the evaluation of a coefficient grid
-//! into a displacement field) on top of the boundary shape functions and the
-//! D-matrix choice. Vibration is the remaining member of the Java module: it
-//! needs a mass matrix beside the same stiffness matrix and the generalised
-//! eigensolver in mathtools::eigen, so it slots in beside these two rather
-//! than replacing anything. Cutouts are their own problem.
+//! All three of the Java module's analyses are here - buckling, deformation
+//! and vibration - and they share the Ritz machinery in `ritz` (the stiffness
+//! assembly and the evaluation of a coefficient grid into a displacement
+//! field) on top of the boundary shape functions and the D-matrix choice.
+//! What distinguishes them is only what stands beside that stiffness matrix: a
+//! geometric stiffness and an eigenvalue problem, a load vector and a linear
+//! solve, or a mass matrix and the same eigenvalue problem. Cutouts are their
+//! own problem.
 //!
 //! Stiffeners live in `stiffener`: an additive contribution to the same
 //! stiffness matrix, which is why both analyses carry a list of them and
@@ -21,6 +22,7 @@ pub mod dmatrix;
 pub mod field;
 pub mod ritz;
 pub mod stiffener;
+pub mod vibration;
 
 pub use boundary::{Boundary, BoundaryCondition};
 pub use boundary_tables::MAX_TERMS;
@@ -38,5 +40,9 @@ pub use field::{
     PlateFieldSelection, DEFAULT_SAMPLES, MAX_SAMPLES, MIN_SAMPLES,
 };
 pub use stiffener::{
-    add_stiffener_stiffness, Stiffener, StiffenerDirection, StiffenerGeometry,
+    add_stiffener_mass, add_stiffener_stiffness, Stiffener, StiffenerDirection, StiffenerGeometry,
+};
+pub use vibration::{
+    calculate as calculate_vibration, mode_surface as vibration_mode_surface, VibrationError,
+    VibrationInput, VibrationMode, VibrationResult,
 };

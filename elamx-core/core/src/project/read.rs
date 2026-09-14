@@ -10,13 +10,14 @@
 use super::naming;
 use super::{
     NamedBuckling, NamedCalculation, NamedDeformation, NamedLastPlyFailure, NamedPressureVessel,
-    Project, ProjectLaminate, RawElement,
+    NamedVibration, Project, ProjectLaminate, RawElement,
 };
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, RadiusType, Strains};
 use crate::micromechanics::{self, Fibre, MatrixMaterial, MicroMechanics, Model};
 use crate::model::{Laminate, Layer, Material};
 use crate::plate::{
     BucklingInput, DeformationInput, NamedLoad, Stiffener, StiffenerDirection, StiffenerGeometry,
+    VibrationInput,
 };
 use roxmltree::{Document, Node};
 
@@ -309,6 +310,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
     let mut last_ply_failures = Vec::new();
     let mut pressure_vessels = Vec::new();
     let mut deformations = Vec::new();
+    let mut vibrations = Vec::new();
     let mut unsupported_modules = Vec::new();
 
     for element in node.children().filter(|n| n.is_element()) {
@@ -319,6 +321,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
             "lastplyfailure" => last_ply_failures.push(read_last_ply_failure(element, &ctx)?),
             "pressurevessel" => pressure_vessels.push(read_pressure_vessel(element, &ctx)?),
             "deformation" => deformations.push(read_deformation(element, &ctx)?),
+            "vibration" => vibrations.push(read_vibration(element, &ctx)?),
             other => unsupported_modules.push(RawElement {
                 tag: other.to_string(),
                 xml: serialise(element),
@@ -333,6 +336,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
         last_ply_failures,
         pressure_vessels,
         deformations,
+        vibrations,
         unsupported_modules,
     })
 }
@@ -422,39 +426,17 @@ fn read_buckling(node: Node, parent: &str) -> Result<NamedBuckling> {
     let name = attr(node, "name").unwrap_or_default().to_string();
     let ctx = format!("{parent}, Beulanalyse '{name}'");
 
-    let bc = |tag: &str| -> Result<crate::plate::BoundaryCondition> {
-        let index = number(node, tag, &ctx)? as usize;
-        naming::boundary_from_index(index).ok_or_else(|| ReadError::Unknown {
-            context: format!("{ctx}, <{tag}>"),
-            value: index.to_string(),
-        })
-    };
-
-    // A missing <dmatrixservice> means an old file written before the choice
-    // existed; those carry <wholed> instead, which the original maps to the
-    // standard or special-orthotropic matrix.
-    let d_matrix = match text(node, "dmatrixservice") {
-        Some(java) => naming::d_matrix_from_java(java).ok_or_else(|| ReadError::Unknown {
-            context: format!("{ctx}, Biegesteifigkeit"),
-            value: java.to_string(),
-        })?,
-        None => match text(node, "wholed") {
-            Some("false") => crate::plate::DMatrixKind::SpecialOrthotropic,
-            _ => crate::plate::DMatrixKind::Standard,
-        },
-    };
-
     let input = BucklingInput {
         length: number(node, "length", &ctx)?,
         width: number(node, "width", &ctx)?,
         n_x: number(node, "n_x", &ctx)?,
         n_y: number(node, "n_y", &ctx)?,
         n_xy: number(node, "n_xy", &ctx)?,
-        bc_x: bc("bcx")?,
-        bc_y: bc("bcy")?,
+        bc_x: boundary(node, "bcx", &ctx)?,
+        bc_y: boundary(node, "bcy", &ctx)?,
         m: number(node, "m", &ctx)? as usize,
         n: number(node, "n", &ctx)? as usize,
-        d_matrix,
+        d_matrix: d_matrix(node, &ctx)?,
         stiffeners: read_stiffeners(node, &ctx)?,
     };
 
@@ -493,27 +475,6 @@ fn read_deformation(node: Node, parent: &str) -> Result<NamedDeformation> {
     let name = attr(node, "name").unwrap_or_default().to_string();
     let ctx = format!("{parent}, Plattenverformung '{name}'");
 
-    let bc = |tag: &str| -> Result<crate::plate::BoundaryCondition> {
-        let index = number(node, tag, &ctx)? as usize;
-        naming::boundary_from_index(index).ok_or_else(|| ReadError::Unknown {
-            context: format!("{ctx}, <{tag}>"),
-            value: index.to_string(),
-        })
-    };
-
-    // Same fallback the buckling reader documents: a file written before the
-    // choice existed carries <wholed> instead.
-    let d_matrix = match text(node, "dmatrixservice") {
-        Some(java) => naming::d_matrix_from_java(java).ok_or_else(|| ReadError::Unknown {
-            context: format!("{ctx}, Biegesteifigkeit"),
-            value: java.to_string(),
-        })?,
-        None => match text(node, "wholed") {
-            Some("false") => crate::plate::DMatrixKind::SpecialOrthotropic,
-            _ => crate::plate::DMatrixKind::Standard,
-        },
-    };
-
     let mut loads = Vec::new();
     for element in node.children().filter(|n| n.is_element()) {
         match element.tag_name().name() {
@@ -541,18 +502,65 @@ fn read_deformation(node: Node, parent: &str) -> Result<NamedDeformation> {
         input: DeformationInput {
             length: number(node, "length", &ctx)?,
             width: number(node, "width", &ctx)?,
-            bc_x: bc("bcx")?,
-            bc_y: bc("bcy")?,
+            bc_x: boundary(node, "bcx", &ctx)?,
+            bc_y: boundary(node, "bcy", &ctx)?,
             m: number(node, "m", &ctx)? as usize,
             n: number(node, "n", &ctx)? as usize,
-            d_matrix,
+            d_matrix: d_matrix(node, &ctx)?,
             loads,
             stiffeners: read_stiffeners(node, &ctx)?,
         },
     })
 }
 
-/// The `<Stiffener>` children of a buckling or deformation element.
+/// An edge condition, stored as the index into eLamX's own array.
+fn boundary(node: Node, tag: &str, ctx: &str) -> Result<crate::plate::BoundaryCondition> {
+    let index = number(node, tag, ctx)? as usize;
+    naming::boundary_from_index(index).ok_or_else(|| ReadError::Unknown {
+        context: format!("{ctx}, <{tag}>"),
+        value: index.to_string(),
+    })
+}
+
+/// The bending-stiffness idealisation, by Java class name.
+///
+/// A missing `<dmatrixservice>` means a file written before the choice
+/// existed; those carry `<wholed>` instead, which the original maps to the
+/// standard or the special-orthotropic matrix. All three plate analyses store
+/// it the same way, so they read it the same way.
+fn d_matrix(node: Node, ctx: &str) -> Result<crate::plate::DMatrixKind> {
+    match text(node, "dmatrixservice") {
+        Some(java) => naming::d_matrix_from_java(java).ok_or_else(|| ReadError::Unknown {
+            context: format!("{ctx}, Biegesteifigkeit"),
+            value: java.to_string(),
+        }),
+        None => Ok(match text(node, "wholed") {
+            Some("false") => crate::plate::DMatrixKind::SpecialOrthotropic,
+            _ => crate::plate::DMatrixKind::Standard,
+        }),
+    }
+}
+
+fn read_vibration(node: Node, parent: &str) -> Result<NamedVibration> {
+    let name = attr(node, "name").unwrap_or_default().to_string();
+    let ctx = format!("{parent}, Schwingungsanalyse '{name}'");
+
+    Ok(NamedVibration {
+        name,
+        input: VibrationInput {
+            length: number(node, "length", &ctx)?,
+            width: number(node, "width", &ctx)?,
+            bc_x: boundary(node, "bcx", &ctx)?,
+            bc_y: boundary(node, "bcy", &ctx)?,
+            m: number(node, "m", &ctx)? as usize,
+            n: number(node, "n", &ctx)? as usize,
+            d_matrix: d_matrix(node, &ctx)?,
+            stiffeners: read_stiffeners(node, &ctx)?,
+        },
+    })
+}
+
+/// The `<Stiffener>` children of a buckling, deformation or vibration element.
 ///
 /// The profile is identified by Java class name, and its geometry parameters
 /// are written under their own property names - `LoadSaveStiffeners` derives

@@ -87,6 +87,7 @@ interface ModuleRow {
 const MODULE_ROWS: ModuleRow[] = [
   { key: "bucklingFactor", essential: true, labelKey: "compare.row.bucklingFactor", digits: 3 },
   { key: "maxDeflection", labelKey: "compare.row.maxDeflection", digits: 3 },
+  { key: "fundamentalFrequency", labelKey: "compare.row.fundamentalFrequency", digits: 4 },
   { key: "lpfFirstMatrix", labelKey: "compare.row.lpfFirstMatrix", digits: 3 },
   { key: "lpfFinal", labelKey: "compare.row.lpfFinal", digits: 3 },
 ];

@@ -11,8 +11,8 @@
 //!
 //! What is covered: materials (including the micromechanic ones and the
 //! fibres and matrices they are built from), laminates with their layers, CLT
-//! calculations, buckling, deformation, last-ply-failure and pressure-vessel
-//! analyses -
+//! calculations, buckling, deformation, vibration, last-ply-failure and
+//! pressure-vessel analyses -
 //! everything the ported calculation modules need. Everything else is
 //! **preserved verbatim** on read and written back unchanged, so opening and
 //! saving a file in the web version does not silently destroy what the desktop
@@ -30,7 +30,7 @@ pub use write::write_elamx;
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, Strains};
 use crate::micromechanics::{Fibre, MatrixMaterial};
 use crate::model::{Laminate, Material};
-use crate::plate::{BucklingInput, DeformationInput};
+use crate::plate::{BucklingInput, DeformationInput, VibrationInput};
 use serde::{Deserialize, Serialize};
 
 /// A whole `.elamx` document.
@@ -75,6 +75,8 @@ pub struct ProjectLaminate {
     pub pressure_vessels: Vec<NamedPressureVessel>,
     #[serde(default)]
     pub deformations: Vec<NamedDeformation>,
+    #[serde(default)]
+    pub vibrations: Vec<NamedVibration>,
     /// Module data from modules this crate does not implement, kept as raw XML
     /// so a read/write cycle is lossless. Order is the order in the file.
     #[serde(default)]
@@ -122,6 +124,14 @@ pub struct NamedPressureVessel {
 pub struct NamedDeformation {
     pub name: String,
     pub input: DeformationInput,
+}
+
+/// One plate-vibration analysis.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+pub struct NamedVibration {
+    pub name: String,
+    pub input: VibrationInput,
 }
 
 /// An element this crate does not interpret, kept verbatim so that a read/

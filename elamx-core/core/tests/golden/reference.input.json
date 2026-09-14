@@ -737,6 +737,7 @@
           ]
         }
       ],
+      "vibrations": [],
       "bucklings": [
         {
           "name": "GM-Beul-DTilde",
@@ -931,6 +932,7 @@
           ]
         }
       ],
+      "vibrations": [],
       "bucklings": [
         {
           "name": "GM-Beul-SS-Druck",
@@ -1263,6 +1265,58 @@
           ]
         }
       ],
+      "vibrations": [
+        {
+          "name": "GM-Schwing-SS",
+          "input": {
+            "length": 500,
+            "width": 500,
+            "bc_x": "SS",
+            "bc_y": "SS",
+            "m": 10,
+            "n": 10,
+            "d_matrix": "standard",
+            "stiffeners": []
+          }
+        },
+        {
+          "name": "GM-Schwing-CC-Versteift",
+          "input": {
+            "length": 700,
+            "width": 350,
+            "bc_x": "CC",
+            "bc_y": "SC",
+            "m": 8,
+            "n": 9,
+            "d_matrix": "d_tilde",
+            "stiffeners": [
+              {
+                "name": "Schwing-x",
+                "direction": "x",
+                "position": 60,
+                "profile": "i_profile",
+                "w1": 25,
+                "t1": 2,
+                "e": 70000,
+                "g": 27000,
+                "rho": 2.7e-9
+              },
+              {
+                "name": "Schwing-y",
+                "direction": "y",
+                "position": -100,
+                "profile": "direct",
+                "e": 70000,
+                "i": 18000,
+                "g": 27000,
+                "j": 300,
+                "rho": 2.7e-9,
+                "a": 75
+              }
+            ]
+          }
+        }
+      ],
       "bucklings": [
         {
           "name": "GM-Beul-CF-SC",
@@ -1438,6 +1492,7 @@
           ]
         }
       ],
+      "vibrations": [],
       "bucklings": [
         {
           "name": "GM-Beul-FF-CC",
@@ -1606,6 +1661,7 @@
           ]
         }
       ],
+      "vibrations": [],
       "bucklings": [
         {
           "name": "GM-Beul-SF-SS",
@@ -1757,6 +1813,7 @@
           ]
         }
       ],
+      "vibrations": [],
       "bucklings": [],
       "last_ply_failures": []
     },
@@ -1891,6 +1948,7 @@
           ]
         }
       ],
+      "vibrations": [],
       "bucklings": [],
       "last_ply_failures": []
     },
@@ -1989,6 +2047,7 @@
           ]
         }
       ],
+      "vibrations": [],
       "bucklings": [],
       "last_ply_failures": []
     }

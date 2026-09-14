@@ -200,6 +200,32 @@ fn reads_the_reference_file_as_the_generator_wrote_it() {
             assert_eq!(buck.input.stiffeners, expected, "{}: Versteifungen", buck.name);
         }
 
+        // Vibration has no batch output, so the reference file is the only
+        // place its element is exercised at all - and the reason it is here is
+        // that the same file, written back out by this crate, still opens in
+        // the Java program (see golden/README.md).
+        let expected_vibrations = e["vibrations"].as_array().unwrap();
+        assert_eq!(
+            entry.vibrations.len(),
+            expected_vibrations.len(),
+            "{}: Schwingungsanalysen",
+            lam.name
+        );
+        for (analysis, ev) in entry.vibrations.iter().zip(expected_vibrations) {
+            assert_eq!(analysis.name, ev["name"].as_str().unwrap());
+            let ei = &ev["input"];
+            assert_eq!(analysis.input.length, ei["length"].as_f64().unwrap());
+            assert_eq!(analysis.input.width, ei["width"].as_f64().unwrap());
+            assert_eq!(analysis.input.m, ei["m"].as_u64().unwrap() as usize);
+            assert_eq!(analysis.input.n, ei["n"].as_u64().unwrap() as usize);
+            assert_eq!(serde_json::to_value(analysis.input.bc_x).unwrap(), ei["bc_x"]);
+            assert_eq!(serde_json::to_value(analysis.input.bc_y).unwrap(), ei["bc_y"]);
+            assert_eq!(serde_json::to_value(analysis.input.d_matrix).unwrap(), ei["d_matrix"]);
+            let expected: Vec<Stiffener> =
+                serde_json::from_value(ei["stiffeners"].clone()).expect("Versteifungen");
+            assert_eq!(analysis.input.stiffeners, expected, "{}: Versteifungen", analysis.name);
+        }
+
         let expected_lpf = e["last_ply_failures"].as_array().unwrap();
         assert_eq!(
             entry.last_ply_failures.len(),
@@ -281,6 +307,7 @@ fn written_file_uses_the_original_element_names() {
         "<deltat>",
         "<buckling name=",
         "<dmatrixservice>de.elamx.clt.plate.dmatrix.DtildeDMatrixServiceImpl</dmatrixservice>",
+        "<vibration name=",
         "<Stiffener name=\"Frei-x\" classname=\"de.elamx.clt.plateui.stiffenerui.DefaultStiffenerProperties\">",
         "classname=\"de.elamx.clt.plate.AdditionalStiffeners.I_StiffenerProperties\"",
         "classname=\"de.elamx.clt.plate.AdditionalStiffeners.T_StiffenerProperties\"",

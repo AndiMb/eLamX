@@ -26,18 +26,25 @@ import {
   lastPlyFailureSummaryFamily,
 } from "./lastPlyFailureAtoms";
 import { comparisonVariantsAtom } from "./comparisonAtoms";
+import {
+  vibrationInputFamily,
+  vibrationStorageKey,
+  vibrationSummaryFamily,
+} from "./vibrationAtoms";
 
 export type ModuleFigureId =
   | "bucklingFactor"
   | "maxDeflection"
+  | "fundamentalFrequency"
   | "lpfFirstMatrix"
   | "lpfFinal";
 
-type ModuleId = "buckling" | "deformation" | "lastPlyFailure";
+type ModuleId = "buckling" | "deformation" | "vibration" | "lastPlyFailure";
 
 export const MODULE_FIGURES: readonly { id: ModuleFigureId; module: ModuleId }[] = [
   { id: "bucklingFactor", module: "buckling" },
   { id: "maxDeflection", module: "deformation" },
+  { id: "fundamentalFrequency", module: "vibration" },
   { id: "lpfFirstMatrix", module: "lastPlyFailure" },
   { id: "lpfFinal", module: "lastPlyFailure" },
 ];
@@ -45,6 +52,7 @@ export const MODULE_FIGURES: readonly { id: ModuleFigureId; module: ModuleId }[]
 const STORAGE_KEY: Record<ModuleId, (laminateId: string) => string> = {
   buckling: bucklingStorageKey,
   deformation: deformationStorageKey,
+  vibration: vibrationStorageKey,
   lastPlyFailure: lastPlyFailureStorageKey,
 };
 
@@ -53,6 +61,7 @@ const STORAGE_KEY: Record<ModuleId, (laminateId: string) => string> = {
 const INPUT_FAMILY: Record<ModuleId, (laminateId: string) => Atom<unknown>> = {
   buckling: bucklingInputFamily,
   deformation: deformationInputFamily,
+  vibration: vibrationInputFamily,
   lastPlyFailure: lastPlyFailureInputFamily,
 };
 
@@ -109,6 +118,8 @@ export const moduleFigureFamily = atomFamily((key: string) =>
         return get(bucklingSummaryFamily(laminateId))?.criticalFactor ?? null;
       case "maxDeflection":
         return get(deformationSummaryFamily(laminateId))?.maxDeflection ?? null;
+      case "fundamentalFrequency":
+        return get(vibrationSummaryFamily(laminateId))?.fundamentalFrequency ?? null;
       case "lpfFirstMatrix":
         return (
           get(lastPlyFailureSummaryFamily(laminateId))?.firstMatrixFailure?.reserve_factor ??

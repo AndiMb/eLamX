@@ -51,6 +51,8 @@ import type { Model as GenMicroModel } from "./generated/Model";
 import type { Stiffener as GenStiffener } from "./generated/Stiffener";
 import type { StiffenerDirection as GenStiffenerDirection } from "./generated/StiffenerDirection";
 import type { StressStrainState as GenStressStrainState } from "./generated/StressStrainState";
+import type { VibrationInput as GenVibrationInput } from "./generated/VibrationInput";
+import type { VibrationResult as GenVibrationResult } from "./generated/VibrationResult";
 
 export type AngleSweepResponse = GenAngleSweepResponse;
 export type BoundaryConditionId = GenBoundaryCondition;
@@ -92,6 +94,8 @@ export type StiffenerDto = GenStiffener;
 export type StiffenerDirectionId = GenStiffenerDirection;
 export type StrainsDto = GenStrains;
 export type StressStrainStateDto = GenStressStrainState;
+export type VibrationInputDto = GenVibrationInput;
+export type VibrationResponse = GenVibrationResult;
 
 // Criterion ids and their additional-value keys, matching the `pub const`s in
 // elamx-core/core/src/failure/{mod,max_strain,tsai_wu,puck,fmc,ztl}.rs.

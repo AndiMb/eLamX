@@ -8,7 +8,7 @@
 use super::naming;
 use super::{
     NamedBuckling, NamedCalculation, NamedDeformation, NamedLastPlyFailure, NamedPressureVessel,
-    Project, ProjectLaminate,
+    NamedVibration, Project, ProjectLaminate,
 };
 use crate::clt::RadiusType;
 use crate::plate::{Stiffener, StiffenerGeometry, TransverseLoad};
@@ -115,6 +115,9 @@ fn write_laminate(entry: &ProjectLaminate, out: &mut String) {
     for analysis in &entry.deformations {
         write_deformation(analysis, out);
     }
+    for analysis in &entry.vibrations {
+        write_vibration(analysis, out);
+    }
     for raw in &entry.unsupported_modules {
         out.push_str("            ");
         out.push_str(&raw.xml);
@@ -205,6 +208,23 @@ fn write_last_ply_failure(analysis: &NamedLastPlyFailure, out: &mut String) {
     tag(out, 16, "epsilon_crit", &num(input.epsilon_crit));
     tag(out, 16, "j_a", &num(input.j_a));
     out.push_str("            </lastplyfailure>\n");
+}
+
+fn write_vibration(analysis: &NamedVibration, out: &mut String) {
+    let input = &analysis.input;
+    out.push_str(&format!(
+        "            <vibration name=\"{}\">\n",
+        escape(&analysis.name)
+    ));
+    tag(out, 16, "length", &num(input.length));
+    tag(out, 16, "width", &num(input.width));
+    tag(out, 16, "bcx", &naming::boundary_to_index(input.bc_x).to_string());
+    tag(out, 16, "bcy", &naming::boundary_to_index(input.bc_y).to_string());
+    tag(out, 16, "m", &input.m.to_string());
+    tag(out, 16, "n", &input.n.to_string());
+    tag(out, 16, "dmatrixservice", naming::d_matrix_to_java(input.d_matrix));
+    write_stiffeners(&input.stiffeners, out);
+    out.push_str("            </vibration>\n");
 }
 
 fn write_deformation(analysis: &NamedDeformation, out: &mut String) {
