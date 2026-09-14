@@ -53,12 +53,36 @@ function parseHex(hex: string): [number, number, number] {
   return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
 }
 
-export const FailureBody3D = memo(function FailureBody3D({
-  points,
-  markers,
-}: {
+/** The canvas's own ink, for a wireframe that was given no colour. */
+function axisFallback(canvas: HTMLCanvasElement): string {
+  return getComputedStyle(canvas).color;
+}
+
+/** One criterion's surface, as it is drawn. */
+export interface FailureBodySurface {
+  key: string;
   /** Surface grid from the core; null entries are directions it could not evaluate. */
   points: ([number, number, number] | null)[][];
+  /** Wireframe colour when this body is not the solid one. */
+  color?: string;
+}
+
+export const FailureBody3D = memo(function FailureBody3D({
+  bodies,
+  markers,
+}: {
+  /**
+   * The bodies to draw, in order. The FIRST is drawn as a solid shaded
+   * surface, every further one as a wireframe in its own colour.
+   *
+   * Not several translucent shells, which is the obvious thing and is wrong
+   * here: this view sorts quads by depth (a painter's algorithm, exact for one
+   * body because it is star-shaped about the origin), and two criteria's
+   * surfaces CROSS - so along the intersection curve the sorting has no right
+   * answer and the overlap would be drawn arbitrarily. A wireframe has no fill
+   * to order, so what the picture shows is what the criteria say.
+   */
+  bodies: FailureBodySurface[];
   markers: StressMarker[];
 }) {
   const t = useT();
@@ -71,7 +95,8 @@ export const FailureBody3D = memo(function FailureBody3D({
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || points.length < 2) return;
+    const solid = bodies[0];
+    if (!canvas || !solid || solid.points.length < 2) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -89,15 +114,19 @@ export const FailureBody3D = memo(function FailureBody3D({
     // strength ~2000, shear ~70), so each axis is normalised to its own
     // extent. The body would otherwise be a needle: this is a stress SPACE
     // plot, not a scale drawing.
+    // Over ALL bodies, not just the solid one: two criteria can only be
+    // compared if they are drawn in the same space.
     let spanPar = 0;
     let spanNor = 0;
     let spanShear = 0;
-    for (const row of points) {
-      for (const p of row) {
-        if (!p) continue;
-        spanPar = Math.max(spanPar, Math.abs(p[0]));
-        spanNor = Math.max(spanNor, Math.abs(p[1]));
-        spanShear = Math.max(spanShear, Math.abs(p[2]));
+    for (const body of bodies) {
+      for (const row of body.points) {
+        for (const p of row) {
+          if (!p) continue;
+          spanPar = Math.max(spanPar, Math.abs(p[0]));
+          spanNor = Math.max(spanNor, Math.abs(p[1]));
+          spanShear = Math.max(spanShear, Math.abs(p[2]));
+        }
       }
     }
     // Deliberately NOT stretched to include the markers: a failed ply sits far
@@ -137,6 +166,7 @@ export const FailureBody3D = memo(function FailureBody3D({
 
     const base = parseHex(colors.surface);
 
+    const points = solid.points;
     const quads: Quad[] = [];
     for (let r = 0; r < points.length - 1; r++) {
       for (let c = 0; c < points[r].length - 1; c++) {
@@ -182,6 +212,36 @@ export const FailureBody3D = memo(function FailureBody3D({
       ctx.lineWidth = 0.6;
       ctx.stroke();
       ctx.globalAlpha = 1;
+    }
+
+    // The further criteria, as wireframes over the solid one. Every fourth
+    // grid line in each direction: the full grid is 60 x 30 and would read as
+    // a shaded surface again, which is the one thing it must not do.
+    const STRIDE = 4;
+    for (const body of bodies.slice(1)) {
+      ctx.save();
+      ctx.strokeStyle = body.color ?? axisFallback(canvas);
+      ctx.lineWidth = 1.2;
+      ctx.globalAlpha = 0.9;
+      const grid = body.points;
+      const line = (path: (readonly [number, number, number] | null)[]) => {
+        ctx.beginPath();
+        let open = false;
+        for (const p of path) {
+          if (!p) {
+            open = false;
+            continue;
+          }
+          const q = to2d(p);
+          if (open) ctx.lineTo(q.x, q.y);
+          else ctx.moveTo(q.x, q.y);
+          open = true;
+        }
+        ctx.stroke();
+      };
+      for (let r = 0; r < grid.length; r += STRIDE) line(grid[r]);
+      for (let c = 0; c < (grid[0]?.length ?? 0); c += STRIDE) line(grid.map((row) => row[c]));
+      ctx.restore();
     }
 
     // Axes through the origin, drawn on top so the stress state can be read
@@ -245,7 +305,7 @@ export const FailureBody3D = memo(function FailureBody3D({
       ctx.fillText(marker.label, point.x + 7, point.y + 3);
       ctx.restore();
     }
-  }, [points, markers, camera, colors]);
+  }, [bodies, markers, camera, colors]);
 
   useEffect(() => {
     draw();

@@ -260,10 +260,22 @@ struct AngleSweepRequest {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 struct AngleSweepResponse {
     angle_deg: Vec<f64>,
+    /// The 11, 12, 22 and 66 components of each of the three laminate
+    /// matrices as the coordinate system turns. All three, and not only A,
+    /// because that is what the original's polar chart offers - and B and D
+    /// are where an unsymmetric or a bend-twist-coupled stack shows itself.
     a11: Vec<f64>,
     a12: Vec<f64>,
     a22: Vec<f64>,
     a66: Vec<f64>,
+    b11: Vec<f64>,
+    b12: Vec<f64>,
+    b22: Vec<f64>,
+    b66: Vec<f64>,
+    d11: Vec<f64>,
+    d12: Vec<f64>,
+    d22: Vec<f64>,
+    d66: Vec<f64>,
 }
 
 /// Sweeps the in-plane A-matrix components (A11, A12, A22, A66) as the
@@ -281,14 +293,24 @@ fn compute_angle_sweep_impl(request_json: &str, delta_angle_deg: f64) -> Result<
     let clt = CltLaminate::new(&request.laminate, &request.materials)
         .map_err(|e| e.to_string())?;
 
-    let sweep = mathtools::get_matrix_components_over_angle(clt.a_matrix(), delta_angle_deg);
+    let a = mathtools::get_matrix_components_over_angle(clt.a_matrix(), delta_angle_deg);
+    let b = mathtools::get_matrix_components_over_angle(clt.b_matrix(), delta_angle_deg);
+    let d = mathtools::get_matrix_components_over_angle(clt.d_matrix(), delta_angle_deg);
 
     let response = AngleSweepResponse {
-        angle_deg: sweep[mathtools::ANGLE_ROW].clone(),
-        a11: sweep[mathtools::A11_ROW].clone(),
-        a12: sweep[mathtools::A12_ROW].clone(),
-        a22: sweep[mathtools::A22_ROW].clone(),
-        a66: sweep[mathtools::A66_ROW].clone(),
+        angle_deg: a[mathtools::ANGLE_ROW].clone(),
+        a11: a[mathtools::M11_ROW].clone(),
+        a12: a[mathtools::M12_ROW].clone(),
+        a22: a[mathtools::M22_ROW].clone(),
+        a66: a[mathtools::M66_ROW].clone(),
+        b11: b[mathtools::M11_ROW].clone(),
+        b12: b[mathtools::M12_ROW].clone(),
+        b22: b[mathtools::M22_ROW].clone(),
+        b66: b[mathtools::M66_ROW].clone(),
+        d11: d[mathtools::M11_ROW].clone(),
+        d12: d[mathtools::M12_ROW].clone(),
+        d22: d[mathtools::M22_ROW].clone(),
+        d66: d[mathtools::M66_ROW].clone(),
     };
 
     serde_json::to_string(&response).map_err(|e| e.to_string())

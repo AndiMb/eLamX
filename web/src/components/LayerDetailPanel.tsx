@@ -86,7 +86,10 @@ export function LayerDetailPanel({
           )}
           {body.state === "loading" && <p className="hint">{t("results.computing")}</p>}
           {body.state === "hasData" && (
-            <FailureBody3D points={body.data.points} markers={markers} />
+            <FailureBody3D
+              bodies={[{ key: "ply", points: body.data.points }]}
+              markers={markers}
+            />
           )}
           <p className="hint">{t("layerDetail.hint")}</p>
         </div>

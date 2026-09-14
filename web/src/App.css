@@ -741,6 +741,23 @@ input[type="checkbox"] {
   margin: 0;
 }
 
+/* Die Komponentenauswahl des Polardiagramms: zwoelf kurze Marken, die in
+   Zeilen umbrechen duerfen, statt einer Liste, die das Diagramm wegschiebt. */
+.polar-series-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-4);
+  margin-bottom: var(--s-3);
+}
+
+.polar-series-picker label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
 /* --- Vergleichsflaeche --- */
 
 .compare-table th[scope="row"] {

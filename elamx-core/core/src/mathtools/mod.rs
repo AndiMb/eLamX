@@ -341,18 +341,21 @@ pub fn add(a: &[f64], b: &[f64]) -> Vec<f64> {
 
 /// Row index of the rotation angle in the result of [`get_matrix_components_over_angle`].
 pub const ANGLE_ROW: usize = 0;
-/// Row index of the A11 component.
-pub const A11_ROW: usize = 1;
-/// Row index of the A12 component.
-pub const A12_ROW: usize = 2;
-/// Row index of the A22 component.
-pub const A22_ROW: usize = 3;
-/// Row index of the A66 component.
-pub const A66_ROW: usize = 4;
+/// Row index of the 11 component.
+pub const M11_ROW: usize = 1;
+/// Row index of the 12 component.
+pub const M12_ROW: usize = 2;
+/// Row index of the 22 component.
+pub const M22_ROW: usize = 3;
+/// Row index of the 66 component.
+pub const M66_ROW: usize = 4;
 
-/// Sweep of the in-plane A-matrix components (A11, A12, A22, A66) as the coordinate
-/// system is rotated from 0 to 360 degrees in steps of `delta_angle`. `mat` must be
-/// the 3x3 A-matrix. Row layout matches the `*_ROW` constants above.
+/// Sweep of a 3x3 laminate matrix's 11, 12, 22 and 66 components as the
+/// coordinate system is rotated from 0 to 360 degrees in steps of
+/// `delta_angle`. Row layout matches the `*_ROW` constants above.
+///
+/// Named for no particular matrix because it works on any of the three: it is
+/// the tensor rotation, and the Java polar chart calls it on A, B and D alike.
 pub fn get_matrix_components_over_angle(mat: &Matrix, delta_angle: f64) -> Matrix {
     let number = (360.0 / delta_angle) as usize;
     let mut distribution = vec![vec![0.0; number]; 5];
@@ -373,19 +376,19 @@ pub fn get_matrix_components_over_angle(mat: &Matrix, delta_angle: f64) -> Matri
         let (s2, s3, s4) = (s * s, s * s * s, s * s * s * s);
 
         distribution[ANGLE_ROW][i] = angle;
-        distribution[A11_ROW][i] = c4 * a11 + 2.0 * c2 * s2 * a12 - 4.0 * c3 * s * a16 + s4 * a22
+        distribution[M11_ROW][i] = c4 * a11 + 2.0 * c2 * s2 * a12 - 4.0 * c3 * s * a16 + s4 * a22
             - 4.0 * s3 * c * a26
             + 4.0 * c2 * s2 * a66;
-        distribution[A12_ROW][i] = c2 * s2 * a11
+        distribution[M12_ROW][i] = c2 * s2 * a11
             + (c4 + s4) * a12
             + 2.0 * (s * c3 - c * s3) * a16
             + c2 * s2 * a22
             + 2.0 * (c * s3 - s * c3) * a26
             - 4.0 * c2 * s2 * a66;
-        distribution[A22_ROW][i] = s4 * a11 + 2.0 * c2 * s2 * a12 + 4.0 * s3 * c * a16 + c4 * a22
+        distribution[M22_ROW][i] = s4 * a11 + 2.0 * c2 * s2 * a12 + 4.0 * s3 * c * a16 + c4 * a22
             + 4.0 * c3 * s * a26
             + 4.0 * c2 * s2 * a66;
-        distribution[A66_ROW][i] = c2 * s2 * a11 - 2.0 * c2 * s2 * a12
+        distribution[M66_ROW][i] = c2 * s2 * a11 - 2.0 * c2 * s2 * a12
             + 2.0 * (s * c3 - c * s3) * a16
             + c2 * s2 * a22
             - 2.0 * (c3 * s - s3 * c) * a26
@@ -516,10 +519,10 @@ mod tests {
         ];
         let sweep = get_matrix_components_over_angle(&mat, 90.0);
         assert_relative_eq!(sweep[ANGLE_ROW][0], 0.0, epsilon = 1e-12);
-        assert_relative_eq!(sweep[A11_ROW][0], mat[0][0], epsilon = 1e-9);
-        assert_relative_eq!(sweep[A12_ROW][0], mat[0][1], epsilon = 1e-9);
-        assert_relative_eq!(sweep[A22_ROW][0], mat[1][1], epsilon = 1e-9);
-        assert_relative_eq!(sweep[A66_ROW][0], mat[2][2], epsilon = 1e-9);
+        assert_relative_eq!(sweep[M11_ROW][0], mat[0][0], epsilon = 1e-9);
+        assert_relative_eq!(sweep[M12_ROW][0], mat[0][1], epsilon = 1e-9);
+        assert_relative_eq!(sweep[M22_ROW][0], mat[1][1], epsilon = 1e-9);
+        assert_relative_eq!(sweep[M66_ROW][0], mat[2][2], epsilon = 1e-9);
     }
 
     #[test]

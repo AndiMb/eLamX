@@ -36,3 +36,32 @@ export const failureBodyFamily = atomFamily((key: FailureBodyKey) =>
 export const loadableFailureBodyFamily = atomFamily((key: FailureBodyKey) =>
   loadableWithLastValue(failureBodyFamily(key)),
 );
+
+/** `${materialId}|${criterionId},${criterionId},...` - several at once. */
+export const failureBodiesKey = (materialId: string, criterionIds: readonly string[]): string =>
+  `${materialId}|${criterionIds.join(",")}`;
+
+/**
+ * Several criteria's bodies for one material, in the order asked for.
+ *
+ * A family over the whole selection rather than one atom per criterion in the
+ * component, because the component cannot call a hook per selected criterion -
+ * the count changes as the user ticks boxes, and React needs it fixed. Going
+ * through one atom moves the variable-length part into the store, where it
+ * belongs, and costs nothing: this reads the per-pair atoms above, so ticking
+ * a fourth criterion computes the fourth and reuses the three already there.
+ */
+export const failureBodiesFamily = atomFamily((key: string) =>
+  atom<Promise<FailureEnvelopeResponse[]>>(async (get) => {
+    const at = key.indexOf("|");
+    const materialId = key.slice(0, at);
+    const criterionIds = key.slice(at + 1).split(",").filter(Boolean);
+    return Promise.all(
+      criterionIds.map((id) => get(failureBodyFamily(failureBodyKey(materialId, id)))),
+    );
+  }),
+);
+
+export const loadableFailureBodiesFamily = atomFamily((key: string) =>
+  loadableWithLastValue(failureBodiesFamily(key)),
+);

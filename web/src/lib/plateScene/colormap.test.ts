@@ -7,6 +7,7 @@ const colors: ChartColors = {
   surface: "#2a78d6",
   status: { ok: "#1baf7a", danger: "#e34948" },
   annotation: { support: "#48505f", load: "#eb6834", stiffener: "#8a6a2f" },
+  series: ["#e34948", "#1baf7a"],
 };
 
 describe("buildColormap", () => {
