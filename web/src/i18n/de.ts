@@ -669,4 +669,12 @@ export const de: Messages = {
   "vibration.modes.ratio": "zu f₁",
   "vibration.modes.hint": "Dicht beieinanderliegende Frequenzen bedeuten, dass die Platte mehrere Eigenformen fast gleicher Frequenz hat — eine Anregung nahe einer davon regt die anderen mit an.",
 
+
+  // --- Das verformte Quadrat -----------------------------------------------
+  "strainShape.title": "Verformtes Quadrat",
+  "strainShape.aria": "Dreidimensionale Ansicht eines Laminatquadrats unter diesem Lastfall",
+  "strainShape.scale": "Verschiebung {factor}-fach überhöht",
+  "strainShape.undeformed": "Dieser Lastfall bewegt nichts.",
+  "strainShape.hint": "Ein Quadrat aus diesem Laminat unter dem Lastfall oben, verschoben um die sechs Größen, die die CLT gelöst hat — die drei Mittelflächendehnungen und die drei Krümmungen. Die gestrichelte Umrandung ist der Ausgangszustand, die Farbe die zurückgelegte Strecke. Wenn sich ein unsymmetrischer Aufbau unter reinem Zug verdrillt, tut die B-Matrix genau das, was die Tabelle darüber sagt.",
+
 };

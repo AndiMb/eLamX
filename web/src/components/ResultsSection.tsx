@@ -9,6 +9,8 @@ import { AbdExplanation } from "./AbdExplanation";
 import { AngleSweepChart } from "./charts/AngleSweepChart";
 import { AbdHeatmap } from "./charts/AbdHeatmap";
 import { ThroughThicknessChart } from "./charts/ThroughThicknessChart";
+import { StrainShapeView } from "./charts/StrainShapeView";
+import { solvedStrainsFamily } from "../store/derivedAtoms";
 import { ReserveFactorChart } from "./charts/ReserveFactorChart";
 import { useT } from "../i18n";
 
@@ -60,6 +62,16 @@ export function ResultsSection({ laminateId }: { laminateId: string }) {
             </section>
           </MobileCollapse>
 
+          {/* Beside the ABD, not beside the ply results: what it draws is the
+              laminate's answer to this load case as a whole - the six numbers
+              the ABD produced - and not anything per ply. */}
+          <MobileCollapse title={t("strainShape.title")}>
+            <section className="panel">
+              <h2>{t("strainShape.title")}</h2>
+              <DeformedSquare laminateId={laminateId} />
+            </section>
+          </MobileCollapse>
+
           <section className="panel">
             {/* Behind a tap on a narrow screen for the same reason the ABD is:
                 this one GROWS with the stack. Sixteen plies were 2800 px of
@@ -78,4 +90,13 @@ export function ResultsSection({ laminateId }: { laminateId: string }) {
       )}
     </>
   );
+}
+
+/** Reads the solved strains and hands them to the view. Split out so the view
+ *  itself stays a pure function of six numbers - it is memoised, and a panel
+ *  that also subscribed would defeat that. */
+function DeformedSquare({ laminateId }: { laminateId: string }) {
+  const strains = useAtomValue(solvedStrainsFamily(laminateId));
+  if (!strains) return null;
+  return <StrainShapeView strains={strains} />;
 }

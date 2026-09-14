@@ -690,4 +690,12 @@ export const en = {
   "vibration.modes.ratio": "to f₁",
   "vibration.modes.hint": "Frequencies close together mean the plate has several modes at nearly the same frequency — excitation near one of them will stir the others too.",
 
+
+  // --- The deformed square -------------------------------------------------
+  "strainShape.title": "Deformed square",
+  "strainShape.aria": "Three-dimensional view of a square of laminate under this load case",
+  "strainShape.scale": "Displacement exaggerated {factor}-fold",
+  "strainShape.undeformed": "This load case moves nothing.",
+  "strainShape.hint": "A square of this laminate under the load case above, displaced by the six numbers the CLT solved for — the three mid-plane strains and the three curvatures. The dashed outline is where it started; the colour is how far each point moved. An unsymmetric layup twisting under a pure tensile load is the B matrix doing what the table above says it does.",
+
 } as const;
