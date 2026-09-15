@@ -22,6 +22,7 @@ mod laminate_envelope;
 mod max_strain;
 mod max_stress;
 mod mayes;
+mod metal;
 mod puck;
 mod reserve_factor;
 mod rotem;
@@ -44,6 +45,7 @@ pub use laminate_envelope::{
 pub use max_strain::{MaxStrain, EPS_X, EPS_Y, GAMMA_XY, GLOBAL_LOCAL};
 pub use max_stress::MaxStress;
 pub use mayes::Mayes;
+pub use metal::{is_isotropic, Tresca, VonMises};
 pub use puck::{Puck, A0, LAMBDA_MIN, PSPD, PSPZ};
 pub use reserve_factor::{FailureType, ReserveFactor};
 pub use rotem::Rotem;
@@ -104,6 +106,8 @@ pub const MAYES_ID: &str = "mayes";
 pub const ROTEM_ID: &str = "rotem";
 pub const SUN_ID: &str = "sun";
 pub const ZTL_ID: &str = "ztl";
+pub const VON_MISES_ID: &str = "von_mises";
+pub const TRESCA_ID: &str = "tresca";
 
 /// Registry containing the criteria implemented so far, keyed by their `*_ID` constants.
 pub fn default_criterion_registry() -> CriterionRegistry {
@@ -123,6 +127,9 @@ pub fn default_criterion_registry() -> CriterionRegistry {
     registry.insert(ROTEM_ID.to_string(), Box::new(Rotem));
     registry.insert(SUN_ID.to_string(), Box::new(Sun));
     registry.insert(ZTL_ID.to_string(), Box::new(Ztl));
+    // The two isotropic yield criteria, for a metal ply in a hybrid laminate.
+    registry.insert(VON_MISES_ID.to_string(), Box::new(VonMises));
+    registry.insert(TRESCA_ID.to_string(), Box::new(Tresca));
     registry
 }
 
@@ -255,6 +262,8 @@ mod tests {
             ROTEM_ID,
             SUN_ID,
             ZTL_ID,
+            VON_MISES_ID,
+            TRESCA_ID,
         ] {
             assert!(registry.contains_key(id), "missing criterion '{id}'");
         }

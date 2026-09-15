@@ -1,9 +1,9 @@
 import { useAtomValue } from "jotai";
-import { X } from "lucide-react";
+import { TriangleAlert, X } from "lucide-react";
 import { layerContributionsFamily, layerResultsFamily } from "../store/derivedAtoms";
 import { failureBodyKey, loadableFailureBodyFamily } from "../store/failureBodyAtoms";
 import { materialsAtom } from "../store/materialsAtoms";
-import { CRITERIA } from "../lib/types";
+import { CRITERIA, ISOTROPIC_CRITERIA, isIsotropic, type CriterionId } from "../lib/types";
 import { formatScientific } from "../lib/numberFormat";
 import { FailureBody3D, type StressMarker } from "./charts/FailureBody3D";
 import { QuantityDisplay } from "./QuantityDisplay";
@@ -78,6 +78,21 @@ export function LayerDetailPanel({
           angle: ply.angle_deg,
         })}
       </p>
+
+      {/* Tresca and von Mises are yield criteria for a metal ply. eLamX warns
+          with a dialog and computes anyway; this warns where the number is,
+          which is the same statement in a place that does not interrupt. */}
+      {ISOTROPIC_CRITERIA.includes(criterionId as CriterionId) &&
+        material &&
+        !isIsotropic(material) && (
+          <p className="warning">
+            <TriangleAlert size={14} />{" "}
+            {t("criterion.isotropic.warning", {
+              criterion: criterionLabel ? t(criterionLabel) : criterionId,
+              material: material.name,
+            })}
+          </p>
+        )}
 
       <div className="grid">
         <div>

@@ -70,6 +70,41 @@
       },
       "micro": null
     },
+    "m-alu": {
+      "id": "m-alu",
+      "name": "GM-Alu",
+      "e_par": 70000,
+      "e_nor": 70000,
+      "nue12": 0.25,
+      "g": 28000,
+      "g13": 28000,
+      "g23": 28000,
+      "rho": 2.7e-9,
+      "alpha_t_par": 0.000023,
+      "alpha_t_nor": 0.000023,
+      "beta_par": 0,
+      "beta_nor": 0,
+      "r_par_ten": 300,
+      "r_par_com": 300,
+      "r_nor_ten": 300,
+      "r_nor_com": 300,
+      "r_shear": 173.2,
+      "additional_values": {
+        "puck.p_spd": 0.3,
+        "puck.p_spz": 0.35,
+        "puck.a0": 0.5,
+        "puck.lambda_min": 0.5,
+        "tsai_wu.f12_star": -0.5,
+        "ztl.f12_star": -0.5,
+        "max_strain.eps_x": 0.003,
+        "max_strain.eps_y": 0.003,
+        "max_strain.gamma_xy": 0.006,
+        "max_strain.global_local": 0,
+        "fmc.m": 3.1,
+        "fmc.mue_sp": 0.15
+      },
+      "micro": null
+    },
     "mm-rom": {
       "id": "mm-rom",
       "name": "GM-MM-Mischungsregel",
@@ -1820,10 +1855,152 @@
     {
       "laminate": {
         "id": "00000000-0000-4000-8000-00000000006a",
-        "name": "GM-Mikromechanik",
+        "name": "GM-Metall",
         "layers": [
           {
             "id": "00000000-0000-4000-8000-00000000600b",
+            "name": "Lage 1",
+            "angle": 0,
+            "thickness": 0.5,
+            "material_id": "m-alu",
+            "criterion_id": "von_mises"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000601b",
+            "name": "Lage 2",
+            "angle": 0,
+            "thickness": 0.5,
+            "material_id": "m-alu",
+            "criterion_id": "tresca"
+          }
+        ],
+        "symmetric": false,
+        "with_middle_layer": false,
+        "invert_z": false,
+        "offset": 0
+      },
+      "criterion_display_names": [
+        "von Mises",
+        "Tresca"
+      ],
+      "calculations": [
+        {
+          "name": "GM-Metall-Zug",
+          "loads": {
+            "n_x": 120,
+            "n_y": 0,
+            "n_xy": 0,
+            "m_x": 0,
+            "m_y": 0,
+            "m_xy": 0,
+            "delta_t": 0,
+            "delta_h": 0,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "GM-Metall-Schub",
+          "loads": {
+            "n_x": 0,
+            "n_y": 0,
+            "n_xy": 90,
+            "m_x": 0,
+            "m_y": 0,
+            "m_xy": 0,
+            "delta_t": 0,
+            "delta_h": 0,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "GM-Metall-Komb",
+          "loads": {
+            "n_x": 100,
+            "n_y": -60,
+            "n_xy": 70,
+            "m_x": 8,
+            "m_y": 0,
+            "m_xy": 0,
+            "delta_t": 0,
+            "delta_h": 0,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ],
+      "vibrations": [],
+      "bucklings": [],
+      "last_ply_failures": []
+    },
+    {
+      "laminate": {
+        "id": "00000000-0000-4000-8000-00000000007a",
+        "name": "GM-Mikromechanik",
+        "layers": [
+          {
+            "id": "00000000-0000-4000-8000-00000000700b",
             "name": "Lage 1",
             "angle": 0,
             "thickness": 0.125,
@@ -1831,7 +2008,7 @@
             "criterion_id": "max_stress"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000601b",
+            "id": "00000000-0000-4000-8000-00000000701b",
             "name": "Lage 2",
             "angle": 0,
             "thickness": 0.125,
@@ -1839,7 +2016,7 @@
             "criterion_id": "max_stress"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000602b",
+            "id": "00000000-0000-4000-8000-00000000702b",
             "name": "Lage 3",
             "angle": 0,
             "thickness": 0.125,
@@ -1847,7 +2024,7 @@
             "criterion_id": "max_stress"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000603b",
+            "id": "00000000-0000-4000-8000-00000000703b",
             "name": "Lage 4",
             "angle": 0,
             "thickness": 0.125,
@@ -1855,7 +2032,7 @@
             "criterion_id": "max_stress"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000604b",
+            "id": "00000000-0000-4000-8000-00000000704b",
             "name": "Lage 5",
             "angle": 0,
             "thickness": 0.125,
@@ -1863,7 +2040,7 @@
             "criterion_id": "max_stress"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000605b",
+            "id": "00000000-0000-4000-8000-00000000705b",
             "name": "Lage 6",
             "angle": 0,
             "thickness": 0.125,
@@ -1871,7 +2048,7 @@
             "criterion_id": "max_stress"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000606b",
+            "id": "00000000-0000-4000-8000-00000000706b",
             "name": "Lage 7",
             "angle": 0,
             "thickness": 0.125,
@@ -1879,7 +2056,7 @@
             "criterion_id": "max_stress"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000607b",
+            "id": "00000000-0000-4000-8000-00000000707b",
             "name": "Lage 8",
             "angle": 0,
             "thickness": 0.125,
@@ -1887,7 +2064,7 @@
             "criterion_id": "max_stress"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000608b",
+            "id": "00000000-0000-4000-8000-00000000708b",
             "name": "Lage 9",
             "angle": 0,
             "thickness": 0.125,
@@ -1954,11 +2131,11 @@
     },
     {
       "laminate": {
-        "id": "00000000-0000-4000-8000-00000000007a",
+        "id": "00000000-0000-4000-8000-00000000008a",
         "name": "GM-DehnungVorgegeben",
         "layers": [
           {
-            "id": "00000000-0000-4000-8000-00000000700b",
+            "id": "00000000-0000-4000-8000-00000000800b",
             "name": "Lage 1",
             "angle": 0,
             "thickness": 0.15,
@@ -1966,7 +2143,7 @@
             "criterion_id": "puck"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000701b",
+            "id": "00000000-0000-4000-8000-00000000801b",
             "name": "Lage 2",
             "angle": 45,
             "thickness": 0.15,
@@ -1974,7 +2151,7 @@
             "criterion_id": "fibre_failure"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000702b",
+            "id": "00000000-0000-4000-8000-00000000802b",
             "name": "Lage 3",
             "angle": 90,
             "thickness": 0.15,
@@ -1982,7 +2159,7 @@
             "criterion_id": "max_strain"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000703b",
+            "id": "00000000-0000-4000-8000-00000000803b",
             "name": "Lage 4",
             "angle": -45,
             "thickness": 0.15,
@@ -1990,7 +2167,7 @@
             "criterion_id": "tsai_wu"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000704b",
+            "id": "00000000-0000-4000-8000-00000000804b",
             "name": "Lage 5",
             "angle": 0,
             "thickness": 0.15,

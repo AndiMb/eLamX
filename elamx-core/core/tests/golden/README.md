@@ -58,9 +58,15 @@ Three details about step 2 that will otherwise cost time:
 `reference_data_covers_every_ported_criterion` in `golden_master.rs` enforces
 most of this, so the list cannot quietly rot:
 
-- **All 15 ported failure criteria**, each on a ply at its own angle, under five
-  load cases (tension, compression, shear, bending, combined) so that different
-  branches inside each criterion are reached.
+- **All 15 ported composite failure criteria**, each on a ply at its own angle,
+  under five load cases (tension, compression, shear, bending, combined) so
+  that different branches inside each criterion are reached.
+- **The two isotropic yield criteria**, Tresca and von Mises, on a laminate of
+  their own (`GM-Metall`) made of an exactly isotropic aluminium. Their own
+  laminate for a reason worth knowing before touching this file: eLamX shows a
+  MODAL DIALOG when either meets a non-isotropic material, and a modal dialog
+  in a batch run is a hang rather than a warning. Three loads, because the two
+  agree under uniaxial tension and differ most under shear.
 - Both branches of `MaxStrain`'s global/local flag (the two materials differ in
   it deliberately).
 - Symmetric stacks **with** and **without** a shared middle layer, a non-zero
@@ -150,6 +156,10 @@ them: `j_a != 1` is only visible where an inter-fibre failure actually happens,
 and the default-parameter quirk only where a material's parameter differs from
 the criterion's default (the MaxStrain global/local flag on `m-gfk`). Adding a
 case that removes either would make the suite quietly weaker.
+
+For the metal criteria, changing von Mises's `3.0 * tau^2` to `2.0 * tau^2`
+turns `layer_results_and_reserve_factors_match_elamx` red on four comparisons -
+the shear and combined load cases, where that term actually carries something.
 
 For the micromechanics, swapping the fibre and the matrix inside `chamis` in
 `src/micromechanics/mod.rs` turns `material_data_matches_elamx` red on three

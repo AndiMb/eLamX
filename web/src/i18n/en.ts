@@ -554,6 +554,9 @@ export const en = {
   "criterion.rotem": "Rotem",
   "criterion.sun": "Sun",
   "criterion.ztl": "ZTL",
+  "criterion.von_mises": "von Mises",
+  "criterion.tresca": "Tresca",
+  "criterion.isotropic.warning": "{criterion} is a yield criterion for an ISOTROPIC material, and {material} is not one. eLamX computes it anyway, and so does this - but the number means nothing for a fibre composite.",
 
   // --- Quantity categories & units (lib/units.ts) -------------------------
   "quantity.stiffness": "Stiffness",

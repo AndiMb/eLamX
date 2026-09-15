@@ -537,6 +537,9 @@ export const de: Messages = {
   "criterion.rotem": "Rotem",
   "criterion.sun": "Sun",
   "criterion.ztl": "ZTL",
+  "criterion.von_mises": "von Mises",
+  "criterion.tresca": "Tresca",
+  "criterion.isotropic.warning": "{criterion} ist ein Fließkriterium für einen ISOTROPEN Werkstoff, und {material} ist keiner. eLamX rechnet es trotzdem, und das tut dies auch — aber die Zahl bedeutet für einen Faserverbund nichts.",
 
   // --- Quantity categories & units (lib/units.ts) -------------------------
   "quantity.stiffness": "Steifigkeit",

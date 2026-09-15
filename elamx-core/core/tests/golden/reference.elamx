@@ -852,56 +852,136 @@
                 <kappa_xy>0.0</kappa_xy>
             </calculation>
         </laminate>
-        <laminate invert_z="false" name="GM-Mikromechanik" offset="0.0" symmetric="false" uuid="00000000-0000-4000-8000-00000000006a" with_middle_layer="false">
+        <laminate invert_z="false" name="GM-Metall" offset="0.0" symmetric="false" uuid="00000000-0000-4000-8000-00000000006a" with_middle_layer="false">
             <layer name="Lage 1" uuid="00000000-0000-4000-8000-00000000600b">
+                <thickness>0.5</thickness>
+                <angle>0.0</angle>
+                <material>m-alu</material>
+                <criterion>de.elamx.laminate.addFailureCriteriaMetal.vonMises</criterion>
+            </layer>
+            <layer name="Lage 2" uuid="00000000-0000-4000-8000-00000000601b">
+                <thickness>0.5</thickness>
+                <angle>0.0</angle>
+                <material>m-alu</material>
+                <criterion>de.elamx.laminate.addFailureCriteriaMetal.Tresca</criterion>
+            </layer>
+            <calculation name="GM-Metall-Zug">
+                <n_x>120.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <deltat>0.0</deltat>
+                <deltah>0.0</deltah>
+                <useStrain0>false</useStrain0>
+                <useStrain1>false</useStrain1>
+                <useStrain2>false</useStrain2>
+                <useStrain3>false</useStrain3>
+                <useStrain4>false</useStrain4>
+                <useStrain5>false</useStrain5>
+                <epsilon_x>0.0</epsilon_x>
+                <epsilon_y>0.0</epsilon_y>
+                <gamma_xy>0.0</gamma_xy>
+                <kappa_x>0.0</kappa_x>
+                <kappa_y>0.0</kappa_y>
+                <kappa_xy>0.0</kappa_xy>
+            </calculation>
+            <calculation name="GM-Metall-Schub">
+                <n_x>0.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>90.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <deltat>0.0</deltat>
+                <deltah>0.0</deltah>
+                <useStrain0>false</useStrain0>
+                <useStrain1>false</useStrain1>
+                <useStrain2>false</useStrain2>
+                <useStrain3>false</useStrain3>
+                <useStrain4>false</useStrain4>
+                <useStrain5>false</useStrain5>
+                <epsilon_x>0.0</epsilon_x>
+                <epsilon_y>0.0</epsilon_y>
+                <gamma_xy>0.0</gamma_xy>
+                <kappa_x>0.0</kappa_x>
+                <kappa_y>0.0</kappa_y>
+                <kappa_xy>0.0</kappa_xy>
+            </calculation>
+            <calculation name="GM-Metall-Komb">
+                <n_x>100.0</n_x>
+                <n_y>-60.0</n_y>
+                <n_xy>70.0</n_xy>
+                <m_x>8.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <deltat>0.0</deltat>
+                <deltah>0.0</deltah>
+                <useStrain0>false</useStrain0>
+                <useStrain1>false</useStrain1>
+                <useStrain2>false</useStrain2>
+                <useStrain3>false</useStrain3>
+                <useStrain4>false</useStrain4>
+                <useStrain5>false</useStrain5>
+                <epsilon_x>0.0</epsilon_x>
+                <epsilon_y>0.0</epsilon_y>
+                <gamma_xy>0.0</gamma_xy>
+                <kappa_x>0.0</kappa_x>
+                <kappa_y>0.0</kappa_y>
+                <kappa_xy>0.0</kappa_xy>
+            </calculation>
+        </laminate>
+        <laminate invert_z="false" name="GM-Mikromechanik" offset="0.0" symmetric="false" uuid="00000000-0000-4000-8000-00000000007a" with_middle_layer="false">
+            <layer name="Lage 1" uuid="00000000-0000-4000-8000-00000000700b">
                 <thickness>0.125</thickness>
                 <angle>0.0</angle>
                 <material>mm-rom</material>
                 <criterion>de.elamx.laminate.addFailureCriteria.MaxStress</criterion>
             </layer>
-            <layer name="Lage 2" uuid="00000000-0000-4000-8000-00000000601b">
+            <layer name="Lage 2" uuid="00000000-0000-4000-8000-00000000701b">
                 <thickness>0.125</thickness>
                 <angle>0.0</angle>
                 <material>mm-abolinsh</material>
                 <criterion>de.elamx.laminate.addFailureCriteria.MaxStress</criterion>
             </layer>
-            <layer name="Lage 3" uuid="00000000-0000-4000-8000-00000000602b">
+            <layer name="Lage 3" uuid="00000000-0000-4000-8000-00000000702b">
                 <thickness>0.125</thickness>
                 <angle>0.0</angle>
                 <material>mm-chamis</material>
                 <criterion>de.elamx.laminate.addFailureCriteria.MaxStress</criterion>
             </layer>
-            <layer name="Lage 4" uuid="00000000-0000-4000-8000-00000000603b">
+            <layer name="Lage 4" uuid="00000000-0000-4000-8000-00000000703b">
                 <thickness>0.125</thickness>
                 <angle>0.0</angle>
                 <material>mm-halpin</material>
                 <criterion>de.elamx.laminate.addFailureCriteria.MaxStress</criterion>
             </layer>
-            <layer name="Lage 5" uuid="00000000-0000-4000-8000-00000000604b">
+            <layer name="Lage 5" uuid="00000000-0000-4000-8000-00000000704b">
                 <thickness>0.125</thickness>
                 <angle>0.0</angle>
                 <material>mm-hopkins</material>
                 <criterion>de.elamx.laminate.addFailureCriteria.MaxStress</criterion>
             </layer>
-            <layer name="Lage 6" uuid="00000000-0000-4000-8000-00000000605b">
+            <layer name="Lage 6" uuid="00000000-0000-4000-8000-00000000705b">
                 <thickness>0.125</thickness>
                 <angle>0.0</angle>
                 <material>mm-puck</material>
                 <criterion>de.elamx.laminate.addFailureCriteria.MaxStress</criterion>
             </layer>
-            <layer name="Lage 7" uuid="00000000-0000-4000-8000-00000000606b">
+            <layer name="Lage 7" uuid="00000000-0000-4000-8000-00000000706b">
                 <thickness>0.125</thickness>
                 <angle>0.0</angle>
                 <material>mm-hsb</material>
                 <criterion>de.elamx.laminate.addFailureCriteria.MaxStress</criterion>
             </layer>
-            <layer name="Lage 8" uuid="00000000-0000-4000-8000-00000000607b">
+            <layer name="Lage 8" uuid="00000000-0000-4000-8000-00000000707b">
                 <thickness>0.125</thickness>
                 <angle>0.0</angle>
                 <material>mm-gemischt</material>
                 <criterion>de.elamx.laminate.addFailureCriteria.MaxStress</criterion>
             </layer>
-            <layer name="Lage 9" uuid="00000000-0000-4000-8000-00000000608b">
+            <layer name="Lage 9" uuid="00000000-0000-4000-8000-00000000708b">
                 <thickness>0.125</thickness>
                 <angle>0.0</angle>
                 <material>mm-manuell</material>
@@ -930,32 +1010,32 @@
                 <kappa_xy>0.0</kappa_xy>
             </calculation>
         </laminate>
-        <laminate invert_z="false" name="GM-DehnungVorgegeben" offset="0.0" symmetric="false" uuid="00000000-0000-4000-8000-00000000007a" with_middle_layer="false">
-            <layer name="Lage 1" uuid="00000000-0000-4000-8000-00000000700b">
+        <laminate invert_z="false" name="GM-DehnungVorgegeben" offset="0.0" symmetric="false" uuid="00000000-0000-4000-8000-00000000008a" with_middle_layer="false">
+            <layer name="Lage 1" uuid="00000000-0000-4000-8000-00000000800b">
                 <thickness>0.15</thickness>
                 <angle>0.0</angle>
                 <material>m-cfk</material>
                 <criterion>de.elamx.laminate.failure.Puck</criterion>
             </layer>
-            <layer name="Lage 2" uuid="00000000-0000-4000-8000-00000000701b">
+            <layer name="Lage 2" uuid="00000000-0000-4000-8000-00000000801b">
                 <thickness>0.15</thickness>
                 <angle>45.0</angle>
                 <material>m-cfk</material>
                 <criterion>de.elamx.laminate.addFailureCriteria.FibreFailure</criterion>
             </layer>
-            <layer name="Lage 3" uuid="00000000-0000-4000-8000-00000000702b">
+            <layer name="Lage 3" uuid="00000000-0000-4000-8000-00000000802b">
                 <thickness>0.15</thickness>
                 <angle>90.0</angle>
                 <material>m-gfk</material>
                 <criterion>de.elamx.laminate.addFailureCriteria.MaxStrain</criterion>
             </layer>
-            <layer name="Lage 4" uuid="00000000-0000-4000-8000-00000000703b">
+            <layer name="Lage 4" uuid="00000000-0000-4000-8000-00000000803b">
                 <thickness>0.15</thickness>
                 <angle>-45.0</angle>
                 <material>m-cfk</material>
                 <criterion>de.elamx.laminate.addFailureCriteria.TsaiWu</criterion>
             </layer>
-            <layer name="Lage 5" uuid="00000000-0000-4000-8000-00000000704b">
+            <layer name="Lage 5" uuid="00000000-0000-4000-8000-00000000804b">
                 <thickness>0.15</thickness>
                 <angle>0.0</angle>
                 <material>m-cfk</material>
@@ -1043,6 +1123,36 @@
             <de.elamx.laminate.addFailureCriteria.MaxStrain.eps_y>0.003</de.elamx.laminate.addFailureCriteria.MaxStrain.eps_y>
             <de.elamx.laminate.addFailureCriteria.MaxStrain.gamma_xy>0.006</de.elamx.laminate.addFailureCriteria.MaxStrain.gamma_xy>
             <de.elamx.laminate.addFailureCriteria.MaxStrain.global_lokal>1.0</de.elamx.laminate.addFailureCriteria.MaxStrain.global_lokal>
+            <de.elamx.laminate.addFailureCriteria.FMC.m>3.1</de.elamx.laminate.addFailureCriteria.FMC.m>
+            <de.elamx.laminate.addFailureCriteria.FMC.muesp>0.15</de.elamx.laminate.addFailureCriteria.FMC.muesp>
+        </material>
+        <material class="de.elamx.laminate.DefaultMaterial" name="GM-Alu" uuid="m-alu">
+            <Epar>70000.0</Epar>
+            <Enor>70000.0</Enor>
+            <nue12>0.25</nue12>
+            <G>28000.0</G>
+            <G13>28000.0</G13>
+            <G23>28000.0</G23>
+            <rho>2.7e-9</rho>
+            <alphaTPar>0.000023</alphaTPar>
+            <alphaTNor>0.000023</alphaTNor>
+            <betaPar>0.0</betaPar>
+            <betaNor>0.0</betaNor>
+            <RParTen>300.0</RParTen>
+            <RParCom>300.0</RParCom>
+            <RNorTen>300.0</RNorTen>
+            <RNorCom>300.0</RNorCom>
+            <RShear>173.2</RShear>
+            <de.elamx.laminate.failure.Puck.pspd>0.3</de.elamx.laminate.failure.Puck.pspd>
+            <de.elamx.laminate.failure.Puck.pspz>0.35</de.elamx.laminate.failure.Puck.pspz>
+            <de.elamx.laminate.failure.Puck.a0>0.5</de.elamx.laminate.failure.Puck.a0>
+            <de.elamx.laminate.failure.Puck.lambda_min>0.5</de.elamx.laminate.failure.Puck.lambda_min>
+            <de.elamx.laminate.addFailureCriteria.TsaiWu.f12star>-0.5</de.elamx.laminate.addFailureCriteria.TsaiWu.f12star>
+            <de.elamx.laminate.addFailureCriteria.ZTL.f12star>-0.5</de.elamx.laminate.addFailureCriteria.ZTL.f12star>
+            <de.elamx.laminate.addFailureCriteria.MaxStrain.eps_x>0.003</de.elamx.laminate.addFailureCriteria.MaxStrain.eps_x>
+            <de.elamx.laminate.addFailureCriteria.MaxStrain.eps_y>0.003</de.elamx.laminate.addFailureCriteria.MaxStrain.eps_y>
+            <de.elamx.laminate.addFailureCriteria.MaxStrain.gamma_xy>0.006</de.elamx.laminate.addFailureCriteria.MaxStrain.gamma_xy>
+            <de.elamx.laminate.addFailureCriteria.MaxStrain.global_lokal>0.0</de.elamx.laminate.addFailureCriteria.MaxStrain.global_lokal>
             <de.elamx.laminate.addFailureCriteria.FMC.m>3.1</de.elamx.laminate.addFailureCriteria.FMC.m>
             <de.elamx.laminate.addFailureCriteria.FMC.muesp>0.15</de.elamx.laminate.addFailureCriteria.FMC.muesp>
         </material>

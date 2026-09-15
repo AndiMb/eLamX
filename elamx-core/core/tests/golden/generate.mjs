@@ -22,6 +22,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 // unknown criterion class name (see LaminateLoadSaveImpl.java) instead of
 // comparing against the wrong criterion without noticing.
 const ADD = "de.elamx.laminate.addFailureCriteria.";
+const METAL = "de.elamx.laminate.addFailureCriteriaMetal.";
 const CRITERIA = {
   max_stress:    { java: ADD + "MaxStress",    display: "maximum Stress" },
   max_strain:    { java: ADD + "MaxStrain",    display: "maximum Strain" },
@@ -38,9 +39,20 @@ const CRITERIA = {
   rotem:         { java: ADD + "Rotem",        display: "Rotem" },
   sun:           { java: ADD + "Sun",          display: "Sun" },
   ztl:           { java: ADD + "ZTL",          display: "ZTL" },
+  // The two isotropic yield criteria live in their own module, hence the
+  // different package. They are only meaningful on an isotropic material, and
+  // eLamX pops a MODAL DIALOG when they meet anything else - which in a batch
+  // run would hang it. `m-alu` below is exactly isotropic by the original's
+  // own test, deliberately using numbers that survive `nue12 * Enor / Epar`
+  // unchanged in floating point.
+  von_mises:     { java: METAL + "vonMises",   display: "von Mises" },
+  tresca:        { java: METAL + "Tresca",     display: "Tresca" },
 };
 
 const ALL_CRITERIA = Object.keys(CRITERIA);
+/** The isotropic ones, which need a metal ply and a laminate of their own. */
+const METAL_CRITERIA = ["von_mises", "tresca"];
+const COMPOSITE_CRITERIA = ALL_CRITERIA.filter((c) => !METAL_CRITERIA.includes(c));
 
 // --- Materials --------------------------------------------------------------
 // `extra` maps elamx-core's additional-value key -> [Java .elamx tag, value].
@@ -81,6 +93,16 @@ const MATERIALS = [
     alpha_t_par: 6.0e-6, alpha_t_nor: 2.8e-5, beta_par: 0.005, beta_nor: 0.30,
     r_par_ten: 1100.0, r_par_com: 700.0, r_nor_ten: 40.0, r_nor_com: 130.0, r_shear: 60.0,
   }, 1.0),
+  // Aluminium, for the two isotropic criteria. Every number is chosen so the
+  // original's isotropy test passes EXACTLY: the four strengths are equal, the
+  // two moduli are equal, and G is exactly E / (2 (1 + nu)) with nu = 0.25,
+  // which is representable in binary and leaves nothing to a tolerance.
+  material("m-alu", "GM-Alu", {
+    e_par: 70000.0, e_nor: 70000.0, nue12: 0.25, g: 28000.0, g13: 28000.0, g23: 28000.0,
+    rho: 2.7e-9,
+    alpha_t_par: 2.3e-5, alpha_t_nor: 2.3e-5, beta_par: 0.0, beta_nor: 0.0,
+    r_par_ten: 300.0, r_par_com: 300.0, r_nor_ten: 300.0, r_nor_com: 300.0, r_shear: 173.2,
+  }, 0.0),
 ];
 
 // --- Micromechanics ---------------------------------------------------------
@@ -274,7 +296,7 @@ const NO_STRAIN = [false, false, false, false, false, false];
 // material to reach its `global` branch.
 const CRITERION_ANGLES = [0, 15, 30, 45, 60, 75, 90, -15, -30, -45, -60, -75, 20, -20, 10];
 const criterionLayers = [
-  ...ALL_CRITERIA.map((c, i) => layer(CRITERION_ANGLES[i], 0.125, "m-cfk", c)),
+  ...COMPOSITE_CRITERIA.map((c, i) => layer(CRITERION_ANGLES[i], 0.125, "m-cfk", c)),
   layer(-10, 0.125, "m-gfk", "max_strain"),
 ];
 
@@ -515,6 +537,27 @@ const CASES = [
     ],
     calculations: [
       { name: "GM-Winkel-Kombiniert", loads: loads({ n_x: 250, n_xy: 90, m_y: 18 }) },
+    ],
+  },
+  {
+    // The two isotropic yield criteria, on an isotropic ply - which is the
+    // only place they belong. Kept out of the criterion laminate above on
+    // purpose: eLamX shows a modal dialog when they meet a composite material,
+    // and a modal dialog in a batch run is a hang, not a warning.
+    //
+    // Three loads, because Tresca and von Mises agree under uniaxial tension
+    // and differ most under shear: a case that only pulled would compare the
+    // two criteria without ever telling them apart.
+    name: "GM-Metall",
+    symmetric: false, withMiddleLayer: false, invertZ: false, offset: 0.0,
+    layers: [
+      layer(0, 0.5, "m-alu", "von_mises"),
+      layer(0, 0.5, "m-alu", "tresca"),
+    ],
+    calculations: [
+      { name: "GM-Metall-Zug",   loads: loads({ n_x: 120 }) },
+      { name: "GM-Metall-Schub", loads: loads({ n_xy: 90 }) },
+      { name: "GM-Metall-Komb",  loads: loads({ n_x: 100, n_y: -60, n_xy: 70, m_x: 8 }) },
     ],
   },
   {

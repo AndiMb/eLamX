@@ -125,7 +125,41 @@ export const CRITERIA = [
   { id: "rotem", labelKey: "criterion.rotem" },
   { id: "sun", labelKey: "criterion.sun" },
   { id: "ztl", labelKey: "criterion.ztl" },
+  // The two isotropic yield criteria. Last in the list because they belong to
+  // a metal ply, which most laminates here do not have.
+  { id: "von_mises", labelKey: "criterion.von_mises" },
+  { id: "tresca", labelKey: "criterion.tresca" },
 ] as const satisfies readonly { id: string; labelKey: MessageKey }[];
+
+/** The criteria that assume an isotropic ply - a metal foil, a doubler. */
+export const ISOTROPIC_CRITERIA: readonly CriterionId[] = ["von_mises", "tresca"];
+
+/**
+ * The isotropy test the isotropic criteria assume, as eLamX writes it.
+ *
+ * Exact equality on the strengths and the two moduli, one percent of slack on
+ * the shear modulus and nothing else. A strange rule for floating point, but
+ * it is the original's, and a material typed in as isotropic satisfies it -
+ * the numbers come from the fields the user filled in.
+ *
+ * Mirrored here rather than asked of the core because it decides whether to
+ * show a WARNING, and a warning that needs a round trip through a worker would
+ * arrive after the number it is meant to qualify.
+ */
+export function isIsotropic(material: MaterialDto): boolean {
+  const nue21 = (material.nue12 * material.e_nor) / material.e_par;
+  if (
+    material.r_par_ten !== material.r_par_com ||
+    material.r_nor_ten !== material.r_nor_com ||
+    material.r_par_ten !== material.r_nor_ten ||
+    material.e_par !== material.e_nor ||
+    material.nue12 !== nue21
+  ) {
+    return false;
+  }
+  const shear = material.e_par / (2 * (1 + material.nue12));
+  return material.g <= 1.01 * shear && material.g >= 0.99 * shear;
+}
 
 export type CriterionId = (typeof CRITERIA)[number]["id"];
 

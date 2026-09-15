@@ -37,6 +37,9 @@ const CRITERIA: &[(&str, &str)] = &[
     (failure::ROTEM_ID, "de.elamx.laminate.addFailureCriteria.Rotem"),
     (failure::SUN_ID, "de.elamx.laminate.addFailureCriteria.Sun"),
     (failure::ZTL_ID, "de.elamx.laminate.addFailureCriteria.ZTL"),
+    // The two isotropic ones come from their own module, hence the package.
+    (failure::VON_MISES_ID, "de.elamx.laminate.addFailureCriteriaMetal.vonMises"),
+    (failure::TRESCA_ID, "de.elamx.laminate.addFailureCriteriaMetal.Tresca"),
 ];
 
 /// Extra per-material values: `(core key, Java tag name)`.
