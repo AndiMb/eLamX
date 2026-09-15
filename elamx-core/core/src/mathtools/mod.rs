@@ -12,9 +12,13 @@
 // algebra than the iterator-chain rewrites clippy suggests.
 #![allow(clippy::needless_range_loop)]
 
+pub mod complex;
 pub mod eigen;
+pub mod polynom;
 
+pub use complex::Complex;
 pub use eigen::{generalized_symmetric_eigen, EigenError, EigenSolution};
+pub use polynom::{roots, RootError};
 
 /// A dense row-major matrix, mirroring the Java `double[][]` used throughout the original code.
 pub type Matrix = Vec<Vec<f64>>;

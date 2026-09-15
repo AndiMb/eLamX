@@ -5,5 +5,6 @@ pub mod plate;
 pub mod failure;
 pub mod micromechanics;
 pub mod optimization;
+pub mod cutout;
 pub mod spring_in;
 pub mod project;
