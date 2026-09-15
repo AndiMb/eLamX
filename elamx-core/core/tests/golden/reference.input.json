@@ -42,7 +42,10 @@
         "ls_dyna_tsai_wu.beta": 0.6,
         "ls_dyna_daimler_camanho.g1c": 0.28,
         "ls_dyna_daimler_camanho.g2c": 0.79,
-        "ls_dyna_daimler_pinho.alpha_0": 52.4
+        "ls_dyna_daimler_pinho.alpha_0": 52.4,
+        "ansys_larc03.g1c": 0.31,
+        "ansys_larc03.g2c": 0.85,
+        "ansys_larc03.alpha_0": 51.6
       },
       "micro": null
     },
@@ -88,7 +91,10 @@
         "ls_dyna_tsai_wu.beta": 0.6,
         "ls_dyna_daimler_camanho.g1c": 0.28,
         "ls_dyna_daimler_camanho.g2c": 0.79,
-        "ls_dyna_daimler_pinho.alpha_0": 52.4
+        "ls_dyna_daimler_pinho.alpha_0": 52.4,
+        "ansys_larc03.g1c": 0.31,
+        "ansys_larc03.g2c": 0.85,
+        "ansys_larc03.alpha_0": 51.6
       },
       "micro": null
     },
@@ -134,7 +140,10 @@
         "ls_dyna_tsai_wu.beta": 0.6,
         "ls_dyna_daimler_camanho.g1c": 0.28,
         "ls_dyna_daimler_camanho.g2c": 0.79,
-        "ls_dyna_daimler_pinho.alpha_0": 52.4
+        "ls_dyna_daimler_pinho.alpha_0": 52.4,
+        "ansys_larc03.g1c": 0.31,
+        "ansys_larc03.g2c": 0.85,
+        "ansys_larc03.alpha_0": 51.6
       },
       "micro": null
     },
@@ -663,14 +672,22 @@
           {
             "id": "00000000-0000-4000-8000-00000000023b",
             "name": "Lage 24",
+            "angle": 40,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "ansys_hashin"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000024b",
+            "name": "Lage 25",
             "angle": -10,
             "thickness": 0.125,
             "material_id": "m-gfk",
             "criterion_id": "max_strain"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000024b",
-            "name": "Lage 25",
+            "id": "00000000-0000-4000-8000-00000000025b",
+            "name": "Lage 26",
             "angle": 25,
             "thickness": 0.125,
             "material_id": "m-gfk",
@@ -706,6 +723,7 @@
         "TsaiWu MAT055 (LS-DYNA)",
         "Daimler Camanho (LS-DYNA)",
         "Daimler-Pinho (LS-DYNA)",
+        "Hashin (ANSYS)",
         "maximum Strain",
         "TsaiWu (Abaqus)"
       ],

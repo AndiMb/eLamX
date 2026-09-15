@@ -49,6 +49,7 @@ const CRITERIA: &[(&str, &str)] = &[
     (failure::LS_DYNA_TSAI_WU_ID, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNATsaiWu"),
     (failure::LS_DYNA_DAIMLER_CAMANHO_ID, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho"),
     (failure::LS_DYNA_DAIMLER_PINHO_ID, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerPinho"),
+    (failure::ANSYS_HASHIN_ID, "de.elamx.laminate.addFailureCriteriaAnsys.AnsysHashin"),
     // The two isotropic ones come from their own module, hence the package.
     (failure::VON_MISES_ID, "de.elamx.laminate.addFailureCriteriaMetal.vonMises"),
     (failure::TRESCA_ID, "de.elamx.laminate.addFailureCriteriaMetal.Tresca"),
@@ -57,7 +58,7 @@ const CRITERIA: &[(&str, &str)] = &[
 /// Extra per-material values: `(core key, Java tag name)`.
 ///
 /// Only the parameters the ported criteria actually read are listed. Anything
-/// else in the file - the Ansys parameters, say - is
+/// else in the file is
 /// preserved verbatim under its Java name (see `Material::additional_values`),
 /// so writing a file back does not silently drop what this crate cannot use.
 const ADDITIONAL_VALUES: &[(&str, &str)] = &[
@@ -97,6 +98,9 @@ const ADDITIONAL_VALUES: &[(&str, &str)] = &[
     (failure::LS_DYNA_CAMANHO_G1C, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g1c"),
     (failure::LS_DYNA_CAMANHO_G2C, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g2c"),
     (failure::LS_DYNA_PINHO_ALPHA_0, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerPinho.alp0"),
+    (failure::ANSYS_LARC03_G1C, "de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g1c"),
+    (failure::ANSYS_LARC03_G2C, "de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g2c"),
+    (failure::ANSYS_LARC03_ALPHA_0, "de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0"),
 ];
 
 /// Bending-stiffness idealisations: `(kind, Java class name)`. Same silent

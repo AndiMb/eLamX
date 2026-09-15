@@ -529,7 +529,7 @@ const MINIMAL: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
             <Enor>9340.0</Enor>
             <nue12>0.35</nue12>
             <G>4500.0</G>
-            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0>53.0</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0>
+            <de.fremd.plugin.EigenesKriterium.kennwert>53.0</de.fremd.plugin.EigenesKriterium.kennwert>
         </material>
     </materials>
 </elamx>
@@ -659,12 +659,18 @@ fn reads_and_writes_fibres_and_matrices() {
     assert_eq!(written, write_elamx(&again));
 }
 
-/// Likewise for material parameters belonging to criteria this crate has not
-/// ported: they are not ours to discard.
+/// Likewise for material parameters belonging to criteria this crate does not
+/// know: they are not ours to discard.
+///
+/// Every parameter eLamX itself registers is named in `naming` by now - the FEA
+/// modules were the last of them - so the stand-in is an invented one, the same
+/// way `keeps_module_data_it_cannot_interpret` uses an invented module. What it
+/// checks is the mechanism for a parameter this crate has never heard of: a
+/// future eLamX version's, or a separately deployed plugin's.
 #[test]
 fn keeps_material_parameters_of_unported_criteria() {
     let project = read_elamx(&minimal_with("de.elamx.laminate.failure.Puck")).unwrap();
-    let key = "de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0";
+    let key = "de.fremd.plugin.EigenesKriterium.kennwert";
     assert_eq!(project.materials[0].additional_values.get(key), Some(&53.0));
     assert!(write_elamx(&project).contains(&format!("<{key}>53.0</{key}>")));
 }

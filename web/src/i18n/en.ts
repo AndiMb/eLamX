@@ -564,6 +564,7 @@ export const en = {
   "criterion.ls_dyna_tsai_wu": "Tsai-Wu MAT055 (LS-DYNA)",
   "criterion.ls_dyna_daimler_camanho": "Daimler-Camanho (LS-DYNA)",
   "criterion.ls_dyna_daimler_pinho": "Daimler-Pinho (LS-DYNA)",
+  "criterion.ansys_hashin": "Hashin (ANSYS)",
   "criterion.von_mises": "von Mises",
   "criterion.tresca": "Tresca",
   "criterion.isotropic.warning": "{criterion} is a yield criterion for an ISOTROPIC material, and {material} is not one. eLamX computes it anyway, and so does this - but the number means nothing for a fibre composite.",

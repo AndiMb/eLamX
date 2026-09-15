@@ -8,7 +8,7 @@
 //! transverse shear strength R23 rather than on the transverse one.
 
 use super::solver_tsai_wu::SolverTsaiWu;
-use super::{additional_value, Criterion, CriterionError, FailureType, LayerContext, ReserveFactor};
+use super::{additional_value, Criterion, CriterionError, LayerContext, ReserveFactor};
 use crate::model::{Material, StressStrainState};
 
 pub const F12_STAR: &str = "autodesk_tsai_wu.f12_star";
@@ -37,66 +37,19 @@ impl Criterion for AutodeskHashin {
         _context: Option<&LayerContext>,
         state: &StressStrainState,
     ) -> Result<ReserveFactor, CriterionError> {
-        let r23 = additional_value(material, R23)?;
-        let alpha = additional_value(material, ALPHA)?;
-        let s = state.stress;
-
-        if s[0] == 0.0 && s[1] == 0.0 && s[2] == 0.0 {
-            return Ok(ReserveFactor::undamaged());
-        }
-
-        // Fibre first, matrix after, and the matrix only takes over when it is
-        // the smaller of the two - which is the original's way of saying "the
-        // governing mode", written as an if rather than a min so that the name
-        // travels with the number.
-        let mut governing = if s[0] >= 0.0 {
-            let f = s[0] * s[0] / (material.r_par_ten * material.r_par_ten)
-                + alpha * (s[2] * s[2] / (material.r_shear * material.r_shear));
-            ReserveFactor {
-                failure_name: "FiberFailureTension".to_string(),
-                minimal_reserve_factor: (1.0 / f).sqrt(),
-                failure_type: FailureType::FiberFailure,
-            }
-        } else {
-            ReserveFactor {
-                failure_name: "FiberFailureCompression".to_string(),
-                minimal_reserve_factor: material.r_par_com / s[0].abs(),
-                failure_type: FailureType::FiberFailure,
-            }
-        };
-
-        let matrix = if s[1] >= 0.0 {
-            let m = s[1] * s[1] / (material.r_nor_ten * material.r_nor_ten)
-                + s[2] * s[2] / (material.r_shear * material.r_shear);
-            ReserveFactor {
-                failure_name: "MatrixFailureTension".to_string(),
-                minimal_reserve_factor: (1.0 / m).sqrt(),
-                failure_type: FailureType::MatrixFailure,
-            }
-        } else {
-            let q = 0.25 * s[1] * s[1] / (r23 * r23) + s[2] * s[2] / (material.r_shear * material.r_shear);
-            let l = (0.25 * material.r_nor_com / (r23 * r23) - 1.0 / material.r_nor_com) * s[1];
-            // The original raises here rather than returning a number; so does
-            // this, for the same reason - a negative discriminant means the
-            // strengths cannot describe a mode, not that the ply is fine.
-            let under_the_root = l * l + 4.0 * q;
-            super::non_negative(under_the_root, "Autodesk-Hashin, Matrixdruckversagen")?;
-            ReserveFactor {
-                failure_name: "MatrixFailureCompression".to_string(),
-                minimal_reserve_factor: (under_the_root.sqrt() - l) / (2.0 * q),
-                failure_type: FailureType::MatrixFailure,
-            }
-        };
-
-        if matrix.minimal_reserve_factor < governing.minimal_reserve_factor {
-            governing = matrix;
-        }
-        Ok(governing)
+        super::solver_hashin::reserve_factor(
+            material,
+            state.stress,
+            additional_value(material, ALPHA)?,
+            additional_value(material, R23)?,
+            "Autodesk-Hashin",
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::FailureType;
     use super::*;
     use approx::assert_relative_eq;
     use std::collections::HashMap;

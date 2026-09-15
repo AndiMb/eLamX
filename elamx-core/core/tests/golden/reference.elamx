@@ -142,11 +142,17 @@
             </layer>
             <layer name="Lage 24" uuid="00000000-0000-4000-8000-00000000023b">
                 <thickness>0.125</thickness>
+                <angle>40.0</angle>
+                <material>m-cfk</material>
+                <criterion>de.elamx.laminate.addFailureCriteriaAnsys.AnsysHashin</criterion>
+            </layer>
+            <layer name="Lage 25" uuid="00000000-0000-4000-8000-00000000024b">
+                <thickness>0.125</thickness>
                 <angle>-10.0</angle>
                 <material>m-gfk</material>
                 <criterion>de.elamx.laminate.addFailureCriteria.MaxStrain</criterion>
             </layer>
-            <layer name="Lage 25" uuid="00000000-0000-4000-8000-00000000024b">
+            <layer name="Lage 26" uuid="00000000-0000-4000-8000-00000000025b">
                 <thickness>0.125</thickness>
                 <angle>25.0</angle>
                 <material>m-gfk</material>
@@ -1289,6 +1295,9 @@
             <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g1c>0.28</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g1c>
             <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g2c>0.79</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g2c>
             <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerPinho.alp0>52.4</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerPinho.alp0>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g1c>0.31</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g1c>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g2c>0.85</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g2c>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0>51.6</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0>
         </material>
         <material class="de.elamx.laminate.DefaultMaterial" name="GM-GFK-UD" uuid="m-gfk">
             <Epar>45000.0</Epar>
@@ -1330,6 +1339,9 @@
             <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g1c>0.28</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g1c>
             <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g2c>0.79</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g2c>
             <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerPinho.alp0>52.4</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerPinho.alp0>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g1c>0.31</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g1c>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g2c>0.85</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g2c>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0>51.6</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0>
         </material>
         <material class="de.elamx.laminate.DefaultMaterial" name="GM-Alu" uuid="m-alu">
             <Epar>70000.0</Epar>
@@ -1371,6 +1383,9 @@
             <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g1c>0.28</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g1c>
             <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g2c>0.79</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g2c>
             <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerPinho.alp0>52.4</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerPinho.alp0>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g1c>0.31</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g1c>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g2c>0.85</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g2c>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0>51.6</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0>
         </material>
         <material class="de.elamx.micromechanics.MicroMechanicMaterial" name="GM-MM-Mischungsregel" uuid="mm-rom">
             <fibre>f-carbon</fibre>

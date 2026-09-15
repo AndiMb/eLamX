@@ -163,6 +163,7 @@ export const CRITERIA = [
   { id: "ls_dyna_tsai_wu", labelKey: "criterion.ls_dyna_tsai_wu" },
   { id: "ls_dyna_daimler_camanho", labelKey: "criterion.ls_dyna_daimler_camanho" },
   { id: "ls_dyna_daimler_pinho", labelKey: "criterion.ls_dyna_daimler_pinho" },
+  { id: "ansys_hashin", labelKey: "criterion.ansys_hashin" },
   // The two isotropic yield criteria. Last in the list because they belong to
   // a metal ply, which most laminates here do not have.
   { id: "von_mises", labelKey: "criterion.von_mises" },
@@ -241,6 +242,15 @@ export const AUTODESK_HASHIN_KEYS = {
   r23: "autodesk_hashin.r23",
 } as const;
 
+/** ANSYS's LaRC03 parameters. No criterion here reads them - eLamX does not
+ *  register that criterion either - but every eLamX material carries them, so
+ *  they are named so that a material written here matches one written there. */
+export const ANSYS_LARC03_KEYS = {
+  g1c: "ansys_larc03.g1c",
+  g2c: "ansys_larc03.g2c",
+  alpha0: "ansys_larc03.alpha_0",
+} as const;
+
 export const LS_DYNA_KEYS = {
   /** How much of the shear stress reaches fibre tension. LS-DYNA's own default
    *  is 0, which leaves fibre tension a plain stress ratio. */
@@ -290,6 +300,9 @@ export const DEFAULT_ADDITIONAL_VALUES: Record<string, number> = {
   [LS_DYNA_KEYS.camanhoG1c]: 0.28,
   [LS_DYNA_KEYS.camanhoG2c]: 0.79,
   [LS_DYNA_KEYS.pinhoAlpha0]: 53,
+  [ANSYS_LARC03_KEYS.g1c]: 0.28,
+  [ANSYS_LARC03_KEYS.g2c]: 0.79,
+  [ANSYS_LARC03_KEYS.alpha0]: 53,
 };
 
 export const emptyLoads = (): LoadsDto => ({

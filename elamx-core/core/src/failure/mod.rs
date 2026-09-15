@@ -8,11 +8,13 @@
 //! `envelope`: the sampling is the criterion's own arithmetic and belongs
 //! here, while turning the sampled grid into pixels is the frontend's job.
 //! The FEA-specific criterion variants live beside the ordinary ones, one
-//! module per solver: `abaqus`, `autodesk` and `ls_dyna` so far, with ANSYS
-//! still to come. They are not refinements - they are what those solvers
-//! compute.
+//! module per solver: `abaqus`, `ansys`, `autodesk` and `ls_dyna`. They are not
+//! refinements - they are what those solvers compute, and where a solver's
+//! version of a criterion departs from the criterion, the departure is the
+//! point.
 
 mod abaqus;
+mod ansys;
 mod autodesk;
 mod christensen;
 mod edge;
@@ -30,6 +32,7 @@ mod metal;
 mod puck;
 mod reserve_factor;
 mod rotem;
+mod solver_hashin;
 mod solver_tsai_wu;
 mod sun;
 mod tsai_hill;
@@ -38,6 +41,10 @@ mod ztl;
 
 pub use abaqus::{
     AbaqusAzziTsaiHill, ABAQUS_TSAI_WU, F12_STAR as ABAQUS_F12_STAR, SIG_BIAX as ABAQUS_SIG_BIAX,
+};
+pub use ansys::{
+    AnsysHashin, LARC03_ALPHA_0 as ANSYS_LARC03_ALPHA_0, LARC03_G1C as ANSYS_LARC03_G1C,
+    LARC03_G2C as ANSYS_LARC03_G2C,
 };
 pub use autodesk::{
     AutodeskHashin, ALPHA as AUTODESK_ALPHA, AUTODESK_TSAI_WU, F12_STAR as AUTODESK_F12_STAR,
@@ -131,6 +138,7 @@ pub const LS_DYNA_CHANG_CHANG_ID: &str = "ls_dyna_chang_chang";
 pub const LS_DYNA_TSAI_WU_ID: &str = "ls_dyna_tsai_wu";
 pub const LS_DYNA_DAIMLER_CAMANHO_ID: &str = "ls_dyna_daimler_camanho";
 pub const LS_DYNA_DAIMLER_PINHO_ID: &str = "ls_dyna_daimler_pinho";
+pub const ANSYS_HASHIN_ID: &str = "ansys_hashin";
 pub const ABAQUS_AZZI_TSAI_HILL_ID: &str = "abaqus_azzi_tsai_hill";
 pub const VON_MISES_ID: &str = "von_mises";
 pub const TRESCA_ID: &str = "tresca";
@@ -162,6 +170,7 @@ pub fn default_criterion_registry() -> CriterionRegistry {
     registry.insert(LS_DYNA_TSAI_WU_ID.to_string(), Box::new(LsDynaTsaiWu));
     registry.insert(LS_DYNA_DAIMLER_CAMANHO_ID.to_string(), Box::new(LsDynaDaimlerCamanho));
     registry.insert(LS_DYNA_DAIMLER_PINHO_ID.to_string(), Box::new(LsDynaDaimlerPinho));
+    registry.insert(ANSYS_HASHIN_ID.to_string(), Box::new(AnsysHashin));
     // The two isotropic yield criteria, for a metal ply in a hybrid laminate.
     registry.insert(VON_MISES_ID.to_string(), Box::new(VonMises));
     registry.insert(TRESCA_ID.to_string(), Box::new(Tresca));
@@ -214,6 +223,12 @@ pub const DEFAULT_ADDITIONAL_VALUES: &[(&str, f64)] = &[
     (LS_DYNA_CAMANHO_G1C, 0.28),
     (LS_DYNA_CAMANHO_G2C, 0.79),
     (LS_DYNA_PINHO_ALPHA_0, 53.0),
+    // Read by no criterion here - see the note in `ansys` - but every eLamX
+    // material carries them, so a material built from these defaults has to
+    // come out of a save the way eLamX's would.
+    (ANSYS_LARC03_G1C, 0.28),
+    (ANSYS_LARC03_G2C, 0.79),
+    (ANSYS_LARC03_ALPHA_0, 53.0),
 ];
 
 /// [`DEFAULT_ADDITIONAL_VALUES`] as the map a [`Material`] carries.

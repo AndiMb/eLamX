@@ -547,6 +547,7 @@ export const de: Messages = {
   "criterion.ls_dyna_tsai_wu": "Tsai-Wu MAT055 (LS-DYNA)",
   "criterion.ls_dyna_daimler_camanho": "Daimler-Camanho (LS-DYNA)",
   "criterion.ls_dyna_daimler_pinho": "Daimler-Pinho (LS-DYNA)",
+  "criterion.ansys_hashin": "Hashin (ANSYS)",
   "criterion.von_mises": "von Mises",
   "criterion.tresca": "Tresca",
   "criterion.isotropic.warning": "{criterion} ist ein Fließkriterium für einen ISOTROPEN Werkstoff, und {material} ist keiner. eLamX rechnet es trotzdem, und das tut dies auch — aber die Zahl bedeutet für einen Faserverbund nichts.",

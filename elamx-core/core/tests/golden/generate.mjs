@@ -26,6 +26,7 @@ const METAL = "de.elamx.laminate.addFailureCriteriaMetal.";
 const ABAQUS = "de.elamx.laminate.addFailureCriteriaAbaqus.";
 const AUTODESK = "de.elamx.laminate.addFailureCriteriaAutodesk.";
 const LSDYNA = "de.elamx.laminate.addFailureCriteriaLSDYNA.";
+const ANSYS = "de.elamx.laminate.addFailureCriteriaAnsys.";
 const CRITERIA = {
   max_stress:    { java: ADD + "MaxStress",    display: "maximum Stress" },
   max_strain:    { java: ADD + "MaxStrain",    display: "maximum Strain" },
@@ -56,6 +57,10 @@ const CRITERIA = {
   ls_dyna_tsai_wu:      { java: LSDYNA + "LSDYNATsaiWu",     display: "TsaiWu MAT055 (LS-DYNA)" },
   ls_dyna_daimler_camanho: { java: LSDYNA + "LSDYNADaimlerCamanho", display: "Daimler Camanho (LS-DYNA)" },
   ls_dyna_daimler_pinho:   { java: LSDYNA + "LSDYNADaimlerPinho",   display: "Daimler-Pinho (LS-DYNA)" },
+  // ANSYS registers ONE of its three: its own layer.xml has the Hoffman and
+  // the LaRC03 commented out. A layer asking for either is silently given
+  // Puck, which is how this was found.
+  ansys_hashin:         { java: ANSYS + "AnsysHashin",  display: "Hashin (ANSYS)" },
   // The two isotropic yield criteria live in their own module, hence the
   // different package. They are only meaningful on an isotropic material, and
   // eLamX pops a MODAL DIALOG when they meet anything else - which in a batch
@@ -114,6 +119,11 @@ function material(id, name, props, globalLokal, sigBiax = 0.0) {
       "ls_dyna_daimler_camanho.g1c":   [LSDYNA + "LSDYNADaimlerCamanho.g1c", 0.28],
       "ls_dyna_daimler_camanho.g2c":   [LSDYNA + "LSDYNADaimlerCamanho.g2c", 0.79],
       "ls_dyna_daimler_pinho.alpha_0": [LSDYNA + "LSDYNADaimlerPinho.alp0", 52.4],
+      // Registered as material parameters even though the criterion that
+      // reads them is not, so they have to survive the file all the same.
+      "ansys_larc03.g1c":     [ANSYS + "AnsysLaRC03.g1c", 0.31],
+      "ansys_larc03.g2c":     [ANSYS + "AnsysLaRC03.g2c", 0.85],
+      "ansys_larc03.alpha_0": [ANSYS + "AnsysLaRC03.alp0", 51.6],
     },
   };
 }
@@ -425,7 +435,7 @@ const NO_STRAIN = [false, false, false, false, false, false];
 // one, and Abaqus's Tsai-Wu with an equibiaxial strength measured.
 const CRITERION_ANGLES = [
   0, 15, 30, 45, 60, 75, 90, -15, -30, -45, -60, -75, 20, -20, 10, 35, -35, 50,
-  -50, 5, -5, 65, -65,
+  -50, 5, -5, 65, -65, 40,
 ];
 const criterionLayers = [
   ...COMPOSITE_CRITERIA.map((c, i) => layer(CRITERION_ANGLES[i], 0.125, "m-cfk", c)),
