@@ -17,17 +17,20 @@
 //!   the two;
 //! - and one for unsymmetric laminates, where they cannot be separated.
 //!
-//! **Only the symmetric half is ported so far**, which is why the entry point
-//! is [`calculate_symmetric`] and not a dispatcher: a function that took any
-//! laminate would have to refuse half of them, and refusing is worse than not
-//! offering.
+//! [`calculate`] picks between them on the laminate's symmetry, as
+//! `Cutout.calc` does. The two are not an approximation of each other: the
+//! symmetric solution is what the unsymmetric one becomes when B vanishes,
+//! which is exactly what `the_two_solutions_meet_where_the_b_matrix_vanishes`
+//! checks.
 
 pub mod geometry;
 pub mod symmetric;
+pub mod unsymmetric;
 
 use serde::{Deserialize, Serialize};
 
 use crate::clt::CltLaminate;
+use crate::mathtools::Complex;
 
 pub use geometry::{CutoutGeometry, DEFAULT_TERMS, MAX_TERMS};
 pub use symmetric::CutoutError;
@@ -113,15 +116,9 @@ pub struct CutoutResult {
     pub peak_m_theta_alpha: f64,
 }
 
-/// Force and moment resultants around a hole in a SYMMETRIC laminate.
-///
-/// The guards are eLamX's own, from `cutoutui/ControlPanel.checkInput`, plus
-/// the two the original leaves implicit (a real characteristic root, and a
-/// sample count too small to close a contour).
-pub fn calculate_symmetric(
-    laminate: &CltLaminate,
-    input: &CutoutInput,
-) -> Result<CutoutResult, CutoutError> {
+/// The guards both solutions share, from `cutoutui/ControlPanel.checkInput`
+/// plus the ones the original leaves implicit.
+fn check_input(laminate: &CltLaminate, input: &CutoutInput) -> Result<(), CutoutError> {
     if laminate.layers().is_empty() || laminate.tges() <= 0.0 {
         return Err(CutoutError::EmptyLaminate);
     }
@@ -131,13 +128,68 @@ pub fn calculate_symmetric(
     if input.geometry.a() <= 0.0 || input.geometry.b() <= 0.0 {
         return Err(CutoutError::NonPositiveGeometry);
     }
-    let ratio = (input.geometry.a() / input.geometry.b()).max(input.geometry.b() / input.geometry.a());
+    let ratio =
+        (input.geometry.a() / input.geometry.b()).max(input.geometry.b() / input.geometry.a());
     if ratio > input.geometry.max_aspect_ratio() {
         return Err(CutoutError::AspectRatioTooLarge {
             ratio,
             maximum: input.geometry.max_aspect_ratio(),
         });
     }
+    Ok(())
+}
+
+/// The parameter angles the contour is sampled at: a closed loop, first point
+/// repeated at 360 degrees, as the original walks it.
+fn sample_angles(values: usize) -> Vec<f64> {
+    let step = 360.0 / (values - 1) as f64;
+    (0..values).map(|i| i as f64 * step).collect()
+}
+
+/// One point, from its six resultants - including the two tangential ones,
+/// which are the same projection in both solutions.
+fn resultants_at(alpha: f64, nm: [f64; 6]) -> CutoutPoint {
+    let (sin_a, cos_a) = alpha.to_radians().sin_cos();
+    let [n_x, n_y, n_xy, m_x, m_y, m_xy] = nm;
+    CutoutPoint {
+        alpha,
+        n_x,
+        n_y,
+        n_xy,
+        m_x,
+        m_y,
+        m_xy,
+        n_theta: n_x * sin_a * sin_a + n_y * cos_a * cos_a - 2.0 * n_xy * sin_a * cos_a,
+        m_theta: m_x * sin_a * sin_a + m_y * cos_a * cos_a - 2.0 * m_xy * sin_a * cos_a,
+    }
+}
+
+/// The peaks, and the result they belong to.
+fn summarise(points: Vec<CutoutPoint>) -> CutoutResult {
+    let peak = |pick: fn(&CutoutPoint) -> f64| {
+        points.iter().fold((0.0f64, 0.0f64), |(best, at), p| {
+            if pick(p).abs() > best.abs() {
+                (pick(p), p.alpha)
+            } else {
+                (best, at)
+            }
+        })
+    };
+    let (peak_n_theta, peak_n_theta_alpha) = peak(|p| p.n_theta);
+    let (peak_m_theta, peak_m_theta_alpha) = peak(|p| p.m_theta);
+    CutoutResult { points, peak_n_theta, peak_n_theta_alpha, peak_m_theta, peak_m_theta_alpha }
+}
+
+/// Force and moment resultants around a hole in a SYMMETRIC laminate.
+///
+/// The guards are eLamX's own, from `cutoutui/ControlPanel.checkInput`, plus
+/// the two the original leaves implicit (a real characteristic root, and a
+/// sample count too small to close a contour).
+pub fn calculate_symmetric(
+    laminate: &CltLaminate,
+    input: &CutoutInput,
+) -> Result<CutoutResult, CutoutError> {
+    check_input(laminate, input)?;
 
     let loads = input.loads();
     let thickness = laminate.tges();
@@ -156,65 +208,89 @@ pub fn calculate_symmetric(
     // are normalised by t^3/6 - so putting them back into N per mm is this
     // factor, and it is the only place the thickness enters the moment side.
     let moment_scale = thickness.powi(3) / 6.0;
-    let step = 360.0 / (input.values - 1) as f64;
 
-    let points: Vec<CutoutPoint> = (0..input.values)
-        .map(|i| {
-            let theta = i as f64 * step;
+    let points = sample_angles(input.values)
+        .into_iter()
+        .map(|theta| {
             let pn = phi_n.at(theta);
             let pm = phi_m.at(theta);
-
-            let alpha = input.geometry.alpha(theta);
-            let (sin_a, cos_a) = alpha.to_radians().sin_cos();
-
             let s = force.s;
-            let n_x = loads[0]
-                + 2.0 * (s[0].powi(2) * pn[0] + s[1].powi(2) * pn[1]).re * thickness;
-            let n_y = loads[1] + 2.0 * (pn[0] + pn[1]).re * thickness;
-            let n_xy = loads[2] - 2.0 * (s[0] * pn[0] + s[1] * pn[1]).re * thickness;
 
             let m_of = |k: usize| {
                 loads[3 + k] - (moment.p[k] * pm[0] + moment.q[k] * pm[1]).re * moment_scale
             };
-            let m_x = m_of(0);
-            let m_y = m_of(1);
-            let m_xy = m_of(2);
 
-            CutoutPoint {
-                alpha,
-                n_x,
-                n_y,
-                n_xy,
-                m_x,
-                m_y,
-                m_xy,
-                n_theta: n_x * sin_a * sin_a + n_y * cos_a * cos_a - 2.0 * n_xy * sin_a * cos_a,
-                m_theta: m_x * sin_a * sin_a + m_y * cos_a * cos_a - 2.0 * m_xy * sin_a * cos_a,
-            }
+            resultants_at(
+                input.geometry.alpha(theta),
+                [
+                    loads[0] + 2.0 * (s[0].powi(2) * pn[0] + s[1].powi(2) * pn[1]).re * thickness,
+                    loads[1] + 2.0 * (pn[0] + pn[1]).re * thickness,
+                    loads[2] - 2.0 * (s[0] * pn[0] + s[1] * pn[1]).re * thickness,
+                    m_of(0),
+                    m_of(1),
+                    m_of(2),
+                ],
+            )
         })
         .collect();
 
-    let peak = |pick: fn(&CutoutPoint) -> f64| {
-        points
-            .iter()
-            .fold((0.0f64, 0.0f64), |(best, at), p| {
-                if pick(p).abs() > best.abs() {
-                    (pick(p), p.alpha)
-                } else {
-                    (best, at)
-                }
-            })
-    };
-    let (peak_n_theta, peak_n_theta_alpha) = peak(|p| p.n_theta);
-    let (peak_m_theta, peak_m_theta_alpha) = peak(|p| p.m_theta);
+    Ok(summarise(points))
+}
 
-    Ok(CutoutResult {
-        points,
-        peak_n_theta,
-        peak_n_theta_alpha,
-        peak_m_theta,
-        peak_m_theta_alpha,
-    })
+/// Force and moment resultants around a hole in an UNSYMMETRIC laminate.
+///
+/// One problem instead of two: the B matrix couples stretching to bending, so
+/// the far field, the potentials and the six resultants all have to be solved
+/// together. See [`unsymmetric`].
+pub fn calculate_unsymmetric(
+    laminate: &CltLaminate,
+    input: &CutoutInput,
+) -> Result<CutoutResult, CutoutError> {
+    check_input(laminate, input)?;
+
+    let q = unsymmetric::quantities(
+        laminate.a_matrix(),
+        laminate.b_matrix(),
+        laminate.d_matrix(),
+        laminate.abd_matrix(),
+    )?;
+
+    let angles: Vec<f64> = sample_angles(input.values);
+    let potentials = unsymmetric::Potentials::new(&q, &input.geometry, &input.loads(), &angles)?;
+
+    let points = angles
+        .iter()
+        .enumerate()
+        .map(|(sample, theta)| {
+            let phi = potentials.at(sample);
+            let sum = |row: &[Complex; 4]| {
+                (0..4).fold(0.0, |acc, j| acc + (row[j] * phi[j]).re * 2.0)
+            };
+            resultants_at(
+                input.geometry.alpha(*theta),
+                [sum(&q.c), sum(&q.d), sum(&q.e), sum(&q.f), sum(&q.g), sum(&q.h)],
+            )
+        })
+        .collect();
+
+    Ok(summarise(points))
+}
+
+/// Force and moment resultants around a hole, whichever solution applies.
+///
+/// A symmetric stack goes through the two decoupled problems, an unsymmetric
+/// one through the coupled one - the same choice `Cutout.calc` makes, and for
+/// the same reason: the symmetric solution is not an approximation of the
+/// other, it is what the other becomes when B vanishes.
+pub fn calculate(
+    laminate: &CltLaminate,
+    input: &CutoutInput,
+) -> Result<CutoutResult, CutoutError> {
+    if laminate.is_symmetric() {
+        calculate_symmetric(laminate, input)
+    } else {
+        calculate_unsymmetric(laminate, input)
+    }
 }
 
 #[cfg(test)]
@@ -481,6 +557,171 @@ mod tests {
             assert!(p.n_theta.abs() < 1e-9, "Kraft unter reiner Biegung: {}", p.n_theta);
         }
         assert!(bent.peak_m_theta.abs() > 10.0, "Biegung muss ueberhaupt etwas bewirken");
+    }
+
+    /// A stack of `layers` plies at the given angles, with `extra` more plies
+    /// of the same material tacked on one face to break the symmetry.
+    fn stack(angles: &[f64]) -> CltLaminate {
+        let material = Material::new("cfk", "CFK", 141_000.0, 9_340.0, 0.35, 4_500.0, 1.7e-9);
+        let mut materials = HashMap::new();
+        materials.insert("cfk".to_string(), material);
+        let mut laminate = Laminate::new("l", "l");
+        for (i, angle) in angles.iter().enumerate() {
+            laminate
+                .layers
+                .push(Layer::new(format!("y{i}"), "", "cfk", *angle, 0.125));
+        }
+        CltLaminate::new(&laminate, &materials).unwrap()
+    }
+
+    /// **The check that ties the two halves of this module together.**
+    ///
+    /// The unsymmetric solution is not an alternative to the symmetric one; it
+    /// is the general case, and the symmetric one is what it becomes when the
+    /// B matrix vanishes. So a stack whose B matrix is nearly zero has to give
+    /// nearly the same answer through both paths - and the closer to zero, the
+    /// closer the answers.
+    ///
+    /// Nothing here compares either solution against itself: each is an
+    /// independent transcription of a different paper, they share only the
+    /// hole geometry, and on a nearly symmetric stack they agree to two
+    /// percent.
+    ///
+    /// Two percent and not more, and the offset is not driven to zero, for a
+    /// reason worth knowing: the coupled formulation divides by quantities
+    /// that vanish WITH the B matrix, so pushing B towards zero makes it
+    /// worse conditioned rather than more accurate. The symmetric solution is
+    /// the limit, not the fine end of a sequence.
+    #[test]
+    fn the_two_solutions_meet_where_the_b_matrix_vanishes() {
+        let material = Material::new("cfk", "CFK", 141_000.0, 9_340.0, 0.35, 4_500.0, 1.7e-9);
+        let mut materials = HashMap::new();
+        materials.insert("cfk".to_string(), material);
+
+        // A [0/90]s stack with one face a hair thicker: symmetric in angle,
+        // not quite in thickness, so B is small but not zero.
+        let mut laminate = Laminate::new("l", "l");
+        for (i, (angle, t)) in
+            [(0.0, 0.130), (90.0, 0.125), (90.0, 0.125), (0.0, 0.125)].iter().enumerate()
+        {
+            laminate
+                .layers
+                .push(Layer::new(format!("y{i}"), "", "cfk", *angle, *t));
+        }
+        let skewed = CltLaminate::new(&laminate, &materials).unwrap();
+        assert!(!skewed.is_symmetric(), "der Aufbau muss unsymmetrisch sein");
+
+        let input = CutoutInput {
+            geometry: CutoutGeometry::Circular { a: 5.0 },
+            n_x: 100.0,
+            n_y: -30.0,
+            n_xy: 20.0,
+            ..Default::default()
+        };
+
+        let general = calculate_unsymmetric(&skewed, &input).unwrap();
+        let reduced = calculate_symmetric(&stack(&[0.0, 90.0, 90.0, 0.0]), &input).unwrap();
+
+        let difference =
+            (general.peak_n_theta - reduced.peak_n_theta).abs() / reduced.peak_n_theta.abs();
+        assert!(difference < 0.02, "Abweichung {difference}");
+    }
+
+    /// The dispatcher sends a laminate down the path its stiffness calls for.
+    #[test]
+    fn the_dispatcher_picks_by_symmetry() {
+        let input = CutoutInput {
+            geometry: CutoutGeometry::Circular { a: 5.0 },
+            n_x: 100.0,
+            ..Default::default()
+        };
+
+        let symmetric = stack(&[0.0, 90.0, 90.0, 0.0]);
+        assert!(symmetric.is_symmetric());
+        assert_eq!(
+            calculate(&symmetric, &input).unwrap(),
+            calculate_symmetric(&symmetric, &input).unwrap()
+        );
+
+        let unsymmetric = stack(&[0.0, 90.0]);
+        assert!(!unsymmetric.is_symmetric());
+        assert_eq!(
+            calculate(&unsymmetric, &input).unwrap(),
+            calculate_unsymmetric(&unsymmetric, &input).unwrap()
+        );
+    }
+
+    /// An unsymmetric stack under a pure in-plane load carries MOMENTS at the
+    /// hole edge - that is what the B matrix does, and the whole reason the
+    /// coupled solution exists. The symmetric one cannot produce this.
+    #[test]
+    fn an_unsymmetric_stack_bends_under_a_pure_in_plane_load() {
+        let plate = stack(&[0.0, 90.0]);
+        let result = calculate_unsymmetric(
+            &plate,
+            &CutoutInput {
+                geometry: CutoutGeometry::Circular { a: 5.0 },
+                n_x: 100.0,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        assert!(result.points.iter().all(|p| p.n_theta.is_finite()));
+        assert!(result.peak_m_theta.abs() > 0.0, "die B-Matrix muss Momente erzeugen");
+        // And the force concentration is still of the expected order.
+        assert!(result.peak_n_theta / 100.0 > 2.0, "{}", result.peak_n_theta / 100.0);
+        assert!(result.peak_n_theta / 100.0 < 8.0, "{}", result.peak_n_theta / 100.0);
+    }
+
+    /// Linear in the load here too - and worth its own check, because the
+    /// unsymmetric path solves a seven-by-seven system from the load rather
+    /// than scaling anything.
+    #[test]
+    fn the_coupled_solution_is_linear_in_the_load_as_well() {
+        let plate = stack(&[0.0, 90.0]);
+        let once = calculate_unsymmetric(
+            &plate,
+            &CutoutInput { n_x: 100.0, m_y: 5.0, ..Default::default() },
+        )
+        .unwrap();
+        let twice = calculate_unsymmetric(
+            &plate,
+            &CutoutInput { n_x: 200.0, m_y: 10.0, ..Default::default() },
+        )
+        .unwrap();
+        for (a, b) in once.points.iter().zip(&twice.points) {
+            assert!((2.0 * a.n_theta - b.n_theta).abs() < 1e-6 * b.n_theta.abs().max(1.0));
+            assert!((2.0 * a.m_theta - b.m_theta).abs() < 1e-6 * b.m_theta.abs().max(1.0));
+        }
+    }
+
+    /// A quasi-isotropic stack is refused, with the reason, rather than
+    /// answered with a number twelve orders too large.
+    ///
+    /// `[0/45/-45/90]` has an isotropic A matrix, and an isotropic plate has
+    /// the DOUBLE characteristic root `i` - which is exactly the case
+    /// Lekhnitskii's formulation cannot represent, because four potentials
+    /// built on two distinct roots are not four independent functions. The
+    /// coupled systems inherit that and run away: eLamX reports a tangential
+    /// force resultant of 4e12 for this laminate under a 100 N/mm load, with no
+    /// indication that anything is wrong.
+    ///
+    /// The symmetric path is untouched by this. It is degenerate for an
+    /// isotropic plate too, but the limit it takes there is the right one -
+    /// `a_circular_hole_in_an_isotropic_sheet_gives_kirschs_factor_of_three`
+    /// gets Kirsch to six digits.
+    #[test]
+    fn a_quasi_isotropic_unsymmetric_stack_is_refused_rather_than_answered() {
+        let plate = stack(&[0.0, 45.0, -45.0, 90.0]);
+        assert!(!plate.is_symmetric());
+
+        match calculate(&plate, &CutoutInput { n_x: 100.0, ..Default::default() }) {
+            Err(CutoutError::DegenerateRoots { separation }) => {
+                assert!(separation < 1e-2, "{separation}");
+            }
+            other => panic!("erwartet wurde DegenerateRoots, kam: {other:?}"),
+        }
     }
 
     /// The laminate that forced the one correction this module makes to the

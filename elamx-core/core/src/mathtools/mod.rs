@@ -247,6 +247,54 @@ pub fn solve_ab_lu(a_in: &Matrix, b: &[f64]) -> Vec<f64> {
     x
 }
 
+/// Solves a general (not necessarily symmetric) real system by Gaussian
+/// elimination with partial pivoting.
+///
+/// The other solvers here all assume something about `A`: Cholesky wants it
+/// positive definite, the LU one above does not pivot at all. The cutout
+/// module's first-stage potential is neither - its seven rows are seven
+/// different physical equations, three of them force resultants and three
+/// moments, so the rows differ in magnitude by orders and the pivot has to be
+/// chosen rather than taken.
+///
+/// `None` if the matrix is singular to working precision.
+pub fn solve_general(a_in: &Matrix, b: &[f64]) -> Option<Vec<f64>> {
+    let n = a_in.len();
+    let mut a = a_in.clone();
+    let mut x = b.to_vec();
+
+    for k in 0..n {
+        let pivot_row = (k..n).max_by(|i, j| {
+            a[*i][k].abs().partial_cmp(&a[*j][k].abs()).unwrap_or(std::cmp::Ordering::Equal)
+        })?;
+        if a[pivot_row][k] == 0.0 || !a[pivot_row][k].is_finite() {
+            return None;
+        }
+        a.swap(k, pivot_row);
+        x.swap(k, pivot_row);
+
+        for i in (k + 1)..n {
+            let factor = a[i][k] / a[k][k];
+            if factor == 0.0 {
+                continue;
+            }
+            for j in k..n {
+                a[i][j] -= factor * a[k][j];
+            }
+            x[i] -= factor * x[k];
+        }
+    }
+
+    for i in (0..n).rev() {
+        let mut acc = x[i];
+        for j in (i + 1)..n {
+            acc -= a[i][j] * x[j];
+        }
+        x[i] = acc / a[i][i];
+    }
+    Some(x)
+}
+
 /// Solves `A x = b` via LU factorization, after swapping selected dependent/independent
 /// variable pairs (Bronstein pivot exchange). Used by the CLT solver for mixed
 /// load/strain boundary conditions. `exchange_flags[i]` swaps row/column `i`.
@@ -471,6 +519,52 @@ mod tests {
         let reconstructed = mat_vec_mult(&a, &x);
         for (r, bv) in reconstructed.iter().zip(&b) {
             assert_relative_eq!(r, bv, epsilon = 1e-9);
+        }
+    }
+
+    /// The general solver has to cope with what the specialised ones refuse:
+    /// an unsymmetric matrix, and one whose first pivot is zero.
+    #[test]
+    fn solve_general_handles_what_the_other_solvers_will_not() {
+        // Unsymmetric, well conditioned.
+        let a = vec![
+            vec![2.0, 1.0, -1.0],
+            vec![-3.0, -1.0, 2.0],
+            vec![-2.0, 1.0, 2.0],
+        ];
+        let x = solve_general(&a, &[8.0, -11.0, -3.0]).expect("loesbar");
+        for (found, expected) in x.iter().zip([2.0, 3.0, -1.0]) {
+            assert!((found - expected).abs() < 1e-12, "{x:?}");
+        }
+
+        // A zero in the first pivot position: fatal without pivoting, fine
+        // with it.
+        let a = vec![vec![0.0, 1.0], vec![1.0, 0.0]];
+        assert_eq!(solve_general(&a, &[3.0, 5.0]).unwrap(), vec![5.0, 3.0]);
+
+        // Singular, and said so rather than returned as infinities.
+        let a = vec![vec![1.0, 2.0], vec![2.0, 4.0]];
+        assert_eq!(solve_general(&a, &[1.0, 2.0]), None);
+    }
+
+    /// Rows that differ by orders of magnitude, which is what the cutout
+    /// module's system looks like - three force equations beside three moment
+    /// ones.
+    #[test]
+    fn solve_general_survives_rows_of_very_different_size() {
+        let a = vec![
+            vec![1.0e5, 2.0e5, 3.0e5],
+            vec![1.0e-3, -1.0e-3, 2.0e-3],
+            vec![4.0, 0.0, -1.0],
+        ];
+        let expected = [1.5, -2.0, 0.25];
+        let b: Vec<f64> = a
+            .iter()
+            .map(|row| row.iter().zip(expected).map(|(c, x)| c * x).sum())
+            .collect();
+        let x = solve_general(&a, &b).expect("loesbar");
+        for (found, want) in x.iter().zip(expected) {
+            assert!((found - want).abs() < 1e-9 * want.abs().max(1.0), "{x:?}");
         }
     }
 

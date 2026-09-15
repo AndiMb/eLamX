@@ -138,6 +138,54 @@ impl Neg for Complex {
     }
 }
 
+/// Solves a complex linear system by Gaussian elimination with partial
+/// pivoting.
+///
+/// The cutout module's second-stage potential is a 4x4 complex system that has
+/// to be solved once per sampled angle. The Java inverts the matrix and
+/// multiplies; solving directly is the same answer with one less step to go
+/// wrong, and pivoting matters because the rows are force and moment
+/// coefficients side by side, orders of magnitude apart.
+///
+/// `None` if the matrix is singular to working precision.
+pub fn solve(a_in: &[Vec<Complex>], b: &[Complex]) -> Option<Vec<Complex>> {
+    let n = a_in.len();
+    let mut a: Vec<Vec<Complex>> = a_in.to_vec();
+    let mut x = b.to_vec();
+
+    for k in 0..n {
+        let pivot_row = (k..n).max_by(|i, j| {
+            a[*i][k].abs().partial_cmp(&a[*j][k].abs()).unwrap_or(std::cmp::Ordering::Equal)
+        })?;
+        let pivot = a[pivot_row][k];
+        if pivot.abs() == 0.0 || !pivot.abs().is_finite() {
+            return None;
+        }
+        a.swap(k, pivot_row);
+        x.swap(k, pivot_row);
+
+        for i in (k + 1)..n {
+            let factor = a[i][k] / a[k][k];
+            if factor.abs() == 0.0 {
+                continue;
+            }
+            for j in k..n {
+                a[i][j] = a[i][j] - factor * a[k][j];
+            }
+            x[i] = x[i] - factor * x[k];
+        }
+    }
+
+    for i in (0..n).rev() {
+        let mut acc = x[i];
+        for j in (i + 1)..n {
+            acc = acc - a[i][j] * x[j];
+        }
+        x[i] = acc / a[i][i];
+    }
+    Some(x)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -178,6 +226,48 @@ mod tests {
             assert!((zeta.powi(n) - turned).abs() < 1e-12, "n = {n}");
         }
         close(zeta.powi(0), Complex::ONE);
+    }
+
+    /// The complex solver, on a system whose answer is known by construction:
+    /// pick an x, multiply, solve back.
+    #[test]
+    fn the_complex_solver_recovers_the_vector_it_was_built_from() {
+        let a = vec![
+            vec![Complex::new(2.0, 1.0), Complex::new(0.0, -1.0), Complex::new(1.0, 0.0)],
+            vec![Complex::new(-1.0, 0.5), Complex::new(3.0, 0.0), Complex::new(0.0, 2.0)],
+            vec![Complex::new(0.0, 0.0), Complex::new(1.0, 1.0), Complex::new(-2.0, 0.5)],
+        ];
+        let x = [Complex::new(1.5, -0.5), Complex::new(-2.0, 0.25), Complex::new(0.75, 3.0)];
+        let b: Vec<Complex> = a
+            .iter()
+            .map(|row| {
+                row.iter().zip(x).fold(Complex::ZERO, |acc, (c, xi)| acc + *c * xi)
+            })
+            .collect();
+
+        let found = solve(&a, &b).expect("loesbar");
+        for (got, want) in found.iter().zip(x) {
+            assert!((*got - want).abs() < 1e-12, "{found:?}");
+        }
+    }
+
+    /// A zero leading entry is a pivot problem, not a singular one - the
+    /// cutout coefficient matrix has them whenever a stiffness component
+    /// happens to vanish.
+    #[test]
+    fn the_complex_solver_pivots_rather_than_dividing_by_zero() {
+        let a = vec![
+            vec![Complex::ZERO, Complex::ONE],
+            vec![Complex::ONE, Complex::ZERO],
+        ];
+        let found = solve(&a, &[Complex::new(3.0, 1.0), Complex::new(5.0, -2.0)]).unwrap();
+        assert_eq!(found, vec![Complex::new(5.0, -2.0), Complex::new(3.0, 1.0)]);
+
+        let singular = vec![
+            vec![Complex::ONE, Complex::new(2.0, 0.0)],
+            vec![Complex::new(2.0, 0.0), Complex::new(4.0, 0.0)],
+        ];
+        assert_eq!(solve(&singular, &[Complex::ONE, Complex::new(2.0, 0.0)]), None);
     }
 
     #[test]

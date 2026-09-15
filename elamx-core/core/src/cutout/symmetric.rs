@@ -82,6 +82,21 @@ pub enum CutoutError {
     AspectRatioTooLarge { ratio: f64, maximum: f64 },
     /// A side, radius or semi-axis that is zero or negative.
     NonPositiveGeometry,
+    /// One of the linear systems the unsymmetric solution solves came out
+    /// singular. eLamX inverts the matrix unconditionally and would carry the
+    /// infinities forward.
+    SingularSystem,
+    /// Two of the characteristic roots coincide.
+    ///
+    /// Lekhnitskii calls such a material degenerate, and the potentials stop
+    /// being independent there: four of them describe fewer than four
+    /// directions, the linear systems built on them go singular, and the
+    /// answer runs away. It is not an exotic case - a quasi-isotropic stack is
+    /// exactly it, because an isotropic plate has the double root `i`.
+    ///
+    /// eLamX has no guard. On `[0/45/-45/90]` it returns a stress resultant of
+    /// 4e12 without comment.
+    DegenerateRoots { separation: f64 },
 }
 
 impl std::fmt::Display for CutoutError {
@@ -103,6 +118,14 @@ impl std::fmt::Display for CutoutError {
             CutoutError::NonPositiveGeometry => {
                 write!(f, "the hole needs positive dimensions")
             }
+            CutoutError::DegenerateRoots { separation } => write!(
+                f,
+                "two characteristic roots coincide (they differ by {separation:.3e}), so the four complex potentials are not independent and this solution does not apply to this stack - a quasi-isotropic unsymmetric layup is the usual way to land here"
+            ),
+            CutoutError::SingularSystem => write!(
+                f,
+                "the potentials could not be solved for: the system is singular, which means this stiffness does not determine them"
+            ),
         }
     }
 }
