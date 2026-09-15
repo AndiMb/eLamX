@@ -179,6 +179,14 @@ pub struct OptimizationResult {
     pub constraint_evaluations: usize,
     /// Whether the search reached a stack that carries the load.
     pub succeeded: bool,
+    /// For the genetic search: the generation its answer last improved in.
+    ///
+    /// The number that says whether the run was long enough. If it is close to
+    /// the generation count, the search was still finding things when it was
+    /// stopped; if it is far below, it had settled. `None` for the searches
+    /// that have no generations.
+    #[serde(default)]
+    pub last_improvement: Option<usize>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -191,6 +199,8 @@ pub enum OptimizationError {
     NonPositiveThickness,
     /// The material the plies are made of is not in the catalogue.
     UnknownMaterial { id: String },
+    /// A genetic search with no parents or no children.
+    EmptyPopulation,
     /// The exhaustive search spent its evaluation budget.
     ///
     /// It has to have one: the original keeps every candidate at every level
@@ -219,6 +229,9 @@ impl std::fmt::Display for OptimizationError {
             }
             OptimizationError::UnknownMaterial { id } => {
                 write!(f, "material '{id}' is not in the catalogue")
+            }
+            OptimizationError::EmptyPopulation => {
+                write!(f, "a genetic search needs at least one parent and one child")
             }
             OptimizationError::BudgetSpent { checked } => write!(
                 f,
@@ -658,7 +671,426 @@ fn finish(
         checked_laminates: checked,
         constraint_evaluations: evaluations,
         succeeded: min_reserve_factor >= 1.0,
+        last_improvement: None,
     }
+}
+
+/// The knobs of the genetic search.
+/// Reference: eLamX2/.../optimization/hauffe/OptimizationParameter.java
+///
+/// The defaults are the original's, including the ones that look odd:
+/// `stop_after_unchanged` equals `max_generations`, so it never ends the run
+/// early on its own - what does end it is the restart rule below, and running
+/// out of generations.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+pub struct GeneticParameters {
+    pub parents: usize,
+    pub children: usize,
+    /// Chance that a gene mutates, and that the ply count does.
+    pub mutation_probability: f64,
+    /// Chance that an angle shifts to its neighbour in the allowed list -
+    /// a gentler mutation, which is what makes a sorted angle list matter.
+    pub shift_probability: f64,
+    pub max_generations: usize,
+    /// Generations without an improvement before the population is rebuilt
+    /// around the best individual.
+    pub restart_after_unchanged: usize,
+    /// How many plies of headroom the genome carries above the best found.
+    pub delta_max_layers: usize,
+    /// The seed.
+    ///
+    /// Not in the original, which calls `Math.random()` and therefore answers
+    /// a different laminate every time it is asked the same question. A search
+    /// may be stochastic; a program should still be able to repeat itself.
+    pub seed: u64,
+}
+
+impl Default for GeneticParameters {
+    fn default() -> Self {
+        GeneticParameters {
+            parents: 60,
+            children: 60,
+            mutation_probability: 0.3,
+            shift_probability: 0.2,
+            max_generations: 6000,
+            restart_after_unchanged: 400,
+            delta_max_layers: 0,
+            seed: 0x005e_ed0f_1a11_a7e5,
+        }
+    }
+}
+
+/// One candidate in the population.
+///
+/// The genome is longer than the laminate: `angles` holds `max_layers` genes
+/// and `layers` says how many of them are built. Mutating the count is
+/// therefore free - the genes are already there - which is the trick that lets
+/// one population search over thicknesses as well as over sequences.
+#[derive(Debug, Clone, PartialEq)]
+struct Individual {
+    layers: usize,
+    angles: Vec<f64>,
+    min_reserve_factor: f64,
+}
+
+/// xorshift64*, so a run can be repeated.
+struct Rng(u64);
+
+impl Rng {
+    fn new(seed: u64) -> Self {
+        // A zero state would stay zero forever.
+        Rng(if seed == 0 { 0x9E37_79B9_7F4A_7C15 } else { seed })
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        let mut x = self.0;
+        x ^= x >> 12;
+        x ^= x << 25;
+        x ^= x >> 27;
+        self.0 = x;
+        x.wrapping_mul(0x2545_F491_4F6C_DD1D)
+    }
+
+    /// In `[0, 1)`.
+    fn unit(&mut self) -> f64 {
+        (self.next_u64() >> 11) as f64 / (1u64 << 53) as f64
+    }
+
+    /// In `[0, bound)`, or zero when the bound is.
+    fn below(&mut self, bound: usize) -> usize {
+        if bound == 0 {
+            0
+        } else {
+            (self.unit() * bound as f64) as usize % bound
+        }
+    }
+
+    fn between(&mut self, low: usize, high: usize) -> usize {
+        if high <= low {
+            low
+        } else {
+            low + self.below(high - low)
+        }
+    }
+}
+
+/// The genetic search.
+/// Reference: eLamX2/.../optimization/hauffe/HauffeOptimizer.java and GEP.java
+///
+/// It starts where the other two leave off: the sequential search gives it a
+/// first parent and an upper bound on the ply count, and a stack of super
+/// layers gives it a lower one (the same super layer [`todoroki`] uses). The
+/// population then works between those, and every time it finds something
+/// thinner it rebuilds itself around it.
+///
+/// Five operators make the children, in the proportions the original uses: a
+/// third mutated, and a sixth each of one-point crossover, two-point
+/// crossover, permutation and angle shift. Replacement is by crowding - each
+/// child challenges the parent it most resembles, so the population keeps its
+/// spread instead of collapsing onto one sequence.
+///
+/// It is the only one of the four that can return a different answer to the
+/// same question, which is why the seed is an input here and is not in the
+/// original.
+pub fn genetic(
+    input: &OptimizationInput,
+    materials: &HashMap<String, Material>,
+    criteria: &CriterionRegistry,
+    params: &GeneticParameters,
+    budget: usize,
+) -> Result<OptimizationResult, OptimizationError> {
+    check(input, materials)?;
+    if params.parents == 0 || params.children == 0 {
+        return Err(OptimizationError::EmptyPopulation);
+    }
+
+    let symmetric =
+        input.symmetric || input.constraints.iter().any(Constraint::needs_symmetric_laminate);
+    let mut rng = Rng::new(params.seed);
+    let mut checked = 0usize;
+    let mut evaluations = 0usize;
+
+    // The upper bound, and the individual to start from.
+    let seed_result = sequential_decision(input, materials, criteria)?;
+    checked += seed_result.checked_laminates;
+    evaluations += seed_result.constraint_evaluations;
+
+    // The lower bound, from super layers - the same argument todoroki makes.
+    let mut catalogue = materials.clone();
+    let super_id = "__superlayer";
+    catalogue.insert(super_id.to_string(), super_material(&materials[&input.material_id]));
+    let mut min_layers = 1usize;
+    loop {
+        let kinds = vec![Ply::Super; min_layers];
+        let worst = worst_case_mixed(
+            &vec![0.0; min_layers],
+            &kinds,
+            input,
+            &catalogue,
+            super_id,
+            criteria,
+            &mut evaluations,
+        );
+        checked += 1;
+        if worst >= 1.0 || min_layers >= seed_result.angles.len() {
+            break;
+        }
+        min_layers += 1;
+    }
+    min_layers = min_layers.saturating_sub(1).max(1);
+
+    let mut max_layers = seed_result.angles.len() + params.delta_max_layers;
+    let evaluate = |individual: &mut Individual,
+                        evaluations: &mut usize,
+                        checked: &mut usize| {
+        individual.min_reserve_factor = worst_case(
+            &individual.angles[..individual.layers],
+            input,
+            materials,
+            criteria,
+            symmetric,
+            evaluations,
+        );
+        *checked += 1;
+    };
+
+    // The first parent is the sequential answer, its genome padded out with
+    // random angles so it has room to grow.
+    let mut parents: Vec<Individual> = Vec::with_capacity(params.parents);
+    let mut genome = seed_result.angles.clone();
+    while genome.len() < max_layers {
+        genome.push(input.angles[rng.below(input.angles.len())]);
+    }
+    let mut first = Individual {
+        layers: seed_result.angles.len(),
+        angles: genome,
+        min_reserve_factor: f64::NEG_INFINITY,
+    };
+    evaluate(&mut first, &mut evaluations, &mut checked);
+    parents.push(first);
+    for _ in 1..params.parents {
+        let mut fresh = random_individual(&mut rng, input, min_layers, max_layers);
+        evaluate(&mut fresh, &mut evaluations, &mut checked);
+        parents.push(fresh);
+    }
+
+    let mut best = pick_best(&parents);
+    let mut unchanged = 0usize;
+    let mut generation_of_last_change = 0usize;
+
+    for generation in 0..params.max_generations {
+        let mut children = breed(&mut rng, &parents, input, params, min_layers, max_layers);
+        for child in &mut children {
+            evaluate(child, &mut evaluations, &mut checked);
+            if checked >= budget {
+                return Err(OptimizationError::BudgetSpent { checked });
+            }
+        }
+
+        crowding_replacement(&mut parents, children);
+        let candidate = pick_best(&parents);
+        if candidate == best {
+            unchanged += 1;
+        } else {
+            best = candidate.clone();
+            generation_of_last_change = generation + 1;
+            unchanged = 0;
+        }
+
+        // Rebuild around the best whenever it got thinner, or when nothing has
+        // moved for long enough. The genome shrinks with it, which is what
+        // narrows the search as it converges.
+        if max_layers > best.layers + params.delta_max_layers
+            || unchanged > params.restart_after_unchanged
+        {
+            unchanged = 0;
+            max_layers = best.layers + params.delta_max_layers;
+            min_layers = best.layers.saturating_sub(1).max(1);
+            let mut carried = best.clone();
+            carried.angles.truncate(max_layers.max(carried.layers));
+            parents[0] = carried;
+            for slot in parents.iter_mut().skip(1) {
+                let mut fresh = random_individual(&mut rng, input, min_layers, max_layers);
+                evaluate(&mut fresh, &mut evaluations, &mut checked);
+                *slot = fresh;
+            }
+        }
+    }
+
+    let angles = best.angles[..best.layers].to_vec();
+    let mut result = finish(
+        angles,
+        best.min_reserve_factor,
+        input,
+        materials,
+        symmetric,
+        checked,
+        evaluations,
+    );
+    result.last_improvement = Some(generation_of_last_change);
+    Ok(result)
+}
+
+fn random_individual(
+    rng: &mut Rng,
+    input: &OptimizationInput,
+    min_layers: usize,
+    max_layers: usize,
+) -> Individual {
+    let layers = rng.between(min_layers, max_layers).max(1);
+    let angles = (0..max_layers.max(layers))
+        .map(|_| input.angles[rng.below(input.angles.len())])
+        .collect();
+    Individual { layers, angles, min_reserve_factor: f64::NEG_INFINITY }
+}
+
+/// The five operators, in the original's proportions: a third mutated and a
+/// sixth each of the other four. At the default sixty children that is exactly
+/// the original's 20/10/10/10/10.
+fn breed(
+    rng: &mut Rng,
+    parents: &[Individual],
+    input: &OptimizationInput,
+    params: &GeneticParameters,
+    min_layers: usize,
+    max_layers: usize,
+) -> Vec<Individual> {
+    let n = params.children;
+    let mutated = n / 3;
+    let rest = (n - mutated) / 4;
+    let mut children = Vec::with_capacity(n);
+
+    let pick = |rng: &mut Rng| parents[rng.below(parents.len())].clone();
+
+    for _ in 0..mutated {
+        let mut child = pick(rng);
+        if rng.unit() <= params.mutation_probability {
+            child.layers = rng.between(min_layers, max_layers).max(1);
+        }
+        for gene in child.angles.iter_mut() {
+            if rng.unit() <= params.mutation_probability {
+                *gene = input.angles[rng.below(input.angles.len())];
+            }
+        }
+        children.push(child);
+    }
+
+    // One-point and two-point crossover both produce children in pairs.
+    for _ in 0..rest / 2 {
+        let (mut a, mut b) = (pick(rng), pick(rng));
+        let cut = rng.below(a.angles.len().min(b.angles.len()).max(1));
+        swap_tail(&mut a, &mut b, cut, usize::MAX);
+        children.push(a);
+        children.push(b);
+    }
+    for _ in 0..rest / 2 {
+        let (mut a, mut b) = (pick(rng), pick(rng));
+        let span = a.angles.len().min(b.angles.len()).max(1);
+        let first = rng.below(span);
+        let second = first + rng.below(span - first);
+        swap_tail(&mut a, &mut b, first, second);
+        children.push(a);
+        children.push(b);
+    }
+
+    // Permutation: the same genes in a new order, which keeps the mix and
+    // changes only where each angle sits - the one operator that cannot make a
+    // laminate out of angles it did not already have.
+    for _ in 0..rest {
+        let mut child = pick(rng);
+        let mut pool = child.angles.clone();
+        for slot in child.angles.iter_mut() {
+            *slot = pool.remove(rng.below(pool.len()));
+        }
+        children.push(child);
+    }
+
+    // Angle shift: a gene steps to its neighbour in the allowed list rather
+    // than jumping anywhere, and wraps round at the ends.
+    for _ in 0..(n - children.len()) {
+        let mut child = pick(rng);
+        if rng.unit() <= params.mutation_probability {
+            child.layers = rng.between(min_layers, max_layers).max(1);
+        }
+        for gene in child.angles.iter_mut() {
+            if rng.unit() <= params.shift_probability {
+                if let Some(at) = input.angles.iter().position(|a| a == gene) {
+                    let step = if rng.unit() < 0.5 { 1 } else { input.angles.len() - 1 };
+                    *gene = input.angles[(at + step) % input.angles.len()];
+                }
+            }
+        }
+        children.push(child);
+    }
+
+    children
+}
+
+fn swap_tail(a: &mut Individual, b: &mut Individual, from: usize, to: usize) {
+    let end = to.min(a.angles.len()).min(b.angles.len());
+    for i in from..end {
+        std::mem::swap(&mut a.angles[i], &mut b.angles[i]);
+    }
+}
+
+/// How unlike two individuals are: genes that differ, plus the difference in
+/// ply count.
+fn distance(a: &Individual, b: &Individual) -> usize {
+    let shared = a.layers.min(b.layers);
+    let differing = (0..shared)
+        .filter(|i| a.angles.get(*i) != b.angles.get(*i))
+        .count();
+    differing + a.layers.abs_diff(b.layers)
+}
+
+/// Crowding: each child challenges the parent it most resembles.
+///
+/// Which keeps the population spread out - a child that is better than the
+/// best parent but unlike it replaces its own neighbour instead, so a single
+/// good sequence cannot take over.
+fn crowding_replacement(parents: &mut [Individual], children: Vec<Individual>) {
+    for child in children {
+        let Some(nearest) = (0..parents.len()).min_by_key(|i| distance(&child, &parents[*i])) else {
+            continue;
+        };
+        let parent = &parents[nearest];
+        let better = (parent.min_reserve_factor < 1.0
+            && child.min_reserve_factor > parent.min_reserve_factor)
+            || (child.layers < parent.layers
+                && (child.min_reserve_factor > 1.0
+                    || child.min_reserve_factor > parent.min_reserve_factor))
+            || (child.layers == parent.layers
+                && child.min_reserve_factor > parent.min_reserve_factor);
+        if better {
+            parents[nearest] = child;
+        }
+    }
+}
+
+/// The best of a population: the thinnest that carries the load, and among
+/// equals the one with the most margin.
+fn pick_best(parents: &[Individual]) -> Individual {
+    let mut best = parents[0].clone();
+    if best.min_reserve_factor < 1.0 {
+        if let Some(feasible) = parents.iter().find(|p| p.min_reserve_factor >= 1.0) {
+            best = feasible.clone();
+        }
+    }
+    for candidate in parents {
+        // Thinner and feasible wins; equally thick with more margin wins too.
+        // The two arms do the same thing on purpose - they are two different
+        // reasons, and collapsing them into one condition would hide that the
+        // first requires feasibility and the second does not.
+        let thinner_and_carries =
+            candidate.layers < best.layers && candidate.min_reserve_factor >= 1.0;
+        let same_thickness_more_margin = candidate.layers == best.layers
+            && candidate.min_reserve_factor > best.min_reserve_factor;
+        if thinner_and_carries || same_thickness_more_margin {
+            best = candidate.clone();
+        }
+    }
+    best
 }
 
 #[cfg(test)]
@@ -981,6 +1413,126 @@ mod tests {
 
         // The prices, in constraint evaluations, are orders apart.
         assert!(every.constraint_evaluations > 10 * greedy.constraint_evaluations);
+    }
+
+    fn quick() -> GeneticParameters {
+        // The original's population with a handful of generations: enough to
+        // exercise every operator and the restart, fast enough for a test.
+        GeneticParameters { max_generations: 25, ..Default::default() }
+    }
+
+    /// The genetic search finds a stack that carries the load, and does not do
+    /// worse than the greedy one it starts from - it begins with that answer
+    /// as its first parent and only replaces it with something better.
+    #[test]
+    fn the_genetic_search_never_does_worse_than_the_start_it_was_given() {
+        let input = base(vec![Constraint::Clt { loads: loads(400.0, 0.0, 0.0) }]);
+        let materials = carbon();
+        let criteria = default_criterion_registry();
+
+        let greedy = sequential_decision(&input, &materials, &criteria).unwrap();
+        let bred = genetic(&input, &materials, &criteria, &quick(), 200_000).unwrap();
+
+        assert!(bred.succeeded);
+        assert!(bred.min_reserve_factor >= 1.0);
+        assert!(bred.layer_count <= greedy.layer_count, "{} vs {}", bred.layer_count, greedy.layer_count);
+        for angle in &bred.angles {
+            assert!(input.angles.contains(angle), "{angle} war nicht zur Wahl");
+        }
+    }
+
+    /// **The same seed gives the same laminate.** The original calls
+    /// `Math.random()` and therefore answers a different stack every time it
+    /// is asked the same question; a search may be stochastic, a program
+    /// should still be able to repeat itself.
+    #[test]
+    fn the_same_seed_gives_the_same_answer_and_a_different_one_does_not() {
+        let input = base(vec![Constraint::Clt { loads: loads(500.0, 80.0, 0.0) }]);
+        let materials = carbon();
+        let criteria = default_criterion_registry();
+
+        let once = genetic(&input, &materials, &criteria, &quick(), 200_000).unwrap();
+        let again = genetic(&input, &materials, &criteria, &quick(), 200_000).unwrap();
+        assert_eq!(once, again, "derselbe Startwert muss dasselbe Laminat liefern");
+
+        let elsewhere = genetic(
+            &input,
+            &materials,
+            &criteria,
+            &GeneticParameters { seed: 12345, ..quick() },
+            200_000,
+        )
+        .unwrap();
+        // A different seed is allowed to find the same stack - and on an easy
+        // problem it will - but it must have walked a different path to it.
+        assert!(
+            elsewhere.checked_laminates != once.checked_laminates
+                || elsewhere.angles != once.angles,
+            "ein anderer Startwert muss einen anderen Lauf ergeben"
+        );
+    }
+
+    /// It reports which generation it last improved in, which is what says
+    /// whether the run was long enough.
+    #[test]
+    fn it_says_when_it_stopped_improving() {
+        let input = base(vec![Constraint::Clt { loads: loads(400.0, 0.0, 0.0) }]);
+        let bred =
+            genetic(&input, &carbon(), &default_criterion_registry(), &quick(), 200_000).unwrap();
+        let at = bred.last_improvement.expect("die genetische Suche zaehlt Generationen");
+        assert!(at <= quick().max_generations);
+
+        // And the other three have no generations to report.
+        assert_eq!(run(&input).unwrap().last_improvement, None);
+    }
+
+    /// Every operator runs and none of them produces a genome the rest cannot
+    /// use: the sizes stay consistent, the angles stay in the allowed set, and
+    /// the ply count stays within the bounds.
+    #[test]
+    fn the_operators_leave_a_usable_population() {
+        let input = OptimizationInput {
+            angles: vec![0.0, 30.0, -30.0, 60.0, -60.0, 90.0],
+            ..base(vec![Constraint::Clt { loads: loads(300.0, 0.0, 100.0) }])
+        };
+        let bred = genetic(
+            &input,
+            &carbon(),
+            &default_criterion_registry(),
+            &GeneticParameters { max_generations: 15, ..Default::default() },
+            200_000,
+        )
+        .unwrap();
+
+        assert!(bred.succeeded);
+        assert_eq!(bred.angles.len(), bred.layer_count, "unsymmetrisch: kein Spiegeln");
+        for angle in &bred.angles {
+            assert!(input.angles.contains(angle), "{angle} stammt nicht aus der Auswahl");
+        }
+    }
+
+    /// A budget stops it, and an empty population is refused rather than
+    /// indexed into.
+    #[test]
+    fn the_genetic_guards_hold() {
+        let input = base(vec![Constraint::Clt { loads: loads(400.0, 0.0, 0.0) }]);
+        let materials = carbon();
+        let criteria = default_criterion_registry();
+
+        assert!(matches!(
+            genetic(&input, &materials, &criteria, &quick(), 20),
+            Err(OptimizationError::BudgetSpent { .. })
+        ));
+        assert_eq!(
+            genetic(
+                &input,
+                &materials,
+                &criteria,
+                &GeneticParameters { parents: 0, ..quick() },
+                200_000
+            ),
+            Err(OptimizationError::EmptyPopulation)
+        );
     }
 
     #[test]

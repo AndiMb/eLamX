@@ -39,4 +39,13 @@ constraint_evaluations: number,
 /**
  * Whether the search reached a stack that carries the load.
  */
-succeeded: boolean, };
+succeeded: boolean, 
+/**
+ * For the genetic search: the generation its answer last improved in.
+ *
+ * The number that says whether the run was long enough. If it is close to
+ * the generation count, the search was still finding things when it was
+ * stopped; if it is far below, it had settled. `None` for the searches
+ * that have no generations.
+ */
+last_improvement: number | null, };
