@@ -8,10 +8,23 @@
 //! which one is called `s1` and which `s2`, and a different solver would be
 //! free to disagree.
 //!
-//! One thing is not ported: the original's iteration runs `while |b1| > EPS ||
-//! |b2| > EPS` with no upper bound at all (its `maxIterations` constant is
-//! commented out). On a polynomial Bairstow does not converge for, eLamX hangs.
-//! Here the loop is capped and says so.
+//! Two things are not ported.
+//!
+//! The original's iteration runs `while |b1| > EPS || |b2| > EPS` with no upper
+//! bound at all - its `maxIterations` constant is commented out - so on a
+//! polynomial Bairstow does not converge for, eLamX hangs. Here the loop is
+//! capped and says so.
+//!
+//! And the coefficients are SCALED before the iteration starts. `EPS` is
+//! absolute, so what it means depends entirely on how big the coefficients
+//! are; the membrane characteristic quartic is built from compliances, around
+//! 1e-5, and 1e-6 of that is most of the coefficient. The roots then carry
+//! about three digits, which costs half a percent on a stress concentration
+//! factor. Scaling changes no root - it is the same polynomial - and buys
+//! seven digits. The original does the same thing on its unsymmetric cutout
+//! path, with the comment "damit Koeffizienten des Polynoms nicht zu gross",
+//! and not on its symmetric one. See
+//! `cutout::tests::scaling_the_characteristic_polynomial_is_what_makes_kirsch_exact`.
 
 use super::complex::Complex;
 
@@ -77,7 +90,10 @@ pub fn roots(coefficients: &[f64]) -> Result<Vec<Complex>, RootError> {
 /// Transcribed from the Java, including the `+= EPS` nudge that keeps a zero
 /// starting guess from stalling the iteration on its first step.
 fn bairstow(coefficients: &[f64], out: &mut Vec<Complex>) -> Result<(), RootError> {
-    let mut a = coefficients.to_vec();
+    // See the module note: absolute convergence on unscaled coefficients is
+    // what costs the original its last four digits.
+    let scale = coefficients.iter().fold(0.0f64, |m, c| m.max(c.abs()));
+    let mut a: Vec<f64> = coefficients.iter().map(|c| c / scale).collect();
     let mut dim = a.len() - 1;
 
     while dim > 2 {
