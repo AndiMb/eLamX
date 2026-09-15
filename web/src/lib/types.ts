@@ -17,6 +17,10 @@ import type { BucklingInput as GenBucklingInput } from "./generated/BucklingInpu
 import type { BucklingModeDto as GenBucklingModeDto } from "./generated/BucklingModeDto";
 import type { BucklingResponse as GenBucklingResponse } from "./generated/BucklingResponse";
 import type { CltRequest as GenCltRequest } from "./generated/CltRequest";
+import type { CutoutGeometry as GenCutoutGeometry } from "./generated/CutoutGeometry";
+import type { CutoutInput as GenCutoutInput } from "./generated/CutoutInput";
+import type { CutoutPoint as GenCutoutPoint } from "./generated/CutoutPoint";
+import type { CutoutResult as GenCutoutResult } from "./generated/CutoutResult";
 import type { CltResponse as GenCltResponse } from "./generated/CltResponse";
 import type { DMatrixKind as GenDMatrixKind } from "./generated/DMatrixKind";
 import type { DeformationInput as GenDeformationInput } from "./generated/DeformationInput";
@@ -67,6 +71,11 @@ export type BucklingModeDto = GenBucklingModeDto;
 export type BucklingResponse = GenBucklingResponse;
 export type CltRequest = GenCltRequest;
 export type CltResponse = GenCltResponse;
+export type CutoutGeometryDto = GenCutoutGeometry;
+export type CutoutInputDto = GenCutoutInput;
+export type CutoutPointDto = GenCutoutPoint;
+export type CutoutResponse = GenCutoutResult;
+export type CutoutShapeId = GenCutoutGeometry["shape"];
 export type DMatrixKindId = GenDMatrixKind;
 export type DeformationInputDto = GenDeformationInput;
 export type DeformationResponse = GenDeformationResult;
@@ -296,6 +305,23 @@ export const LAMINATE_FAILURE_KINDS = [
   { id: "first_ply", labelKey: "laminateFailure.kind.firstPly" },
   { id: "final", labelKey: "laminateFailure.kind.final" },
 ] as const satisfies readonly { id: LaminateFailureKindId; labelKey: MessageKey }[];
+
+/**
+ * The hole shapes.
+ *
+ * Which numbers each one asks for is not listed here: the generated
+ * `CutoutGeometry` union already says it, and a second list would be a second
+ * opinion. The form narrows on the union directly.
+ */
+export const CUTOUT_SHAPES = [
+  { id: "circular", labelKey: "cutout.shape.circular" },
+  { id: "elliptical", labelKey: "cutout.shape.elliptical" },
+  { id: "square", labelKey: "cutout.shape.square" },
+  { id: "rectangular", labelKey: "cutout.shape.rectangular" },
+] as const satisfies readonly { id: CutoutShapeId; labelKey: MessageKey }[];
+
+/** eLamX tabulates the corner series to 21 terms and opens at 11. */
+export const MAX_CUTOUT_TERMS = 21;
 
 export const SPRING_IN_MODELS = [
   { id: "simple_radford", labelKey: "springIn.model.simple_radford" },

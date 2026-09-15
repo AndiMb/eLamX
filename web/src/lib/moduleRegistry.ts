@@ -11,6 +11,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   AudioWaveform,
   Calculator,
+  CircleDashed,
   Columns3,
   Cylinder,
   Diamond,
@@ -28,6 +29,7 @@ export type ModuleType =
   | "deformation"
   | "vibration"
   | "springIn"
+  | "cutout"
   | "lastPlyFailure"
   | "pressureVessel"
   | "failureBody"
@@ -89,6 +91,13 @@ export const MODULE_REGISTRY: Record<ModuleType, ModuleDefinition> = {
     labelKey: "module.springIn.label",
     icon: TriangleRight,
     descriptionKey: "module.springIn.description",
+  },
+  cutout: {
+    id: "cutout",
+    scope: "laminate",
+    labelKey: "module.cutout.label",
+    icon: CircleDashed,
+    descriptionKey: "module.cutout.description",
   },
   lastPlyFailure: {
     id: "lastPlyFailure",

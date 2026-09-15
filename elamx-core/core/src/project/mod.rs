@@ -31,6 +31,7 @@ use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, Strains};
 use crate::micromechanics::{Fibre, MatrixMaterial};
 use crate::model::{Laminate, Material};
 use crate::plate::{BucklingInput, DeformationInput, VibrationInput};
+use crate::cutout::CutoutInput;
 use crate::spring_in::SpringInInput;
 use serde::{Deserialize, Serialize};
 
@@ -80,6 +81,8 @@ pub struct ProjectLaminate {
     pub vibrations: Vec<NamedVibration>,
     #[serde(default)]
     pub spring_ins: Vec<NamedSpringIn>,
+    #[serde(default)]
+    pub cutouts: Vec<NamedCutout>,
     /// Module data from modules this crate does not implement, kept as raw XML
     /// so a read/write cycle is lossless. Order is the order in the file.
     #[serde(default)]
@@ -143,6 +146,14 @@ pub struct NamedVibration {
 pub struct NamedSpringIn {
     pub name: String,
     pub input: SpringInInput,
+}
+
+/// One cutout analysis.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+pub struct NamedCutout {
+    pub name: String,
+    pub input: CutoutInput,
 }
 
 /// An element this crate does not interpret, kept verbatim so that a read/

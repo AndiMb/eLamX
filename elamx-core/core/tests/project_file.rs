@@ -10,6 +10,7 @@
 use elamx_core::clt::RadiusType;
 use elamx_core::plate::Stiffener;
 use elamx_core::project::{read_elamx, write_elamx, Project, ReadError};
+use elamx_core::cutout::CutoutInput;
 use elamx_core::spring_in::SpringInInput;
 use serde_json::Value;
 
@@ -245,6 +246,23 @@ fn reads_the_reference_file_as_the_generator_wrote_it() {
             assert_eq!(analysis.input, expected, "{}: Eingabe", analysis.name);
         }
 
+        // Cutouts carry a nested element with a Java class name and property
+        // names of their own - `A`, `B` and the German `Terme` - so all four
+        // shapes are in the reference file and all four come back here.
+        let expected_cutouts = e["cutouts"].as_array().unwrap();
+        assert_eq!(
+            entry.cutouts.len(),
+            expected_cutouts.len(),
+            "{}: Ausschnitte",
+            lam.name
+        );
+        for (analysis, ec) in entry.cutouts.iter().zip(expected_cutouts) {
+            assert_eq!(analysis.name, ec["name"].as_str().unwrap());
+            let expected: CutoutInput =
+                serde_json::from_value(ec["input"].clone()).expect("Ausschnitt-Eingabe");
+            assert_eq!(analysis.input, expected, "{}: Eingabe", analysis.name);
+        }
+
         let expected_lpf = e["last_ply_failures"].as_array().unwrap();
         assert_eq!(
             entry.last_ply_failures.len(),
@@ -327,6 +345,14 @@ fn written_file_uses_the_original_element_names() {
         "<buckling name=",
         "<dmatrixservice>de.elamx.clt.plate.dmatrix.DtildeDMatrixServiceImpl</dmatrixservice>",
         "<vibration name=",
+        "<cutout name=",
+        "<n_xx>",
+        "<val>",
+        "<CutoutGeometry name=\"Circular cutout\" classname=\"de.elamx.clt.cutout.CircularCutoutGeometry\">",
+        "classname=\"de.elamx.clt.plate.AdditionalCutoutGeometries.EllipticalCutoutGeometry\"",
+        "classname=\"de.elamx.clt.plate.AdditionalCutoutGeometries.SquareCutoutGeometry\"",
+        "classname=\"de.elamx.clt.plate.AdditionalCutoutGeometries.RectangularCutoutGeometry\"",
+        "<Terme>",
         "<springIn name=",
         "<alphat_thick>",
         "<zeroDegAsCircumDir>",
@@ -360,10 +386,10 @@ const MINIMAL: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
                 <material>mat</material>
                 <criterion>CRITERION</criterion>
             </layer>
-            <cutout name="Ausschnitt">
-                <shape>circle</shape>
-                <radius>12.5</radius>
-            </cutout>
+            <plugindaten name="Fremdmodul">
+                <wert>-120.0</wert>
+                <winkel>90.0</winkel>
+            </plugindaten>
         </laminate>
     </laminates>
     <materials>
@@ -390,15 +416,17 @@ fn keeps_module_data_it_cannot_interpret() {
     let project = read_elamx(&minimal_with("de.elamx.laminate.failure.Puck")).unwrap();
     let kept = &project.laminates[0].unsupported_modules;
     assert_eq!(kept.len(), 1);
-    // Cutouts are the next module in line and not ported yet, which is what
-    // makes them the right stand-in here - the fixture used spring-in until
-    // spring-in became a module this crate reads.
-    assert_eq!(kept[0].tag, "cutout");
+    // Every module eLamX itself ships is read by now, so the stand-in is an
+    // invented one. That is not a weaker test: what it checks is the
+    // mechanism that protects a module this crate has never heard of - a
+    // future eLamX version's, or a separately deployed plugin's - and an
+    // invented tag is exactly that case.
+    assert_eq!(kept[0].tag, "plugindaten");
 
     let xml = write_elamx(&project);
-    assert!(xml.contains("<cutout name=\"Ausschnitt\">"));
-    assert!(xml.contains("<shape>circle</shape>"));
-    assert!(xml.contains("<radius>12.5</radius>"));
+    assert!(xml.contains("<plugindaten name=\"Fremdmodul\">"));
+    assert!(xml.contains("<wert>-120.0</wert>"));
+    assert!(xml.contains("<winkel>90.0</winkel>"));
 }
 
 /// The same promise one level up. `<fibres>`, `<matrices>` and
@@ -551,7 +579,7 @@ fn reads_the_last_ply_failure_flag_the_way_java_parses_it() {
         MINIMAL
             .replace("CRITERION", "de.elamx.laminate.failure.Puck")
             .replace(
-                "<cutout name=\"Ausschnitt\">\n                <shape>circle</shape>\n                <radius>12.5</radius>\n            </cutout>",
+                "<plugindaten name=\"Fremdmodul\">\n                <wert>-120.0</wert>\n                <winkel>90.0</winkel>\n            </plugindaten>",
                 &format!(
                     "<lastplyfailure name=\"LPF\">\n                <n_x>1.0</n_x>\n                <n_y>0.0</n_y>\n                <n_xy>0.0</n_xy>\n                <m_x>0.0</m_x>\n                <m_y>0.0</m_y>\n                <m_xy>0.0</m_xy>\n                <degradationFactor>1.0E-6</degradationFactor>\n                {value}\n                <epsilon_crit>0.003</epsilon_crit>\n                <j_a>1.0</j_a>\n            </lastplyfailure>"
                 ),
@@ -588,10 +616,10 @@ fn reads_and_writes_the_pressure_vessel_radius_types() {
         let xml = MINIMAL
             .replace("CRITERION", "de.elamx.laminate.failure.Puck")
             .replace(
-                "<cutout name=\"Ausschnitt\">
-                <shape>circle</shape>
-                <radius>12.5</radius>
-            </cutout>",
+                "<plugindaten name=\"Fremdmodul\">
+                <wert>-120.0</wert>
+                <winkel>90.0</winkel>
+            </plugindaten>",
                 &format!(
                     "<pressurevessel name=\"Kessel\">
                 <pressure>0.5</pressure>
@@ -623,10 +651,10 @@ fn rejects_an_unknown_pressure_vessel_radius_type() {
     let xml = MINIMAL
         .replace("CRITERION", "de.elamx.laminate.failure.Puck")
         .replace(
-            "<cutout name=\"Ausschnitt\">
-                <shape>circle</shape>
-                <radius>12.5</radius>
-            </cutout>",
+            "<plugindaten name=\"Fremdmodul\">
+                <wert>-120.0</wert>
+                <winkel>90.0</winkel>
+            </plugindaten>",
             "<pressurevessel name=\"Kessel\">
                 <pressure>0.5</pressure>
                 <radius>250.0</radius>

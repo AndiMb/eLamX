@@ -117,6 +117,13 @@ most of this, so the list cannot quietly rot:
   below: the same file, written back out by `elamx-core`, still opens in the
   Java program and computes identically.
 
+- **Cutouts**: all four hole shapes, so every Java class name and every
+  property name the format uses - `A`, `B` and the German `Terme` - is written
+  and read back at least once. No numbers are compared, as for the two modules
+  above; what they cover is the `<cutout>` element and its nested
+  `<CutoutGeometry>`. The module itself is checked against Kirsch and Inglis in
+  `src/cutout/`, which needs no reference file at all.
+
 - **Spring-in**: two analyses, one per model, on the symmetric stack (the
   module refuses an unsymmetric one). The batch prints nothing for this module
   either, but it is not untested for that reason - see

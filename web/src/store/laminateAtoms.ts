@@ -45,12 +45,15 @@ export interface CarryOver {
   vibrationName?: string;
   /** Name of the spring-in analysis its input came from. */
   springInName?: string;
+  /** Name of the cutout analysis its input came from. */
+  cutoutName?: string;
   extraBucklings?: unknown[];
   extraLastPlyFailures?: unknown[];
   extraPressureVessels?: unknown[];
   extraDeformations?: unknown[];
   extraVibrations?: unknown[];
   extraSpringIns?: unknown[];
+  extraCutouts?: unknown[];
   unsupportedModules?: unknown[];
 }
 

@@ -512,6 +512,58 @@
                 <epsilon_crit>0.005</epsilon_crit>
                 <j_a>1.0</j_a>
             </lastplyfailure>
+            <cutout name="GM-Loch-Kreis">
+                <n_xx>100.0</n_xx>
+                <n_yy>0.0</n_yy>
+                <n_xy>0.0</n_xy>
+                <m_xx>0.0</m_xx>
+                <m_yy>0.0</m_yy>
+                <m_xy>0.0</m_xy>
+                <val>721</val>
+                <CutoutGeometry name="Circular cutout" classname="de.elamx.clt.cutout.CircularCutoutGeometry">
+                    <A>5.0</A>
+                </CutoutGeometry>
+            </cutout>
+            <cutout name="GM-Loch-Ellipse">
+                <n_xx>100.0</n_xx>
+                <n_yy>-40.0</n_yy>
+                <n_xy>0.0</n_xy>
+                <m_xx>0.0</m_xx>
+                <m_yy>0.0</m_yy>
+                <m_xy>0.0</m_xy>
+                <val>721</val>
+                <CutoutGeometry name="Elliptic cutout" classname="de.elamx.clt.plate.AdditionalCutoutGeometries.EllipticalCutoutGeometry">
+                    <A>8.0</A>
+                    <B>3.0</B>
+                </CutoutGeometry>
+            </cutout>
+            <cutout name="GM-Loch-Quadrat">
+                <n_xx>100.0</n_xx>
+                <n_yy>0.0</n_yy>
+                <n_xy>30.0</n_xy>
+                <m_xx>0.0</m_xx>
+                <m_yy>0.0</m_yy>
+                <m_xy>0.0</m_xy>
+                <val>721</val>
+                <CutoutGeometry name="Square cutout" classname="de.elamx.clt.plate.AdditionalCutoutGeometries.SquareCutoutGeometry">
+                    <A>6.0</A>
+                    <Terme>13</Terme>
+                </CutoutGeometry>
+            </cutout>
+            <cutout name="GM-Loch-Rechteck">
+                <n_xx>80.0</n_xx>
+                <n_yy>0.0</n_yy>
+                <n_xy>0.0</n_xy>
+                <m_xx>15.0</m_xx>
+                <m_yy>-5.0</m_yy>
+                <m_xy>3.0</m_xy>
+                <val>361</val>
+                <CutoutGeometry name="Rectangular cutout" classname="de.elamx.clt.plate.AdditionalCutoutGeometries.RectangularCutoutGeometry">
+                    <A>12.0</A>
+                    <B>4.0</B>
+                    <Terme>9</Terme>
+                </CutoutGeometry>
+            </cutout>
             <springIn name="GM-SpringIn-Einfach">
                 <alphat_thick>0.00003</alphat_thick>
                 <angle>90.0</angle>

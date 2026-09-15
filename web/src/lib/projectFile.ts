@@ -27,6 +27,7 @@ import {
   type DeformationInputDto,
   type PressureVesselInputDto,
   type SpringInInputDto,
+  type CutoutInputDto,
 } from "./types";
 import {
   defaultLaminateConfig,
@@ -59,6 +60,7 @@ interface ProjectLaminateDto {
   deformations: DeformationEntryDto[];
   vibrations?: VibrationEntryDto[];
   spring_ins?: SpringInEntryDto[];
+  cutouts?: CutoutEntryDto[];
   unsupported_modules?: unknown[];
 }
 
@@ -118,6 +120,11 @@ interface SpringInEntryDto {
   input: SpringInInputDto;
 }
 
+interface CutoutEntryDto {
+  name: string;
+  input: CutoutInputDto;
+}
+
 /** A whole session: what a file turns into on open, and what a save turns
  *  back into a file. The same shape in both directions on purpose - anything
  *  that survives one has to survive the other. */
@@ -134,6 +141,7 @@ export interface ProjectSnapshot {
   deformations: Record<string, DeformationInputDto>;
   vibrations: Record<string, VibrationInputDto>;
   springIns: Record<string, SpringInInputDto>;
+  cutouts: Record<string, CutoutInputDto>;
   version: string;
   /** Project-level sections carried through untouched - see ProjectDto. */
   unsupportedSections: unknown[];
@@ -160,6 +168,7 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
   const deformations: Record<string, DeformationInputDto> = {};
   const vibrations: Record<string, VibrationInputDto> = {};
   const springIns: Record<string, SpringInInputDto> = {};
+  const cutouts: Record<string, CutoutInputDto> = {};
   const laminates = project.laminates.map((entry) => {
     const dto = entry.laminate;
     const [buckling, ...extraBucklings] = entry.bucklings;
@@ -168,6 +177,7 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
     const [deformation, ...extraDeformations] = entry.deformations ?? [];
     const [vibration, ...extraVibrations] = entry.vibrations ?? [];
     const [springIn, ...extraSpringIns] = entry.spring_ins ?? [];
+    const [cutout, ...extraCutouts] = entry.cutouts ?? [];
 
     // Every <calculation> becomes a load case, in file order. A file with none
     // still opens - it gets the default case, the same one a new laminate has.
@@ -209,8 +219,10 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
         deformationName: deformation?.name,
         vibrationName: vibration?.name,
         springInName: springIn?.name,
+        cutoutName: cutout?.name,
         extraVibrations,
         extraSpringIns,
+        extraCutouts,
         extraBucklings,
         extraLastPlyFailures,
         extraPressureVessels,
@@ -225,6 +237,7 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
     if (deformation) deformations[dto.id] = deformation.input;
     if (vibration) vibrations[dto.id] = vibration.input;
     if (springIn) springIns[dto.id] = springIn.input;
+    if (cutout) cutouts[dto.id] = cutout.input;
     return config;
   });
 
@@ -239,6 +252,7 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
     deformations,
     vibrations,
     springIns,
+    cutouts,
     version: project.version,
     unsupportedSections: project.unsupported_sections ?? [],
   };
@@ -278,6 +292,7 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
       const deformation = snapshot.deformations[config.id];
       const vibration = snapshot.vibrations[config.id];
       const springIn = snapshot.springIns[config.id];
+      const cutout = snapshot.cutouts[config.id];
 
       return {
         laminate: {
@@ -330,6 +345,10 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
         spring_ins: [
           ...(springIn ? [{ name: carry.springInName ?? "Spring-In", input: springIn }] : []),
           ...((carry.extraSpringIns ?? []) as SpringInEntryDto[]),
+        ],
+        cutouts: [
+          ...(cutout ? [{ name: carry.cutoutName ?? "Ausschnitt", input: cutout }] : []),
+          ...((carry.extraCutouts ?? []) as CutoutEntryDto[]),
         ],
         unsupported_modules: carry.unsupportedModules ?? [],
       };

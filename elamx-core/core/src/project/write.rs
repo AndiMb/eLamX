@@ -8,12 +8,13 @@
 use super::naming;
 use super::{
     NamedBuckling, NamedCalculation, NamedDeformation, NamedLastPlyFailure, NamedPressureVessel,
-    NamedSpringIn, NamedVibration, Project, ProjectLaminate,
+    NamedCutout, NamedSpringIn, NamedVibration, Project, ProjectLaminate,
 };
 use crate::clt::RadiusType;
 use crate::plate::{Stiffener, StiffenerGeometry, TransverseLoad};
 use crate::micromechanics::{Fibre, MatrixMaterial};
 use crate::model::{Laminate, Material};
+use crate::cutout::CutoutGeometry;
 use crate::spring_in::SpringInModel;
 
 /// Serialises a project to `.elamx` XML.
@@ -122,6 +123,9 @@ fn write_laminate(entry: &ProjectLaminate, out: &mut String) {
     for analysis in &entry.spring_ins {
         write_spring_in(analysis, out);
     }
+    for analysis in &entry.cutouts {
+        write_cutout(analysis, out);
+    }
     for raw in &entry.unsupported_modules {
         out.push_str("            ");
         out.push_str(&raw.xml);
@@ -229,6 +233,64 @@ fn write_vibration(analysis: &NamedVibration, out: &mut String) {
     tag(out, 16, "dmatrixservice", naming::d_matrix_to_java(input.d_matrix));
     write_stiffeners(&input.stiffeners, out);
     out.push_str("            </vibration>\n");
+}
+
+/// `<cutout>`, in eLamX's own tag order - the loads first, then the sample
+/// count, then the shape as a nested element with its Java class name.
+fn write_cutout(analysis: &NamedCutout, out: &mut String) {
+    let input = &analysis.input;
+    out.push_str(&format!(
+        "            <cutout name=\"{}\">
+",
+        escape(&analysis.name)
+    ));
+    for (name, value) in [
+        ("n_xx", input.n_x),
+        ("n_yy", input.n_y),
+        ("n_xy", input.n_xy),
+        ("m_xx", input.m_x),
+        ("m_yy", input.m_y),
+        ("m_xy", input.m_xy),
+    ] {
+        tag(out, 16, name, &num(value));
+    }
+    tag(out, 16, "val", &input.values.to_string());
+    out.push_str(&format!(
+        "                <CutoutGeometry name=\"{}\" classname=\"{}\">
+",
+        escape(shape_name(input.geometry)),
+        naming::cutout_shape_to_java(input.geometry.code())
+            .expect("every cutout shape has a Java class name")
+    ));
+    // Only the numeric properties travel as elements, in the order the shape
+    // declares them: A, then B where there is one, then the term count.
+    tag(out, 20, "A", &num(input.geometry.a()));
+    if matches!(
+        input.geometry,
+        CutoutGeometry::Elliptical { .. } | CutoutGeometry::Rectangular { .. }
+    ) {
+        tag(out, 20, "B", &num(input.geometry.b()));
+    }
+    if let CutoutGeometry::Square { terms, .. } | CutoutGeometry::Rectangular { terms, .. } =
+        input.geometry
+    {
+        tag(out, 20, "Terme", &terms.to_string());
+    }
+    out.push_str("                </CutoutGeometry>
+");
+    out.push_str("            </cutout>
+");
+}
+
+/// The name eLamX gives a freshly created shape, from its resource bundle.
+/// English, as for the spring-in models, and decoration either way.
+fn shape_name(geometry: CutoutGeometry) -> &'static str {
+    match geometry {
+        CutoutGeometry::Circular { .. } => "Circular cutout",
+        CutoutGeometry::Elliptical { .. } => "Elliptic cutout",
+        CutoutGeometry::Square { .. } => "Square cutout",
+        CutoutGeometry::Rectangular { .. } => "Rectangular cutout",
+    }
 }
 
 /// `<springIn>`, in eLamX's own tag order - alphabetical, because

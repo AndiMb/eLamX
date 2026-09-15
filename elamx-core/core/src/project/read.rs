@@ -10,7 +10,7 @@
 use super::naming;
 use super::{
     NamedBuckling, NamedCalculation, NamedDeformation, NamedLastPlyFailure, NamedPressureVessel,
-    NamedSpringIn, NamedVibration, Project, ProjectLaminate, RawElement,
+    NamedCutout, NamedSpringIn, NamedVibration, Project, ProjectLaminate, RawElement,
 };
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, RadiusType, Strains};
 use crate::micromechanics::{self, Fibre, MatrixMaterial, MicroMechanics, Model};
@@ -19,6 +19,7 @@ use crate::plate::{
     BucklingInput, DeformationInput, NamedLoad, Stiffener, StiffenerDirection, StiffenerGeometry,
     VibrationInput,
 };
+use crate::cutout::{CutoutGeometry, CutoutInput};
 use crate::spring_in::{SpringInInput, SpringInModel};
 use roxmltree::{Document, Node};
 
@@ -323,6 +324,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
     let mut deformations = Vec::new();
     let mut vibrations = Vec::new();
     let mut spring_ins = Vec::new();
+    let mut cutouts = Vec::new();
     let mut unsupported_modules = Vec::new();
 
     for element in node.children().filter(|n| n.is_element()) {
@@ -335,6 +337,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
             "deformation" => deformations.push(read_deformation(element, &ctx)?),
             "vibration" => vibrations.push(read_vibration(element, &ctx)?),
             "springIn" => spring_ins.push(read_spring_in(element, &ctx)?),
+            "cutout" => cutouts.push(read_cutout(element, &ctx)?),
             other => unsupported_modules.push(RawElement {
                 tag: other.to_string(),
                 xml: serialise(element),
@@ -351,6 +354,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
         deformations,
         vibrations,
         spring_ins,
+        cutouts,
         unsupported_modules,
     })
 }
@@ -621,6 +625,56 @@ fn read_spring_in(node: Node, parent: &str) -> Result<NamedSpringIn> {
                 .is_some_and(|t| t.eq_ignore_ascii_case("true")),
             zero_deg_as_circum_dir: text(node, "zeroDegAsCircumDir")
                 .is_some_and(|t| t.eq_ignore_ascii_case("true")),
+        },
+    })
+}
+
+fn read_cutout(node: Node, parent: &str) -> Result<NamedCutout> {
+    let name = attr(node, "name").unwrap_or_default().to_string();
+    let ctx = format!("{parent}, Ausschnitt '{name}'");
+
+    // The shape sits in a child element naming its Java class, with its own
+    // properties under it - the third module to use that reflected shape,
+    // after the stiffeners and the spring-in model.
+    let shape_node = child(node, "CutoutGeometry").ok_or_else(|| ReadError::Missing {
+        context: ctx.clone(),
+        what: "CutoutGeometry".to_string(),
+    })?;
+    let class = attr(shape_node, "classname").ok_or_else(|| ReadError::Missing {
+        context: ctx.clone(),
+        what: "classname".to_string(),
+    })?;
+    let code = naming::cutout_shape_from_java(class).ok_or_else(|| ReadError::Unknown {
+        context: format!("{ctx}, Form"),
+        value: class.to_string(),
+    })?;
+
+    let a = number(shape_node, "A", &ctx)?;
+    // `Terme` is the German property name, capital and all - it is what the
+    // reflection wrote, so it is what the file says.
+    let terms = |ctx: &str| -> Result<usize> { Ok(number(shape_node, "Terme", ctx)? as usize) };
+    let geometry = match code {
+        "circular" => CutoutGeometry::Circular { a },
+        "elliptical" => CutoutGeometry::Elliptical { a, b: number(shape_node, "B", &ctx)? },
+        "square" => CutoutGeometry::Square { a, terms: terms(&ctx)? },
+        _ => CutoutGeometry::Rectangular {
+            a,
+            b: number(shape_node, "B", &ctx)?,
+            terms: terms(&ctx)?,
+        },
+    };
+
+    Ok(NamedCutout {
+        name,
+        input: CutoutInput {
+            geometry,
+            n_x: number(node, "n_xx", &ctx)?,
+            n_y: number(node, "n_yy", &ctx)?,
+            n_xy: number(node, "n_xy", &ctx)?,
+            m_x: number(node, "m_xx", &ctx)?,
+            m_y: number(node, "m_yy", &ctx)?,
+            m_xy: number(node, "m_xy", &ctx)?,
+            values: number(node, "val", &ctx)? as usize,
         },
     })
 }

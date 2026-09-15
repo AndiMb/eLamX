@@ -772,6 +772,7 @@
           ]
         }
       ],
+      "cutouts": [],
       "spring_ins": [],
       "vibrations": [],
       "bucklings": [
@@ -1001,6 +1002,76 @@
             false,
             false
           ]
+        }
+      ],
+      "cutouts": [
+        {
+          "name": "GM-Loch-Kreis",
+          "input": {
+            "geometry": {
+              "shape": "circular",
+              "a": 5
+            },
+            "n_x": 100,
+            "n_y": 0,
+            "n_xy": 0,
+            "m_x": 0,
+            "m_y": 0,
+            "m_xy": 0,
+            "values": 721
+          }
+        },
+        {
+          "name": "GM-Loch-Ellipse",
+          "input": {
+            "geometry": {
+              "shape": "elliptical",
+              "a": 8,
+              "b": 3
+            },
+            "n_x": 100,
+            "n_y": -40,
+            "n_xy": 0,
+            "m_x": 0,
+            "m_y": 0,
+            "m_xy": 0,
+            "values": 721
+          }
+        },
+        {
+          "name": "GM-Loch-Quadrat",
+          "input": {
+            "geometry": {
+              "shape": "square",
+              "a": 6,
+              "terms": 13
+            },
+            "n_x": 100,
+            "n_y": 0,
+            "n_xy": 30,
+            "m_x": 0,
+            "m_y": 0,
+            "m_xy": 0,
+            "values": 721
+          }
+        },
+        {
+          "name": "GM-Loch-Rechteck",
+          "input": {
+            "geometry": {
+              "shape": "rectangular",
+              "a": 12,
+              "b": 4,
+              "terms": 9
+            },
+            "n_x": 80,
+            "n_y": 0,
+            "n_xy": 0,
+            "m_x": 15,
+            "m_y": -5,
+            "m_xy": 3,
+            "values": 361
+          }
         }
       ],
       "spring_ins": [
@@ -1372,6 +1443,7 @@
           ]
         }
       ],
+      "cutouts": [],
       "spring_ins": [],
       "vibrations": [
         {
@@ -1600,6 +1672,7 @@
           ]
         }
       ],
+      "cutouts": [],
       "spring_ins": [],
       "vibrations": [],
       "bucklings": [
@@ -1770,6 +1843,7 @@
           ]
         }
       ],
+      "cutouts": [],
       "spring_ins": [],
       "vibrations": [],
       "bucklings": [
@@ -1923,6 +1997,7 @@
           ]
         }
       ],
+      "cutouts": [],
       "spring_ins": [],
       "vibrations": [],
       "bucklings": [],
@@ -2066,6 +2141,7 @@
           ]
         }
       ],
+      "cutouts": [],
       "spring_ins": [],
       "vibrations": [],
       "bucklings": [],
@@ -2202,6 +2278,7 @@
           ]
         }
       ],
+      "cutouts": [],
       "spring_ins": [],
       "vibrations": [],
       "bucklings": [],
@@ -2302,6 +2379,7 @@
           ]
         }
       ],
+      "cutouts": [],
       "spring_ins": [],
       "vibrations": [],
       "bucklings": [],

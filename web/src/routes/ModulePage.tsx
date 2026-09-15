@@ -8,6 +8,7 @@ import { LastPlyFailureModuleContent } from "../components/LastPlyFailureModuleC
 import { ModuleContextBar } from "../components/ModuleContextBar";
 import { PressureVesselModuleContent } from "../components/PressureVesselModuleContent";
 import { DeformationModuleContent } from "../components/DeformationModuleContent";
+import { CutoutModuleContent } from "../components/CutoutModuleContent";
 import { SpringInModuleContent } from "../components/SpringInModuleContent";
 import { VibrationModuleContent } from "../components/VibrationModuleContent";
 import { LaminateFailureModuleContent } from "../components/LaminateFailureModuleContent";
@@ -109,6 +110,8 @@ function ModuleBody({ laminateId, moduleId }: { laminateId: string; moduleId: Mo
       return <VibrationModuleContent laminateId={laminateId} />;
     case "springIn":
       return <SpringInModuleContent laminateId={laminateId} />;
+    case "cutout":
+      return <CutoutModuleContent laminateId={laminateId} />;
     case "laminateFailure":
       return <LaminateFailureModuleContent laminateId={laminateId} />;
     default:

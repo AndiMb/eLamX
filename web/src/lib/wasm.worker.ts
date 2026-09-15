@@ -19,6 +19,7 @@ const ENTRY_POINTS = [
   "compute_vibration",
   "compute_vibration_surface",
   "compute_spring_in",
+  "compute_cutout",
   "compute_failure_envelope",
   "compute_laminate_envelope",
   "compute_last_ply_failure",

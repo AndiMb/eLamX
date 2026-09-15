@@ -240,6 +240,36 @@ const SPRING_IN = {
   },
 };
 
+// Cutouts, the third module with a nested service element. Like spring-in and
+// vibration the batch prints nothing for them, so what these cases cover is the
+// FORMAT - and for the cutout that is worth more than usual, because the shape
+// carries its own Java class name and its own property names.
+const CUTOUT = {
+  circular: { java: "de.elamx.clt.cutout.CircularCutoutGeometry", label: "Circular cutout" },
+  elliptical: {
+    java: "de.elamx.clt.plate.AdditionalCutoutGeometries.EllipticalCutoutGeometry",
+    label: "Elliptic cutout",
+  },
+  square: {
+    java: "de.elamx.clt.plate.AdditionalCutoutGeometries.SquareCutoutGeometry",
+    label: "Square cutout",
+  },
+  rectangular: {
+    java: "de.elamx.clt.plate.AdditionalCutoutGeometries.RectangularCutoutGeometry",
+    label: "Rectangular cutout",
+  },
+};
+
+const cutout = (name, o) => ({
+  name,
+  shape: "circular",
+  a: 5.0, b: 5.0, terms: 11,
+  n_xx: 100.0, n_yy: 0.0, n_xy: 0.0,
+  m_xx: 0.0, m_yy: 0.0, m_xy: 0.0,
+  val: 721,
+  ...o,
+});
+
 const springIn = (name, o) => ({
   name,
   model: "simple_radford",
@@ -381,6 +411,17 @@ const CASES = [
     // Spring-In on the same symmetric stack, since the module refuses an
     // unsymmetric one. Two entries because the enhanced model's two extra
     // properties are the only part of the element that is not shared.
+    // All four hole shapes, so every Java class name and every property name
+    // the format uses gets written and read back at least once.
+    cutouts: [
+      cutout("GM-Loch-Kreis", {}),
+      cutout("GM-Loch-Ellipse", { shape: "elliptical", a: 8.0, b: 3.0, n_yy: -40.0 }),
+      cutout("GM-Loch-Quadrat", { shape: "square", a: 6.0, terms: 13, n_xy: 30.0 }),
+      cutout("GM-Loch-Rechteck", {
+        shape: "rectangular", a: 12.0, b: 4.0, terms: 9,
+        n_xx: 80.0, m_xx: 15.0, m_yy: -5.0, m_xy: 3.0, val: 361,
+      }),
+    ],
     springIns: [
       springIn("GM-SpringIn-Einfach", {}),
       springIn("GM-SpringIn-Erweitert", {
@@ -750,6 +791,24 @@ function elamxXml() {
       out.push(`                <j_a>${num(l.j_a)}</j_a>`);
       out.push("            </lastplyfailure>");
     });
+    (c.cutouts ?? []).forEach((co) => {
+      const def = CUTOUT[co.shape];
+      out.push(`            <cutout name="${esc(co.name)}">`);
+      for (const k of ["n_xx", "n_yy", "n_xy", "m_xx", "m_yy", "m_xy"]) {
+        out.push(`                <${k}>${num(co[k])}</${k}>`);
+      }
+      out.push(`                <val>${co.val}</val>`);
+      out.push(`                <CutoutGeometry name="${esc(def.label)}" classname="${def.java}">`);
+      out.push(`                    <A>${num(co.a)}</A>`);
+      if (co.shape === "elliptical" || co.shape === "rectangular") {
+        out.push(`                    <B>${num(co.b)}</B>`);
+      }
+      if (co.shape === "square" || co.shape === "rectangular") {
+        out.push(`                    <Terme>${co.terms}</Terme>`);
+      }
+      out.push("                </CutoutGeometry>");
+      out.push("            </cutout>");
+    });
     (c.springIns ?? []).forEach((sp) => {
       const def = SPRING_IN[sp.model];
       out.push(`            <springIn name="${esc(sp.name)}">`);
@@ -915,6 +974,26 @@ function inputJson() {
       strains: calc.strains ?? strains(),
       use_strain: calc.useStrain ?? NO_STRAIN,
     })),
+    cutouts: (c.cutouts ?? []).map((co) => ({
+      name: co.name,
+      input: {
+        geometry:
+          co.shape === "circular"
+            ? { shape: "circular", a: co.a }
+            : co.shape === "elliptical"
+              ? { shape: "elliptical", a: co.a, b: co.b }
+              : co.shape === "square"
+                ? { shape: "square", a: co.a, terms: co.terms }
+                : { shape: "rectangular", a: co.a, b: co.b, terms: co.terms },
+        n_x: co.n_xx,
+        n_y: co.n_yy,
+        n_xy: co.n_xy,
+        m_x: co.m_xx,
+        m_y: co.m_yy,
+        m_xy: co.m_xy,
+        values: co.val,
+      },
+    })),
     spring_ins: (c.springIns ?? []).map((sp) => ({
       name: sp.name,
       input: {
@@ -996,6 +1075,7 @@ const calcCount = CASES.reduce((n, c) => n + c.calculations.length, 0);
 const buckCount = CASES.reduce((n, c) => n + (c.bucklings ?? []).length, 0);
 const vibCount = CASES.reduce((n, c) => n + (c.vibrations ?? []).length, 0);
 const springCount = CASES.reduce((n, c) => n + (c.springIns ?? []).length, 0);
+const cutoutCount = CASES.reduce((n, c) => n + (c.cutouts ?? []).length, 0);
 const stiffCount = CASES.reduce(
   (n, c) => n + (c.bucklings ?? []).reduce((k, b) => k + (b.stiffeners ?? []).length, 0),
   0,
@@ -1006,6 +1086,7 @@ console.log(
     `${CASES.length} Laminate, ${layerCount} gespeicherte Lagen, ${calcCount} Berechnungen, ` +
     `${buckCount} Beulanalysen (davon ${stiffCount} Versteifungen), ` +
     `${vibCount} Schwingungsanalysen, ${springCount} Spring-In-Analysen, ` +
+    `${cutoutCount} Ausschnitte, ` +
     `${lpfCount} Last-Ply-Failure-Analysen, ` +
     `${ALL_CRITERIA.length} Kriterien abgedeckt.`,
 );
