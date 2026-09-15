@@ -80,8 +80,16 @@ export function defaultGeneticParameters(): GeneticParametersDto {
 
 const json = createJSONStorage<OptimizationInputDto>(() => localStorage);
 
+/** Where the search's input is stored, and with it the answer to whether a
+ *  search was ever set up at all.
+ *
+ *  The atom answers with its default either way, so asking it would write an
+ *  optimisation into every saved project. The key exists once the module was
+ *  edited or a file filled it - which is the real question a save asks. */
+export const OPTIMIZATION_STORAGE_KEY = "elamx.optimization";
+
 export const optimizationInputAtom = atomWithStorage<OptimizationInputDto>(
-  "elamx.optimization",
+  OPTIMIZATION_STORAGE_KEY,
   defaultOptimizationInput(""),
   json,
   { getOnInit: true },
@@ -98,6 +106,22 @@ export const geneticParametersAtom = atomWithStorage<GeneticParametersDto>(
   "elamx.optimization.genetic",
   defaultGeneticParameters(),
   createJSONStorage<GeneticParametersDto>(() => localStorage),
+  { getOnInit: true },
+);
+
+/**
+ * The two fields of the file's `<optimization>` element the UI never edits.
+ *
+ * `angleType` is eLamX's memory of which angle preset the wizard offered; this
+ * app lets the angles be typed directly and has no preset list, so the number
+ * is only kept so that a project saved here still opens on the preset the
+ * desktop user picked. `name` is what the desktop shows the module as.
+ */
+export const optimizationMetaAtom = atomWithStorage<{ name: string; angleType: number }>(
+  "elamx.optimization.meta",
+  // OptimizationModuleData: angleType 0, name from the German bundle.
+  { name: "Optimierung", angleType: 0 },
+  createJSONStorage<{ name: string; angleType: number }>(() => localStorage),
   { getOnInit: true },
 );
 

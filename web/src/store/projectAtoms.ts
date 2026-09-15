@@ -18,6 +18,13 @@ import type { ProjectSnapshot } from "../lib/projectFile";
 import { bucklingInputFamily, bucklingStorageKey } from "./bucklingAtoms";
 import { fibresAtom, matricesAtom } from "./micromechanicsAtoms";
 import { cutoutInputFamily, cutoutStorageKey } from "./cutoutAtoms";
+import {
+  OPTIMIZATION_STORAGE_KEY,
+  optimizationInputAtom,
+  optimizationMetaAtom,
+  optimizerAtom,
+  resolvedOptimizationInputAtom,
+} from "./optimizationAtoms";
 import { springInInputFamily, springInStorageKey } from "./springInAtoms";
 import { vibrationInputFamily, vibrationStorageKey } from "./vibrationAtoms";
 import { lastPlyFailureInputFamily, lastPlyFailureStorageKey } from "./lastPlyFailureAtoms";
@@ -48,12 +55,16 @@ export const projectNameAtom = atom<string>("eLamX");
  */
 export const projectFilePathAtom = atom<string | null>(null);
 
-/** `<fibres>`, `<matrices>`, `<optimizations>` from the opened file, as raw
- *  XML. This app models none of them, but they are the user's data: without
- *  carrying them, opening a desktop project and saving it deleted its fibre
- *  and matrix materials. Session state, not persisted - a reload starts from
- *  an empty project anyway. */
+/** Project-level sections of the opened file that no module here answers to,
+ *  as raw XML. They are the user's data: without carrying them, opening a
+ *  desktop project and saving it deleted whatever the desktop had put there.
+ *  Session state, not persisted - a reload starts from an empty project
+ *  anyway. */
 export const projectSectionsAtom = atom<unknown[]>([]);
+
+/** Optimisations past the first, which the module does not show. Carried for
+ *  the same reason, and session state for the same reason. */
+export const extraOptimizationsAtom = atom<unknown[]>([]);
 
 /** Whether a laminate has a stored input for a module.
  *
@@ -106,6 +117,7 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
       cutouts[id] = get(cutoutInputFamily(id));
     }
   }
+  const meta = get(optimizationMetaAtom);
   return {
     materials: get(materialsAtom),
     fibres: get(fibresAtom),
@@ -118,6 +130,18 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
     vibrations,
     springIns,
     cutouts,
+    optimization: hasStoredInput(OPTIMIZATION_STORAGE_KEY)
+      ? {
+          name: meta.name,
+          optimizer: get(optimizerAtom),
+          angle_type: meta.angleType,
+          // The resolved input and not the stored one: the material a saved
+          // search names can have been deleted since, and what belongs in the
+          // file is what the module would search with now.
+          input: get(resolvedOptimizationInputAtom),
+        }
+      : undefined,
+    extraOptimizations: get(extraOptimizationsAtom),
     version: get(projectVersionAtom),
     unsupportedSections: get(projectSectionsAtom),
   };
@@ -153,6 +177,15 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
   set(matricesAtom, project.matrices);
   set(projectVersionAtom, project.version);
   set(projectSectionsAtom, project.unsupportedSections);
+  set(extraOptimizationsAtom, project.extraOptimizations);
+  if (project.optimization) {
+    set(optimizationInputAtom, project.optimization.input);
+    set(optimizerAtom, project.optimization.optimizer);
+    set(optimizationMetaAtom, {
+      name: project.optimization.name,
+      angleType: project.optimization.angle_type,
+    });
+  }
 
   for (const config of project.laminates) {
     set(laminateConfigFamily(config.id), config);

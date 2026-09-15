@@ -2,6 +2,7 @@
 import type { Fibre } from "./Fibre";
 import type { Material } from "./Material";
 import type { MatrixMaterial } from "./MatrixMaterial";
+import type { NamedOptimization } from "./NamedOptimization";
 import type { ProjectLaminate } from "./ProjectLaminate";
 import type { RawElement } from "./RawElement";
 
@@ -31,4 +32,9 @@ matrices: Array<MatrixMaterial>, laminates: Array<ProjectLaminate>,
  * they survived a save before micromechanics was ported; they are read
  * properly now.
  */
-unsupported_sections: Array<RawElement>, };
+unsupported_sections: Array<RawElement>, 
+/**
+ * `<optimizations>`, which is a PROJECT-level section rather than a
+ * laminate module: a search is not about a stack, it is looking for one.
+ */
+optimizations: Array<NamedOptimization>, };

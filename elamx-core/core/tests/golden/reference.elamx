@@ -1511,6 +1511,112 @@
             <G_micromechmodel>de.elamx.micromechanics.models.ManualInputDummyModel</G_micromechmodel>
         </material>
     </materials>
+    <optimizations>
+        <optimization name="GM-Opt-SDA">
+            <angletype>0</angletype>
+            <optimizer>de.elamx.clt.optimization.sda.SequentialDecisionApproach</optimizer>
+            <thickness>0.125</thickness>
+            <material>m-cfk</material>
+            <criterion>de.elamx.laminate.failure.Puck</criterion>
+            <symmetriclaminat>false</symmetriclaminat>
+            <angles number="4">
+                <angle0>0.0</angle0>
+                <angle1>45.0</angle1>
+                <angle2>-45.0</angle2>
+                <angle3>90.0</angle3>
+            </angles>
+            <minimalReserverFactorCalculator classname="de.elamx.clt.optimization.MinimalReserveFactorImplementation">
+                <n_x>1200.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>80.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <deltat>0.0</deltat>
+                <deltah>0.0</deltah>
+            </minimalReserverFactorCalculator>
+        </optimization>
+        <optimization name="GM-Opt-Todoroki">
+            <angletype>1</angletype>
+            <optimizer>de.elamx.clt.optimization.additionaloptimizers.todoroki.TodorokiOptimizer</optimizer>
+            <thickness>0.25</thickness>
+            <material>m-gfk</material>
+            <criterion>de.elamx.laminate.addFailureCriteria.TsaiWu</criterion>
+            <symmetriclaminat>true</symmetriclaminat>
+            <angles number="2">
+                <angle0>0.0</angle0>
+                <angle1>90.0</angle1>
+            </angles>
+            <minimalReserverFactorCalculator classname="de.elamx.clt.plate.MinimalBucklingReserveFactorImpl">
+                <n_x>-1.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <length>400.0</length>
+                <width>300.0</width>
+                <bcx>1</bcx>
+                <bcy>0</bcy>
+                <m>8</m>
+                <n>8</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.DtildeDMatrixServiceImpl</dmatrixservice>
+            </minimalReserverFactorCalculator>
+            <minimalReserverFactorCalculator classname="de.elamx.clt.plate.MinimalDeformationReserveFactorImpl">
+                <length>400.0</length>
+                <width>300.0</width>
+                <bcx>0</bcx>
+                <bcy>0</bcy>
+                <m>8</m>
+                <n>8</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl</dmatrixservice>
+                <maxDisplacement>3.0</maxDisplacement>
+                <surfaceLoad_const_full name="q">
+                    <force>0.02</force>
+                </surfaceLoad_const_full>
+            </minimalReserverFactorCalculator>
+        </optimization>
+        <optimization name="GM-Opt-Genetisch">
+            <angletype>2</angletype>
+            <optimizer>de.elamx.clt.optimization.hauffe.HauffeOptimizer</optimizer>
+            <thickness>0.2</thickness>
+            <material>m-cfk</material>
+            <criterion>de.elamx.laminate.addFailureCriteria.MaxStress</criterion>
+            <symmetriclaminat>false</symmetriclaminat>
+            <angles number="6">
+                <angle0>0.0</angle0>
+                <angle1>30.0</angle1>
+                <angle2>-30.0</angle2>
+                <angle3>60.0</angle3>
+                <angle4>-60.0</angle4>
+                <angle5>90.0</angle5>
+            </angles>
+            <minimalReserverFactorCalculator classname="de.elamx.clt.pressurevessel.optimization.MinimalReserveFactorImplementation">
+                <pressure>0.8</pressure>
+                <radius>300.0</radius>
+                <radiustype>2</radiustype>
+            </minimalReserverFactorCalculator>
+        </optimization>
+        <optimization name="GM-Opt-Vollstaendig">
+            <angletype>0</angletype>
+            <optimizer>de.elamx.clt.optimization.additionaloptimizers.branchandbound.BranchAndBoundOptimizer</optimizer>
+            <thickness>0.125</thickness>
+            <material>m-cfk</material>
+            <criterion>de.elamx.laminate.addFailureCriteria.Hashin</criterion>
+            <symmetriclaminat>false</symmetriclaminat>
+            <angles number="2">
+                <angle0>0.0</angle0>
+                <angle1>90.0</angle1>
+            </angles>
+            <minimalReserverFactorCalculator classname="de.elamx.clt.optimization.MinimalReserveFactorImplementation">
+                <n_x>0.0</n_x>
+                <n_y>400.0</n_y>
+                <n_xy>0.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <deltat>0.0</deltat>
+                <deltah>0.0</deltah>
+            </minimalReserverFactorCalculator>
+        </optimization>
+    </optimizations>
     <fibres>
         <fibre class="de.elamx.micromechanics.Fiber" name="GM-C-Faser" uuid="f-carbon">
             <Epar>230000.0</Epar>

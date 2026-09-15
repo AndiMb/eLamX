@@ -32,6 +32,7 @@ use crate::micromechanics::{Fibre, MatrixMaterial};
 use crate::model::{Laminate, Material};
 use crate::plate::{BucklingInput, DeformationInput, VibrationInput};
 use crate::cutout::CutoutInput;
+use crate::optimization::OptimizationInput;
 use crate::spring_in::SpringInInput;
 use serde::{Deserialize, Serialize};
 
@@ -59,6 +60,26 @@ pub struct Project {
     /// properly now.
     #[serde(default)]
     pub unsupported_sections: Vec<RawElement>,
+    /// `<optimizations>`, which is a PROJECT-level section rather than a
+    /// laminate module: a search is not about a stack, it is looking for one.
+    #[serde(default)]
+    pub optimizations: Vec<NamedOptimization>,
+}
+
+/// One saved search.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+pub struct NamedOptimization {
+    pub name: String,
+    /// Which of the four searches to run, by the code `optimization` uses.
+    pub optimizer: String,
+    /// eLamX's own id for the angle-set preset the user picked.
+    ///
+    /// Purely a UI memory - nothing computes with it, and the angles
+    /// themselves are stored beside it. Carried so that reopening a project
+    /// shows the same preset selected rather than "custom".
+    pub angle_type: i32,
+    pub input: OptimizationInput,
 }
 
 /// A laminate together with the module data attached to it. The original

@@ -134,6 +134,34 @@ const CUTOUT_SHAPES: &[(&str, &str)] = &[
     ),
 ];
 
+/// Optimisers: `(code, Java class name)`. The first two ship with the
+/// optimisation module, the other two with `AdditionalOptimizers`.
+const OPTIMIZERS: &[(&str, &str)] = &[
+    ("sequential", "de.elamx.clt.optimization.sda.SequentialDecisionApproach"),
+    ("genetic", "de.elamx.clt.optimization.hauffe.HauffeOptimizer"),
+    (
+        "exhaustive",
+        "de.elamx.clt.optimization.additionaloptimizers.branchandbound.BranchAndBoundOptimizer",
+    ),
+    (
+        "todoroki",
+        "de.elamx.clt.optimization.additionaloptimizers.todoroki.TodorokiOptimizer",
+    ),
+];
+
+/// Optimisation constraints: `(kind, Java class name)`. Each lives in the
+/// module whose analysis it wraps, which is why two of them are called the
+/// same thing in different packages.
+const CONSTRAINTS: &[(&str, &str)] = &[
+    ("clt", "de.elamx.clt.optimization.MinimalReserveFactorImplementation"),
+    ("buckling", "de.elamx.clt.plate.MinimalBucklingReserveFactorImpl"),
+    ("deformation", "de.elamx.clt.plate.MinimalDeformationReserveFactorImpl"),
+    (
+        "pressure_vessel",
+        "de.elamx.clt.pressurevessel.optimization.MinimalReserveFactorImplementation",
+    ),
+];
+
 /// Edge conditions are stored as the index into eLamX's own `boundary_cond`
 /// array (`plateui/buckling/InputPanel`), so the ORDER here is the file format.
 const BOUNDARY: [BoundaryCondition; 6] = [
@@ -207,6 +235,22 @@ pub fn cutout_shape_from_java(java: &str) -> Option<&'static str> {
 
 pub fn cutout_shape_to_java(code: &str) -> Option<&'static str> {
     CUTOUT_SHAPES.iter().find(|(c, _)| *c == code).map(|(_, j)| *j)
+}
+
+pub fn optimizer_from_java(java: &str) -> Option<&'static str> {
+    OPTIMIZERS.iter().find(|(_, j)| *j == java).map(|(c, _)| *c)
+}
+
+pub fn optimizer_to_java(code: &str) -> Option<&'static str> {
+    OPTIMIZERS.iter().find(|(c, _)| *c == code).map(|(_, j)| *j)
+}
+
+pub fn constraint_from_java(java: &str) -> Option<&'static str> {
+    CONSTRAINTS.iter().find(|(_, j)| *j == java).map(|(c, _)| *c)
+}
+
+pub fn constraint_to_java(code: &str) -> Option<&'static str> {
+    CONSTRAINTS.iter().find(|(c, _)| *c == code).map(|(_, j)| *j)
 }
 
 pub fn boundary_from_index(index: usize) -> Option<BoundaryCondition> {

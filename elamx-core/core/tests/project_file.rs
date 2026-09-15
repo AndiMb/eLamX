@@ -11,6 +11,7 @@ use elamx_core::clt::RadiusType;
 use elamx_core::plate::Stiffener;
 use elamx_core::project::{read_elamx, write_elamx, Project, ReadError};
 use elamx_core::cutout::CutoutInput;
+use elamx_core::optimization::Constraint;
 use elamx_core::plate::DeformationInput;
 use elamx_core::spring_in::SpringInInput;
 use serde_json::Value;
@@ -350,6 +351,97 @@ fn write_then_read_is_lossless() {
     assert_eq!(xml, write_elamx(&second), "zweites Schreiben weicht ab");
 }
 
+/// `<optimizations>` is a PROJECT-level section, and the only module element
+/// the Java batch mode does NOT read back.
+///
+/// That is worth knowing before trusting it: for every other module, a
+/// rewritten reference file that the batch computes identically proves the
+/// original parsed every tag, because a wrong one throws and truncates the
+/// output. Breaking the optimizer class name or the angle count here changes
+/// nothing in the batch output - the batch does not register the optimisation
+/// module's load hook at all. So this section is transcribed from
+/// `OptimizationLoadSaveHookImpl` and checked here, and nowhere else.
+#[test]
+fn reads_the_optimizations_section() {
+    let project = read_elamx(&reference_xml()).expect("reference.elamx muss lesbar sein");
+    let expected = reference_json();
+    let expected_optimizations = expected["optimizations"].as_array().unwrap();
+
+    assert_eq!(project.optimizations.len(), expected_optimizations.len(), "Optimierungen");
+    for (found, e) in project.optimizations.iter().zip(expected_optimizations) {
+        assert_eq!(found.name, e["name"].as_str().unwrap());
+        assert_eq!(found.optimizer, e["optimizer"].as_str().unwrap(), "{}", found.name);
+        assert_eq!(found.angle_type, e["angle_type"].as_i64().unwrap() as i32, "{}", found.name);
+
+        let ei = &e["input"];
+        assert_eq!(found.input.material_id, ei["material_id"].as_str().unwrap());
+        assert_eq!(found.input.criterion_id, ei["criterion_id"].as_str().unwrap());
+        assert_eq!(found.input.thickness, ei["thickness"].as_f64().unwrap());
+        assert_eq!(found.input.symmetric, ei["symmetric"].as_bool().unwrap());
+
+        let angles: Vec<f64> = ei["angles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_f64().unwrap())
+            .collect();
+        assert_eq!(found.input.angles, angles, "{}: Winkel", found.name);
+
+        let expected_constraints: Vec<Constraint> =
+            serde_json::from_value(ei["constraints"].clone()).expect("Anforderungen");
+        assert_eq!(
+            serde_json::to_value(&found.input.constraints).unwrap(),
+            serde_json::to_value(&expected_constraints).unwrap(),
+            "{}: Anforderungen",
+            found.name
+        );
+    }
+
+    // All four optimisers and all four constraint kinds are in the file, so
+    // every Java class name the section uses is exercised.
+    let optimizers: Vec<&str> = project.optimizations.iter().map(|o| o.optimizer.as_str()).collect();
+    for expected in ["sequential", "todoroki", "genetic", "exhaustive"] {
+        assert!(optimizers.contains(&expected), "{expected} fehlt");
+    }
+    let kinds: Vec<String> = project
+        .optimizations
+        .iter()
+        .flat_map(|o| o.input.constraints.iter())
+        .map(|c| match c {
+            Constraint::Clt { .. } => "clt",
+            Constraint::Buckling { .. } => "buckling",
+            Constraint::Deformation { .. } => "deformation",
+            Constraint::PressureVessel { .. } => "pressure_vessel",
+        })
+        .map(str::to_string)
+        .collect();
+    for expected in ["clt", "buckling", "deformation", "pressure_vessel"] {
+        assert!(kinds.iter().any(|k| k == expected), "{expected} fehlt");
+    }
+}
+
+/// The section written back out, character for character.
+///
+/// Every other element in the file is checked by its meaning: read it, write
+/// it, read it again, and run the original over it. This one cannot be, so it
+/// is checked against the text the generator wrote - which is the only place
+/// the indentation of a constraint body is stated by something other than this
+/// writer. That is not pedantry: the first version of the writer indented
+/// those bodies four spaces too deep, and nothing else in the suite minded.
+#[test]
+fn writes_the_optimizations_section_exactly_as_the_reference_has_it() {
+    let reference = reference_xml();
+    let written = write_elamx(&read_elamx(&reference).unwrap());
+    assert_eq!(section(&written, "optimizations"), section(&reference, "optimizations"));
+}
+
+/// The `<tag>` .. `</tag>` block, with everything between it.
+fn section(xml: &str, tag: &str) -> String {
+    let start = xml.find(&format!("<{tag}>")).expect("Abschnitt fehlt");
+    let end = xml.find(&format!("</{tag}>")).expect("Abschnittsende fehlt");
+    xml[start..end].to_string()
+}
+
 /// A project written here has to be readable by the original, so the element
 /// and attribute names must be exactly the ones eLamX expects.
 #[test]
@@ -374,6 +466,16 @@ fn written_file_uses_the_original_element_names() {
         "<maxDisplacement>",
         "<surfaceLoad_const_full name=",
         "<pointload name=",
+        "<optimizations>",
+        "<optimization name=",
+        "<angletype>",
+        "<symmetriclaminat>",
+        "<angles number=",
+        "<minimalReserverFactorCalculator classname=\"de.elamx.clt.optimization.MinimalReserveFactorImplementation\">",
+        "classname=\"de.elamx.clt.plate.MinimalBucklingReserveFactorImpl\"",
+        "classname=\"de.elamx.clt.plate.MinimalDeformationReserveFactorImpl\"",
+        "classname=\"de.elamx.clt.pressurevessel.optimization.MinimalReserveFactorImplementation\"",
+        "<optimizer>de.elamx.clt.optimization.sda.SequentialDecisionApproach</optimizer>",
         "<cutout name=",
         "<n_xx>",
         "<val>",
@@ -464,13 +566,16 @@ fn keeps_module_data_it_cannot_interpret() {
 /// and saved again came back without its fibre materials.
 #[test]
 fn keeps_project_sections_it_cannot_interpret() {
+    // `<optimizations>` used to be the stand-in here and is read properly
+    // now, so this is a section eLamX does not have - which is the case the
+    // mechanism exists for: a future version's, or a plugin's.
     let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <elamx version="1">
     <laminates/>
     <materials/>
-    <optimizations>
-        <optimization name="Test"/>
-    </optimizations>
+    <fremdabschnitt>
+        <eintrag name="Test"/>
+    </fremdabschnitt>
 </elamx>"#;
 
     let project = read_elamx(xml).unwrap();
@@ -479,10 +584,10 @@ fn keeps_project_sections_it_cannot_interpret() {
         .iter()
         .map(|s| s.tag.as_str())
         .collect();
-    assert_eq!(tags, ["optimizations"]);
+    assert_eq!(tags, ["fremdabschnitt"]);
 
     let written = write_elamx(&project);
-    assert!(written.contains("<optimization name=\"Test\"/>"));
+    assert!(written.contains("<eintrag name=\"Test\"/>"));
 
     // And once more, so that saving a file that this version wrote does not
     // lose them either.

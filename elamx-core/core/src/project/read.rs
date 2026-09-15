@@ -10,7 +10,8 @@
 use super::naming;
 use super::{
     NamedBuckling, NamedCalculation, NamedDeformation, NamedLastPlyFailure, NamedPressureVessel,
-    NamedCutout, NamedSpringIn, NamedVibration, Project, ProjectLaminate, RawElement,
+    NamedCutout, NamedOptimization, NamedSpringIn, NamedVibration, Project, ProjectLaminate,
+    RawElement,
 };
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, RadiusType, Strains};
 use crate::micromechanics::{self, Fibre, MatrixMaterial, MicroMechanics, Model};
@@ -20,6 +21,7 @@ use crate::plate::{
     VibrationInput,
 };
 use crate::cutout::{CutoutGeometry, CutoutInput};
+use crate::optimization::{Constraint, OptimizationInput};
 use crate::spring_in::{SpringInInput, SpringInModel};
 use roxmltree::{Document, Node};
 
@@ -127,7 +129,8 @@ pub fn read_elamx(xml: &str) -> Result<Project> {
         .children()
         .filter(|n| n.is_element())
         .filter(|n| {
-            !["materials", "laminates", "fibres", "matrices"].contains(&n.tag_name().name())
+            !["materials", "laminates", "fibres", "matrices", "optimizations"]
+                .contains(&n.tag_name().name())
         })
         .map(|n| RawElement {
             tag: n.tag_name().name().to_string(),
@@ -142,6 +145,7 @@ pub fn read_elamx(xml: &str) -> Result<Project> {
         matrices,
         laminates,
         unsupported_sections,
+        optimizations: read_optimizations(root)?,
     })
 }
 
@@ -402,21 +406,30 @@ fn read_layer(node: Node, materials: &[Material], parent: &str) -> Result<Layer>
     Ok(layer)
 }
 
+/// The load tags a `<calculation>` carries.
+///
+/// Its own function because the optimisation's CLT constraint carries exactly
+/// the same set - the Java writes both with one `storeInput`, so this reads
+/// both with one reader.
+fn read_loads(node: Node, ctx: &str) -> Result<Loads> {
+    Ok(Loads {
+        n_x: number(node, "n_x", ctx)?,
+        n_y: number(node, "n_y", ctx)?,
+        n_xy: number(node, "n_xy", ctx)?,
+        m_x: number(node, "m_x", ctx)?,
+        m_y: number(node, "m_y", ctx)?,
+        m_xy: number(node, "m_xy", ctx)?,
+        delta_t: number(node, "deltat", ctx)?,
+        delta_h: number(node, "deltah", ctx)?,
+        ..Default::default()
+    })
+}
+
 fn read_calculation(node: Node, parent: &str) -> Result<NamedCalculation> {
     let name = attr(node, "name").unwrap_or_default().to_string();
     let ctx = format!("{parent}, Berechnung '{name}'");
 
-    let loads = Loads {
-        n_x: number(node, "n_x", &ctx)?,
-        n_y: number(node, "n_y", &ctx)?,
-        n_xy: number(node, "n_xy", &ctx)?,
-        m_x: number(node, "m_x", &ctx)?,
-        m_y: number(node, "m_y", &ctx)?,
-        m_xy: number(node, "m_xy", &ctx)?,
-        delta_t: number(node, "deltat", &ctx)?,
-        delta_h: number(node, "deltah", &ctx)?,
-        ..Default::default()
-    };
+    let loads = read_loads(node, &ctx)?;
 
     let strains = Strains {
         epsilon_x: number(node, "epsilon_x", &ctx)?,
@@ -440,24 +453,27 @@ fn read_calculation(node: Node, parent: &str) -> Result<NamedCalculation> {
     })
 }
 
+/// The tags a `<buckling>` carries, shared with the optimisation constraint.
+fn read_buckling_input(node: Node, ctx: &str) -> Result<BucklingInput> {
+    Ok(BucklingInput {
+        length: number(node, "length", ctx)?,
+        width: number(node, "width", ctx)?,
+        n_x: number(node, "n_x", ctx)?,
+        n_y: number(node, "n_y", ctx)?,
+        n_xy: number(node, "n_xy", ctx)?,
+        bc_x: boundary(node, "bcx", ctx)?,
+        bc_y: boundary(node, "bcy", ctx)?,
+        m: number(node, "m", ctx)? as usize,
+        n: number(node, "n", ctx)? as usize,
+        d_matrix: d_matrix(node, ctx)?,
+        stiffeners: read_stiffeners(node, ctx)?,
+    })
+}
+
 fn read_buckling(node: Node, parent: &str) -> Result<NamedBuckling> {
     let name = attr(node, "name").unwrap_or_default().to_string();
     let ctx = format!("{parent}, Beulanalyse '{name}'");
-
-    let input = BucklingInput {
-        length: number(node, "length", &ctx)?,
-        width: number(node, "width", &ctx)?,
-        n_x: number(node, "n_x", &ctx)?,
-        n_y: number(node, "n_y", &ctx)?,
-        n_xy: number(node, "n_xy", &ctx)?,
-        bc_x: boundary(node, "bcx", &ctx)?,
-        bc_y: boundary(node, "bcy", &ctx)?,
-        m: number(node, "m", &ctx)? as usize,
-        n: number(node, "n", &ctx)? as usize,
-        d_matrix: d_matrix(node, &ctx)?,
-        stiffeners: read_stiffeners(node, &ctx)?,
-    };
-
+    let input = read_buckling_input(node, &ctx)?;
     Ok(NamedBuckling { name, input })
 }
 
@@ -489,10 +505,9 @@ fn read_last_ply_failure(node: Node, parent: &str) -> Result<NamedLastPlyFailure
     Ok(NamedLastPlyFailure { name, input })
 }
 
-fn read_deformation(node: Node, parent: &str) -> Result<NamedDeformation> {
-    let name = attr(node, "name").unwrap_or_default().to_string();
-    let ctx = format!("{parent}, Plattenverformung '{name}'");
-
+/// The tags a `<deformation>` carries, shared with the optimisation
+/// constraint.
+fn read_deformation_input(node: Node, ctx: &str) -> Result<DeformationInput> {
     let mut loads = Vec::new();
     for element in node.children().filter(|n| n.is_element()) {
         match element.tag_name().name() {
@@ -515,23 +530,27 @@ fn read_deformation(node: Node, parent: &str) -> Result<NamedDeformation> {
         }
     }
 
-    Ok(NamedDeformation {
-        name,
-        input: DeformationInput {
-            length: number(node, "length", &ctx)?,
-            width: number(node, "width", &ctx)?,
-            bc_x: boundary(node, "bcx", &ctx)?,
-            bc_y: boundary(node, "bcy", &ctx)?,
-            m: number(node, "m", &ctx)? as usize,
-            n: number(node, "n", &ctx)? as usize,
-            d_matrix: d_matrix(node, &ctx)?,
-            loads,
-            stiffeners: read_stiffeners(node, &ctx)?,
-            // Absent in a file written before the field existed, and eLamX
-            // itself defaults it to zero rather than refusing.
-            max_displacement_z: optional_number(node, "maxDisplacement", &ctx)?.unwrap_or(0.0),
-        },
+    Ok(DeformationInput {
+        length: number(node, "length", ctx)?,
+        width: number(node, "width", ctx)?,
+        bc_x: boundary(node, "bcx", ctx)?,
+        bc_y: boundary(node, "bcy", ctx)?,
+        m: number(node, "m", ctx)? as usize,
+        n: number(node, "n", ctx)? as usize,
+        d_matrix: d_matrix(node, ctx)?,
+        loads,
+        stiffeners: read_stiffeners(node, ctx)?,
+        // Absent in a file written before the field existed, and eLamX itself
+        // defaults it to zero rather than refusing.
+        max_displacement_z: optional_number(node, "maxDisplacement", ctx)?.unwrap_or(0.0),
     })
+}
+
+fn read_deformation(node: Node, parent: &str) -> Result<NamedDeformation> {
+    let name = attr(node, "name").unwrap_or_default().to_string();
+    let ctx = format!("{parent}, Plattenverformung '{name}'");
+    let input = read_deformation_input(node, &ctx)?;
+    Ok(NamedDeformation { name, input })
 }
 
 /// An edge condition, stored as the index into eLamX's own array.
@@ -682,6 +701,107 @@ fn read_cutout(node: Node, parent: &str) -> Result<NamedCutout> {
     })
 }
 
+/// `<optimizations>` - a project-level section, because a search is not about
+/// a laminate; it is looking for one.
+fn read_optimizations(root: Node) -> Result<Vec<NamedOptimization>> {
+    let Some(section) = child(root, "optimizations") else {
+        return Ok(Vec::new());
+    };
+    let mut out = Vec::new();
+    for node in section.children().filter(|n| n.has_tag_name("optimization")) {
+        let name = attr(node, "name").unwrap_or_default().to_string();
+        let ctx = format!("Optimierung '{name}'");
+
+        let class = text(node, "optimizer").ok_or_else(|| ReadError::Missing {
+            context: ctx.clone(),
+            what: "optimizer".to_string(),
+        })?;
+        let optimizer = naming::optimizer_from_java(class).ok_or_else(|| ReadError::Unknown {
+            context: format!("{ctx}, Verfahren"),
+            value: class.to_string(),
+        })?;
+
+        let criterion_java = text(node, "criterion").ok_or_else(|| ReadError::Missing {
+            context: ctx.clone(),
+            what: "criterion".to_string(),
+        })?;
+        let criterion_id =
+            naming::criterion_from_java(criterion_java).ok_or_else(|| ReadError::Unknown {
+                context: format!("{ctx}, Kriterium"),
+                value: criterion_java.to_string(),
+            })?;
+
+        // `<angles number="N">` with one `<angleK>` per entry, which is how
+        // the reflected writer lays out a list it has no element name for.
+        let angles_node = child(node, "angles").ok_or_else(|| ReadError::Missing {
+            context: ctx.clone(),
+            what: "angles".to_string(),
+        })?;
+        let count: usize = attr(angles_node, "number")
+            .and_then(|v| v.trim().parse().ok())
+            .ok_or_else(|| ReadError::Missing {
+                context: ctx.clone(),
+                what: "angles/number".to_string(),
+            })?;
+        let mut angles = Vec::with_capacity(count);
+        for i in 0..count {
+            angles.push(number(angles_node, &format!("angle{i}"), &ctx)?);
+        }
+
+        let mut constraints = Vec::new();
+        for element in node
+            .children()
+            .filter(|n| n.has_tag_name("minimalReserverFactorCalculator"))
+        {
+            constraints.push(read_constraint(element, &ctx)?);
+        }
+
+        out.push(NamedOptimization {
+            name,
+            optimizer: optimizer.to_string(),
+            angle_type: text(node, "angletype")
+                .and_then(|v| v.trim().parse().ok())
+                .unwrap_or(0),
+            input: OptimizationInput {
+                angles,
+                thickness: number(node, "thickness", &ctx)?,
+                material_id: text(node, "material").unwrap_or_default().to_string(),
+                criterion_id: criterion_id.to_string(),
+                constraints,
+                symmetric: text(node, "symmetriclaminat")
+                    .is_some_and(|t| t.eq_ignore_ascii_case("true")),
+                ..Default::default()
+            },
+        });
+    }
+    Ok(out)
+}
+
+/// One `<minimalReserverFactorCalculator>` - the misspelling is the
+/// original's, and the file format is what it is.
+///
+/// The body is the same tag set the matching module element carries, because
+/// the Java writes it with the very same `storeInput` the module uses. So this
+/// reads a `<buckling>` without its wrapper, and so on.
+fn read_constraint(node: Node, parent: &str) -> Result<Constraint> {
+    let class = attr(node, "classname").ok_or_else(|| ReadError::Missing {
+        context: parent.to_string(),
+        what: "classname".to_string(),
+    })?;
+    let kind = naming::constraint_from_java(class).ok_or_else(|| ReadError::Unknown {
+        context: format!("{parent}, Anforderung"),
+        value: class.to_string(),
+    })?;
+    let ctx = format!("{parent}, Anforderung '{kind}'");
+
+    Ok(match kind {
+        "clt" => Constraint::Clt { loads: read_loads(node, &ctx)? },
+        "buckling" => Constraint::Buckling { input: read_buckling_input(node, &ctx)? },
+        "deformation" => Constraint::Deformation { input: read_deformation_input(node, &ctx)? },
+        _ => Constraint::PressureVessel { input: read_pressure_vessel_input(node, &ctx)? },
+    })
+}
+
 /// The `<Stiffener>` children of a buckling, deformation or vibration element.
 ///
 /// The profile is identified by Java class name, and its geometry parameters
@@ -756,13 +876,12 @@ fn read_stiffeners(node: Node, parent: &str) -> Result<Vec<Stiffener>> {
     Ok(stiffeners)
 }
 
-fn read_pressure_vessel(node: Node, parent: &str) -> Result<NamedPressureVessel> {
-    let name = attr(node, "name").unwrap_or_default().to_string();
-    let ctx = format!("{parent}, Drucktank '{name}'");
-
+/// The tags a `<pressurevessel>` carries, shared with the optimisation
+/// constraint.
+fn read_pressure_vessel_input(node: Node, ctx: &str) -> Result<PressureVesselInput> {
     // The format stores the radius type as the Java constant's own value
     // (1/2/4), not as an index - see PressureVesselInput.
-    let radius_type = match number(node, "radiustype", &ctx)? as i64 {
+    let radius_type = match number(node, "radiustype", ctx)? as i64 {
         1 => RadiusType::Inner,
         2 => RadiusType::Mean,
         4 => RadiusType::Outer,
@@ -774,14 +893,18 @@ fn read_pressure_vessel(node: Node, parent: &str) -> Result<NamedPressureVessel>
         }
     };
 
-    Ok(NamedPressureVessel {
-        name,
-        input: PressureVesselInput {
-            pressure: number(node, "pressure", &ctx)?,
-            radius: number(node, "radius", &ctx)?,
-            radius_type,
-        },
+    Ok(PressureVesselInput {
+        pressure: number(node, "pressure", ctx)?,
+        radius: number(node, "radius", ctx)?,
+        radius_type,
     })
+}
+
+fn read_pressure_vessel(node: Node, parent: &str) -> Result<NamedPressureVessel> {
+    let name = attr(node, "name").unwrap_or_default().to_string();
+    let ctx = format!("{parent}, Drucktank '{name}'");
+    let input = read_pressure_vessel_input(node, &ctx)?;
+    Ok(NamedPressureVessel { name, input })
 }
 
 // ---------------------------------------------------------------------------

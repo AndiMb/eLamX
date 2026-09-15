@@ -8,10 +8,9 @@
 // the atoms the UI edits.
 //
 // What this app does not model yet is carried through untouched rather than
-// dropped: analyses beyond the first of each kind, and modules with no web
-// counterpart (cutouts, spring-in, optimisation). Load cases are not among
-// them - every <calculation> in the file becomes a real load case. See
-// `CarryOver` in store/laminateAtoms.ts.
+// dropped: analyses beyond the first of each kind, and sections no module here
+// answers to. Load cases are not among them - every <calculation> in the file
+// becomes a real load case. See `CarryOver` in store/laminateAtoms.ts.
 
 import { elamx } from "./wasm";
 import { DEFAULT_CRITERION_ID, LOAD_FIELDS, STRAIN_FIELDS, type LayerRow } from "./constants";
@@ -28,6 +27,8 @@ import {
   type PressureVesselInputDto,
   type SpringInInputDto,
   type CutoutInputDto,
+  type OptimizationInputDto,
+  type OptimizerKindId,
 } from "./types";
 import {
   defaultLaminateConfig,
@@ -45,9 +46,10 @@ interface ProjectDto {
   fibres: FibreDto[];
   matrices: MatrixMaterialDto[];
   laminates: ProjectLaminateDto[];
-  /** `<optimizations>` as raw XML - sections the core does not model and this
-   *  app does not touch, carried so that saving a desktop project does not
-   *  delete work the desktop put there. */
+  optimizations?: OptimizationEntryDto[];
+  /** Project-level sections as raw XML - the ones the core does not model and
+   *  this app does not touch, carried so that saving a desktop project does
+   *  not delete work the desktop put there. */
   unsupported_sections?: unknown[];
 }
 
@@ -125,6 +127,18 @@ interface CutoutEntryDto {
   input: CutoutInputDto;
 }
 
+/** The optimisation is the one module that hangs off the project rather than
+ *  off a laminate - it searches for a stacking sequence, so it has none yet.
+ *  `angle_type` is the file's memory of which angle preset was picked; this
+ *  app has no preset list, and carries the number so the desktop still opens
+ *  on the preset the user chose. */
+interface OptimizationEntryDto {
+  name: string;
+  optimizer: OptimizerKindId;
+  angle_type: number;
+  input: OptimizationInputDto;
+}
+
 /** A whole session: what a file turns into on open, and what a save turns
  *  back into a file. The same shape in both directions on purpose - anything
  *  that survives one has to survive the other. */
@@ -142,6 +156,12 @@ export interface ProjectSnapshot {
   vibrations: Record<string, VibrationInputDto>;
   springIns: Record<string, SpringInInputDto>;
   cutouts: Record<string, CutoutInputDto>;
+  /** The first optimisation in the file, which is the one the module shows.
+   *  Absent when the file had none and nothing has been searched for. */
+  optimization?: OptimizationEntryDto;
+  /** Further optimisations from the file. The module shows one at a time, so
+   *  the rest are carried rather than shown. */
+  extraOptimizations: unknown[];
   version: string;
   /** Project-level sections carried through untouched - see ProjectDto. */
   unsupportedSections: unknown[];
@@ -169,6 +189,7 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
   const vibrations: Record<string, VibrationInputDto> = {};
   const springIns: Record<string, SpringInInputDto> = {};
   const cutouts: Record<string, CutoutInputDto> = {};
+  const [optimization, ...extraOptimizations] = project.optimizations ?? [];
   const laminates = project.laminates.map((entry) => {
     const dto = entry.laminate;
     const [buckling, ...extraBucklings] = entry.bucklings;
@@ -253,6 +274,8 @@ export async function importProject(xml: string): Promise<ProjectSnapshot> {
     vibrations,
     springIns,
     cutouts,
+    optimization,
+    extraOptimizations,
     version: project.version,
     unsupportedSections: project.unsupported_sections ?? [],
   };
@@ -267,6 +290,10 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
     materials: snapshot.materials,
     fibres: snapshot.fibres,
     matrices: snapshot.matrices,
+    optimizations: [
+      ...(snapshot.optimization ? [snapshot.optimization] : []),
+      ...((snapshot.extraOptimizations ?? []) as OptimizationEntryDto[]),
+    ],
     laminates: snapshot.laminates.map((config) => {
       const carry = config.carryOver ?? {};
 

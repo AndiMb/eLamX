@@ -240,6 +240,26 @@ const SPRING_IN = {
   },
 };
 
+// The optimisation is the one PROJECT-level module: a search is not about a
+// laminate, it is looking for one. Its constraints nest a second service
+// element inside the first, and their bodies are the same tag sets the
+// matching module elements carry - so this is where the format is most likely
+// to drift, and where the Java reading it back is worth the most.
+const OPTIMIZERS = {
+  sequential: "de.elamx.clt.optimization.sda.SequentialDecisionApproach",
+  genetic: "de.elamx.clt.optimization.hauffe.HauffeOptimizer",
+  exhaustive:
+    "de.elamx.clt.optimization.additionaloptimizers.branchandbound.BranchAndBoundOptimizer",
+  todoroki: "de.elamx.clt.optimization.additionaloptimizers.todoroki.TodorokiOptimizer",
+};
+
+const CONSTRAINT_CLASSES = {
+  clt: "de.elamx.clt.optimization.MinimalReserveFactorImplementation",
+  buckling: "de.elamx.clt.plate.MinimalBucklingReserveFactorImpl",
+  deformation: "de.elamx.clt.plate.MinimalDeformationReserveFactorImpl",
+  pressure_vessel: "de.elamx.clt.pressurevessel.optimization.MinimalReserveFactorImplementation",
+};
+
 // Cutouts, the third module with a nested service element. Like spring-in and
 // vibration the batch prints nothing for them, so what these cases cover is the
 // FORMAT - and for the cutout that is worth more than usual, because the shape
@@ -368,6 +388,67 @@ const CRITERION_ANGLES = [0, 15, 30, 45, 60, 75, 90, -15, -30, -45, -60, -75, 20
 const criterionLayers = [
   ...COMPOSITE_CRITERIA.map((c, i) => layer(CRITERION_ANGLES[i], 0.125, "m-cfk", c)),
   layer(-10, 0.125, "m-gfk", "max_strain"),
+];
+
+// One saved search per optimiser, so every Java class name in the section gets
+// written and read back - and between them every constraint kind.
+const OPTIMIZATIONS = [
+  {
+    name: "GM-Opt-SDA",
+    angletype: 0,
+    optimizer: "sequential",
+    thickness: 0.125,
+    material: "m-cfk",
+    criterion: "puck",
+    symmetric: false,
+    angles: [0.0, 45.0, -45.0, 90.0],
+    constraints: [{ kind: "clt", n_x: 1200.0, n_xy: 80.0 }],
+  },
+  {
+    name: "GM-Opt-Todoroki",
+    angletype: 1,
+    optimizer: "todoroki",
+    thickness: 0.25,
+    material: "m-gfk",
+    criterion: "tsai_wu",
+    symmetric: true,
+    angles: [0.0, 90.0],
+    constraints: [
+      {
+        kind: "buckling",
+        n_x: -1.0, length: 400.0, width: 300.0,
+        bc_x: "CC", bc_y: "SS", m: 8, n: 8, d_matrix: "d_tilde",
+      },
+      {
+        kind: "deformation",
+        length: 400.0, width: 300.0,
+        bc_x: "SS", bc_y: "SS", m: 8, n: 8, d_matrix: "standard",
+        maxDisplacement: 3.0, force: 0.02,
+      },
+    ],
+  },
+  {
+    name: "GM-Opt-Genetisch",
+    angletype: 2,
+    optimizer: "genetic",
+    thickness: 0.2,
+    material: "m-cfk",
+    criterion: "max_stress",
+    symmetric: false,
+    angles: [0.0, 30.0, -30.0, 60.0, -60.0, 90.0],
+    constraints: [{ kind: "pressure_vessel", pressure: 0.8, radius: 300.0, radiustype: 2 }],
+  },
+  {
+    name: "GM-Opt-Vollstaendig",
+    angletype: 0,
+    optimizer: "exhaustive",
+    thickness: 0.125,
+    material: "m-cfk",
+    criterion: "hashin",
+    symmetric: false,
+    angles: [0.0, 90.0],
+    constraints: [{ kind: "clt", n_y: 400.0 }],
+  },
 ];
 
 // --- Reference cases --------------------------------------------------------
@@ -937,6 +1018,68 @@ function elamxXml() {
   });
   out.push("    </materials>");
 
+  if (OPTIMIZATIONS.length > 0) {
+    out.push("    <optimizations>");
+    OPTIMIZATIONS.forEach((o) => {
+      out.push(`        <optimization name="${esc(o.name)}">`);
+      out.push(`            <angletype>${o.angletype}</angletype>`);
+      out.push(`            <optimizer>${OPTIMIZERS[o.optimizer]}</optimizer>`);
+      out.push(`            <thickness>${num(o.thickness)}</thickness>`);
+      out.push(`            <material>${o.material}</material>`);
+      out.push(`            <criterion>${CRITERIA[o.criterion].java}</criterion>`);
+      out.push(`            <symmetriclaminat>${o.symmetric}</symmetriclaminat>`);
+      out.push(`            <angles number="${o.angles.length}">`);
+      o.angles.forEach((a, i) => out.push(`                <angle${i}>${num(a)}</angle${i}>`));
+      out.push("            </angles>");
+      o.constraints.forEach((c) => {
+        out.push(
+          `            <minimalReserverFactorCalculator classname="${CONSTRAINT_CLASSES[c.kind]}">`,
+        );
+        if (c.kind === "clt") {
+          for (const k of ["n_x", "n_y", "n_xy", "m_x", "m_y", "m_xy"]) {
+            out.push(`                <${k}>${num(c[k] ?? 0)}</${k}>`);
+          }
+          out.push(`                <deltat>${num(c.delta_t ?? 0)}</deltat>`);
+          out.push(`                <deltah>${num(c.delta_h ?? 0)}</deltah>`);
+        } else if (c.kind === "buckling") {
+          for (const k of ["n_x", "n_y", "n_xy"]) {
+            out.push(`                <${k}>${num(c[k] ?? 0)}</${k}>`);
+          }
+          out.push(`                <length>${num(c.length)}</length>`);
+          out.push(`                <width>${num(c.width)}</width>`);
+          out.push(`                <bcx>${BOUNDARY.indexOf(c.bc_x)}</bcx>`);
+          out.push(`                <bcy>${BOUNDARY.indexOf(c.bc_y)}</bcy>`);
+          out.push(`                <m>${c.m}</m>`);
+          out.push(`                <n>${c.n}</n>`);
+          out.push(
+            `                <dmatrixservice>${D_MATRIX[c.d_matrix].java}</dmatrixservice>`,
+          );
+        } else if (c.kind === "deformation") {
+          out.push(`                <length>${num(c.length)}</length>`);
+          out.push(`                <width>${num(c.width)}</width>`);
+          out.push(`                <bcx>${BOUNDARY.indexOf(c.bc_x)}</bcx>`);
+          out.push(`                <bcy>${BOUNDARY.indexOf(c.bc_y)}</bcy>`);
+          out.push(`                <m>${c.m}</m>`);
+          out.push(`                <n>${c.n}</n>`);
+          out.push(
+            `                <dmatrixservice>${D_MATRIX[c.d_matrix].java}</dmatrixservice>`,
+          );
+          out.push(`                <maxDisplacement>${num(c.maxDisplacement)}</maxDisplacement>`);
+          out.push(`                <surfaceLoad_const_full name="q">`);
+          out.push(`                    <force>${num(c.force)}</force>`);
+          out.push("                </surfaceLoad_const_full>");
+        } else {
+          out.push(`                <pressure>${num(c.pressure)}</pressure>`);
+          out.push(`                <radius>${num(c.radius)}</radius>`);
+          out.push(`                <radiustype>${c.radiustype}</radiustype>`);
+        }
+        out.push("            </minimalReserverFactorCalculator>");
+      });
+      out.push("        </optimization>");
+    });
+    out.push("    </optimizations>");
+  }
+
   out.push("    <fibres>");
   FIBRES.forEach((f) => {
     out.push(
@@ -1121,7 +1264,11 @@ function inputJson() {
   }));
 
   return (
-    JSON.stringify({ materials, fibres: FIBRES, matrices: MATRICES, laminates }, null, 2) +
+    JSON.stringify(
+      { materials, fibres: FIBRES, matrices: MATRICES, laminates, optimizations: optimizationsJson() },
+      null,
+      2,
+    ) +
     "\n"
   );
 }
@@ -1150,6 +1297,71 @@ function storedCriterionDisplayNames(c) {
   return names;
 }
 
+/** The optimisations in elamx-core's serde shape. */
+function optimizationsJson() {
+  return OPTIMIZATIONS.map((o) => ({
+    name: o.name,
+    optimizer: o.optimizer,
+    angle_type: o.angletype,
+    input: {
+      angles: o.angles,
+      thickness: o.thickness,
+      material_id: o.material,
+      criterion_id: o.criterion,
+      symmetric: o.symmetric,
+      constraints: o.constraints.map((c) => {
+        if (c.kind === "clt") {
+          return {
+            kind: "clt",
+            // `?? 0` and not a plain spread: a missing component has to land
+            // as a zero, because the Rust side's Deserialize wants every field.
+            loads: loadsJson(
+              loads({
+                n_x: c.n_x ?? 0, n_y: c.n_y ?? 0, n_xy: c.n_xy ?? 0,
+                m_x: c.m_x ?? 0, m_y: c.m_y ?? 0, m_xy: c.m_xy ?? 0,
+              }),
+            ),
+          };
+        }
+        if (c.kind === "buckling") {
+          return {
+            kind: "buckling",
+            input: {
+              length: c.length, width: c.width,
+              n_x: c.n_x ?? 0, n_y: c.n_y ?? 0, n_xy: c.n_xy ?? 0,
+              bc_x: c.bc_x, bc_y: c.bc_y, m: c.m, n: c.n,
+              d_matrix: c.d_matrix, stiffeners: [],
+            },
+          };
+        }
+        if (c.kind === "deformation") {
+          return {
+            kind: "deformation",
+            input: {
+              length: c.length, width: c.width,
+              bc_x: c.bc_x, bc_y: c.bc_y, m: c.m, n: c.n,
+              d_matrix: c.d_matrix,
+              loads: [{ name: "q", kind: "Surface", force: c.force }],
+              stiffeners: [],
+              max_displacement_z: c.maxDisplacement,
+            },
+          };
+        }
+        return {
+          kind: "pressure_vessel",
+          input: {
+            pressure: c.pressure,
+            radius: c.radius,
+            radius_type: { 1: "Inner", 2: "Mean", 4: "Outer" }[c.radiustype],
+          },
+        };
+      }),
+      // Not stored by the format; the reader leaves them at their defaults.
+      max_layers: 200,
+    },
+  }));
+}
+
 writeFileSync(join(HERE, "reference.elamx"), elamxXml());
 writeFileSync(join(HERE, "reference.input.json"), inputJson());
 
@@ -1171,6 +1383,7 @@ console.log(
     `${buckCount} Beulanalysen (davon ${stiffCount} Versteifungen), ` +
     `${vibCount} Schwingungsanalysen, ${springCount} Spring-In-Analysen, ` +
     `${cutoutCount} Ausschnitte, ${defoCount} Verformungsanalysen, ` +
+    `${OPTIMIZATIONS.length} Optimierungen, ` +
     `${lpfCount} Last-Ply-Failure-Analysen, ` +
     `${ALL_CRITERIA.length} Kriterien abgedeckt.`,
 );

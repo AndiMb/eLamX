@@ -8,13 +8,14 @@
 use super::naming;
 use super::{
     NamedBuckling, NamedCalculation, NamedDeformation, NamedLastPlyFailure, NamedPressureVessel,
-    NamedCutout, NamedSpringIn, NamedVibration, Project, ProjectLaminate,
+    NamedCutout, NamedOptimization, NamedSpringIn, NamedVibration, Project, ProjectLaminate,
 };
-use crate::clt::RadiusType;
-use crate::plate::{Stiffener, StiffenerGeometry, TransverseLoad};
+use crate::clt::{Loads, PressureVesselInput, RadiusType};
+use crate::plate::{BucklingInput, DeformationInput, Stiffener, StiffenerGeometry, TransverseLoad};
 use crate::micromechanics::{Fibre, MatrixMaterial};
 use crate::model::{Laminate, Material};
 use crate::cutout::CutoutGeometry;
+use crate::optimization::Constraint;
 use crate::spring_in::SpringInModel;
 
 /// Serialises a project to `.elamx` XML.
@@ -59,6 +60,14 @@ pub fn write_elamx(project: &Project) -> String {
 
     // Sections the reader kept verbatim, in the order the file had them -
     // after `<materials>`, which is where eLamX 3.x writes them.
+    if !project.optimizations.is_empty() {
+        out.push_str("    <optimizations>\n");
+        for optimization in &project.optimizations {
+            write_optimization(optimization, &mut out);
+        }
+        out.push_str("    </optimizations>\n");
+    }
+
     for section in &project.unsupported_sections {
         out.push_str("    ");
         out.push_str(&section.xml);
@@ -135,13 +144,11 @@ fn write_laminate(entry: &ProjectLaminate, out: &mut String) {
     out.push_str("        </laminate>\n");
 }
 
-fn write_calculation(calculation: &NamedCalculation, out: &mut String) {
-    let l = &calculation.loads;
-    let s = &calculation.strains;
-    out.push_str(&format!(
-        "            <calculation name=\"{}\">\n",
-        escape(&calculation.name)
-    ));
+/// The load tags a `<calculation>` carries.
+///
+/// Its own function because the optimisation's CLT constraint carries exactly
+/// the same set - the Java writes both with one `storeInput`.
+fn write_loads(l: &Loads, indent: usize, out: &mut String) {
     for (name, value) in [
         ("n_x", l.n_x),
         ("n_y", l.n_y),
@@ -150,10 +157,20 @@ fn write_calculation(calculation: &NamedCalculation, out: &mut String) {
         ("m_y", l.m_y),
         ("m_xy", l.m_xy),
     ] {
-        tag(out, 16, name, &num(value));
+        tag(out, indent, name, &num(value));
     }
-    tag(out, 16, "deltat", &num(l.delta_t));
-    tag(out, 16, "deltah", &num(l.delta_h));
+    tag(out, indent, "deltat", &num(l.delta_t));
+    tag(out, indent, "deltah", &num(l.delta_h));
+}
+
+fn write_calculation(calculation: &NamedCalculation, out: &mut String) {
+    let l = &calculation.loads;
+    let s = &calculation.strains;
+    out.push_str(&format!(
+        "            <calculation name=\"{}\">\n",
+        escape(&calculation.name)
+    ));
+    write_loads(l, 16, out);
     for (i, use_strain) in calculation.use_strain.iter().enumerate() {
         tag(out, 16, &format!("useStrain{i}"), &use_strain.to_string());
     }
@@ -170,12 +187,8 @@ fn write_calculation(calculation: &NamedCalculation, out: &mut String) {
     out.push_str("            </calculation>\n");
 }
 
-fn write_buckling(buckling: &NamedBuckling, out: &mut String) {
-    let b = &buckling.input;
-    out.push_str(&format!(
-        "            <buckling name=\"{}\">\n",
-        escape(&buckling.name)
-    ));
+/// The tags a `<buckling>` carries, shared with the optimisation constraint.
+fn write_buckling_input(b: &BucklingInput, out: &mut String) {
     tag(out, 16, "n_x", &num(b.n_x));
     tag(out, 16, "n_y", &num(b.n_y));
     tag(out, 16, "n_xy", &num(b.n_xy));
@@ -187,6 +200,14 @@ fn write_buckling(buckling: &NamedBuckling, out: &mut String) {
     tag(out, 16, "n", &b.n.to_string());
     tag(out, 16, "dmatrixservice", naming::d_matrix_to_java(b.d_matrix));
     write_stiffeners(&b.stiffeners, out);
+}
+
+fn write_buckling(buckling: &NamedBuckling, out: &mut String) {
+    out.push_str(&format!(
+        "            <buckling name=\"{}\">\n",
+        escape(&buckling.name)
+    ));
+    write_buckling_input(&buckling.input, out);
     out.push_str("            </buckling>\n");
 }
 
@@ -233,6 +254,81 @@ fn write_vibration(analysis: &NamedVibration, out: &mut String) {
     tag(out, 16, "dmatrixservice", naming::d_matrix_to_java(input.d_matrix));
     write_stiffeners(&input.stiffeners, out);
     out.push_str("            </vibration>\n");
+}
+
+/// `<optimization>`, in eLamX's own tag order.
+///
+/// A constraint carries the whole input of the analysis it constrains, so its
+/// body is written by the very same functions the laminate modules use - which
+/// is the whole reason those were split out. Both sit four levels deep, so the
+/// bodies are taken as they are.
+fn write_optimization(optimization: &NamedOptimization, out: &mut String) {
+    let input = &optimization.input;
+    out.push_str(&format!(
+        "        <optimization name=\"{}\">\n",
+        escape(&optimization.name)
+    ));
+    tag(out, 12, "angletype", &optimization.angle_type.to_string());
+    tag(
+        out,
+        12,
+        "optimizer",
+        naming::optimizer_to_java(&optimization.optimizer)
+            .expect("every optimizer has a Java class name"),
+    );
+    tag(out, 12, "thickness", &num(input.thickness));
+    tag(out, 12, "material", &escape(&input.material_id));
+    tag(
+        out,
+        12,
+        "criterion",
+        naming::criterion_to_java(&input.criterion_id)
+            .expect("every ported criterion has a Java class name"),
+    );
+    tag(out, 12, "symmetriclaminat", &input.symmetric.to_string());
+
+    out.push_str(&format!(
+        "            <angles number=\"{}\">\n",
+        input.angles.len()
+    ));
+    for (i, angle) in input.angles.iter().enumerate() {
+        tag(out, 16, &format!("angle{i}"), &num(*angle));
+    }
+    out.push_str("            </angles>\n");
+
+    for constraint in &input.constraints {
+        let kind = constraint_code(constraint);
+        out.push_str(&format!(
+            "            <minimalReserverFactorCalculator classname=\"{}\">\n",
+            naming::constraint_to_java(kind).expect("every constraint has a Java class name")
+        ));
+        // The misspelling above is the original's. The format is what it is.
+        //
+        // A constraint body is written at the same indentation as the module
+        // it comes from: a laminate's module sits two levels deep and its body
+        // four, and so does an optimisation's constraint body. So the bodies
+        // are reused as they are.
+        let mut body = String::new();
+        match constraint {
+            Constraint::Clt { loads } => write_loads(loads, 16, &mut body),
+            Constraint::Buckling { input } => write_buckling_input(input, &mut body),
+            Constraint::Deformation { input } => write_deformation_input(input, &mut body),
+            Constraint::PressureVessel { input } => write_pressure_vessel_input(input, &mut body),
+        }
+        out.push_str(&body);
+        out.push_str("            </minimalReserverFactorCalculator>\n");
+    }
+
+    out.push_str("        </optimization>\n");
+}
+
+fn constraint_code(constraint: &Constraint) -> &'static str {
+    match constraint {
+        Constraint::Clt { .. } => "clt",
+        Constraint::Buckling { .. } => "buckling",
+        Constraint::Deformation { .. } => "deformation",
+        Constraint::PressureVessel { .. } => "pressure_vessel",
+    }
 }
 
 /// `<cutout>`, in eLamX's own tag order - the loads first, then the sample
@@ -340,12 +436,9 @@ fn write_spring_in(analysis: &NamedSpringIn, out: &mut String) {
 ");
 }
 
-fn write_deformation(analysis: &NamedDeformation, out: &mut String) {
-    let input = &analysis.input;
-    out.push_str(&format!(
-        "            <deformation name=\"{}\">\n",
-        escape(&analysis.name)
-    ));
+/// The tags a `<deformation>` carries, shared with the optimisation
+/// constraint.
+fn write_deformation_input(input: &DeformationInput, out: &mut String) {
     tag(out, 16, "length", &num(input.length));
     tag(out, 16, "width", &num(input.width));
     tag(out, 16, "bcx", &naming::boundary_to_index(input.bc_x).to_string());
@@ -380,15 +473,20 @@ fn write_deformation(analysis: &NamedDeformation, out: &mut String) {
     }
 
     write_stiffeners(&input.stiffeners, out);
+}
+
+fn write_deformation(analysis: &NamedDeformation, out: &mut String) {
+    out.push_str(&format!(
+        "            <deformation name=\"{}\">\n",
+        escape(&analysis.name)
+    ));
+    write_deformation_input(&analysis.input, out);
     out.push_str("            </deformation>\n");
 }
 
-fn write_pressure_vessel(analysis: &NamedPressureVessel, out: &mut String) {
-    let input = &analysis.input;
-    out.push_str(&format!(
-        "            <pressurevessel name=\"{}\">\n",
-        escape(&analysis.name)
-    ));
+/// The tags a `<pressurevessel>` carries, shared with the optimisation
+/// constraint.
+fn write_pressure_vessel_input(input: &PressureVesselInput, out: &mut String) {
     tag(out, 16, "pressure", &num(input.pressure));
     tag(out, 16, "radius", &num(input.radius));
     tag(
@@ -401,6 +499,14 @@ fn write_pressure_vessel(analysis: &NamedPressureVessel, out: &mut String) {
             RadiusType::Outer => "4",
         },
     );
+}
+
+fn write_pressure_vessel(analysis: &NamedPressureVessel, out: &mut String) {
+    out.push_str(&format!(
+        "            <pressurevessel name=\"{}\">\n",
+        escape(&analysis.name)
+    ));
+    write_pressure_vessel_input(&analysis.input, out);
     out.push_str("            </pressurevessel>\n");
 }
 
