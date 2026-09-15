@@ -7,10 +7,11 @@
 //! The 3D failure envelope (`getAsMesh` in the Java original) lives in
 //! `envelope`: the sampling is the criterion's own arithmetic and belongs
 //! here, while turning the sampled grid into pixels is the frontend's job.
-//! The FEA-specific criterion
-//! variants (LS-DYNA/ANSYS/Abaqus/Autodesk modules) and the metal criteria
-//! (von Mises, Tresca) aren't ported yet either; they follow the same pattern.
+//! The FEA-specific criterion variants live beside the ordinary ones, one
+//! module per solver: `abaqus` so far, with LS-DYNA, ANSYS and Autodesk still
+//! to come. They are not refinements - they are what those solvers compute.
 
+mod abaqus;
 mod christensen;
 mod edge;
 mod envelope;
@@ -31,6 +32,9 @@ mod tsai_hill;
 mod tsai_wu;
 mod ztl;
 
+pub use abaqus::{
+    AbaqusAzziTsaiHill, AbaqusTsaiWu, F12_STAR as ABAQUS_F12_STAR, SIG_BIAX as ABAQUS_SIG_BIAX,
+};
 pub use christensen::Christensen;
 pub use edge::Edge;
 pub use envelope::{failure_envelope, FailureEnvelope, DEFAULT_QUALITY};
@@ -106,6 +110,8 @@ pub const MAYES_ID: &str = "mayes";
 pub const ROTEM_ID: &str = "rotem";
 pub const SUN_ID: &str = "sun";
 pub const ZTL_ID: &str = "ztl";
+pub const ABAQUS_TSAI_WU_ID: &str = "abaqus_tsai_wu";
+pub const ABAQUS_AZZI_TSAI_HILL_ID: &str = "abaqus_azzi_tsai_hill";
 pub const VON_MISES_ID: &str = "von_mises";
 pub const TRESCA_ID: &str = "tresca";
 
@@ -127,6 +133,9 @@ pub fn default_criterion_registry() -> CriterionRegistry {
     registry.insert(ROTEM_ID.to_string(), Box::new(Rotem));
     registry.insert(SUN_ID.to_string(), Box::new(Sun));
     registry.insert(ZTL_ID.to_string(), Box::new(Ztl));
+    // What Abaqus computes, for a laminate that is also going into a deck.
+    registry.insert(ABAQUS_TSAI_WU_ID.to_string(), Box::new(AbaqusTsaiWu));
+    registry.insert(ABAQUS_AZZI_TSAI_HILL_ID.to_string(), Box::new(AbaqusAzziTsaiHill));
     // The two isotropic yield criteria, for a metal ply in a hybrid laminate.
     registry.insert(VON_MISES_ID.to_string(), Box::new(VonMises));
     registry.insert(TRESCA_ID.to_string(), Box::new(Tresca));
@@ -145,8 +154,9 @@ pub fn default_criterion_registry() -> CriterionRegistry {
 /// plies on fresh materials and the original therefore evaluates them with
 /// exactly these values (see `clt::last_ply_failure`).
 ///
-/// Reference: eLamX2/Laminate/src/de/elamx/laminate/layer.xml and
-/// eLamX2/AdditionalFailureCriteria/src/de/elamx/laminate/addFailureCriteria/layer.xml.
+/// Reference: eLamX2/Laminate/src/de/elamx/laminate/layer.xml,
+/// eLamX2/AdditionalFailureCriteria/src/de/elamx/laminate/addFailureCriteria/layer.xml
+/// and eLamX2/AdditionalAbaqusFailureCriteria/src/de/elamx/laminate/addFailureCriteriaAbaqus/layer.xml.
 pub const DEFAULT_ADDITIONAL_VALUES: &[(&str, f64)] = &[
     (PSPD, 0.3),
     (PSPZ, 0.35),
@@ -161,6 +171,10 @@ pub const DEFAULT_ADDITIONAL_VALUES: &[(&str, f64)] = &[
     (GLOBAL_LOCAL, 0.3),
     (FMC_M, 3.1),
     (FMC_MUE_SP, 0.15),
+    (ABAQUS_F12_STAR, -0.5),
+    // Zero, and that means "no equibiaxial strength measured" rather than a
+    // strength of nothing - see `abaqus::SIG_BIAX`.
+    (ABAQUS_SIG_BIAX, 0.0),
 ];
 
 /// [`DEFAULT_ADDITIONAL_VALUES`] as the map a [`Material`] carries.

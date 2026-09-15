@@ -94,9 +94,27 @@
             </layer>
             <layer name="Lage 16" uuid="00000000-0000-4000-8000-00000000015b">
                 <thickness>0.125</thickness>
+                <angle>35.0</angle>
+                <material>m-cfk</material>
+                <criterion>de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu</criterion>
+            </layer>
+            <layer name="Lage 17" uuid="00000000-0000-4000-8000-00000000016b">
+                <thickness>0.125</thickness>
+                <angle>-35.0</angle>
+                <material>m-cfk</material>
+                <criterion>de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusAzziTsaiHill</criterion>
+            </layer>
+            <layer name="Lage 18" uuid="00000000-0000-4000-8000-00000000017b">
+                <thickness>0.125</thickness>
                 <angle>-10.0</angle>
                 <material>m-gfk</material>
                 <criterion>de.elamx.laminate.addFailureCriteria.MaxStrain</criterion>
+            </layer>
+            <layer name="Lage 19" uuid="00000000-0000-4000-8000-00000000018b">
+                <thickness>0.125</thickness>
+                <angle>25.0</angle>
+                <material>m-gfk</material>
+                <criterion>de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu</criterion>
             </layer>
             <calculation name="GM-Krit-Zug">
                 <n_x>400.0</n_x>
@@ -1224,6 +1242,8 @@
             <de.elamx.laminate.addFailureCriteria.MaxStrain.global_lokal>0.3</de.elamx.laminate.addFailureCriteria.MaxStrain.global_lokal>
             <de.elamx.laminate.addFailureCriteria.FMC.m>3.1</de.elamx.laminate.addFailureCriteria.FMC.m>
             <de.elamx.laminate.addFailureCriteria.FMC.muesp>0.15</de.elamx.laminate.addFailureCriteria.FMC.muesp>
+            <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>-0.4</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>
+            <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>0.0</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>
         </material>
         <material class="de.elamx.laminate.DefaultMaterial" name="GM-GFK-UD" uuid="m-gfk">
             <Epar>45000.0</Epar>
@@ -1254,6 +1274,8 @@
             <de.elamx.laminate.addFailureCriteria.MaxStrain.global_lokal>1.0</de.elamx.laminate.addFailureCriteria.MaxStrain.global_lokal>
             <de.elamx.laminate.addFailureCriteria.FMC.m>3.1</de.elamx.laminate.addFailureCriteria.FMC.m>
             <de.elamx.laminate.addFailureCriteria.FMC.muesp>0.15</de.elamx.laminate.addFailureCriteria.FMC.muesp>
+            <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>-0.4</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>
+            <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>35.0</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>
         </material>
         <material class="de.elamx.laminate.DefaultMaterial" name="GM-Alu" uuid="m-alu">
             <Epar>70000.0</Epar>
@@ -1284,6 +1306,8 @@
             <de.elamx.laminate.addFailureCriteria.MaxStrain.global_lokal>0.0</de.elamx.laminate.addFailureCriteria.MaxStrain.global_lokal>
             <de.elamx.laminate.addFailureCriteria.FMC.m>3.1</de.elamx.laminate.addFailureCriteria.FMC.m>
             <de.elamx.laminate.addFailureCriteria.FMC.muesp>0.15</de.elamx.laminate.addFailureCriteria.FMC.muesp>
+            <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>-0.4</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>
+            <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>0.0</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>
         </material>
         <material class="de.elamx.micromechanics.MicroMechanicMaterial" name="GM-MM-Mischungsregel" uuid="mm-rom">
             <fibre>f-carbon</fibre>

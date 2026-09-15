@@ -23,6 +23,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 // comparing against the wrong criterion without noticing.
 const ADD = "de.elamx.laminate.addFailureCriteria.";
 const METAL = "de.elamx.laminate.addFailureCriteriaMetal.";
+const ABAQUS = "de.elamx.laminate.addFailureCriteriaAbaqus.";
 const CRITERIA = {
   max_stress:    { java: ADD + "MaxStress",    display: "maximum Stress" },
   max_strain:    { java: ADD + "MaxStrain",    display: "maximum Strain" },
@@ -39,6 +40,10 @@ const CRITERIA = {
   rotem:         { java: ADD + "Rotem",        display: "Rotem" },
   sun:           { java: ADD + "Sun",          display: "Sun" },
   ztl:           { java: ADD + "ZTL",          display: "ZTL" },
+  // What Abaqus computes under the same two names, which is not the same
+  // arithmetic - the whole point of having them twice.
+  abaqus_tsai_wu:       { java: ABAQUS + "AbaqusTsaiWu",       display: "TsaiWu (Abaqus)" },
+  abaqus_azzi_tsai_hill:{ java: ABAQUS + "AbaqusAzziTsaiHill", display: "Azzi-Tsai-Hill (Abaqus)" },
   // The two isotropic yield criteria live in their own module, hence the
   // different package. They are only meaningful on an isotropic material, and
   // eLamX pops a MODAL DIALOG when they meet anything else - which in a batch
@@ -58,7 +63,7 @@ const COMPOSITE_CRITERIA = ALL_CRITERIA.filter((c) => !METAL_CRITERIA.includes(c
 // `extra` maps elamx-core's additional-value key -> [Java .elamx tag, value].
 // The two materials deliberately differ in MaxStrain's global/local flag so
 // both branches of that criterion get exercised (Java: `globalLokal > 0.5`).
-function material(id, name, props, globalLokal) {
+function material(id, name, props, globalLokal, sigBiax = 0.0) {
   return {
     id,
     name,
@@ -76,6 +81,11 @@ function material(id, name, props, globalLokal) {
       "max_strain.global_local": [ADD + "MaxStrain.global_lokal", globalLokal],
       "fmc.m":                 [ADD + "FMC.m", 3.1],
       "fmc.mue_sp":            [ADD + "FMC.muesp", 0.15],
+      // Abaqus's Tsai-Wu takes the interaction term from F12* when no
+      // equibiaxial strength is given and from the strength when one is, so
+      // the second material carries one and the first does not.
+      "abaqus_tsai_wu.f12_star": [ABAQUS + "AbaqusTsaiWu.f12star", -0.4],
+      "abaqus_tsai_wu.sig_biax": [ABAQUS + "AbaqusTsaiWu.sigbiax", sigBiax],
     },
   };
 }
@@ -92,7 +102,7 @@ const MATERIALS = [
     rho: 2.0e-9,
     alpha_t_par: 6.0e-6, alpha_t_nor: 2.8e-5, beta_par: 0.005, beta_nor: 0.30,
     r_par_ten: 1100.0, r_par_com: 700.0, r_nor_ten: 40.0, r_nor_com: 130.0, r_shear: 60.0,
-  }, 1.0),
+  }, 1.0, 35.0),
   // Aluminium, for the two isotropic criteria. Every number is chosen so the
   // original's isotropy test passes EXACTLY: the four strengths are equal, the
   // two moduli are equal, and G is exactly E / (2 (1 + nu)) with nu = 0.25,
@@ -382,12 +392,16 @@ const strains = (o = {}) => ({
 const NO_STRAIN = [false, false, false, false, false, false];
 
 // One layer per criterion, at a spread of angles so each criterion sees a
-// different local stress state. The last layer repeats MaxStrain on the second
-// material to reach its `global` branch.
-const CRITERION_ANGLES = [0, 15, 30, 45, 60, 75, 90, -15, -30, -45, -60, -75, 20, -20, 10];
+// different local stress state. The last two layers repeat a criterion on the
+// second material to reach a branch the first cannot: MaxStrain's `global`
+// one, and Abaqus's Tsai-Wu with an equibiaxial strength measured.
+const CRITERION_ANGLES = [
+  0, 15, 30, 45, 60, 75, 90, -15, -30, -45, -60, -75, 20, -20, 10, 35, -35,
+];
 const criterionLayers = [
   ...COMPOSITE_CRITERIA.map((c, i) => layer(CRITERION_ANGLES[i], 0.125, "m-cfk", c)),
   layer(-10, 0.125, "m-gfk", "max_strain"),
+  layer(25, 0.125, "m-gfk", "abaqus_tsai_wu"),
 ];
 
 // One saved search per optimiser, so every Java class name in the section gets

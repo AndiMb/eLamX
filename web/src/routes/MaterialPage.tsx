@@ -9,6 +9,7 @@ import {
   PUCK_KEYS,
   FMC_KEYS,
   ZTL_KEYS,
+  ABAQUS_TSAI_WU_KEYS,
   type MaterialDto,
 } from "../lib/types";
 import { Quantity } from "../components/Quantity";
@@ -339,6 +340,33 @@ export function MaterialPage() {
               <SafeNumberInput
                 value={material.additional_values[ZTL_KEYS.f12Star] ?? 0}
                 onChange={(v) => updateAdditionalValue(ZTL_KEYS.f12Star, v)}
+              />
+            </label>
+          </div>
+        </details>
+
+        <details className="criterion-params">
+          <summary>{t("criterion.abaqus_tsai_wu")}</summary>
+          <div className="field-grid">
+            <label>
+              <span className="field-label">
+                F<sub>12</sub>
+                <sup>*</sup>
+              </span>
+              <SafeNumberInput
+                value={material.additional_values[ABAQUS_TSAI_WU_KEYS.f12Star] ?? 0}
+                onChange={(v) => updateAdditionalValue(ABAQUS_TSAI_WU_KEYS.f12Star, v)}
+              />
+            </label>
+            {/* Zero means no equibiaxial strength was measured, and then the
+                F12* above decides the interaction term instead. */}
+            <label>
+              <span className="field-label">
+                &sigma;<sub>biax</sub>
+              </span>
+              <SafeNumberInput
+                value={material.additional_values[ABAQUS_TSAI_WU_KEYS.sigBiax] ?? 0}
+                onChange={(v) => updateAdditionalValue(ABAQUS_TSAI_WU_KEYS.sigBiax, v)}
               />
             </label>
           </div>

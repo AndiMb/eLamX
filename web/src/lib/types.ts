@@ -152,6 +152,11 @@ export const CRITERIA = [
   { id: "rotem", labelKey: "criterion.rotem" },
   { id: "sun", labelKey: "criterion.sun" },
   { id: "ztl", labelKey: "criterion.ztl" },
+  // What Abaqus computes under two of the same names. Kept next to each other
+  // and after the ordinary ones, because picking one of these is a decision
+  // about matching a solver, not about mechanics.
+  { id: "abaqus_tsai_wu", labelKey: "criterion.abaqus_tsai_wu" },
+  { id: "abaqus_azzi_tsai_hill", labelKey: "criterion.abaqus_azzi_tsai_hill" },
   // The two isotropic yield criteria. Last in the list because they belong to
   // a metal ply, which most laminates here do not have.
   { id: "von_mises", labelKey: "criterion.von_mises" },
@@ -217,6 +222,13 @@ export const ZTL_KEYS = {
   f12Star: "ztl.f12_star",
 } as const;
 
+export const ABAQUS_TSAI_WU_KEYS = {
+  f12Star: "abaqus_tsai_wu.f12_star",
+  /** The equibiaxial strength. Zero means none was measured, and then F12* is
+   *  used instead - so zero is not "a strength of nothing" here. */
+  sigBiax: "abaqus_tsai_wu.sig_biax",
+} as const;
+
 // Sensible starting values for every criterion's additional parameters, so a
 // newly created material works with any criterion the user picks without
 // first hitting a "missing additional value" error - the Rust core requires
@@ -235,6 +247,8 @@ export const DEFAULT_ADDITIONAL_VALUES: Record<string, number> = {
   [FMC_KEYS.mueSp]: 0.3,
   [FMC_KEYS.m]: 1.5,
   [ZTL_KEYS.f12Star]: -0.5,
+  [ABAQUS_TSAI_WU_KEYS.f12Star]: -0.5,
+  [ABAQUS_TSAI_WU_KEYS.sigBiax]: 0,
 };
 
 export const emptyLoads = (): LoadsDto => ({
