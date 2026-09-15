@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { FolderOpen, Save } from "lucide-react";
 import { downloadProject, exportProject, importProject } from "../lib/projectFile";
+import type { ProjectFormat } from "../lib/projectFile";
 import { desktop, type DesktopProject } from "../lib/desktop";
 import {
   loadProjectAtom,
@@ -12,6 +13,17 @@ import {
 import { useLocale, useT } from "../i18n";
 
 // Opening and saving `.elamx` files, in the top bar's reserved file slot.
+//
+// `.elamxb` opens too, and only opens: it is the batch mode's INPUT shorthand,
+// the original has no writer for it either, and a project saved from here is a
+// project rather than the question that produced it.
+
+/** Which reader a file needs, by its name. The extension is the whole signal -
+ *  both formats are `<elamx>` documents, and the original's batch mode asks for
+ *  the reduced one with a switch rather than by looking. */
+function formatOf(name: string): ProjectFormat {
+  return /\.elamxb$/i.test(name) ? "reduced" : "project";
+}
 //
 // Two paths, one set of buttons. In a browser it is a hidden <input
 // type="file"> driven by a real button, rather than the File System Access
@@ -51,7 +63,7 @@ export function ProjectActions() {
       setBusy(true);
       setError(null);
       try {
-        loadProject(await importProject(project.xml));
+        loadProject(await importProject(project.xml, formatOf(project.name)));
         setProjectName(project.name);
         setFilePath(project.filePath ?? null);
       } catch (e) {
@@ -64,7 +76,7 @@ export function ProjectActions() {
   );
 
   const openFromBrowser = async (file: File) =>
-    load({ xml: await file.text(), name: file.name.replace(/\.elamx$/i, "") });
+    load({ xml: await file.text(), name: file.name.replace(/\.elamxb?$/i, "") });
 
   const open = useCallback(async () => {
     if (!shell) {
@@ -141,7 +153,7 @@ export function ProjectActions() {
           ref={fileInput}
           type="file"
           aria-label={t("topbar.open")}
-          accept=".elamx,application/xml,text/xml"
+          accept=".elamx,.elamxb,application/xml,text/xml"
           hidden
           onChange={(e) => {
             const file = e.target.files?.[0];

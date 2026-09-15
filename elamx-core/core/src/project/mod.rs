@@ -22,9 +22,11 @@
 
 pub mod naming;
 mod read;
+mod reduced;
 mod write;
 
 pub use read::{read_elamx, ReadError};
+pub use reduced::read_elamxb;
 pub use write::write_elamx;
 
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, Strains};

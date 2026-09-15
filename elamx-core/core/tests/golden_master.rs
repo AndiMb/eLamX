@@ -28,6 +28,7 @@ use elamx_core::failure::{default_criterion_registry, FailureType};
 use elamx_core::micromechanics::{Fibre, MatrixMaterial};
 use elamx_core::model::{Laminate, Material};
 use elamx_core::plate::{calculate_buckling, BoundaryCondition, BucklingInput, DMatrixKind};
+use elamx_core::project::read_elamxb;
 use elamx_core::spring_in::{calculate as calculate_spring_in, SpringInInput, SpringInModel};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -1380,6 +1381,225 @@ fn bc_short(debug_name: &str) -> String {
 
 /// The reference data must actually exercise what it claims to: every ported
 /// criterion at least once, and all the structural variants.
+/// The reduced input file, read here and by the original, and computed by both.
+///
+/// A different kind of golden test from the others: they take one definition
+/// into two forms and compare the results, whereas this takes ONE FILE - the
+/// original's own example, not written for this suite - and compares what each
+/// program made of it. So it checks the reader as much as the arithmetic, and
+/// the reader is where this format's substance lies: a load case written once
+/// and referred to by name, a layer inheriting its thickness from its material,
+/// a material carrying degraded moduli that a second laminate is built from,
+/// and an unsymmetric stack silently getting a second buckling analysis.
+///
+/// The batch needs `--reducedinput` alongside `--input` for this file; see
+/// `tests/golden/README.md`.
+#[test]
+fn the_reduced_input_file_is_read_the_way_the_original_reads_it() {
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/golden");
+    let xml = std::fs::read_to_string(format!("{dir}/reduced.elamxb"))
+        .expect("reduced.elamxb fehlt - siehe tests/golden/README.md");
+    let project = read_elamxb(&xml).expect("reduced.elamxb muss lesbar sein");
+    let text = std::fs::read_to_string(format!("{dir}/reduced.txt"))
+        .expect("reduced.txt fehlt - siehe tests/golden/README.md");
+    let (expected_laminates, expected_calculations, expected_bucklings, expected_lpf) =
+        parse_reference(&text);
+
+    let materials: HashMap<String, Material> = project
+        .materials
+        .iter()
+        .map(|m| (m.id.clone(), m.clone()))
+        .collect();
+    let criteria = default_criterion_registry();
+    let mut report = Report::default();
+
+    // Both programs built the same set of laminates from the file - which is
+    // the claim about the degraded twin, since "... Buckling" is not in the
+    // file at all: the reader invents it.
+    let mut names: Vec<&str> = project.laminates.iter().map(|l| l.laminate.name.as_str()).collect();
+    names.sort_unstable();
+    let mut expected_names: Vec<&str> = expected_laminates.iter().map(|l| l.name.as_str()).collect();
+    expected_names.sort_unstable();
+    report.eq("Laminate", names, expected_names);
+
+    for case in &project.laminates {
+        let name = &case.laminate.name;
+        let expected = expected_laminate(&expected_laminates, name);
+        let clt = CltLaminate::new(&case.laminate, &materials)
+            .unwrap_or_else(|e| panic!("{name}: {e:?}"));
+
+        report.eq(format!("{name}/Lagenzahl"), clt.layers().len(), expected.number_of_layers);
+        report.close(
+            format!("{name}/Gesamtdicke"),
+            clt.tges(),
+            expected.total_thickness,
+            tolerances::ONE_DECIMAL,
+            0.0,
+        );
+        report.eq(format!("{name}/symmetrisch"), clt.is_symmetric(), expected.symmetric);
+        // The STORED layers, which is what the batch prints: a symmetric
+        // laminate lists its half.
+        let stacking: Vec<(f64, f64)> = case
+            .laminate
+            .layers
+            .iter()
+            .map(|l| (l.thickness, l.angle()))
+            .collect();
+        report.eq(format!("{name}/Lagenaufbau"), stacking, expected.stacking.clone());
+        // The ABD matrix, which is where a wrongly resolved material would show
+        // up even if the stacking looked right.
+        let abd: Vec<f64> = clt.abd_matrix().iter().flatten().copied().collect();
+        report.close_group(&format!("{name}/ABD"), &abd, &expected.abd, tolerances::ONE_DECIMAL);
+
+        for analysis in &case.calculations {
+            let label = format!("{name}/{}", analysis.name);
+            let expected = expected_calculation(&expected_calculations, &analysis.name);
+            let mut loads = analysis.loads;
+            let mut strains = analysis.strains;
+            determine_values(&clt, &mut loads, &mut strains, &analysis.use_strain);
+            report.close_group(
+                &format!("{label}/Lasten"),
+                &loads.force_moment_vector(),
+                &expected.loads,
+                tolerances::ELEVEN_DIGITS,
+            );
+            report.close_group(
+                &format!("{label}/Verzerrungen"),
+                &strains.epsilon_kappa_vector(),
+                &expected.strains,
+                tolerances::ELEVEN_DIGITS,
+            );
+            // The ply results too: a load that reached the laminate correctly
+            // can still be shared out wrongly.
+            let layers = get_layer_results(&clt, &loads, &strains, &materials, &criteria)
+                .unwrap_or_else(|e| panic!("{label}: {e:?}"));
+            report.eq(format!("{label}/Lagenergebnisse"), layers.len(), expected.layers.len());
+            for (i, (layer, expected_layer)) in layers.iter().zip(&expected.layers).enumerate() {
+                // The three local stresses on the upper surface, which is where
+                // a ply whose thickness was inherited from its material would
+                // show up: the z-coordinates would be wrong and with them the
+                // bending share of every stress.
+                // A floor of a millipascal: a balanced stack under a pure
+                // in-plane load has layer stresses that are exactly zero in
+                // theory and 1e-14 in both programs, and comparing two kinds of
+                // rounding noise relative to each other says nothing.
+                for (k, (actual, expected_value)) in layer
+                    .sss_upper
+                    .stress
+                    .iter()
+                    .zip(&expected_layer.upper[0..3])
+                    .enumerate()
+                {
+                    report.close(
+                        format!("{label}/Lage {}/Spannung oben[{k}]", i + 1),
+                        *actual,
+                        *expected_value,
+                        1e-3,
+                        tolerances::SIX_DIGITS,
+                    );
+                }
+            }
+        }
+
+        for analysis in &case.bucklings {
+            let label = format!("{name}/{}", analysis.name);
+            let expected = expected_buckling(&expected_bucklings, &analysis.name);
+            // The analysis sits on the laminate the original put it on, which
+            // for a degraded material is NOT the one it was written under.
+            report.eq(format!("{label}/Laminat"), name.as_str(), expected.laminate_name.as_str());
+            report.eq(format!("{label}/m"), analysis.input.m, expected.m);
+            report.eq(format!("{label}/n"), analysis.input.n, expected.n);
+            report.eq(
+                format!("{label}/Randbedingungen"),
+                [format!("{:?}", analysis.input.bc_x), format!("{:?}", analysis.input.bc_y)]
+                    .map(|s| bc_short(&s)),
+                expected.bc.clone(),
+            );
+            report.close(format!("{label}/Laenge"), analysis.input.length, expected.length, 0.0, tolerances::ELEVEN_DIGITS);
+            report.close(format!("{label}/Breite"), analysis.input.width, expected.width, 0.0, tolerances::ELEVEN_DIGITS);
+            let result = calculate_buckling(&clt, &analysis.input)
+                .unwrap_or_else(|e| panic!("{label}: {e:?}"));
+            let eigenvalues: Vec<f64> = result.modes.iter().map(|m| m.eigenvalue).collect();
+            report.eq(format!("{label}/Eigenwertanzahl"), eigenvalues.len(), expected.eigenvalues.len());
+            if eigenvalues.len() == expected.eigenvalues.len() {
+                report.close_group(
+                    &format!("{label}/Eigenwerte"),
+                    &eigenvalues,
+                    &expected.eigenvalues,
+                    tolerances::ELEVEN_DIGITS,
+                );
+            }
+        }
+
+        for analysis in &case.last_ply_failures {
+            let label = format!("{name}/{}", analysis.name);
+            let expected = expected_lpf
+                .iter()
+                .find(|l| l.name == analysis.name)
+                .unwrap_or_else(|| panic!("{label} nicht in reduced.txt"));
+            // The four inputs this format assembles from two places: the load
+            // from the named case, the rest from the element itself - and j_a,
+            // which is the load case's ultimate-load factor and nothing else.
+            report.close_group(
+                &format!("{label}/Lasten"),
+                &analysis.input.loads.force_moment_vector(),
+                &expected.loads,
+                tolerances::ELEVEN_DIGITS,
+            );
+            report.close(format!("{label}/j_a"), analysis.input.j_a, expected.j_a, 0.0, tolerances::ELEVEN_DIGITS);
+            report.close(
+                format!("{label}/Degradationsfaktor"),
+                analysis.input.degradation_factor,
+                expected.degradation_factor,
+                0.0,
+                tolerances::ELEVEN_DIGITS,
+            );
+            report.close(
+                format!("{label}/epsilon_crit"),
+                analysis.input.epsilon_crit,
+                expected.epsilon_crit,
+                0.0,
+                tolerances::ELEVEN_DIGITS,
+            );
+            report.eq(
+                format!("{label}/alle_bei_Faserbruch"),
+                analysis.input.degrade_all_on_fibre_failure,
+                expected.degrade_all_on_fibre_failure,
+            );
+
+            let result =
+                calculate_last_ply_failure(&case.laminate, &materials, &criteria, &analysis.input)
+                    .unwrap_or_else(|e| panic!("{label}: {e}"));
+            // The batch prints every iteration but the last: the final one is
+            // the laminate after the last ply failed, which has nothing left to
+            // report. The other golden test counts them the same way.
+            report.eq(
+                format!("{label}/Iterationen"),
+                result.iterations.len().saturating_sub(1),
+                expected.iterations.len(),
+            );
+            for (i, (iteration, expected_iteration)) in
+                result.iterations.iter().zip(&expected.iterations).enumerate()
+            {
+                report.close(
+                    format!("{label}/Iteration {}/RF", i + 1),
+                    iteration.reserve_factor,
+                    expected_iteration.reserve_factor,
+                    0.0,
+                    tolerances::SIX_DIGITS,
+                );
+                report.eq(
+                    format!("{label}/Iteration {}/versagende Lage", i + 1),
+                    iteration.layer_number,
+                    expected_iteration.layer_of_failure,
+                );
+            }
+        }
+    }
+
+    report.finish("Reduzierte Eingabedatei");
+}
+
 #[test]
 fn reference_data_covers_every_ported_criterion() {
     let (input, _, _, _, _) = load();

@@ -27,6 +27,7 @@ const ENTRY_POINTS = [
   "compute_pressure_vessel",
   "resolve_micromechanics",
   "import_elamx",
+  "import_elamxb",
   "export_elamx",
   "export_solver_deck",
   "compute_carpet_plot",

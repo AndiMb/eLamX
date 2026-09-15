@@ -15,6 +15,8 @@ and would stay green even if a formula were mistranscribed.
 | `reference.elamx` | inputs, in the original's own project format | `generate.mjs` |
 | `reference.input.json` | the *same* inputs in `elamx-core`'s serde shape | `generate.mjs` |
 | `reference.txt` | **the expected values** | eLamX batch mode |
+| `reduced.elamxb` | the original's OWN example of the reduced input format | copied from `eLamX2/Example_Files/` |
+| `reduced.txt` | **the expected values for it** | eLamX batch mode |
 
 Both input files come from one `CASES` definition, so the Java run and the Rust
 test cannot drift apart on the inputs; only `reference.txt` carries expectations.
@@ -38,6 +40,18 @@ node generate.mjs
 # 3. Confirm the port still agrees.
 cd ../../.. && cargo test --test golden_master
 ```
+
+`reduced.txt` is regenerated separately, and only if `reduced.elamxb` changes.
+Note the extra switch: without `--reducedinput` the batch tries to read the file
+as an ordinary project, fails, and writes a header with nothing under it.
+
+```sh
+cd elamx-core/core/tests/golden
+"<eLamX>/bin/elamx64.exe" --locale en --userdir /tmp/elamx-batch --reducedinput     --input="$(pwd)/reduced.elamxb"     --output="$(pwd)/reduced.txt"
+```
+
+The file is the original's own example rather than one written for this suite,
+which is the point: it is the one golden case whose INPUT nobody here chose.
 
 Three details about step 2 that will otherwise cost time:
 

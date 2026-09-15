@@ -18,7 +18,7 @@ use elamx_core::failure::{
 use elamx_core::mathtools;
 use elamx_core::micromechanics::{self, Fibre, MatrixMaterial};
 use elamx_core::model::{Laminate, Material};
-use elamx_core::project::{read_elamx, write_elamx, Project};
+use elamx_core::project::{read_elamx, read_elamxb, write_elamx, Project};
 use elamx_core::carpet::{carpet_plot, CarpetValue};
 use elamx_core::cutout::{calculate as calculate_cutout, CutoutInput};
 use elamx_core::export::{export as export_deck, ExportOptions, ExportTarget};
@@ -994,6 +994,22 @@ fn compute_carpet_plot_impl(request_json: &str) -> Result<String, String> {
     serde_json::to_string(&plot).map_err(|e| e.to_string())
 }
 
+/// Reads a `.elamxb`, the reduced input file the batch mode takes.
+///
+/// A separate entry point rather than a sniffed format, because that is how the
+/// original decides too: its batch mode takes a `--reducedinput` switch. Two
+/// files with the same root element and different meanings should not be told
+/// apart by guessing.
+#[wasm_bindgen]
+pub fn import_elamxb(xml: &str) -> Result<String, JsValue> {
+    import_elamxb_impl(xml).map_err(|e| JsValue::from_str(&e))
+}
+
+fn import_elamxb_impl(xml: &str) -> Result<String, String> {
+    let project = read_elamxb(xml).map_err(|e| e.to_string())?;
+    serde_json::to_string(&project).map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1683,6 +1699,47 @@ mod tests {
         assert_eq!(plot["curves"].as_array().unwrap().len(), 11);
         assert_eq!(plot["curves"][10]["without_90"], true);
         assert!(compute_carpet_plot_impl("not json").is_err());
+    }
+
+    /// The reduced format, through the same boundary: a laminate whose layers
+    /// take their thickness from the material, and a load case referred to by
+    /// name from the calculation.
+    #[test]
+    fn import_elamxb_reads_the_reduced_format() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<elamx version="1">
+  <materials>
+    <material name="UD">
+      <Epar>141000.0</Epar><Enor>9340.0</Enor><nue12>0.35</nue12><G>4500.0</G>
+      <rho>1.7E-9</rho><thickness>0.125</thickness>
+      <criterion>de.elamx.laminate.failure.Puck</criterion>
+    </material>
+  </materials>
+  <laminates>
+    <laminate name="L" offset="0.0" symmetric="false" with_middle_layer="false" invert_z="false">
+      <layer name="1"><angle>0.0</angle><material>UD</material></layer>
+      <layer name="2"><angle>90.0</angle><material>UD</material></layer>
+      <loadcase name="LC"><n_x>100.0</n_x><ul_factor>1.5</ul_factor></loadcase>
+      <calculation name="C"><loadcase>LC</loadcase></calculation>
+      <lastplyfailure name="LPF" degrade_all_on_fibre_failure="true">
+        <loadcase>LC</loadcase><degradationFactor>1.0E-6</degradationFactor>
+        <epsilon_crit>0.003</epsilon_crit>
+      </lastplyfailure>
+    </laminate>
+  </laminates>
+</elamx>"#;
+        let json = import_elamxb_impl(xml).expect("reduzierte Eingabe");
+        let project: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let laminate = &project["laminates"][0];
+        assert_eq!(laminate["laminate"]["layers"][0]["thickness"], 0.125);
+        assert_eq!(laminate["laminate"]["layers"][0]["criterion_id"], "puck");
+        assert_eq!(laminate["calculations"][0]["loads"]["n_x"], 100.0);
+        assert_eq!(laminate["last_ply_failures"][0]["input"]["j_a"], 1.5);
+        assert_eq!(
+            laminate["last_ply_failures"][0]["input"]["degrade_all_on_fibre_failure"],
+            true
+        );
+        assert!(import_elamxb_impl("<nope").is_err());
     }
 
     #[test]

@@ -177,10 +177,24 @@ function asCriterionId(value: string | null): CriterionId {
   return value && KNOWN_CRITERIA.has(value) ? (value as CriterionId) : DEFAULT_CRITERION_ID;
 }
 
-/** Parses `.elamx` XML into the app's state. Throws with the core's own
- *  message (which names the offending element) if the file cannot be read. */
-export async function importProject(xml: string): Promise<ProjectSnapshot> {
-  const project: ProjectDto = JSON.parse(await elamx.import_elamx(xml));
+/** Which of the two input formats a file is.
+ *
+ *  `reduced` is `.elamxb`, the shorthand the batch mode takes: the same root
+ *  element, a different document. Chosen by the caller from the file name
+ *  rather than sniffed, which is how the original decides too - its batch mode
+ *  has a `--reducedinput` switch. */
+export type ProjectFormat = "project" | "reduced";
+
+/** Parses `.elamx` (or `.elamxb`) XML into the app's state. Throws with the
+ *  core's own message (which names the offending element) if the file cannot be
+ *  read. */
+export async function importProject(
+  xml: string,
+  format: ProjectFormat = "project",
+): Promise<ProjectSnapshot> {
+  const project: ProjectDto = JSON.parse(
+    format === "reduced" ? await elamx.import_elamxb(xml) : await elamx.import_elamx(xml),
+  );
 
   const bucklings: Record<string, BucklingInputDto> = {};
   const lastPlyFailures: Record<string, LastPlyFailureInputDto> = {};

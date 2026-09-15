@@ -134,6 +134,7 @@ export const elamx = {
   compute_pressure_vessel: (request: string) => call("compute_pressure_vessel", [request]),
   resolve_micromechanics: (request: string) => call("resolve_micromechanics", [request]),
   import_elamx: (xml: string) => call("import_elamx", [xml]),
+  import_elamxb: (xml: string) => call("import_elamxb", [xml]),
   export_elamx: (project: string) => call("export_elamx", [project]),
   compute_carpet_plot: (request: string) => call("compute_carpet_plot", [request]),
   /** Returns the deck as TEXT, not JSON - it is what the solver reads. */
