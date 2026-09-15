@@ -11,6 +11,7 @@ use elamx_core::clt::RadiusType;
 use elamx_core::plate::Stiffener;
 use elamx_core::project::{read_elamx, write_elamx, Project, ReadError};
 use elamx_core::cutout::CutoutInput;
+use elamx_core::plate::DeformationInput;
 use elamx_core::spring_in::SpringInInput;
 use serde_json::Value;
 
@@ -246,6 +247,30 @@ fn reads_the_reference_file_as_the_generator_wrote_it() {
             assert_eq!(analysis.input, expected, "{}: Eingabe", analysis.name);
         }
 
+        // Deformation, and with it `maxDisplacement` - an allowable the
+        // analysis never reads and the optimiser does, so nothing would have
+        // noticed it going missing.
+        let expected_deformations = e["deformations"].as_array().unwrap();
+        assert_eq!(
+            entry.deformations.len(),
+            expected_deformations.len(),
+            "{}: Verformungsanalysen",
+            lam.name
+        );
+        for (analysis, ed) in entry.deformations.iter().zip(expected_deformations) {
+            assert_eq!(analysis.name, ed["name"].as_str().unwrap());
+            let expected: DeformationInput =
+                serde_json::from_value(ed["input"].clone()).expect("Verformungs-Eingabe");
+            assert_eq!(
+                analysis.input.max_displacement_z, expected.max_displacement_z,
+                "{}: zulaessige Durchbiegung",
+                analysis.name
+            );
+            assert_eq!(analysis.input.loads.len(), expected.loads.len(), "{}: Lasten", analysis.name);
+            assert_eq!(analysis.input.m, expected.m);
+            assert_eq!(analysis.input.n, expected.n);
+        }
+
         // Cutouts carry a nested element with a Java class name and property
         // names of their own - `A`, `B` and the German `Terme` - so all four
         // shapes are in the reference file and all four come back here.
@@ -345,6 +370,10 @@ fn written_file_uses_the_original_element_names() {
         "<buckling name=",
         "<dmatrixservice>de.elamx.clt.plate.dmatrix.DtildeDMatrixServiceImpl</dmatrixservice>",
         "<vibration name=",
+        "<deformation name=",
+        "<maxDisplacement>",
+        "<surfaceLoad_const_full name=",
+        "<pointload name=",
         "<cutout name=",
         "<n_xx>",
         "<val>",

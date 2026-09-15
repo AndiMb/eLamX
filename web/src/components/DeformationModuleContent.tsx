@@ -331,6 +331,21 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
           </div>
           <p className="hint">{t("buckling.terms.hint", { max: MAX_RITZ_TERMS })}</p>
 
+          <h3>{t("deformation.allowable")}</h3>
+          <div className="field-grid">
+            <label>
+              <span className="field-label">
+                <Sym base="w" sub="zul" />
+              </span>
+              <Quantity
+                category="thickness"
+                value={input.max_displacement_z}
+                onChange={(v) => update("max_displacement_z", v)}
+              />
+            </label>
+          </div>
+          <p className="hint">{t("deformation.allowable.hint")}</p>
+
           <StiffenerPanel
             stiffeners={input.stiffeners}
             onChange={(stiffeners) => update("stiffeners", stiffeners)}

@@ -29,6 +29,7 @@ export function defaultDeformationInput(): DeformationInputDto {
     d_matrix: "standard",
     loads: [{ kind: "Surface", name: "q", force: 0.01 }],
     stiffeners: [],
+    max_displacement_z: 0,
   };
 }
 

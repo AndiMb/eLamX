@@ -772,6 +772,7 @@
           ]
         }
       ],
+      "deformations": [],
       "cutouts": [],
       "spring_ins": [],
       "vibrations": [],
@@ -1002,6 +1003,57 @@
             false,
             false
           ]
+        }
+      ],
+      "deformations": [
+        {
+          "name": "GM-Verformung-SS",
+          "input": {
+            "length": 500,
+            "width": 500,
+            "bc_x": "SS",
+            "bc_y": "SS",
+            "m": 10,
+            "n": 10,
+            "d_matrix": "standard",
+            "loads": [
+              {
+                "name": "q",
+                "kind": "Surface",
+                "force": 0.01
+              }
+            ],
+            "stiffeners": [],
+            "max_displacement_z": 0
+          }
+        },
+        {
+          "name": "GM-Verformung-Grenze",
+          "input": {
+            "length": 600,
+            "width": 400,
+            "bc_x": "CC",
+            "bc_y": "SS",
+            "m": 8,
+            "n": 8,
+            "d_matrix": "standard",
+            "loads": [
+              {
+                "name": "q",
+                "kind": "Surface",
+                "force": 0.02
+              },
+              {
+                "name": "F",
+                "kind": "Point",
+                "x": 150,
+                "y": 200,
+                "force": 25
+              }
+            ],
+            "stiffeners": [],
+            "max_displacement_z": 2.5
+          }
         }
       ],
       "cutouts": [
@@ -1443,6 +1495,7 @@
           ]
         }
       ],
+      "deformations": [],
       "cutouts": [],
       "spring_ins": [],
       "vibrations": [
@@ -1672,6 +1725,7 @@
           ]
         }
       ],
+      "deformations": [],
       "cutouts": [],
       "spring_ins": [],
       "vibrations": [],
@@ -1843,6 +1897,7 @@
           ]
         }
       ],
+      "deformations": [],
       "cutouts": [],
       "spring_ins": [],
       "vibrations": [],
@@ -1997,6 +2052,7 @@
           ]
         }
       ],
+      "deformations": [],
       "cutouts": [],
       "spring_ins": [],
       "vibrations": [],
@@ -2141,6 +2197,7 @@
           ]
         }
       ],
+      "deformations": [],
       "cutouts": [],
       "spring_ins": [],
       "vibrations": [],
@@ -2278,6 +2335,7 @@
           ]
         }
       ],
+      "deformations": [],
       "cutouts": [],
       "spring_ins": [],
       "vibrations": [],
@@ -2379,6 +2437,7 @@
           ]
         }
       ],
+      "deformations": [],
       "cutouts": [],
       "spring_ins": [],
       "vibrations": [],

@@ -418,6 +418,7 @@ mod tests {
             d_matrix: DMatrixKind::Standard,
             loads: vec![NamedLoad::surface("q", force)],
             stiffeners: Vec::new(),
+            max_displacement_z: 0.0,
         }
     }
 

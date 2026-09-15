@@ -403,6 +403,8 @@ export const en = {
   "deformation.load.addPoint": "Point load",
   "deformation.load.remove": "Remove this load",
   "deformation.load.point.hint": "A point load's x and y are measured from the CENTRE of the plate, as in eLamX.",
+  "deformation.allowable": "Allowable deflection",
+  "deformation.allowable.hint": "A limit, not a load â the deformation analysis does not read it. It is there for the optimiser: allowable over actual is the reserve factor the search works against. Zero means no limit was set.",
   "deformation.error": "Deflection could not be computed: {message}",
   "deformation.result.title": "Deflection",
   "deformation.maxAt": "Maximum at x / y",

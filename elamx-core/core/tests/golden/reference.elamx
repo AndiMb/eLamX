@@ -512,6 +512,37 @@
                 <epsilon_crit>0.005</epsilon_crit>
                 <j_a>1.0</j_a>
             </lastplyfailure>
+            <deformation name="GM-Verformung-SS">
+                <length>500.0</length>
+                <width>500.0</width>
+                <bcx>0</bcx>
+                <bcy>0</bcy>
+                <m>10</m>
+                <n>10</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl</dmatrixservice>
+                <maxDisplacement>0.0</maxDisplacement>
+                <surfaceLoad_const_full name="q">
+                    <force>0.01</force>
+                </surfaceLoad_const_full>
+            </deformation>
+            <deformation name="GM-Verformung-Grenze">
+                <length>600.0</length>
+                <width>400.0</width>
+                <bcx>1</bcx>
+                <bcy>0</bcy>
+                <m>8</m>
+                <n>8</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl</dmatrixservice>
+                <maxDisplacement>2.5</maxDisplacement>
+                <surfaceLoad_const_full name="q">
+                    <force>0.02</force>
+                </surfaceLoad_const_full>
+                <pointload name="F">
+                    <xposition>150.0</xposition>
+                    <yposition>200.0</yposition>
+                    <force>25.0</force>
+                </pointload>
+            </deformation>
             <cutout name="GM-Loch-Kreis">
                 <n_xx>100.0</n_xx>
                 <n_yy>0.0</n_yy>

@@ -260,6 +260,21 @@ const CUTOUT = {
   },
 };
 
+// Plate deformation. No batch output either, and until now no fixture at all -
+// which left `<deformation>` as the one module element the Java had never been
+// asked to read back. It carries `maxDisplacement`, an allowable the analysis
+// itself never uses and the optimiser does, so a port that dropped it would
+// lose a limit someone typed in without any calculation noticing.
+const deformation = (name, o) => ({
+  name,
+  length: 500, width: 500,
+  bc_x: "SS", bc_y: "SS", m: 10, n: 10, d_matrix: "standard",
+  maxDisplacement: 0.0,
+  loads: [{ kind: "surface", name: "q", force: 0.01 }],
+  stiffeners: [],
+  ...o,
+});
+
 const cutout = (name, o) => ({
   name,
   shape: "circular",
@@ -413,6 +428,20 @@ const CASES = [
     // properties are the only part of the element that is not shared.
     // All four hole shapes, so every Java class name and every property name
     // the format uses gets written and read back at least once.
+    // Two deformation analyses: a plain one, and one carrying an allowable
+    // deflection and a point load, so `maxDisplacement` and both load kinds
+    // travel through the file.
+    deformations: [
+      deformation("GM-Verformung-SS", {}),
+      deformation("GM-Verformung-Grenze", {
+        length: 600, width: 400, bc_x: "CC", bc_y: "SS", m: 8, n: 8,
+        maxDisplacement: 2.5,
+        loads: [
+          { kind: "surface", name: "q", force: 0.02 },
+          { kind: "point", name: "F", x: 150.0, y: 200.0, force: 25.0 },
+        ],
+      }),
+    ],
     cutouts: [
       cutout("GM-Loch-Kreis", {}),
       cutout("GM-Loch-Ellipse", { shape: "elliptical", a: 8.0, b: 3.0, n_yy: -40.0 }),
@@ -791,6 +820,39 @@ function elamxXml() {
       out.push(`                <j_a>${num(l.j_a)}</j_a>`);
       out.push("            </lastplyfailure>");
     });
+    (c.deformations ?? []).forEach((d) => {
+      out.push(`            <deformation name="${esc(d.name)}">`);
+      out.push(`                <length>${num(d.length)}</length>`);
+      out.push(`                <width>${num(d.width)}</width>`);
+      out.push(`                <bcx>${BOUNDARY.indexOf(d.bc_x)}</bcx>`);
+      out.push(`                <bcy>${BOUNDARY.indexOf(d.bc_y)}</bcy>`);
+      out.push(`                <m>${d.m}</m>`);
+      out.push(`                <n>${d.n}</n>`);
+      out.push(`                <dmatrixservice>${D_MATRIX[d.d_matrix].java}</dmatrixservice>`);
+      out.push(`                <maxDisplacement>${num(d.maxDisplacement)}</maxDisplacement>`);
+      (d.loads ?? []).forEach((l) => {
+        if (l.kind === "point") {
+          out.push(`                <pointload name="${esc(l.name)}">`);
+          out.push(`                    <xposition>${num(l.x)}</xposition>`);
+          out.push(`                    <yposition>${num(l.y)}</yposition>`);
+          out.push(`                    <force>${num(l.force)}</force>`);
+          out.push("                </pointload>");
+        } else {
+          out.push(`                <surfaceLoad_const_full name="${esc(l.name)}">`);
+          out.push(`                    <force>${num(l.force)}</force>`);
+          out.push("                </surfaceLoad_const_full>");
+        }
+      });
+      (d.stiffeners ?? []).forEach((st) => {
+        const def = STIFFENER[st.profile];
+        out.push(`                <Stiffener name="${esc(st.name)}" classname="${def.java}">`);
+        out.push(`                    <position>${num(st.position)}</position>`);
+        out.push(`                    <direction>${DIRECTION_INDEX[st.direction]}</direction>`);
+        for (const k of def.props) out.push(`                    <${k}>${num(st[k])}</${k}>`);
+        out.push("                </Stiffener>");
+      });
+      out.push("            </deformation>");
+    });
     (c.cutouts ?? []).forEach((co) => {
       const def = CUTOUT[co.shape];
       out.push(`            <cutout name="${esc(co.name)}">`);
@@ -974,6 +1036,27 @@ function inputJson() {
       strains: calc.strains ?? strains(),
       use_strain: calc.useStrain ?? NO_STRAIN,
     })),
+    deformations: (c.deformations ?? []).map((d) => ({
+      name: d.name,
+      input: {
+        length: d.length,
+        width: d.width,
+        bc_x: d.bc_x,
+        bc_y: d.bc_y,
+        m: d.m,
+        n: d.n,
+        d_matrix: d.d_matrix,
+        // NamedLoad flattens its TransverseLoad, whose tag is `kind` and
+        // whose variants keep their Rust spelling.
+        loads: (d.loads ?? []).map((l) =>
+          l.kind === "point"
+            ? { name: l.name, kind: "Point", x: l.x, y: l.y, force: l.force }
+            : { name: l.name, kind: "Surface", force: l.force },
+        ),
+        stiffeners: (d.stiffeners ?? []).map(stiffenerJson),
+        max_displacement_z: d.maxDisplacement,
+      },
+    })),
     cutouts: (c.cutouts ?? []).map((co) => ({
       name: co.name,
       input: {
@@ -1076,6 +1159,7 @@ const buckCount = CASES.reduce((n, c) => n + (c.bucklings ?? []).length, 0);
 const vibCount = CASES.reduce((n, c) => n + (c.vibrations ?? []).length, 0);
 const springCount = CASES.reduce((n, c) => n + (c.springIns ?? []).length, 0);
 const cutoutCount = CASES.reduce((n, c) => n + (c.cutouts ?? []).length, 0);
+const defoCount = CASES.reduce((n, c) => n + (c.deformations ?? []).length, 0);
 const stiffCount = CASES.reduce(
   (n, c) => n + (c.bucklings ?? []).reduce((k, b) => k + (b.stiffeners ?? []).length, 0),
   0,
@@ -1086,7 +1170,7 @@ console.log(
     `${CASES.length} Laminate, ${layerCount} gespeicherte Lagen, ${calcCount} Berechnungen, ` +
     `${buckCount} Beulanalysen (davon ${stiffCount} Versteifungen), ` +
     `${vibCount} Schwingungsanalysen, ${springCount} Spring-In-Analysen, ` +
-    `${cutoutCount} Ausschnitte, ` +
+    `${cutoutCount} Ausschnitte, ${defoCount} Verformungsanalysen, ` +
     `${lpfCount} Last-Ply-Failure-Analysen, ` +
     `${ALL_CRITERIA.length} Kriterien abgedeckt.`,
 );

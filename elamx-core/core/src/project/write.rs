@@ -353,6 +353,8 @@ fn write_deformation(analysis: &NamedDeformation, out: &mut String) {
     tag(out, 16, "m", &input.m.to_string());
     tag(out, 16, "n", &input.n.to_string());
     tag(out, 16, "dmatrixservice", naming::d_matrix_to_java(input.d_matrix));
+    // eLamX writes this on every deformation element, used or not.
+    tag(out, 16, "maxDisplacement", &num(input.max_displacement_z));
 
     for load in &input.loads {
         match load.load {

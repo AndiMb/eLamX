@@ -112,6 +112,18 @@ pub struct DeformationInput {
     /// still reads as a plate without any.
     #[serde(default)]
     pub stiffeners: Vec<Stiffener>,
+    /// The deflection this plate is allowed, in mm.
+    ///
+    /// Nothing in the deformation analysis itself reads it - it is a limit, not
+    /// a load. It exists because the optimiser needs one: a stack is acceptable
+    /// when the deflection it produces stays under this, and `allowable /
+    /// actual` is the reserve factor the search compares against 1.
+    ///
+    /// eLamX writes it into every `<deformation>` element as
+    /// `<maxDisplacement>` whether or not anything uses it, and defaults it to
+    /// zero when the tag is absent.
+    #[serde(default)]
+    pub max_displacement_z: f64,
 }
 
 impl Default for DeformationInput {
@@ -128,6 +140,7 @@ impl Default for DeformationInput {
             d_matrix: DMatrixKind::Standard,
             loads: vec![NamedLoad::surface("q", 0.01)],
             stiffeners: Vec::new(),
+            max_displacement_z: 0.0,
         }
     }
 }
@@ -306,6 +319,7 @@ mod tests {
             d_matrix: DMatrixKind::Standard,
             loads: vec![load],
             stiffeners: Vec::new(),
+            max_displacement_z: 0.0,
         }
     }
 

@@ -22,4 +22,17 @@ m: number, n: number, d_matrix: DMatrixKind, loads: Array<NamedLoad>,
  * deserialisation so a request or a file written before they existed
  * still reads as a plate without any.
  */
-stiffeners: Array<Stiffener>, };
+stiffeners: Array<Stiffener>, 
+/**
+ * The deflection this plate is allowed, in mm.
+ *
+ * Nothing in the deformation analysis itself reads it - it is a limit, not
+ * a load. It exists because the optimiser needs one: a stack is acceptable
+ * when the deflection it produces stays under this, and `allowable /
+ * actual` is the reserve factor the search compares against 1.
+ *
+ * eLamX writes it into every `<deformation>` element as
+ * `<maxDisplacement>` whether or not anything uses it, and defaults it to
+ * zero when the tag is absent.
+ */
+max_displacement_z: number, };

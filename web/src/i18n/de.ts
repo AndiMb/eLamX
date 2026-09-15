@@ -393,6 +393,8 @@ export const de: Messages = {
   "deformation.load.addPoint": "Einzellast",
   "deformation.load.remove": "Diese Last entfernen",
   "deformation.load.point.hint": "x und y einer Einzellast zählen von der MITTE der Platte, wie in eLamX.",
+  "deformation.allowable": "ZulÃ¤ssige Durchbiegung",
+  "deformation.allowable.hint": "Eine Grenze, keine Last â die Verformungsrechnung liest sie nicht. Sie ist fÃ¼r die Optimierung da: zulÃ¤ssig geteilt durch tatsÃ¤chlich ist der Reservefaktor, gegen den dort gesucht wird. Null heiÃt: keine Grenze gesetzt.",
   "deformation.error": "Durchbiegung nicht berechenbar: {message}",
   "deformation.result.title": "Durchbiegung",
   "deformation.maxAt": "Maximum bei x / y",

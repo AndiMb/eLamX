@@ -527,6 +527,9 @@ fn read_deformation(node: Node, parent: &str) -> Result<NamedDeformation> {
             d_matrix: d_matrix(node, &ctx)?,
             loads,
             stiffeners: read_stiffeners(node, &ctx)?,
+            // Absent in a file written before the field existed, and eLamX
+            // itself defaults it to zero rather than refusing.
+            max_displacement_z: optional_number(node, "maxDisplacement", &ctx)?.unwrap_or(0.0),
         },
     })
 }
