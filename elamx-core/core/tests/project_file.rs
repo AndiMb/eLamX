@@ -10,6 +10,7 @@
 use elamx_core::clt::RadiusType;
 use elamx_core::plate::Stiffener;
 use elamx_core::project::{read_elamx, write_elamx, Project, ReadError};
+use elamx_core::spring_in::SpringInInput;
 use serde_json::Value;
 
 fn golden_dir() -> String {
@@ -226,6 +227,24 @@ fn reads_the_reference_file_as_the_generator_wrote_it() {
             assert_eq!(analysis.input.stiffeners, expected, "{}: Versteifungen", analysis.name);
         }
 
+        // Spring-In has no batch output either, and unlike vibration its
+        // element carries a nested one with a Java class name in it - so this
+        // is the only check that the model choice and its two properties
+        // survive the file at all.
+        let expected_spring_ins = e["spring_ins"].as_array().unwrap();
+        assert_eq!(
+            entry.spring_ins.len(),
+            expected_spring_ins.len(),
+            "{}: Spring-In-Analysen",
+            lam.name
+        );
+        for (analysis, es) in entry.spring_ins.iter().zip(expected_spring_ins) {
+            assert_eq!(analysis.name, es["name"].as_str().unwrap());
+            let expected: SpringInInput =
+                serde_json::from_value(es["input"].clone()).expect("Spring-In-Eingabe");
+            assert_eq!(analysis.input, expected, "{}: Eingabe", analysis.name);
+        }
+
         let expected_lpf = e["last_ply_failures"].as_array().unwrap();
         assert_eq!(
             entry.last_ply_failures.len(),
@@ -308,6 +327,13 @@ fn written_file_uses_the_original_element_names() {
         "<buckling name=",
         "<dmatrixservice>de.elamx.clt.plate.dmatrix.DtildeDMatrixServiceImpl</dmatrixservice>",
         "<vibration name=",
+        "<springIn name=",
+        "<alphat_thick>",
+        "<zeroDegAsCircumDir>",
+        "<SpringInModel name=\"Simple Radford Model\" classname=\"de.elamx.clt.springin.SimpleRadfordSpringInModel\">",
+        "classname=\"de.elamx.clt.springin.additionalmodels.EnhancedRadfordSpringInModel\"",
+        "<eps_cr>",
+        "<eps_cu>",
         "<Stiffener name=\"Frei-x\" classname=\"de.elamx.clt.plateui.stiffenerui.DefaultStiffenerProperties\">",
         "classname=\"de.elamx.clt.plate.AdditionalStiffeners.I_StiffenerProperties\"",
         "classname=\"de.elamx.clt.plate.AdditionalStiffeners.T_StiffenerProperties\"",
@@ -334,10 +360,10 @@ const MINIMAL: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
                 <material>mat</material>
                 <criterion>CRITERION</criterion>
             </layer>
-            <springIn name="Spring-In">
-                <temperature>-120.0</temperature>
-                <angle>90.0</angle>
-            </springIn>
+            <cutout name="Ausschnitt">
+                <shape>circle</shape>
+                <radius>12.5</radius>
+            </cutout>
         </laminate>
     </laminates>
     <materials>
@@ -364,12 +390,15 @@ fn keeps_module_data_it_cannot_interpret() {
     let project = read_elamx(&minimal_with("de.elamx.laminate.failure.Puck")).unwrap();
     let kept = &project.laminates[0].unsupported_modules;
     assert_eq!(kept.len(), 1);
-    assert_eq!(kept[0].tag, "springIn");
+    // Cutouts are the next module in line and not ported yet, which is what
+    // makes them the right stand-in here - the fixture used spring-in until
+    // spring-in became a module this crate reads.
+    assert_eq!(kept[0].tag, "cutout");
 
     let xml = write_elamx(&project);
-    assert!(xml.contains("<springIn name=\"Spring-In\">"));
-    assert!(xml.contains("<temperature>-120.0</temperature>"));
-    assert!(xml.contains("<angle>90.0</angle>"));
+    assert!(xml.contains("<cutout name=\"Ausschnitt\">"));
+    assert!(xml.contains("<shape>circle</shape>"));
+    assert!(xml.contains("<radius>12.5</radius>"));
 }
 
 /// The same promise one level up. `<fibres>`, `<matrices>` and
@@ -478,18 +507,19 @@ fn keeps_material_parameters_of_unported_criteria() {
     assert!(write_elamx(&project).contains(&format!("<{key}>53.0</{key}>")));
 }
 
-/// The last-ply-failure element is the one place the format stores a boolean.
-/// Java reads it with `Boolean.parseBoolean`, where anything that is not the
-/// word "true" - including a missing element - means false; this reader has to
-/// agree, or a project would come back with a different analysis than it was
-/// saved with.
+/// Java reads every boolean in the format with `Boolean.parseBoolean`, where
+/// anything that is not the word "true" - including a missing element - means
+/// false; this reader has to agree, or a project would come back with a
+/// different analysis than it was saved with. Checked on last-ply-failure's
+/// flag, which was the first one the format had; spring-in's two follow the
+/// same path.
 #[test]
 fn reads_the_last_ply_failure_flag_the_way_java_parses_it() {
     let with_flag = |value: &str| {
         MINIMAL
             .replace("CRITERION", "de.elamx.laminate.failure.Puck")
             .replace(
-                "<springIn name=\"Spring-In\">\n                <temperature>-120.0</temperature>\n                <angle>90.0</angle>\n            </springIn>",
+                "<cutout name=\"Ausschnitt\">\n                <shape>circle</shape>\n                <radius>12.5</radius>\n            </cutout>",
                 &format!(
                     "<lastplyfailure name=\"LPF\">\n                <n_x>1.0</n_x>\n                <n_y>0.0</n_y>\n                <n_xy>0.0</n_xy>\n                <m_x>0.0</m_x>\n                <m_y>0.0</m_y>\n                <m_xy>0.0</m_xy>\n                <degradationFactor>1.0E-6</degradationFactor>\n                {value}\n                <epsilon_crit>0.003</epsilon_crit>\n                <j_a>1.0</j_a>\n            </lastplyfailure>"
                 ),
@@ -526,10 +556,10 @@ fn reads_and_writes_the_pressure_vessel_radius_types() {
         let xml = MINIMAL
             .replace("CRITERION", "de.elamx.laminate.failure.Puck")
             .replace(
-                "<springIn name=\"Spring-In\">
-                <temperature>-120.0</temperature>
-                <angle>90.0</angle>
-            </springIn>",
+                "<cutout name=\"Ausschnitt\">
+                <shape>circle</shape>
+                <radius>12.5</radius>
+            </cutout>",
                 &format!(
                     "<pressurevessel name=\"Kessel\">
                 <pressure>0.5</pressure>
@@ -561,10 +591,10 @@ fn rejects_an_unknown_pressure_vessel_radius_type() {
     let xml = MINIMAL
         .replace("CRITERION", "de.elamx.laminate.failure.Puck")
         .replace(
-            "<springIn name=\"Spring-In\">
-                <temperature>-120.0</temperature>
-                <angle>90.0</angle>
-            </springIn>",
+            "<cutout name=\"Ausschnitt\">
+                <shape>circle</shape>
+                <radius>12.5</radius>
+            </cutout>",
             "<pressurevessel name=\"Kessel\">
                 <pressure>0.5</pressure>
                 <radius>250.0</radius>

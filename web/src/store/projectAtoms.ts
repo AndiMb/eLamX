@@ -11,10 +11,12 @@ import type {
   VibrationInputDto,
   LastPlyFailureInputDto,
   PressureVesselInputDto,
+  SpringInInputDto,
 } from "../lib/types";
 import type { ProjectSnapshot } from "../lib/projectFile";
 import { bucklingInputFamily, bucklingStorageKey } from "./bucklingAtoms";
 import { fibresAtom, matricesAtom } from "./micromechanicsAtoms";
+import { springInInputFamily, springInStorageKey } from "./springInAtoms";
 import { vibrationInputFamily, vibrationStorageKey } from "./vibrationAtoms";
 import { lastPlyFailureInputFamily, lastPlyFailureStorageKey } from "./lastPlyFailureAtoms";
 import { pressureVesselInputFamily, pressureVesselStorageKey } from "./pressureVesselAtoms";
@@ -77,6 +79,7 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
   const pressureVessels: Record<string, PressureVesselInputDto> = {};
   const deformations: Record<string, DeformationInputDto> = {};
   const vibrations: Record<string, VibrationInputDto> = {};
+  const springIns: Record<string, SpringInInputDto> = {};
   for (const id of ids) {
     if (hasStoredInput(bucklingStorageKey(id))) {
       bucklings[id] = get(bucklingInputFamily(id));
@@ -93,6 +96,9 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
     if (hasStoredInput(vibrationStorageKey(id))) {
       vibrations[id] = get(vibrationInputFamily(id));
     }
+    if (hasStoredInput(springInStorageKey(id))) {
+      springIns[id] = get(springInInputFamily(id));
+    }
   }
   return {
     materials: get(materialsAtom),
@@ -104,6 +110,7 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
     pressureVessels,
     deformations,
     vibrations,
+    springIns,
     version: get(projectVersionAtom),
     unsupportedSections: get(projectSectionsAtom),
   };
@@ -122,12 +129,14 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
     pressureVesselInputFamily.remove(id);
     deformationInputFamily.remove(id);
     vibrationInputFamily.remove(id);
+    springInInputFamily.remove(id);
     forgetStoredLaminate(id);
     forgetStored(bucklingStorageKey(id));
     forgetStored(lastPlyFailureStorageKey(id));
     forgetStored(pressureVesselStorageKey(id));
     forgetStored(deformationStorageKey(id));
     forgetStored(vibrationStorageKey(id));
+    forgetStored(springInStorageKey(id));
   }
 
   set(materialsAtom, project.materials);
@@ -148,6 +157,8 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
     if (deformation) set(deformationInputFamily(config.id), deformation);
     const vibration = project.vibrations[config.id];
     if (vibration) set(vibrationInputFamily(config.id), vibration);
+    const springIn = project.springIns[config.id];
+    if (springIn) set(springInInputFamily(config.id), springIn);
   }
   set(
     laminateIdsAtom,

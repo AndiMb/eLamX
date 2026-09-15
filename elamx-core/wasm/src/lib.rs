@@ -19,6 +19,7 @@ use elamx_core::mathtools;
 use elamx_core::micromechanics::{self, Fibre, MatrixMaterial};
 use elamx_core::model::{Laminate, Material};
 use elamx_core::project::{read_elamx, write_elamx, Project};
+use elamx_core::spring_in::{calculate as calculate_spring_in, SpringInInput};
 use elamx_core::clt::LayerPosition;
 use elamx_core::plate::{
     calculate_buckling, calculate_deformation, calculate_vibration, evaluate_plate_field,
@@ -753,6 +754,31 @@ struct MicroMechanicsRequest {
     matrices: Vec<MatrixMaterial>,
 }
 
+#[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+struct SpringInRequest {
+    laminate: Laminate,
+    materials: HashMap<String, Material>,
+    input: SpringInInput,
+}
+
+/// How far a corner cured from this laminate closes when it leaves the tool.
+///
+/// The response is `SpringInResult` as the core defines it. Cheap enough that
+/// the frontend can call it on every keystroke - it is a handful of
+/// multiplications on top of the ABD matrix.
+#[wasm_bindgen]
+pub fn compute_spring_in(request_json: &str) -> Result<String, JsValue> {
+    compute_spring_in_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_spring_in_impl(request_json: &str) -> Result<String, String> {
+    let request: SpringInRequest = serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let clt = CltLaminate::new(&request.laminate, &request.materials).map_err(|e| e.to_string())?;
+    let result = calculate_spring_in(&clt, &request.input).map_err(|e| e.to_string())?;
+    serde_json::to_string(&result).map_err(|e| e.to_string())
+}
+
 /// Recomputes the basic properties of every material that has a micromechanic
 /// definition, and returns the whole catalog.
 ///
@@ -1408,7 +1434,7 @@ mod tests {
                 <epsilon_crit>0.003</epsilon_crit>
                 <j_a>1.0</j_a>
             </lastplyfailure>
-            <springIn name="Spring-In"><temperature>-120.0</temperature></springIn>
+            <cutout name="Ausschnitt"><shape>circle</shape></cutout>
         </laminate>
     </laminates>
     <materials>
@@ -1439,7 +1465,7 @@ mod tests {
         assert!(xml.contains("<criterion>de.elamx.laminate.failure.Puck</criterion>"));
         assert!(xml.contains("<lastplyfailure name=\"LPF\">"));
         // Module data the core cannot calculate survives the browser round trip.
-        assert!(xml.contains("<springIn name=\"Spring-In\">"));
+        assert!(xml.contains("<cutout name=\"Ausschnitt\">"));
         assert_eq!(import_elamx_impl(&xml).unwrap(), json);
     }
 

@@ -28,6 +28,7 @@ use elamx_core::failure::{default_criterion_registry, FailureType};
 use elamx_core::micromechanics::{Fibre, MatrixMaterial};
 use elamx_core::model::{Laminate, Material};
 use elamx_core::plate::{calculate_buckling, BoundaryCondition, BucklingInput, DMatrixKind};
+use elamx_core::spring_in::{calculate as calculate_spring_in, SpringInInput, SpringInModel};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -56,6 +57,14 @@ struct GoldenLaminate {
     calculations: Vec<GoldenCalculation>,
     bucklings: Vec<GoldenBuckling>,
     last_ply_failures: Vec<GoldenLastPlyFailure>,
+    #[serde(default)]
+    spring_ins: Vec<GoldenSpringIn>,
+}
+
+#[derive(Deserialize)]
+struct GoldenSpringIn {
+    name: String,
+    input: SpringInInput,
 }
 
 #[derive(Deserialize)]
@@ -913,6 +922,94 @@ fn solved_loads_and_strains_match_elamx() {
     }
 
     report.finish("Lasten und Verzerrungen");
+}
+
+/// Spring-in, by way of the one number it does not get from the user.
+///
+/// The batch mode prints nothing for this module, so it cannot be compared
+/// directly - but the whole model is `alpha_circ` and four typed-in values, and
+/// `alpha_circ` IS something the original will print if asked the right
+/// question. A symmetric laminate under a temperature change and nothing else
+/// just expands, so the global strains it reports, divided by dT, are the
+/// laminate's thermal expansion coefficients. `GM-Sym-AlphaT` is that question.
+///
+/// Radford's formula is then written out here a second time, independently of
+/// `spring_in::calculate`, and fed the Java's coefficient rather than this
+/// crate's. What is left untested against the original is only the two
+/// conversions to and from radians - which the unit tests pin against a
+/// hand-computed value.
+#[test]
+fn spring_in_follows_the_expansion_elamx_reports() {
+    let (input, _, expected_all, _, _) = load();
+    let mut report = Report::default();
+
+    for case in &input.laminates {
+        if case.spring_ins.is_empty() {
+            continue;
+        }
+        let clt = CltLaminate::new(&case.laminate, &input.materials).unwrap();
+
+        // The pure-temperature calculation on the same stack. Its presence is
+        // asserted rather than assumed: without it this test would silently
+        // compare nothing.
+        let thermal = expected_calculation(&expected_all, "GM-Sym-AlphaT");
+        assert_eq!(thermal.delta_h, 0.0, "GM-Sym-AlphaT darf keine Feuchte tragen");
+        assert!(thermal.loads.iter().all(|l| *l == 0.0), "GM-Sym-AlphaT darf keine Last tragen");
+        let alpha_java = [
+            thermal.strains[0] / thermal.delta_t,
+            thermal.strains[1] / thermal.delta_t,
+            thermal.strains[2] / thermal.delta_t,
+        ];
+        // The curvatures have to be zero for that division to mean anything -
+        // if the stack warped, one expansion coefficient would not describe it.
+        for (i, kappa) in thermal.strains[3..6].iter().enumerate() {
+            report.close(format!("GM-Sym-AlphaT/kappa[{i}]"), *kappa, 0.0, 1e-12, 0.0);
+        }
+        report.close_group(
+            "alpha_global",
+            &elamx_core::clt::alpha_global(&clt),
+            &alpha_java,
+            tolerances::ELEVEN_DIGITS,
+        );
+
+        for analysis in &case.spring_ins {
+            let label = &analysis.name;
+            let it = &analysis.input;
+            let result = calculate_spring_in(&clt, it).unwrap();
+
+            let alpha_circ = if it.zero_deg_as_circum_dir { alpha_java[0] } else { alpha_java[1] };
+            let d_t = it.base_temp - it.hardening_temp;
+            let mut relative =
+                (alpha_circ - it.alphat_thick) * d_t / (1.0 + it.alphat_thick * d_t);
+            if let SpringInModel::EnhancedRadford { eps_circumferential, eps_thickness } = it.model {
+                relative += (eps_circumferential - eps_thickness) / (1.0 + eps_thickness);
+            }
+
+            report.close(
+                format!("{label}/alpha_circ"),
+                result.alpha_circumferential,
+                alpha_circ,
+                0.0,
+                tolerances::ELEVEN_DIGITS,
+            );
+            report.close(
+                format!("{label}/dAngle"),
+                result.delta_angle,
+                it.angle * relative,
+                0.0,
+                tolerances::ELEVEN_DIGITS,
+            );
+            report.close(
+                format!("{label}/Winkel"),
+                result.final_angle,
+                it.angle * (1.0 + relative),
+                0.0,
+                tolerances::ELEVEN_DIGITS,
+            );
+        }
+    }
+
+    report.finish("Spring-In");
 }
 
 /// Per-ply stresses and strains in the local (fibre) system, and the reserve

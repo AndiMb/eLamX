@@ -117,6 +117,26 @@ most of this, so the list cannot quietly rot:
   below: the same file, written back out by `elamx-core`, still opens in the
   Java program and computes identically.
 
+- **Spring-in**: two analyses, one per model, on the symmetric stack (the
+  module refuses an unsymmetric one). The batch prints nothing for this module
+  either, but it is not untested for that reason - see
+  `spring_in_follows_the_expansion_elamx_reports`. The whole model is the
+  laminate's thermal expansion coefficient around the bend plus four typed-in
+  numbers, and the coefficient IS something the original prints if asked the
+  right question: `GM-Sym-AlphaT` puts a temperature change and nothing else on
+  a symmetric stack, so the strains it reports, divided by dT, are that
+  coefficient. What the two spring-in entries add on top is the `<springIn>`
+  element, including the nested `<SpringInModel>` with its Java class name and
+  the enhanced model's two shrinkage properties.
+
+  Worth knowing about the tag names: a single wrong one is **not** a silent
+  loss. `LoadSaveLaminateHookImpl` reads them with
+  `Double.parseDouble(getTagValue(...))`, which throws on a missing element and
+  takes the rest of the load with it - renaming `baseTemp` to `basetemp` in the
+  reference file truncates the batch output after the first laminate. So a
+  rewrite run that produces no diff is proof the original read every one of
+  them.
+
 ## Tolerances
 
 Derived from the batch writer's own `printf` format strings
@@ -165,6 +185,12 @@ For the micromechanics, swapping the fibre and the matrix inside `chamis` in
 `src/micromechanics/mod.rs` turns `material_data_matches_elamx` red on three
 comparisons - the Chamis material's E22 and G12 and the mixed material's E22,
 which is exactly the set that model drives.
+
+For spring-in, always taking `alpha[0]` instead of choosing by
+`zero_deg_as_circum_dir` turns `spring_in_follows_the_expansion_elamx_reports`
+red on three comparisons - the enhanced case is the one that runs around the
+90 degree direction, and it is there precisely so that the choice is exercised
+rather than merely available.
 
 For the stiffeners the same standard is met by the crudest fault there is:
 dropping the `add_stiffener_stiffness` call from `plate::buckling::calculate`

@@ -772,6 +772,7 @@
           ]
         }
       ],
+      "spring_ins": [],
       "vibrations": [],
       "bucklings": [
         {
@@ -965,6 +966,77 @@
             false,
             false
           ]
+        },
+        {
+          "name": "GM-Sym-AlphaT",
+          "loads": {
+            "n_x": 0,
+            "n_y": 0,
+            "n_xy": 0,
+            "m_x": 0,
+            "m_y": 0,
+            "m_xy": 0,
+            "delta_t": -100,
+            "delta_h": 0,
+            "nt_x": 0,
+            "nt_y": 0,
+            "nt_xy": 0,
+            "mt_x": 0,
+            "mt_y": 0,
+            "mt_xy": 0
+          },
+          "strains": {
+            "epsilon_x": 0,
+            "epsilon_y": 0,
+            "gamma_xy": 0,
+            "kappa_x": 0,
+            "kappa_y": 0,
+            "kappa_xy": 0
+          },
+          "use_strain": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ],
+      "spring_ins": [
+        {
+          "name": "GM-SpringIn-Einfach",
+          "input": {
+            "model": {
+              "model": "simple_radford"
+            },
+            "model_name": "Simple Radford Model",
+            "angle": 90,
+            "radius": 10,
+            "alphat_thick": 0.00003,
+            "base_temp": 25,
+            "hardening_temp": 180,
+            "use_auto_calc_alphat_thick": false,
+            "zero_deg_as_circum_dir": true
+          }
+        },
+        {
+          "name": "GM-SpringIn-Erweitert",
+          "input": {
+            "model": {
+              "model": "enhanced_radford",
+              "eps_circumferential": -0.0005,
+              "eps_thickness": -0.006
+            },
+            "model_name": "enhanced Radford Model",
+            "angle": 120,
+            "radius": 15,
+            "alphat_thick": 0.000028,
+            "base_temp": 20,
+            "hardening_temp": 175,
+            "use_auto_calc_alphat_thick": true,
+            "zero_deg_as_circum_dir": false
+          }
         }
       ],
       "vibrations": [],
@@ -1300,6 +1372,7 @@
           ]
         }
       ],
+      "spring_ins": [],
       "vibrations": [
         {
           "name": "GM-Schwing-SS",
@@ -1527,6 +1600,7 @@
           ]
         }
       ],
+      "spring_ins": [],
       "vibrations": [],
       "bucklings": [
         {
@@ -1696,6 +1770,7 @@
           ]
         }
       ],
+      "spring_ins": [],
       "vibrations": [],
       "bucklings": [
         {
@@ -1848,6 +1923,7 @@
           ]
         }
       ],
+      "spring_ins": [],
       "vibrations": [],
       "bucklings": [],
       "last_ply_failures": []
@@ -1990,6 +2066,7 @@
           ]
         }
       ],
+      "spring_ins": [],
       "vibrations": [],
       "bucklings": [],
       "last_ply_failures": []
@@ -2125,6 +2202,7 @@
           ]
         }
       ],
+      "spring_ins": [],
       "vibrations": [],
       "bucklings": [],
       "last_ply_failures": []
@@ -2224,6 +2302,7 @@
           ]
         }
       ],
+      "spring_ins": [],
       "vibrations": [],
       "bucklings": [],
       "last_ply_failures": []

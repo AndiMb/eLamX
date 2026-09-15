@@ -224,6 +224,31 @@ const vibration = (name, o) => ({
   ...o,
 });
 
+// Spring-In, likewise without batch output. Two things are at stake in the
+// file: the <SpringInModel> child with its Java class name, and the enhanced
+// model's two shrinkage properties, whose tag names are eLamX's own and whose
+// MEANING is crossed against the labels the property sheet shows (see
+// spring_in::SpringInModel::chemical_term).
+const SPRING_IN = {
+  simple_radford: {
+    java: "de.elamx.clt.springin.SimpleRadfordSpringInModel",
+    label: "Simple Radford Model",
+  },
+  enhanced_radford: {
+    java: "de.elamx.clt.springin.additionalmodels.EnhancedRadfordSpringInModel",
+    label: "enhanced Radford Model",
+  },
+};
+
+const springIn = (name, o) => ({
+  name,
+  model: "simple_radford",
+  angle: 90, radius: 10, alphat_thick: 3.0e-5,
+  baseTemp: 25, hardeningTemp: 180,
+  useAutoCalcAlphat_thick: false, zeroDegAsCircumDir: true,
+  ...o,
+});
+
 const buckling = (name, o) => ({
   name,
   length: 500, width: 500, n_x: -1, n_y: 0, n_xy: 0,
@@ -345,6 +370,26 @@ const CASES = [
     calculations: [
       { name: "GM-Sym-Zug",    loads: loads({ n_x: 500, n_y: 100 }) },
       { name: "GM-Sym-Thermo", loads: loads({ delta_t: -120, delta_h: 0.6 }) },
+      // Temperature alone, no moisture and no mechanical load, on a SYMMETRIC
+      // stack: then the laminate simply expands, and the reported strains
+      // divided by dT ARE the laminate's thermal expansion coefficients. That
+      // is how alpha_global gets a reference value from a batch mode that
+      // never prints one - and alpha_global is the one number the spring-in
+      // module below does not get from the user.
+      { name: "GM-Sym-AlphaT", loads: loads({ delta_t: -100 }) },
+    ],
+    // Spring-In on the same symmetric stack, since the module refuses an
+    // unsymmetric one. Two entries because the enhanced model's two extra
+    // properties are the only part of the element that is not shared.
+    springIns: [
+      springIn("GM-SpringIn-Einfach", {}),
+      springIn("GM-SpringIn-Erweitert", {
+        model: "enhanced_radford",
+        angle: 120, radius: 15, alphat_thick: 2.8e-5,
+        baseTemp: 20, hardeningTemp: 175,
+        useAutoCalcAlphat_thick: true, zeroDegAsCircumDir: false,
+        eps_cr: -0.006, eps_cu: -0.0005,
+      }),
     ],
     // Two loads on the same stack: the first is carried (so the strain-based
     // RF_epsilon exists), the second is far beyond the laminate's strength, so
@@ -705,6 +750,26 @@ function elamxXml() {
       out.push(`                <j_a>${num(l.j_a)}</j_a>`);
       out.push("            </lastplyfailure>");
     });
+    (c.springIns ?? []).forEach((sp) => {
+      const def = SPRING_IN[sp.model];
+      out.push(`            <springIn name="${esc(sp.name)}">`);
+      out.push(`                <alphat_thick>${num(sp.alphat_thick)}</alphat_thick>`);
+      out.push(`                <angle>${num(sp.angle)}</angle>`);
+      out.push(`                <baseTemp>${num(sp.baseTemp)}</baseTemp>`);
+      out.push(`                <hardeningTemp>${num(sp.hardeningTemp)}</hardeningTemp>`);
+      out.push(`                <radius>${num(sp.radius)}</radius>`);
+      out.push(
+        `                <useAutoCalcAlphat_thick>${sp.useAutoCalcAlphat_thick}</useAutoCalcAlphat_thick>`,
+      );
+      out.push(`                <zeroDegAsCircumDir>${sp.zeroDegAsCircumDir}</zeroDegAsCircumDir>`);
+      out.push(`                <SpringInModel name="${esc(def.label)}" classname="${def.java}">`);
+      if (sp.model === "enhanced_radford") {
+        out.push(`                    <eps_cr>${num(sp.eps_cr)}</eps_cr>`);
+        out.push(`                    <eps_cu>${num(sp.eps_cu)}</eps_cu>`);
+      }
+      out.push("                </SpringInModel>");
+      out.push("            </springIn>");
+    });
     out.push("        </laminate>");
   });
   out.push("    </laminates>");
@@ -850,6 +915,24 @@ function inputJson() {
       strains: calc.strains ?? strains(),
       use_strain: calc.useStrain ?? NO_STRAIN,
     })),
+    spring_ins: (c.springIns ?? []).map((sp) => ({
+      name: sp.name,
+      input: {
+        // The enum the Rust side reads: the model's own two properties move
+        // inside it, and eps_cu is the circumferential one.
+        model: sp.model === "enhanced_radford"
+          ? { model: "enhanced_radford", eps_circumferential: sp.eps_cu, eps_thickness: sp.eps_cr }
+          : { model: "simple_radford" },
+        model_name: SPRING_IN[sp.model].label,
+        angle: sp.angle,
+        radius: sp.radius,
+        alphat_thick: sp.alphat_thick,
+        base_temp: sp.baseTemp,
+        hardening_temp: sp.hardeningTemp,
+        use_auto_calc_alphat_thick: sp.useAutoCalcAlphat_thick,
+        zero_deg_as_circum_dir: sp.zeroDegAsCircumDir,
+      },
+    })),
     vibrations: (c.vibrations ?? []).map(({ name, d_matrix, stiffeners, ...input }) => ({
       name,
       input: { ...input, d_matrix, stiffeners: (stiffeners ?? []).map(stiffenerJson) },
@@ -912,6 +995,7 @@ const layerCount = CASES.reduce((n, c) => n + c.layers.length, 0);
 const calcCount = CASES.reduce((n, c) => n + c.calculations.length, 0);
 const buckCount = CASES.reduce((n, c) => n + (c.bucklings ?? []).length, 0);
 const vibCount = CASES.reduce((n, c) => n + (c.vibrations ?? []).length, 0);
+const springCount = CASES.reduce((n, c) => n + (c.springIns ?? []).length, 0);
 const stiffCount = CASES.reduce(
   (n, c) => n + (c.bucklings ?? []).reduce((k, b) => k + (b.stiffeners ?? []).length, 0),
   0,
@@ -921,7 +1005,7 @@ console.log(
   `reference.elamx + reference.input.json geschrieben: ` +
     `${CASES.length} Laminate, ${layerCount} gespeicherte Lagen, ${calcCount} Berechnungen, ` +
     `${buckCount} Beulanalysen (davon ${stiffCount} Versteifungen), ` +
-    `${vibCount} Schwingungsanalysen, ` +
+    `${vibCount} Schwingungsanalysen, ${springCount} Spring-In-Analysen, ` +
     `${lpfCount} Last-Ply-Failure-Analysen, ` +
     `${ALL_CRITERIA.length} Kriterien abgedeckt.`,
 );

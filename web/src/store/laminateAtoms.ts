@@ -27,8 +27,7 @@ import { t } from "../i18n";
 
 /** Module data an imported `.elamx` carried but this app does not model yet:
  *  further buckling / last-ply-failure analyses beyond the first, and modules
- *  with no web counterpart at all (cutouts, pressure vessel, spring-in,
- *  stiffeners).
+ *  with no web counterpart at all (cutouts, optimisations).
  *
  *  Kept verbatim so that opening a desktop project here and saving it again
  *  does not quietly delete the rest of the user's work. Nothing reads these
@@ -44,11 +43,14 @@ export interface CarryOver {
   deformationName?: string;
   /** Name of the vibration analysis its input came from. */
   vibrationName?: string;
+  /** Name of the spring-in analysis its input came from. */
+  springInName?: string;
   extraBucklings?: unknown[];
   extraLastPlyFailures?: unknown[];
   extraPressureVessels?: unknown[];
   extraDeformations?: unknown[];
   extraVibrations?: unknown[];
+  extraSpringIns?: unknown[];
   unsupportedModules?: unknown[];
 }
 

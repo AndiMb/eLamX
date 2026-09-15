@@ -8,12 +8,13 @@
 use super::naming;
 use super::{
     NamedBuckling, NamedCalculation, NamedDeformation, NamedLastPlyFailure, NamedPressureVessel,
-    NamedVibration, Project, ProjectLaminate,
+    NamedSpringIn, NamedVibration, Project, ProjectLaminate,
 };
 use crate::clt::RadiusType;
 use crate::plate::{Stiffener, StiffenerGeometry, TransverseLoad};
 use crate::micromechanics::{Fibre, MatrixMaterial};
 use crate::model::{Laminate, Material};
+use crate::spring_in::SpringInModel;
 
 /// Serialises a project to `.elamx` XML.
 pub fn write_elamx(project: &Project) -> String {
@@ -117,6 +118,9 @@ fn write_laminate(entry: &ProjectLaminate, out: &mut String) {
     }
     for analysis in &entry.vibrations {
         write_vibration(analysis, out);
+    }
+    for analysis in &entry.spring_ins {
+        write_spring_in(analysis, out);
     }
     for raw in &entry.unsupported_modules {
         out.push_str("            ");
@@ -225,6 +229,53 @@ fn write_vibration(analysis: &NamedVibration, out: &mut String) {
     tag(out, 16, "dmatrixservice", naming::d_matrix_to_java(input.d_matrix));
     write_stiffeners(&input.stiffeners, out);
     out.push_str("            </vibration>\n");
+}
+
+/// `<springIn>`, in eLamX's own tag order - alphabetical, because
+/// `LoadSaveLaminateHookImpl` writes them that way and a diff against a file
+/// the desktop saved should be empty.
+fn write_spring_in(analysis: &NamedSpringIn, out: &mut String) {
+    let input = &analysis.input;
+    out.push_str(&format!(
+        "            <springIn name=\"{}\">
+",
+        escape(&analysis.name)
+    ));
+    tag(out, 16, "alphat_thick", &num(input.alphat_thick));
+    tag(out, 16, "angle", &num(input.angle));
+    tag(out, 16, "baseTemp", &num(input.base_temp));
+    tag(out, 16, "hardeningTemp", &num(input.hardening_temp));
+    tag(out, 16, "radius", &num(input.radius));
+    tag(
+        out,
+        16,
+        "useAutoCalcAlphat_thick",
+        &input.use_auto_calc_alphat_thick.to_string(),
+    );
+    tag(
+        out,
+        16,
+        "zeroDegAsCircumDir",
+        &input.zero_deg_as_circum_dir.to_string(),
+    );
+    out.push_str(&format!(
+        "                <SpringInModel name=\"{}\" classname=\"{}\">
+",
+        escape(&input.model_name),
+        naming::spring_in_model_to_java(input.model.code())
+            .expect("every spring-in model has a Java class name")
+    ));
+    // Only the numeric properties are written, and in the order the model
+    // declares them - eps_cr first. The model's name is a String property and
+    // travels as an attribute instead, which is why it is not repeated here.
+    if let SpringInModel::EnhancedRadford { eps_circumferential, eps_thickness } = input.model {
+        tag(out, 20, "eps_cr", &num(eps_thickness));
+        tag(out, 20, "eps_cu", &num(eps_circumferential));
+    }
+    out.push_str("                </SpringInModel>
+");
+    out.push_str("            </springIn>
+");
 }
 
 fn write_deformation(analysis: &NamedDeformation, out: &mut String) {

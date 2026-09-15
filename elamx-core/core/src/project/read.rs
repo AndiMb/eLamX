@@ -10,7 +10,7 @@
 use super::naming;
 use super::{
     NamedBuckling, NamedCalculation, NamedDeformation, NamedLastPlyFailure, NamedPressureVessel,
-    NamedVibration, Project, ProjectLaminate, RawElement,
+    NamedSpringIn, NamedVibration, Project, ProjectLaminate, RawElement,
 };
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, RadiusType, Strains};
 use crate::micromechanics::{self, Fibre, MatrixMaterial, MicroMechanics, Model};
@@ -19,6 +19,7 @@ use crate::plate::{
     BucklingInput, DeformationInput, NamedLoad, Stiffener, StiffenerDirection, StiffenerGeometry,
     VibrationInput,
 };
+use crate::spring_in::{SpringInInput, SpringInModel};
 use roxmltree::{Document, Node};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -311,6 +312,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
     let mut pressure_vessels = Vec::new();
     let mut deformations = Vec::new();
     let mut vibrations = Vec::new();
+    let mut spring_ins = Vec::new();
     let mut unsupported_modules = Vec::new();
 
     for element in node.children().filter(|n| n.is_element()) {
@@ -322,6 +324,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
             "pressurevessel" => pressure_vessels.push(read_pressure_vessel(element, &ctx)?),
             "deformation" => deformations.push(read_deformation(element, &ctx)?),
             "vibration" => vibrations.push(read_vibration(element, &ctx)?),
+            "springIn" => spring_ins.push(read_spring_in(element, &ctx)?),
             other => unsupported_modules.push(RawElement {
                 tag: other.to_string(),
                 xml: serialise(element),
@@ -337,6 +340,7 @@ fn read_laminate(node: Node, materials: &[Material]) -> Result<ProjectLaminate> 
         pressure_vessels,
         deformations,
         vibrations,
+        spring_ins,
         unsupported_modules,
     })
 }
@@ -556,6 +560,57 @@ fn read_vibration(node: Node, parent: &str) -> Result<NamedVibration> {
             n: number(node, "n", &ctx)? as usize,
             d_matrix: d_matrix(node, &ctx)?,
             stiffeners: read_stiffeners(node, &ctx)?,
+        },
+    })
+}
+
+fn read_spring_in(node: Node, parent: &str) -> Result<NamedSpringIn> {
+    let name = attr(node, "name").unwrap_or_default().to_string();
+    let ctx = format!("{parent}, Spring-In '{name}'");
+
+    // The model sits in a child element that names its Java class, with its
+    // own numeric properties under it - the same reflected shape the stiffener
+    // profiles use, and written by the same kind of code.
+    let model_node = child(node, "SpringInModel").ok_or_else(|| ReadError::Missing {
+        context: ctx.clone(),
+        what: "SpringInModel".to_string(),
+    })?;
+    let class = attr(model_node, "classname").ok_or_else(|| ReadError::Missing {
+        context: ctx.clone(),
+        what: "classname".to_string(),
+    })?;
+    let code = naming::spring_in_model_from_java(class).ok_or_else(|| ReadError::Unknown {
+        context: format!("{ctx}, Modell"),
+        value: class.to_string(),
+    })?;
+    let model = match code {
+        "simple_radford" => SpringInModel::SimpleRadford,
+        // On the crossed names see spring_in::SpringInModel::chemical_term:
+        // `eps_cu` is the one around the bend, whatever the property sheet
+        // says.
+        _ => SpringInModel::EnhancedRadford {
+            eps_circumferential: number(model_node, "eps_cu", &ctx)?,
+            eps_thickness: number(model_node, "eps_cr", &ctx)?,
+        },
+    };
+
+    Ok(NamedSpringIn {
+        name,
+        input: SpringInInput {
+            model,
+            model_name: attr(model_node, "name")
+                .unwrap_or(model.default_name())
+                .to_string(),
+            angle: number(node, "angle", &ctx)?,
+            radius: number(node, "radius", &ctx)?,
+            alphat_thick: number(node, "alphat_thick", &ctx)?,
+            base_temp: number(node, "baseTemp", &ctx)?,
+            hardening_temp: number(node, "hardeningTemp", &ctx)?,
+            // Boolean.parseBoolean again: anything but "true" is false.
+            use_auto_calc_alphat_thick: text(node, "useAutoCalcAlphat_thick")
+                .is_some_and(|t| t.eq_ignore_ascii_case("true")),
+            zero_deg_as_circum_dir: text(node, "zeroDegAsCircumDir")
+                .is_some_and(|t| t.eq_ignore_ascii_case("true")),
         },
     })
 }

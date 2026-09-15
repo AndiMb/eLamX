@@ -51,6 +51,9 @@ import type { Fibre as GenFibre } from "./generated/Fibre";
 import type { MatrixMaterial as GenMatrixMaterial } from "./generated/MatrixMaterial";
 import type { MicroMechanics as GenMicroMechanics } from "./generated/MicroMechanics";
 import type { Model as GenMicroModel } from "./generated/Model";
+import type { SpringInInput as GenSpringInInput } from "./generated/SpringInInput";
+import type { SpringInModel as GenSpringInModel } from "./generated/SpringInModel";
+import type { SpringInResult as GenSpringInResult } from "./generated/SpringInResult";
 import type { Stiffener as GenStiffener } from "./generated/Stiffener";
 import type { StiffenerDirection as GenStiffenerDirection } from "./generated/StiffenerDirection";
 import type { StressStrainState as GenStressStrainState } from "./generated/StressStrainState";
@@ -96,6 +99,10 @@ export type FibreDto = GenFibre;
 export type MatrixMaterialDto = GenMatrixMaterial;
 export type MicroMechanicsDto = GenMicroMechanics;
 export type MicroModelId = GenMicroModel;
+export type SpringInInputDto = GenSpringInInput;
+export type SpringInModelDto = GenSpringInModel;
+export type SpringInResponse = GenSpringInResult;
+export type SpringInModelId = GenSpringInModel["model"];
 export type StiffenerDto = GenStiffener;
 export type StiffenerDirectionId = GenStiffenerDirection;
 export type StrainsDto = GenStrains;
@@ -289,6 +296,11 @@ export const LAMINATE_FAILURE_KINDS = [
   { id: "first_ply", labelKey: "laminateFailure.kind.firstPly" },
   { id: "final", labelKey: "laminateFailure.kind.final" },
 ] as const satisfies readonly { id: LaminateFailureKindId; labelKey: MessageKey }[];
+
+export const SPRING_IN_MODELS = [
+  { id: "simple_radford", labelKey: "springIn.model.simple_radford" },
+  { id: "enhanced_radford", labelKey: "springIn.model.enhanced_radford" },
+] as const satisfies readonly { id: SpringInModelId; labelKey: MessageKey }[];
 
 export const STIFFENER_DIRECTIONS = [
   { id: "x", labelKey: "stiffener.direction.x" },

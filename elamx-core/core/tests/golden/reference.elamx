@@ -320,6 +320,28 @@
                 <kappa_y>0.0</kappa_y>
                 <kappa_xy>0.0</kappa_xy>
             </calculation>
+            <calculation name="GM-Sym-AlphaT">
+                <n_x>0.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <deltat>-100.0</deltat>
+                <deltah>0.0</deltah>
+                <useStrain0>false</useStrain0>
+                <useStrain1>false</useStrain1>
+                <useStrain2>false</useStrain2>
+                <useStrain3>false</useStrain3>
+                <useStrain4>false</useStrain4>
+                <useStrain5>false</useStrain5>
+                <epsilon_x>0.0</epsilon_x>
+                <epsilon_y>0.0</epsilon_y>
+                <gamma_xy>0.0</gamma_xy>
+                <kappa_x>0.0</kappa_x>
+                <kappa_y>0.0</kappa_y>
+                <kappa_xy>0.0</kappa_xy>
+            </calculation>
             <buckling name="GM-Beul-SS-Druck">
                 <n_x>-1.0</n_x>
                 <n_y>0.0</n_y>
@@ -490,6 +512,30 @@
                 <epsilon_crit>0.005</epsilon_crit>
                 <j_a>1.0</j_a>
             </lastplyfailure>
+            <springIn name="GM-SpringIn-Einfach">
+                <alphat_thick>0.00003</alphat_thick>
+                <angle>90.0</angle>
+                <baseTemp>25.0</baseTemp>
+                <hardeningTemp>180.0</hardeningTemp>
+                <radius>10.0</radius>
+                <useAutoCalcAlphat_thick>false</useAutoCalcAlphat_thick>
+                <zeroDegAsCircumDir>true</zeroDegAsCircumDir>
+                <SpringInModel name="Simple Radford Model" classname="de.elamx.clt.springin.SimpleRadfordSpringInModel">
+                </SpringInModel>
+            </springIn>
+            <springIn name="GM-SpringIn-Erweitert">
+                <alphat_thick>0.000028</alphat_thick>
+                <angle>120.0</angle>
+                <baseTemp>20.0</baseTemp>
+                <hardeningTemp>175.0</hardeningTemp>
+                <radius>15.0</radius>
+                <useAutoCalcAlphat_thick>true</useAutoCalcAlphat_thick>
+                <zeroDegAsCircumDir>false</zeroDegAsCircumDir>
+                <SpringInModel name="enhanced Radford Model" classname="de.elamx.clt.springin.additionalmodels.EnhancedRadfordSpringInModel">
+                    <eps_cr>-0.006</eps_cr>
+                    <eps_cu>-0.0005</eps_cu>
+                </SpringInModel>
+            </springIn>
         </laminate>
         <laminate invert_z="false" name="GM-SymOffset" offset="0.35" symmetric="true" uuid="00000000-0000-4000-8000-00000000002a" with_middle_layer="false">
             <layer name="Lage 1" uuid="00000000-0000-4000-8000-00000000200b">

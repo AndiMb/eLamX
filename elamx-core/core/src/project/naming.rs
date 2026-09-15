@@ -104,6 +104,17 @@ const STIFFENER_PROFILES: &[(&str, &str)] = &[
     ("t_profile", "de.elamx.clt.plate.AdditionalStiffeners.T_StiffenerProperties"),
 ];
 
+/// Spring-in models: `(model code, Java class name)`. The enhanced model is
+/// the one that ships in `AdditionalSpringInModels`, which is why the two
+/// packages differ.
+const SPRING_IN_MODELS: &[(&str, &str)] = &[
+    ("simple_radford", "de.elamx.clt.springin.SimpleRadfordSpringInModel"),
+    (
+        "enhanced_radford",
+        "de.elamx.clt.springin.additionalmodels.EnhancedRadfordSpringInModel",
+    ),
+];
+
 /// Edge conditions are stored as the index into eLamX's own `boundary_cond`
 /// array (`plateui/buckling/InputPanel`), so the ORDER here is the file format.
 const BOUNDARY: [BoundaryCondition; 6] = [
@@ -161,6 +172,14 @@ pub fn stiffener_profile_from_java(java: &str) -> Option<&'static str> {
 
 pub fn stiffener_profile_to_java(code: &str) -> Option<&'static str> {
     STIFFENER_PROFILES.iter().find(|(c, _)| *c == code).map(|(_, j)| *j)
+}
+
+pub fn spring_in_model_from_java(java: &str) -> Option<&'static str> {
+    SPRING_IN_MODELS.iter().find(|(_, j)| *j == java).map(|(c, _)| *c)
+}
+
+pub fn spring_in_model_to_java(code: &str) -> Option<&'static str> {
+    SPRING_IN_MODELS.iter().find(|(c, _)| *c == code).map(|(_, j)| *j)
 }
 
 pub fn boundary_from_index(index: usize) -> Option<BoundaryCondition> {

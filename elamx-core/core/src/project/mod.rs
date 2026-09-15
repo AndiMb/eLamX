@@ -31,6 +31,7 @@ use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, Strains};
 use crate::micromechanics::{Fibre, MatrixMaterial};
 use crate::model::{Laminate, Material};
 use crate::plate::{BucklingInput, DeformationInput, VibrationInput};
+use crate::spring_in::SpringInInput;
 use serde::{Deserialize, Serialize};
 
 /// A whole `.elamx` document.
@@ -77,6 +78,8 @@ pub struct ProjectLaminate {
     pub deformations: Vec<NamedDeformation>,
     #[serde(default)]
     pub vibrations: Vec<NamedVibration>,
+    #[serde(default)]
+    pub spring_ins: Vec<NamedSpringIn>,
     /// Module data from modules this crate does not implement, kept as raw XML
     /// so a read/write cycle is lossless. Order is the order in the file.
     #[serde(default)]
@@ -132,6 +135,14 @@ pub struct NamedDeformation {
 pub struct NamedVibration {
     pub name: String,
     pub input: VibrationInput,
+}
+
+/// One spring-in analysis.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+pub struct NamedSpringIn {
+    pub name: String,
+    pub input: SpringInInput,
 }
 
 /// An element this crate does not interpret, kept verbatim so that a read/
