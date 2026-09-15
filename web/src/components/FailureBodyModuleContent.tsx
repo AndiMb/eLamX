@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAtomValue } from "jotai";
 import { materialsAtom } from "../store/materialsAtoms";
 import { failureBodiesKey, loadableFailureBodiesFamily } from "../store/failureBodyAtoms";
@@ -8,6 +8,8 @@ import { FailureBody3D, type FailureBodySurface } from "./charts/FailureBody3D";
 import { ChartLegend } from "./charts/ChartLegend";
 import { BackLink } from "./BackLink";
 import { useChartColors } from "../lib/chartColors";
+import { parseVtkSurface, type VtkSurface } from "../lib/vtkSurface";
+import { SafeNumberInput } from "./SafeNumberInput";
 import { useT } from "../i18n";
 
 // The failure body of a MATERIAL, independent of any laminate - the Java
@@ -30,6 +32,23 @@ export function FailureBodyModuleContent({ materialId }: { materialId: string })
   const t = useT();
   const materials = useAtomValue(materialsAtom);
   const [selected, setSelected] = useState<CriterionId[]>([DEFAULT_CRITERION_ID]);
+  // A surface from somewhere else - an FE study, a test campaign - drawn in
+  // the same space as the criteria so the two can be compared. The original
+  // offers this too; see lib/vtkSurface on what its file format actually is.
+  const [imported, setImported] = useState<{ name: string; surface: VtkSurface } | null>(null);
+  const [importScale, setImportScale] = useState(1);
+  const [importError, setImportError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement | null>(null);
+
+  const openFile = async (file: File) => {
+    try {
+      setImported({ name: file.name, surface: parseVtkSurface(await file.text(), importScale) });
+      setImportError(null);
+    } catch (error) {
+      setImported(null);
+      setImportError(error instanceof Error ? error.message : String(error));
+    }
+  };
 
   const material = materials.find((m) => m.id === materialId);
   if (!material) return <p className="hint">{t("material.unknown")}</p>;
@@ -68,7 +87,47 @@ export function FailureBodyModuleContent({ materialId }: { materialId: string })
         {selected.length === 0 ? (
           <p className="hint">{t("failureBody.none")}</p>
         ) : (
-          <FailureBodies materialId={materialId} selected={selected} />
+          <FailureBodies materialId={materialId} selected={selected} imported={imported?.surface} />
+        )}
+
+        <h3>{t("failureBody.import")}</h3>
+        <p className="hint">{t("failureBody.import.hint")}</p>
+        <div className="field-grid">
+          <label>
+            <span className="field-label">{t("failureBody.import.scale")}</span>
+            <SafeNumberInput value={importScale} onChange={setImportScale} />
+          </label>
+        </div>
+        <div className="flags">
+          <button type="button" onClick={() => fileInput.current?.click()}>
+            {t("failureBody.import.open")}
+          </button>
+          {imported && (
+            <button type="button" onClick={() => setImported(null)}>
+              {t("failureBody.import.remove")}
+            </button>
+          )}
+        </div>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".vtk,text/plain"
+          className="visually-hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void openFile(file);
+            // Cleared so picking the same file again still fires a change.
+            e.target.value = "";
+          }}
+        />
+        {importError && <p className="error">{t("failureBody.import.error", { message: importError })}</p>}
+        {imported && (
+          <p className="hint">
+            {t("failureBody.import.loaded", {
+              name: imported.name,
+              faces: imported.surface.quads.length,
+            })}
+          </p>
         )}
 
         <p className="hint">{t("failureBody.hint")}</p>
@@ -83,9 +142,11 @@ export function FailureBodyModuleContent({ materialId }: { materialId: string })
 function FailureBodies({
   materialId,
   selected,
+  imported,
 }: {
   materialId: string;
   selected: CriterionId[];
+  imported?: VtkSurface;
 }) {
   const t = useT();
   // Resolved colours, not CSS variables: these are painted into a canvas.
@@ -104,6 +165,15 @@ function FailureBodies({
     points: envelope.points,
     color: index === 0 ? undefined : colors.series[(index - 1) % colors.series.length],
   }));
+  if (imported) {
+    // Always an overlay, never the solid body: it is the thing being compared
+    // AGAINST the criteria, and it has no grid for the shading to follow.
+    bodies.push({
+      key: "imported",
+      quads: imported.quads,
+      color: colors.series[bodies.length % colors.series.length],
+    });
+  }
   if (bodies.length === 0) return null;
 
   return (
@@ -111,7 +181,10 @@ function FailureBodies({
       <ChartLegend
         items={bodies.map((body, index) => ({
           key: body.key,
-          label: t(CRITERIA.find((c) => c.id === body.key)!.labelKey),
+          label:
+            body.key === "imported"
+              ? t("failureBody.import.legend")
+              : t(CRITERIA.find((c) => c.id === body.key)!.labelKey),
           color: body.color ?? colors.surface,
           shape: index === 0 ? "swatch" : "line",
         }))}

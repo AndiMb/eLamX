@@ -49,6 +49,28 @@ function shade(rgb: [number, number, number], intensity: number): string {
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
+/** A body's faces, whichever way it arrived. A grid cell with a missing
+ *  corner simply has no face - that is what a hole in the surface is. */
+function facesOf(body: FailureBodySurface): {
+  corners: [number, number, number][];
+  row: number;
+  col: number;
+}[] {
+  if (body.quads) {
+    return body.quads.map((corners) => ({ corners, row: 0, col: 0 }));
+  }
+  const grid = body.points ?? [];
+  const faces: { corners: [number, number, number][]; row: number; col: number }[] = [];
+  for (let r = 0; r + 1 < grid.length; r++) {
+    for (let c = 0; c + 1 < grid[r].length; c++) {
+      const corners = [grid[r][c], grid[r][c + 1], grid[r + 1][c + 1], grid[r + 1][c]];
+      if (corners.some((p) => !p)) continue;
+      faces.push({ corners: corners as [number, number, number][], row: r, col: c });
+    }
+  }
+  return faces;
+}
+
 function parseHex(hex: string): [number, number, number] {
   return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
 }
@@ -61,8 +83,14 @@ function axisFallback(canvas: HTMLCanvasElement): string {
 /** One criterion's surface, as it is drawn. */
 export interface FailureBodySurface {
   key: string;
-  /** Surface grid from the core; null entries are directions it could not evaluate. */
-  points: ([number, number, number] | null)[][];
+  /**
+   * Surface grid from the core; null entries are directions it could not
+   * evaluate. Either this or `quads` - a body computed here arrives as a grid,
+   * an imported one as a bare list of faces with no grid to speak of.
+   */
+  points?: ([number, number, number] | null)[][];
+  /** Faces of four corners, for a surface that is not a grid. */
+  quads?: [number, number, number][][];
   /** Wireframe colour when this body is not the solid one. */
   color?: string;
   /**
@@ -108,7 +136,9 @@ export const FailureBody3D = memo(function FailureBody3D({
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const solid = bodies[0];
-    if (!canvas || !solid || solid.points.length < 2) return;
+    if (!canvas || !solid) return;
+    const solidFaces = facesOf(solid);
+    if (solidFaces.length === 0) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -132,9 +162,8 @@ export const FailureBody3D = memo(function FailureBody3D({
     let spanNor = 0;
     let spanShear = 0;
     for (const body of bodies) {
-      for (const row of body.points) {
-        for (const p of row) {
-          if (!p) continue;
+      for (const face of facesOf(body)) {
+        for (const p of face.corners) {
           spanPar = Math.max(spanPar, Math.abs(p[0]));
           spanNor = Math.max(spanNor, Math.abs(p[1]));
           spanShear = Math.max(spanShear, Math.abs(p[2]));
@@ -178,14 +207,11 @@ export const FailureBody3D = memo(function FailureBody3D({
 
     const base = parseHex(colors.surface);
 
-    const points = solid.points;
     const quads: Quad[] = [];
-    for (let r = 0; r < points.length - 1; r++) {
-      for (let c = 0; c < points[r].length - 1; c++) {
-        const corners = [points[r][c], points[r][c + 1], points[r + 1][c + 1], points[r + 1][c]];
-        // A hole in the surface simply drops its quads.
-        if (corners.some((p) => !p)) continue;
-        const raw = corners as [number, number, number][];
+    for (const face of solidFaces) {
+      {
+        const raw = face.corners;
+        const { row: r, col: c } = face;
 
         // Flat normal in the NORMALISED space, so the shading follows what is
         // actually drawn rather than the physical aspect ratio.
@@ -236,8 +262,7 @@ export const FailureBody3D = memo(function FailureBody3D({
       ctx.strokeStyle = body.color ?? axisFallback(canvas);
       ctx.lineWidth = 1.2;
       ctx.globalAlpha = 0.9;
-      const grid = body.points;
-      const line = (path: (readonly [number, number, number] | null)[]) => {
+      const line = (path: (readonly [number, number, number] | null)[], close = false) => {
         ctx.beginPath();
         let open = false;
         for (const p of path) {
@@ -250,10 +275,21 @@ export const FailureBody3D = memo(function FailureBody3D({
           else ctx.moveTo(q.x, q.y);
           open = true;
         }
+        if (close) ctx.closePath();
         ctx.stroke();
       };
-      for (let r = 0; r < grid.length; r += STRIDE) line(grid[r]);
-      for (let c = 0; c < (grid[0]?.length ?? 0); c += STRIDE) line(grid.map((row) => row[c]));
+
+      const grid = body.points;
+      if (grid) {
+        // Grid lines, which read as a mesh over the solid body.
+        for (let r = 0; r < grid.length; r += STRIDE) line(grid[r]);
+        for (let c = 0; c < (grid[0]?.length ?? 0); c += STRIDE) line(grid.map((row) => row[c]));
+      } else {
+        // No grid to run lines along, so each face is outlined instead. Every
+        // face and not every fourth: an imported surface is usually far
+        // coarser than a computed one, and thinning it would leave gaps.
+        for (const face of facesOf(body)) line(face.corners, true);
+      }
       ctx.restore();
     }
 
