@@ -14,6 +14,7 @@ import {
   Columns3,
   Cylinder,
   Diamond,
+  FileOutput,
   Globe,
   Layers2,
   Spline,
@@ -35,6 +36,7 @@ export type ModuleType =
   | "failureBody"
   | "laminateFailure"
   | "optimization"
+  | "export"
   | "compare";
 
 /**
@@ -99,6 +101,13 @@ export const MODULE_REGISTRY: Record<ModuleType, ModuleDefinition> = {
     labelKey: "module.cutout.label",
     icon: CircleDashed,
     descriptionKey: "module.cutout.description",
+  },
+  export: {
+    id: "export",
+    scope: "laminate",
+    labelKey: "module.export.label",
+    icon: FileOutput,
+    descriptionKey: "module.export.description",
   },
   lastPlyFailure: {
     id: "lastPlyFailure",

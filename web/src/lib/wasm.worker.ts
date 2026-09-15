@@ -28,6 +28,7 @@ const ENTRY_POINTS = [
   "resolve_micromechanics",
   "import_elamx",
   "export_elamx",
+  "export_solver_deck",
 ] as const;
 
 export type WasmEntryPoint = (typeof ENTRY_POINTS)[number];

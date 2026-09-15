@@ -9,6 +9,7 @@ import { ModuleContextBar } from "../components/ModuleContextBar";
 import { PressureVesselModuleContent } from "../components/PressureVesselModuleContent";
 import { DeformationModuleContent } from "../components/DeformationModuleContent";
 import { CutoutModuleContent } from "../components/CutoutModuleContent";
+import { ExportModuleContent } from "../components/ExportModuleContent";
 import { OptimizationModuleContent } from "../components/OptimizationModuleContent";
 import { SpringInModuleContent } from "../components/SpringInModuleContent";
 import { VibrationModuleContent } from "../components/VibrationModuleContent";
@@ -120,6 +121,8 @@ function ModuleBody({ laminateId, moduleId }: { laminateId: string; moduleId: Mo
       return <SpringInModuleContent laminateId={laminateId} />;
     case "cutout":
       return <CutoutModuleContent laminateId={laminateId} />;
+    case "export":
+      return <ExportModuleContent laminateId={laminateId} />;
     case "laminateFailure":
       return <LaminateFailureModuleContent laminateId={laminateId} />;
     default:

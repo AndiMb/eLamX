@@ -135,4 +135,6 @@ export const elamx = {
   resolve_micromechanics: (request: string) => call("resolve_micromechanics", [request]),
   import_elamx: (xml: string) => call("import_elamx", [xml]),
   export_elamx: (project: string) => call("export_elamx", [project]),
+  /** Returns the deck as TEXT, not JSON - it is what the solver reads. */
+  export_solver_deck: (request: string) => call("export_solver_deck", [request]),
 };
