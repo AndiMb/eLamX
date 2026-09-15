@@ -8,7 +8,7 @@
 
 use elamx_core::clt::{
     calculate_last_ply_failure, calculate_pressure_vessel, determine_values, get_layer_results,
-    CltLaminate, LastPlyFailureInput, LastPlyFailureResult, LayerContribution, LayerResult, Loads,
+    CltLaminate, CltLayer, LastPlyFailureInput, LastPlyFailureResult, LayerContribution, LayerResult, Loads,
     MassMoments, PressureVesselInput, PressureVesselResult, Strains,
 };
 use elamx_core::failure::{
@@ -1010,6 +1010,51 @@ fn import_elamxb_impl(xml: &str) -> Result<String, String> {
     serde_json::to_string(&project).map_err(|e| e.to_string())
 }
 
+#[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+struct LayerStiffnessRequest {
+    material: Material,
+    angle_deg: f64,
+}
+
+/// The four stiffness matrices of one ply.
+///
+/// Local is the fibre system, global the laminate's. The compliance matrices
+/// are the inverses, and they are here rather than left to the caller because
+/// inverting a 3x3 in a chart component is how two implementations of the same
+/// number start to disagree.
+#[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+struct LayerStiffness {
+    q_local: Vec<Vec<f64>>,
+    q_global: Vec<Vec<f64>>,
+    s_local: Vec<Vec<f64>>,
+    s_global: Vec<Vec<f64>>,
+}
+
+/// The stiffness and compliance of a single ply, in both coordinate systems.
+///
+/// A ply, not a laminate: this depends on the material and the angle and on
+/// nothing else - not on the stack, not on the load - which is why it is its
+/// own entry point rather than part of the CLT response.
+#[wasm_bindgen]
+pub fn compute_layer_stiffness(request_json: &str) -> Result<String, JsValue> {
+    compute_layer_stiffness_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_layer_stiffness_impl(request_json: &str) -> Result<String, String> {
+    let request: LayerStiffnessRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let layer = CltLayer::new(request.angle_deg, 1.0, &request.material, None);
+    let stiffness = LayerStiffness {
+        q_local: layer.q_matrix_local().clone(),
+        q_global: layer.q_matrix_global(),
+        s_local: layer.s_matrix_local(),
+        s_global: layer.s_matrix_global(),
+    };
+    serde_json::to_string(&stiffness).map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1740,6 +1785,37 @@ mod tests {
             true
         );
         assert!(import_elamxb_impl("<nope").is_err());
+    }
+
+    /// A ply's stiffness, and the two things about it worth stating: at zero
+    /// degrees the global matrices are the local ones, and the compliance is
+    /// the inverse rather than a second opinion.
+    #[test]
+    fn compute_layer_stiffness_returns_both_systems() {
+        let project = import_elamx_impl(SMALL_PROJECT).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&project).unwrap();
+        let material = parsed["materials"][0].clone();
+
+        let straight = serde_json::json!({ "material": material, "angle_deg": 0.0 });
+        let json = compute_layer_stiffness_impl(&straight.to_string()).expect("Steifigkeit");
+        let s: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(s["q_local"], s["q_global"]);
+        let q11 = s["q_local"][0][0].as_f64().unwrap();
+        let s11 = s["s_local"][0][0].as_f64().unwrap();
+        let q12 = s["q_local"][0][1].as_f64().unwrap();
+        let s12 = s["s_local"][0][1].as_f64().unwrap();
+        // One row of Q times one column of S is a row of the identity.
+        assert!((q11 * s11 + q12 * s12 - 1.0).abs() < 1e-12);
+
+        // At 45 degrees the shear-extension coupling appears, which is the
+        // whole reason the global matrix is worth showing at all.
+        let angled = serde_json::json!({ "material": material, "angle_deg": 45.0 });
+        let json = compute_layer_stiffness_impl(&angled.to_string()).unwrap();
+        let s: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(s["q_global"][0][2].as_f64().unwrap().abs() > 1.0);
+        assert!(s["q_local"][0][2].as_f64().unwrap().abs() < 1e-12);
+
+        assert!(compute_layer_stiffness_impl("not json").is_err());
     }
 
     #[test]

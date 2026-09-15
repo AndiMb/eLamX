@@ -2,6 +2,7 @@ import { useAtomValue } from "jotai";
 import { TriangleAlert, X } from "lucide-react";
 import { layerContributionsFamily, layerResultsFamily } from "../store/derivedAtoms";
 import { failureBodyKey, loadableFailureBodyFamily } from "../store/failureBodyAtoms";
+import { layerStiffnessKey, loadableLayerStiffnessFamily } from "../store/layerStiffnessAtoms";
 import { materialsAtom } from "../store/materialsAtoms";
 import { CRITERIA, ISOTROPIC_CRITERIA, isIsotropic, type CriterionId } from "../lib/types";
 import { formatScientific } from "../lib/numberFormat";
@@ -37,6 +38,9 @@ export function LayerDetailPanel({
   // only ever used when both halves are present.
   const key = failureBodyKey(ply?.material_id ?? "", criterionId ?? "");
   const body = useAtomValue(loadableFailureBodyFamily(key));
+  const stiffness = useAtomValue(
+    loadableLayerStiffnessFamily(layerStiffnessKey(ply?.material_id ?? "", ply?.angle_deg ?? 0)),
+  );
 
   if (!result || !ply || !criterionId) return null;
 
@@ -143,6 +147,42 @@ export function LayerDetailPanel({
           </table>
         </div>
       </div>
+      {/* The ply's own stiffness, which the original shows in a dialog of its
+          own off the layer. Four 3x3 matrices: stiffness and compliance, in the
+          fibre system and in the laminate's. The interesting one is Q global -
+          its 16 and 26 terms are zero at 0 and 90 degrees and nowhere else, and
+          they are why an unbalanced stack twists when it is pulled. */}
+      {stiffness.state === "hasData" && (
+        <details className="layer-stiffness">
+          <summary>{t("layerDetail.stiffness")}</summary>
+          <div className="grid">
+            {(
+              [
+                ["layerDetail.qLocal", stiffness.data.q_local, 1],
+                ["layerDetail.qGlobal", stiffness.data.q_global, 1],
+                ["layerDetail.sLocal", stiffness.data.s_local, 3],
+                ["layerDetail.sGlobal", stiffness.data.s_global, 3],
+              ] as const
+            ).map(([labelKey, matrix, digits]) => (
+              <div key={labelKey}>
+                <h4>{t(labelKey)}</h4>
+                <table className="chart-table">
+                  <tbody>
+                    {matrix.map((row, i) => (
+                      <tr key={i}>
+                        {row.map((value, j) => (
+                          <td key={j}>{formatScientific(value, digits + 2, locale)}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
     </section>
   );
 }

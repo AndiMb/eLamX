@@ -31,6 +31,7 @@ const ENTRY_POINTS = [
   "export_elamx",
   "export_solver_deck",
   "compute_carpet_plot",
+  "compute_layer_stiffness",
 ] as const;
 
 export type WasmEntryPoint = (typeof ENTRY_POINTS)[number];

@@ -137,6 +137,7 @@ export const elamx = {
   import_elamxb: (xml: string) => call("import_elamxb", [xml]),
   export_elamx: (project: string) => call("export_elamx", [project]),
   compute_carpet_plot: (request: string) => call("compute_carpet_plot", [request]),
+  compute_layer_stiffness: (request: string) => call("compute_layer_stiffness", [request]),
   /** Returns the deck as TEXT, not JSON - it is what the solver reads. */
   export_solver_deck: (request: string) => call("export_solver_deck", [request]),
 };
