@@ -15,6 +15,7 @@ import {
   Cylinder,
   Diamond,
   FileOutput,
+  Grid2x2,
   Globe,
   Layers2,
   Spline,
@@ -33,6 +34,7 @@ export type ModuleType =
   | "cutout"
   | "lastPlyFailure"
   | "pressureVessel"
+  | "carpetPlot"
   | "failureBody"
   | "laminateFailure"
   | "optimization"
@@ -129,6 +131,13 @@ export const MODULE_REGISTRY: Record<ModuleType, ModuleDefinition> = {
     labelKey: "module.laminateFailure.label",
     icon: Globe,
     descriptionKey: "module.laminateFailure.description",
+  },
+  carpetPlot: {
+    id: "carpetPlot",
+    scope: "material",
+    labelKey: "module.carpetPlot.label",
+    icon: Grid2x2,
+    descriptionKey: "module.carpetPlot.description",
   },
   failureBody: {
     id: "failureBody",

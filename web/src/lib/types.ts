@@ -52,6 +52,9 @@ import type { OptimizerKind as GenOptimizerKind } from "./generated/OptimizerKin
 import type { ExportOptions as GenExportOptions } from "./generated/ExportOptions";
 import type { ExportTarget as GenExportTarget } from "./generated/ExportTarget";
 import type { Offset as GenOffset } from "./generated/Offset";
+import type { CarpetPlot as GenCarpetPlot } from "./generated/CarpetPlot";
+import type { CarpetCurve as GenCarpetCurve } from "./generated/CarpetCurve";
+import type { CarpetValue as GenCarpetValue } from "./generated/CarpetValue";
 import type { PlateField as GenPlateField } from "./generated/PlateField";
 import type { PlateFieldResult as GenPlateFieldResult } from "./generated/PlateFieldResult";
 import type { PressureVesselInput as GenPressureVesselInput } from "./generated/PressureVesselInput";
@@ -117,6 +120,9 @@ export type ExportTargetDto = GenExportTarget;
 /** Which solver a deck is for. The tag of `ExportTargetDto`, on its own. */
 export type SolverId = GenExportTarget["solver"];
 export type OffsetId = GenOffset;
+export type CarpetPlotDto = GenCarpetPlot;
+export type CarpetCurveDto = GenCarpetCurve;
+export type CarpetValueId = GenCarpetValue;
 export type PlateFieldId = GenPlateField;
 export type PlateFieldResponse = GenPlateFieldResult;
 export type PressureVesselInputDto = GenPressureVesselInput;

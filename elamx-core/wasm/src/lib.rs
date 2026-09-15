@@ -19,6 +19,7 @@ use elamx_core::mathtools;
 use elamx_core::micromechanics::{self, Fibre, MatrixMaterial};
 use elamx_core::model::{Laminate, Material};
 use elamx_core::project::{read_elamx, write_elamx, Project};
+use elamx_core::carpet::{carpet_plot, CarpetValue};
 use elamx_core::cutout::{calculate as calculate_cutout, CutoutInput};
 use elamx_core::export::{export as export_deck, ExportOptions, ExportTarget};
 use elamx_core::optimization::{
@@ -971,6 +972,28 @@ fn export_solver_deck_impl(request_json: &str) -> Result<String, String> {
     .map_err(|e| e.to_string())
 }
 
+#[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+struct CarpetRequest {
+    material: Material,
+    value: CarpetValue,
+}
+
+/// What this material becomes at every mix of 0, +-45 and 90 degree plies.
+///
+/// A material question, not a laminate one: nothing here refers to a stack,
+/// which is the point - the plot is read before there is one.
+#[wasm_bindgen]
+pub fn compute_carpet_plot(request_json: &str) -> Result<String, JsValue> {
+    compute_carpet_plot_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_carpet_plot_impl(request_json: &str) -> Result<String, String> {
+    let request: CarpetRequest = serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let plot = carpet_plot(&request.material, request.value);
+    serde_json::to_string(&plot).map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1643,6 +1666,23 @@ mod tests {
         // An empty stack is a deck with no plies, not an error.
         assert!(export_solver_deck_impl(&request.to_string()).is_ok());
         assert!(export_solver_deck_impl("not json").is_err());
+    }
+
+    /// The carpet plot's request is a material and a choice of constant, and
+    /// the answer has to carry the eleven curves the page draws.
+    #[test]
+    fn compute_carpet_plot_returns_the_whole_family() {
+        let project = import_elamx_impl(SMALL_PROJECT).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&project).unwrap();
+        let request = serde_json::json!({
+            "material": parsed["materials"][0],
+            "value": "ex",
+        });
+        let json = compute_carpet_plot_impl(&request.to_string()).expect("Carpet-Plot");
+        let plot: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(plot["curves"].as_array().unwrap().len(), 11);
+        assert_eq!(plot["curves"][10]["without_90"], true);
+        assert!(compute_carpet_plot_impl("not json").is_err());
     }
 
     #[test]

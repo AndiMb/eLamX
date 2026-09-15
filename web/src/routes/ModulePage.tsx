@@ -10,6 +10,7 @@ import { PressureVesselModuleContent } from "../components/PressureVesselModuleC
 import { DeformationModuleContent } from "../components/DeformationModuleContent";
 import { CutoutModuleContent } from "../components/CutoutModuleContent";
 import { ExportModuleContent } from "../components/ExportModuleContent";
+import { CarpetPlotModuleContent } from "../components/CarpetPlotModuleContent";
 import { OptimizationModuleContent } from "../components/OptimizationModuleContent";
 import { SpringInModuleContent } from "../components/SpringInModuleContent";
 import { VibrationModuleContent } from "../components/VibrationModuleContent";
@@ -67,6 +68,13 @@ export function MaterialModulePage() {
         <>
           <h1 className="visually-hidden">{t(MODULE_REGISTRY.failureBody.labelKey)}</h1>
           <FailureBodyModuleContent materialId={materialId} />
+        </>
+      );
+    case "carpetPlot":
+      return (
+        <>
+          <h1 className="visually-hidden">{t(MODULE_REGISTRY.carpetPlot.labelKey)}</h1>
+          <CarpetPlotModuleContent materialId={materialId} />
         </>
       );
     default:

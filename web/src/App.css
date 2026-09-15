@@ -2728,6 +2728,19 @@ table.matrix td.block-d {
   font-size: 10px;
 }
 
+/* A label sitting ON a curve rather than beside the frame - the carpet plot's
+   curves are told apart by the number written on each one, not by a legend. */
+.chart-svg text.chart-inline-label {
+  fill: var(--viz-text-primary);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.chart-svg text.chart-axis-label {
+  fill: var(--viz-text-primary);
+  font-size: 11px;
+}
+
 .chart-gridline {
   stroke: var(--viz-grid);
   stroke-width: 1;
