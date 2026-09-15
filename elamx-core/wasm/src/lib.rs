@@ -20,6 +20,7 @@ use elamx_core::micromechanics::{self, Fibre, MatrixMaterial};
 use elamx_core::model::{Laminate, Material};
 use elamx_core::project::{read_elamx, write_elamx, Project};
 use elamx_core::cutout::{calculate as calculate_cutout, CutoutInput};
+use elamx_core::export::{export as export_deck, ExportOptions, ExportTarget};
 use elamx_core::optimization::{
     exhaustive, genetic, sequential_decision, todoroki, GeneticParameters, OptimizationInput,
 };
@@ -940,6 +941,36 @@ fn export_elamx_impl(project_json: &str) -> Result<String, String> {
     Ok(write_elamx(&project))
 }
 
+#[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+struct ExportRequest {
+    laminate: Laminate,
+    materials: HashMap<String, Material>,
+    target: ExportTarget,
+    options: ExportOptions,
+}
+
+/// This laminate as input for a finite-element solver.
+///
+/// Returns the deck as one string - material cards and the layup, and nothing
+/// else. Unlike every other entry point here the answer is text rather than
+/// JSON, because text is what the solver reads.
+#[wasm_bindgen]
+pub fn export_solver_deck(request_json: &str) -> Result<String, JsValue> {
+    export_solver_deck_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn export_solver_deck_impl(request_json: &str) -> Result<String, String> {
+    let request: ExportRequest = serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    export_deck(
+        &request.laminate,
+        &request.materials,
+        request.target,
+        request.options,
+    )
+    .map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1562,6 +1593,56 @@ mod tests {
         // Module data the core cannot calculate survives the browser round trip.
         assert!(xml.contains("<plugindaten name=\"Fremdmodul\">"));
         assert_eq!(import_elamx_impl(&xml).unwrap(), json);
+    }
+
+    /// The export's request shape, which is the part a typo breaks silently:
+    /// the target is a tagged union and the options are flat beside it.
+    #[test]
+    fn export_solver_deck_takes_the_target_as_a_tagged_union() {
+        let project = import_elamx_impl(SMALL_PROJECT).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&project).unwrap();
+        let laminate = &parsed["laminates"][0]["laminate"];
+        let materials: serde_json::Value = parsed["materials"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|m| (m["id"].as_str().unwrap().to_string(), m.clone()))
+            .collect::<serde_json::Map<_, _>>()
+            .into();
+
+        let request = serde_json::json!({
+            "laminate": laminate,
+            "materials": materials,
+            "target": { "solver": "nastran", "format": "small" },
+            "options": { "hygrothermal": false, "strength": false, "offset": "mid" },
+        });
+        let deck = export_solver_deck_impl(&request.to_string()).expect("Nastran-Deck");
+        assert!(deck.starts_with("MAT8"), "{deck}");
+        assert!(deck.contains("PCOMP"), "{deck}");
+
+        let abaqus = serde_json::json!({
+            "laminate": laminate,
+            "materials": materials,
+            "target": { "solver": "abaqus" },
+            "options": { "hygrothermal": false, "strength": true, "offset": "top" },
+        });
+        let deck = export_solver_deck_impl(&abaqus.to_string()).expect("Abaqus-Deck");
+        assert!(deck.contains("*FAIL STRESS"), "{deck}");
+        assert!(deck.contains(" OFFSET=SPOS"), "{deck}");
+    }
+
+    #[test]
+    fn export_solver_deck_reports_a_missing_material_instead_of_panicking() {
+        let request = serde_json::json!({
+            "laminate": { "id": "l", "name": "l", "layers": [], "symmetric": false,
+                          "with_middle_layer": false, "invert_z": false, "offset": 0.0 },
+            "materials": {},
+            "target": { "solver": "abaqus" },
+            "options": { "hygrothermal": false, "strength": false, "offset": "mid" },
+        });
+        // An empty stack is a deck with no plies, not an error.
+        assert!(export_solver_deck_impl(&request.to_string()).is_ok());
+        assert!(export_solver_deck_impl("not json").is_err());
     }
 
     #[test]

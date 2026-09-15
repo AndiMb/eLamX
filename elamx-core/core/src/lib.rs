@@ -7,4 +7,5 @@ pub mod micromechanics;
 pub mod optimization;
 pub mod cutout;
 pub mod spring_in;
+pub mod export;
 pub mod project;
