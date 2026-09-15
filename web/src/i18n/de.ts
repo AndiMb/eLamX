@@ -541,6 +541,8 @@ export const de: Messages = {
   "criterion.ztl": "ZTL",
   "criterion.abaqus_tsai_wu": "Tsai-Wu (Abaqus)",
   "criterion.abaqus_azzi_tsai_hill": "Azzi-Tsai-Hill (Abaqus)",
+  "criterion.autodesk_tsai_wu": "Tsai-Wu (Autodesk Helius)",
+  "criterion.autodesk_hashin": "Hashin (Autodesk Helius)",
   "criterion.von_mises": "von Mises",
   "criterion.tresca": "Tresca",
   "criterion.isotropic.warning": "{criterion} ist ein Fließkriterium für einen ISOTROPEN Werkstoff, und {material} ist keiner. eLamX rechnet es trotzdem, und das tut dies auch — aber die Zahl bedeutet für einen Faserverbund nichts.",

@@ -558,6 +558,8 @@ export const en = {
   "criterion.ztl": "ZTL",
   "criterion.abaqus_tsai_wu": "Tsai-Wu (Abaqus)",
   "criterion.abaqus_azzi_tsai_hill": "Azzi-Tsai-Hill (Abaqus)",
+  "criterion.autodesk_tsai_wu": "Tsai-Wu (Autodesk Helius)",
+  "criterion.autodesk_hashin": "Hashin (Autodesk Helius)",
   "criterion.von_mises": "von Mises",
   "criterion.tresca": "Tresca",
   "criterion.isotropic.warning": "{criterion} is a yield criterion for an ISOTROPIC material, and {material} is not one. eLamX computes it anyway, and so does this - but the number means nothing for a fibre composite.",

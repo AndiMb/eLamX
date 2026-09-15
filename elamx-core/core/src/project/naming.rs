@@ -43,6 +43,8 @@ const CRITERIA: &[(&str, &str)] = &[
         failure::ABAQUS_AZZI_TSAI_HILL_ID,
         "de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusAzziTsaiHill",
     ),
+    (failure::AUTODESK_TSAI_WU_ID, "de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu"),
+    (failure::AUTODESK_HASHIN_ID, "de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin"),
     // The two isotropic ones come from their own module, hence the package.
     (failure::VON_MISES_ID, "de.elamx.laminate.addFailureCriteriaMetal.vonMises"),
     (failure::TRESCA_ID, "de.elamx.laminate.addFailureCriteriaMetal.Tresca"),
@@ -51,7 +53,7 @@ const CRITERIA: &[(&str, &str)] = &[
 /// Extra per-material values: `(core key, Java tag name)`.
 ///
 /// Only the parameters the ported criteria actually read are listed. Anything
-/// else in the file - the Ansys/LS-Dyna/Autodesk parameters, say - is
+/// else in the file - the Ansys/LS-Dyna parameters, say - is
 /// preserved verbatim under its Java name (see `Material::additional_values`),
 /// so writing a file back does not silently drop what this crate cannot use.
 const ADDITIONAL_VALUES: &[(&str, &str)] = &[
@@ -75,6 +77,17 @@ const ADDITIONAL_VALUES: &[(&str, &str)] = &[
         failure::ABAQUS_SIG_BIAX,
         "de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax",
     ),
+    (
+        failure::AUTODESK_F12_STAR,
+        "de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.f12star",
+    ),
+    (
+        failure::AUTODESK_SIG_BIAX,
+        "de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.sigbiax",
+    ),
+    // The Java names this one `alp`, and the tag is what the file has.
+    (failure::AUTODESK_ALPHA, "de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.alp"),
+    (failure::AUTODESK_R23, "de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.R23"),
 ];
 
 /// Bending-stiffness idealisations: `(kind, Java class name)`. Same silent

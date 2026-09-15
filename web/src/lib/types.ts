@@ -157,6 +157,8 @@ export const CRITERIA = [
   // about matching a solver, not about mechanics.
   { id: "abaqus_tsai_wu", labelKey: "criterion.abaqus_tsai_wu" },
   { id: "abaqus_azzi_tsai_hill", labelKey: "criterion.abaqus_azzi_tsai_hill" },
+  { id: "autodesk_tsai_wu", labelKey: "criterion.autodesk_tsai_wu" },
+  { id: "autodesk_hashin", labelKey: "criterion.autodesk_hashin" },
   // The two isotropic yield criteria. Last in the list because they belong to
   // a metal ply, which most laminates here do not have.
   { id: "von_mises", labelKey: "criterion.von_mises" },
@@ -222,6 +224,19 @@ export const ZTL_KEYS = {
   f12Star: "ztl.f12_star",
 } as const;
 
+export const AUTODESK_TSAI_WU_KEYS = {
+  f12Star: "autodesk_tsai_wu.f12_star",
+  sigBiax: "autodesk_tsai_wu.sig_biax",
+} as const;
+
+export const AUTODESK_HASHIN_KEYS = {
+  /** How much of the shear stress counts towards fibre tensile failure. */
+  alpha: "autodesk_hashin.alpha",
+  /** The transverse-transverse shear strength the matrix-compression mode is
+   *  built on - a number of its own, derived from nothing else here. */
+  r23: "autodesk_hashin.r23",
+} as const;
+
 export const ABAQUS_TSAI_WU_KEYS = {
   f12Star: "abaqus_tsai_wu.f12_star",
   /** The equibiaxial strength. Zero means none was measured, and then F12* is
@@ -249,6 +264,10 @@ export const DEFAULT_ADDITIONAL_VALUES: Record<string, number> = {
   [ZTL_KEYS.f12Star]: -0.5,
   [ABAQUS_TSAI_WU_KEYS.f12Star]: -0.5,
   [ABAQUS_TSAI_WU_KEYS.sigBiax]: 0,
+  [AUTODESK_TSAI_WU_KEYS.f12Star]: -0.5,
+  [AUTODESK_TSAI_WU_KEYS.sigBiax]: 0,
+  [AUTODESK_HASHIN_KEYS.alpha]: 1,
+  [AUTODESK_HASHIN_KEYS.r23]: 150,
 };
 
 export const emptyLoads = (): LoadsDto => ({

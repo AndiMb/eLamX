@@ -7,8 +7,12 @@
 //! and it does not unless the check is the one the solver actually performs.
 //! So these are not refinements of `tsai_wu` and `tsai_hill` - they are what
 //! Abaqus does, differences included.
+//!
+//! The Tsai-Wu half lives in `solver_tsai_wu`, which Autodesk Helius shares
+//! character for character.
 
-use super::{additional_value, Criterion, CriterionError, FailureType, LayerContext, ReserveFactor};
+use super::solver_tsai_wu::SolverTsaiWu;
+use super::{Criterion, CriterionError, FailureType, LayerContext, ReserveFactor};
 use crate::model::{Material, StressStrainState};
 
 pub const F12_STAR: &str = "abaqus_tsai_wu.f12_star";
@@ -16,68 +20,12 @@ pub const F12_STAR: &str = "abaqus_tsai_wu.f12_star";
 /// used instead - which is what the property sheet's default of 0 says.
 pub const SIG_BIAX: &str = "abaqus_tsai_wu.sig_biax";
 
-pub struct AbaqusTsaiWu;
-
-impl Criterion for AbaqusTsaiWu {
-    fn reserve_factor(
-        &self,
-        material: &Material,
-        _context: Option<&LayerContext>,
-        state: &StressStrainState,
-    ) -> Result<ReserveFactor, CriterionError> {
-        let f12_star = additional_value(material, F12_STAR)?;
-        let sig_biax = additional_value(material, SIG_BIAX)?;
-        let s = state.stress;
-
-        let f1 = 1.0 / material.r_par_ten - 1.0 / material.r_par_com;
-        let f2 = 1.0 / material.r_nor_ten - 1.0 / material.r_nor_com;
-        let f11 = 1.0 / (material.r_par_ten * material.r_par_com);
-        let f22 = 1.0 / (material.r_nor_ten * material.r_nor_com);
-        let f66 = 1.0 / (material.r_shear * material.r_shear);
-
-        // With an equibiaxial strength measured, Abaqus computes the
-        // interaction term from it rather than taking it as a free parameter.
-        //
-        // Transcribed from the original, including the two signs that keep it
-        // from doing what it is for: a term calibrated at sigma_1 = sigma_2 =
-        // sig_biax has to make the criterion come out at exactly 1 there, and
-        // the only term that does is
-        //
-        //     [1 - (f1 + f2) * s - (f11 + f22) * s^2] / (2 * s^2)
-        //
-        // whereas this adds the two compressive reciprocals instead of
-        // subtracting them, and adds the quadratic part instead. So the
-        // reserve factor at the calibration point is not 1. Changing it here
-        // would put this crate's answer at odds with eLamX's and with whatever
-        // Abaqus deck was written from the same numbers, which is the one thing
-        // this criterion exists not to do. See the note in the roadmap.
-        let f12 = if sig_biax > 0.0 {
-            let reciprocals = 1.0 / material.r_par_ten
-                + 1.0 / material.r_par_com
-                + 1.0 / material.r_nor_ten
-                + 1.0 / material.r_nor_com;
-            (1.0 - reciprocals * sig_biax + (f11 + f22) * sig_biax * sig_biax)
-                / (2.0 * sig_biax * sig_biax)
-        } else {
-            f12_star * (f11 * f22).sqrt()
-        };
-
-        let q = f11 * s[0] * s[0] + 2.0 * f12 * s[0] * s[1] + f22 * s[1] * s[1] + f66 * s[2] * s[2];
-        let l = f1 * s[0] + f2 * s[1];
-
-        if q == 0.0 && l == 0.0 {
-            return Ok(ReserveFactor::undamaged());
-        }
-
-        // Same quadratic as `tsai_wu`, and the same unconditional fibre-failure
-        // label on a criterion that cannot tell the two modes apart.
-        Ok(ReserveFactor {
-            failure_name: "Failure".to_string(),
-            minimal_reserve_factor: ((l * l + 4.0 * q).sqrt() - l) / (2.0 * q),
-            failure_type: FailureType::FiberFailure,
-        })
-    }
-}
+/// Abaqus's Tsai-Wu, which is [`SolverTsaiWu`] reading Abaqus's own two
+/// parameters - see that module for why it is shared and what is wrong with it.
+pub const ABAQUS_TSAI_WU: SolverTsaiWu = SolverTsaiWu {
+    f12_star_key: F12_STAR,
+    sig_biax_key: SIG_BIAX,
+};
 
 pub struct AbaqusAzziTsaiHill;
 
@@ -206,7 +154,7 @@ mod tests {
             AbaqusAzziTsaiHill
                 .reserve_factor(&material(0.0), None, &at([0.0; 3]))
                 .unwrap(),
-            AbaqusTsaiWu
+            ABAQUS_TSAI_WU
                 .reserve_factor(&material(0.0), None, &at([0.0; 3]))
                 .unwrap(),
         ] {
@@ -219,7 +167,7 @@ mod tests {
     #[test]
     fn tsai_wu_is_one_at_the_fibre_tension_allowable() {
         for sig_biax in [0.0, 40.0] {
-            let rf = AbaqusTsaiWu
+            let rf = ABAQUS_TSAI_WU
                 .reserve_factor(&material(sig_biax), None, &at([2000.0, 0.0, 0.0]))
                 .unwrap();
             assert_relative_eq!(rf.minimal_reserve_factor, 1.0, epsilon = 1e-12);
@@ -234,7 +182,7 @@ mod tests {
         m.additional_values
             .insert(super::super::F12_STAR.to_string(), -0.5);
         let state = at([800.0, -30.0, 25.0]);
-        let abaqus = AbaqusTsaiWu.reserve_factor(&m, None, &state).unwrap();
+        let abaqus = ABAQUS_TSAI_WU.reserve_factor(&m, None, &state).unwrap();
         let ordinary = super::super::TsaiWu.reserve_factor(&m, None, &state).unwrap();
         assert_eq!(abaqus.minimal_reserve_factor, ordinary.minimal_reserve_factor);
     }
@@ -245,7 +193,7 @@ mod tests {
     #[test]
     fn the_biaxial_branch_misses_its_own_calibration_point() {
         let sig_biax = 40.0;
-        let rf = AbaqusTsaiWu
+        let rf = ABAQUS_TSAI_WU
             .reserve_factor(&material(sig_biax), None, &at([sig_biax, sig_biax, 0.0]))
             .unwrap();
         assert!(

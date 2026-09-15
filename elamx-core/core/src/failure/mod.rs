@@ -8,10 +8,12 @@
 //! `envelope`: the sampling is the criterion's own arithmetic and belongs
 //! here, while turning the sampled grid into pixels is the frontend's job.
 //! The FEA-specific criterion variants live beside the ordinary ones, one
-//! module per solver: `abaqus` so far, with LS-DYNA, ANSYS and Autodesk still
-//! to come. They are not refinements - they are what those solvers compute.
+//! module per solver: `abaqus` and `autodesk` so far, with LS-DYNA and ANSYS
+//! still to come. They are not refinements - they are what those solvers
+//! compute.
 
 mod abaqus;
+mod autodesk;
 mod christensen;
 mod edge;
 mod envelope;
@@ -27,13 +29,18 @@ mod metal;
 mod puck;
 mod reserve_factor;
 mod rotem;
+mod solver_tsai_wu;
 mod sun;
 mod tsai_hill;
 mod tsai_wu;
 mod ztl;
 
 pub use abaqus::{
-    AbaqusAzziTsaiHill, AbaqusTsaiWu, F12_STAR as ABAQUS_F12_STAR, SIG_BIAX as ABAQUS_SIG_BIAX,
+    AbaqusAzziTsaiHill, ABAQUS_TSAI_WU, F12_STAR as ABAQUS_F12_STAR, SIG_BIAX as ABAQUS_SIG_BIAX,
+};
+pub use autodesk::{
+    AutodeskHashin, ALPHA as AUTODESK_ALPHA, AUTODESK_TSAI_WU, F12_STAR as AUTODESK_F12_STAR,
+    R23 as AUTODESK_R23, SIG_BIAX as AUTODESK_SIG_BIAX,
 };
 pub use christensen::Christensen;
 pub use edge::Edge;
@@ -111,6 +118,8 @@ pub const ROTEM_ID: &str = "rotem";
 pub const SUN_ID: &str = "sun";
 pub const ZTL_ID: &str = "ztl";
 pub const ABAQUS_TSAI_WU_ID: &str = "abaqus_tsai_wu";
+pub const AUTODESK_TSAI_WU_ID: &str = "autodesk_tsai_wu";
+pub const AUTODESK_HASHIN_ID: &str = "autodesk_hashin";
 pub const ABAQUS_AZZI_TSAI_HILL_ID: &str = "abaqus_azzi_tsai_hill";
 pub const VON_MISES_ID: &str = "von_mises";
 pub const TRESCA_ID: &str = "tresca";
@@ -133,9 +142,11 @@ pub fn default_criterion_registry() -> CriterionRegistry {
     registry.insert(ROTEM_ID.to_string(), Box::new(Rotem));
     registry.insert(SUN_ID.to_string(), Box::new(Sun));
     registry.insert(ZTL_ID.to_string(), Box::new(Ztl));
-    // What Abaqus computes, for a laminate that is also going into a deck.
-    registry.insert(ABAQUS_TSAI_WU_ID.to_string(), Box::new(AbaqusTsaiWu));
+    // What the FE codes compute, for a laminate that is also going into a deck.
+    registry.insert(ABAQUS_TSAI_WU_ID.to_string(), Box::new(ABAQUS_TSAI_WU));
     registry.insert(ABAQUS_AZZI_TSAI_HILL_ID.to_string(), Box::new(AbaqusAzziTsaiHill));
+    registry.insert(AUTODESK_TSAI_WU_ID.to_string(), Box::new(AUTODESK_TSAI_WU));
+    registry.insert(AUTODESK_HASHIN_ID.to_string(), Box::new(AutodeskHashin));
     // The two isotropic yield criteria, for a metal ply in a hybrid laminate.
     registry.insert(VON_MISES_ID.to_string(), Box::new(VonMises));
     registry.insert(TRESCA_ID.to_string(), Box::new(Tresca));
@@ -172,9 +183,15 @@ pub const DEFAULT_ADDITIONAL_VALUES: &[(&str, f64)] = &[
     (FMC_M, 3.1),
     (FMC_MUE_SP, 0.15),
     (ABAQUS_F12_STAR, -0.5),
+    (AUTODESK_F12_STAR, -0.5),
+    // The classical Hashin's own weighting, and a transverse-transverse shear
+    // strength that is a plain number in the property sheet.
+    (AUTODESK_ALPHA, 1.0),
+    (AUTODESK_R23, 150.0),
     // Zero, and that means "no equibiaxial strength measured" rather than a
     // strength of nothing - see `abaqus::SIG_BIAX`.
     (ABAQUS_SIG_BIAX, 0.0),
+    (AUTODESK_SIG_BIAX, 0.0),
 ];
 
 /// [`DEFAULT_ADDITIONAL_VALUES`] as the map a [`Material`] carries.

@@ -10,6 +10,8 @@ import {
   FMC_KEYS,
   ZTL_KEYS,
   ABAQUS_TSAI_WU_KEYS,
+  AUTODESK_TSAI_WU_KEYS,
+  AUTODESK_HASHIN_KEYS,
   type MaterialDto,
 } from "../lib/types";
 import { Quantity } from "../components/Quantity";
@@ -367,6 +369,53 @@ export function MaterialPage() {
               <SafeNumberInput
                 value={material.additional_values[ABAQUS_TSAI_WU_KEYS.sigBiax] ?? 0}
                 onChange={(v) => updateAdditionalValue(ABAQUS_TSAI_WU_KEYS.sigBiax, v)}
+              />
+            </label>
+          </div>
+        </details>
+
+        <details className="criterion-params">
+          <summary>{t("criterion.autodesk_tsai_wu")}</summary>
+          <div className="field-grid">
+            <label>
+              <span className="field-label">
+                F<sub>12</sub>
+                <sup>*</sup>
+              </span>
+              <SafeNumberInput
+                value={material.additional_values[AUTODESK_TSAI_WU_KEYS.f12Star] ?? 0}
+                onChange={(v) => updateAdditionalValue(AUTODESK_TSAI_WU_KEYS.f12Star, v)}
+              />
+            </label>
+            <label>
+              <span className="field-label">
+                &sigma;<sub>biax</sub>
+              </span>
+              <SafeNumberInput
+                value={material.additional_values[AUTODESK_TSAI_WU_KEYS.sigBiax] ?? 0}
+                onChange={(v) => updateAdditionalValue(AUTODESK_TSAI_WU_KEYS.sigBiax, v)}
+              />
+            </label>
+          </div>
+        </details>
+
+        <details className="criterion-params">
+          <summary>{t("criterion.autodesk_hashin")}</summary>
+          <div className="field-grid">
+            <label>
+              <span className="field-label">&alpha;</span>
+              <SafeNumberInput
+                value={material.additional_values[AUTODESK_HASHIN_KEYS.alpha] ?? 0}
+                onChange={(v) => updateAdditionalValue(AUTODESK_HASHIN_KEYS.alpha, v)}
+              />
+            </label>
+            <label>
+              <span className="field-label">
+                R<sub>23</sub>
+              </span>
+              <SafeNumberInput
+                value={material.additional_values[AUTODESK_HASHIN_KEYS.r23] ?? 0}
+                onChange={(v) => updateAdditionalValue(AUTODESK_HASHIN_KEYS.r23, v)}
               />
             </label>
           </div>

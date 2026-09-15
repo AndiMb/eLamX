@@ -33,7 +33,11 @@
         "fmc.m": 3.1,
         "fmc.mue_sp": 0.15,
         "abaqus_tsai_wu.f12_star": -0.4,
-        "abaqus_tsai_wu.sig_biax": 0
+        "abaqus_tsai_wu.sig_biax": 0,
+        "autodesk_tsai_wu.f12_star": -0.3,
+        "autodesk_tsai_wu.sig_biax": 0,
+        "autodesk_hashin.alpha": 0.7,
+        "autodesk_hashin.r23": 70
       },
       "micro": null
     },
@@ -70,7 +74,11 @@
         "fmc.m": 3.1,
         "fmc.mue_sp": 0.15,
         "abaqus_tsai_wu.f12_star": -0.4,
-        "abaqus_tsai_wu.sig_biax": 35
+        "abaqus_tsai_wu.sig_biax": 35,
+        "autodesk_tsai_wu.f12_star": -0.3,
+        "autodesk_tsai_wu.sig_biax": 0,
+        "autodesk_hashin.alpha": 0.7,
+        "autodesk_hashin.r23": 70
       },
       "micro": null
     },
@@ -107,7 +115,11 @@
         "fmc.m": 3.1,
         "fmc.mue_sp": 0.15,
         "abaqus_tsai_wu.f12_star": -0.4,
-        "abaqus_tsai_wu.sig_biax": 0
+        "abaqus_tsai_wu.sig_biax": 0,
+        "autodesk_tsai_wu.f12_star": -0.3,
+        "autodesk_tsai_wu.sig_biax": 0,
+        "autodesk_hashin.alpha": 0.7,
+        "autodesk_hashin.r23": 70
       },
       "micro": null
     },
@@ -588,14 +600,30 @@
           {
             "id": "00000000-0000-4000-8000-00000000017b",
             "name": "Lage 18",
+            "angle": 50,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "autodesk_tsai_wu"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000018b",
+            "name": "Lage 19",
+            "angle": -50,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "autodesk_hashin"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000019b",
+            "name": "Lage 20",
             "angle": -10,
             "thickness": 0.125,
             "material_id": "m-gfk",
             "criterion_id": "max_strain"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000018b",
-            "name": "Lage 19",
+            "id": "00000000-0000-4000-8000-00000000020b",
+            "name": "Lage 21",
             "angle": 25,
             "thickness": 0.125,
             "material_id": "m-gfk",
@@ -625,6 +653,8 @@
         "ZTL",
         "TsaiWu (Abaqus)",
         "Azzi-Tsai-Hill (Abaqus)",
+        "TsaiWu (Autodesk Helius)",
+        "Hashin (Autodesk Helius)",
         "maximum Strain",
         "TsaiWu (Abaqus)"
       ],

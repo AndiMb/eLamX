@@ -24,6 +24,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ADD = "de.elamx.laminate.addFailureCriteria.";
 const METAL = "de.elamx.laminate.addFailureCriteriaMetal.";
 const ABAQUS = "de.elamx.laminate.addFailureCriteriaAbaqus.";
+const AUTODESK = "de.elamx.laminate.addFailureCriteriaAutodesk.";
 const CRITERIA = {
   max_stress:    { java: ADD + "MaxStress",    display: "maximum Stress" },
   max_strain:    { java: ADD + "MaxStrain",    display: "maximum Strain" },
@@ -44,6 +45,10 @@ const CRITERIA = {
   // arithmetic - the whole point of having them twice.
   abaqus_tsai_wu:       { java: ABAQUS + "AbaqusTsaiWu",       display: "TsaiWu (Abaqus)" },
   abaqus_azzi_tsai_hill:{ java: ABAQUS + "AbaqusAzziTsaiHill", display: "Azzi-Tsai-Hill (Abaqus)" },
+  // Helius's Tsai-Wu is Abaqus's arithmetic on its own parameters; its Hashin
+  // is not this crate's Hashin (an alpha on the shear term, its own R23).
+  autodesk_tsai_wu:     { java: AUTODESK + "AutodeskTsaiWu", display: "TsaiWu (Autodesk Helius)" },
+  autodesk_hashin:      { java: AUTODESK + "AutodeskHashin", display: "Hashin (Autodesk Helius)" },
   // The two isotropic yield criteria live in their own module, hence the
   // different package. They are only meaningful on an isotropic material, and
   // eLamX pops a MODAL DIALOG when they meet anything else - which in a batch
@@ -86,6 +91,14 @@ function material(id, name, props, globalLokal, sigBiax = 0.0) {
       // the second material carries one and the first does not.
       "abaqus_tsai_wu.f12_star": [ABAQUS + "AbaqusTsaiWu.f12star", -0.4],
       "abaqus_tsai_wu.sig_biax": [ABAQUS + "AbaqusTsaiWu.sigbiax", sigBiax],
+      // Helius's parameters differ from Abaqus's on purpose: they are stored
+      // separately, so a value landing in the wrong one would be visible.
+      "autodesk_tsai_wu.f12_star": [AUTODESK + "AutodeskTsaiWu.f12star", -0.3],
+      "autodesk_tsai_wu.sig_biax": [AUTODESK + "AutodeskTsaiWu.sigbiax", 0.0],
+      // Not 1.0, so the weighting has to be read rather than assumed; the Java
+      // spells the tag `alp`.
+      "autodesk_hashin.alpha":     [AUTODESK + "AutodeskHashin.alp", 0.7],
+      "autodesk_hashin.r23":       [AUTODESK + "AutodeskHashin.R23", 70.0],
     },
   };
 }
@@ -396,7 +409,8 @@ const NO_STRAIN = [false, false, false, false, false, false];
 // second material to reach a branch the first cannot: MaxStrain's `global`
 // one, and Abaqus's Tsai-Wu with an equibiaxial strength measured.
 const CRITERION_ANGLES = [
-  0, 15, 30, 45, 60, 75, 90, -15, -30, -45, -60, -75, 20, -20, 10, 35, -35,
+  0, 15, 30, 45, 60, 75, 90, -15, -30, -45, -60, -75, 20, -20, 10, 35, -35, 50,
+  -50,
 ];
 const criterionLayers = [
   ...COMPOSITE_CRITERIA.map((c, i) => layer(CRITERION_ANGLES[i], 0.125, "m-cfk", c)),

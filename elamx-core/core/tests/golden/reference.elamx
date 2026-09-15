@@ -106,11 +106,23 @@
             </layer>
             <layer name="Lage 18" uuid="00000000-0000-4000-8000-00000000017b">
                 <thickness>0.125</thickness>
+                <angle>50.0</angle>
+                <material>m-cfk</material>
+                <criterion>de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu</criterion>
+            </layer>
+            <layer name="Lage 19" uuid="00000000-0000-4000-8000-00000000018b">
+                <thickness>0.125</thickness>
+                <angle>-50.0</angle>
+                <material>m-cfk</material>
+                <criterion>de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin</criterion>
+            </layer>
+            <layer name="Lage 20" uuid="00000000-0000-4000-8000-00000000019b">
+                <thickness>0.125</thickness>
                 <angle>-10.0</angle>
                 <material>m-gfk</material>
                 <criterion>de.elamx.laminate.addFailureCriteria.MaxStrain</criterion>
             </layer>
-            <layer name="Lage 19" uuid="00000000-0000-4000-8000-00000000018b">
+            <layer name="Lage 21" uuid="00000000-0000-4000-8000-00000000020b">
                 <thickness>0.125</thickness>
                 <angle>25.0</angle>
                 <material>m-gfk</material>
@@ -1244,6 +1256,10 @@
             <de.elamx.laminate.addFailureCriteria.FMC.muesp>0.15</de.elamx.laminate.addFailureCriteria.FMC.muesp>
             <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>-0.4</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>
             <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>0.0</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.f12star>-0.3</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.f12star>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.sigbiax>0.0</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.sigbiax>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.alp>0.7</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.alp>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.R23>70.0</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.R23>
         </material>
         <material class="de.elamx.laminate.DefaultMaterial" name="GM-GFK-UD" uuid="m-gfk">
             <Epar>45000.0</Epar>
@@ -1276,6 +1292,10 @@
             <de.elamx.laminate.addFailureCriteria.FMC.muesp>0.15</de.elamx.laminate.addFailureCriteria.FMC.muesp>
             <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>-0.4</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>
             <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>35.0</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.f12star>-0.3</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.f12star>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.sigbiax>0.0</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.sigbiax>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.alp>0.7</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.alp>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.R23>70.0</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.R23>
         </material>
         <material class="de.elamx.laminate.DefaultMaterial" name="GM-Alu" uuid="m-alu">
             <Epar>70000.0</Epar>
@@ -1308,6 +1328,10 @@
             <de.elamx.laminate.addFailureCriteria.FMC.muesp>0.15</de.elamx.laminate.addFailureCriteria.FMC.muesp>
             <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>-0.4</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>
             <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>0.0</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.f12star>-0.3</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.f12star>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.sigbiax>0.0</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.sigbiax>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.alp>0.7</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.alp>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.R23>70.0</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.R23>
         </material>
         <material class="de.elamx.micromechanics.MicroMechanicMaterial" name="GM-MM-Mischungsregel" uuid="mm-rom">
             <fibre>f-carbon</fibre>
