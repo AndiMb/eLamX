@@ -574,6 +574,7 @@ export const en = {
   "layerDetail.sLocal": "q local (compliance)",
   "layerDetail.sGlobal": "q global (compliance)",
   "failureBody.export": "Export as VTK",
+  "chart.snapshot": "Save as image",
   "module.export.label": "FE export",
   "module.export.description": "Material cards and the layup, as input for Nastran, Abaqus, ANSYS or LS-DYNA.",
   "export.intro": "What leaves here is the material cards and the layup - no mesh, no boundary conditions, no load case. The file belongs in a model that already has the rest.",

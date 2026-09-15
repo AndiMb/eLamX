@@ -9,6 +9,7 @@ import {
 } from "../../lib/plate3d";
 import { useChartColors } from "../../lib/chartColors";
 import { useT } from "../../i18n";
+import { ChartSnapshotButton } from "./ChartSnapshotButton";
 
 // The failure body of one ply's criterion, with that ply's own stress state
 // drawn inside or outside it - the view the Java original had in
@@ -441,6 +442,9 @@ export const FailureBody3D = memo(function FailureBody3D({
       >
         <RotateCcw size={14} />
       </button>
+      <div className="chart-actions">
+        <ChartSnapshotButton target={canvasRef} name="versagenskoerper" />
+      </div>
     </div>
   );
 });

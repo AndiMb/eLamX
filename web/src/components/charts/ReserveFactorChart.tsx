@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useState, useRef } from "react";
 import { useAtomValue } from "jotai";
 import { layerResultsFamily } from "../../store/derivedAtoms";
 import type { FailureType } from "../../lib/types";
@@ -7,6 +7,7 @@ import { ChartTooltip } from "./ChartTooltip";
 import { formatFixed } from "../../lib/numberFormat";
 import { failureModeLabel, useLocale, useT } from "../../i18n";
 import type { MessageKey } from "../../i18n";
+import { ChartSnapshotButton } from "./ChartSnapshotButton";
 
 const WIDTH = 600;
 const HEIGHT = 240;
@@ -39,6 +40,7 @@ const FAILURE_LABEL_KEYS: Record<FailureType, MessageKey> = {
 // See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
 export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId }: { laminateId: string }) {
   const t = useT();
+  const svgRef = useRef<SVGSVGElement>(null);
   const locale = useLocale();
   const layerResults = useAtomValue(layerResultsFamily(laminateId));
   const [hover, setHover] = useState<{
@@ -75,7 +77,9 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
         items={usedTypes.map((ft) => ({ key: ft, label: t(FAILURE_LABEL_KEYS[ft]), color: FAILURE_COLORS[ft] }))}
       />
       <div className="chart-svg-wrap">
-        <svg className="chart-svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" role="img" aria-label={t("chart.reserveFactor.aria")}>
+        <svg
+          ref={svgRef}
+          className="chart-svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" role="img" aria-label={t("chart.reserveFactor.aria")}>
           <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
             {/* Keyed by position: vMax collapses onto 1 whenever no layer has
                 a reserve factor above 1. */}
@@ -141,6 +145,9 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
             </div>
           </ChartTooltip>
         )}
+      </div>
+      <div className="chart-actions">
+        <ChartSnapshotButton target={svgRef} name="reservefaktoren" title={t("chart.reserveFactor.title")} />
       </div>
     </div>
   );

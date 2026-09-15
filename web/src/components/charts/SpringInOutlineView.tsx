@@ -3,6 +3,7 @@ import { outlineBounds, springInOutlines, type Outline } from "../../lib/springI
 import { useChartColors } from "../../lib/chartColors";
 import { ChartLegend } from "./ChartLegend";
 import { useT } from "../../i18n";
+import { ChartSnapshotButton } from "./ChartSnapshotButton";
 
 // The tool's corner and the part's, one on top of the other.
 //
@@ -109,6 +110,9 @@ export const SpringInOutlineView = memo(function SpringInOutlineView({
       />
       <div className="plate3d">
         <canvas ref={canvasRef} className="plate3d-canvas" />
+      </div>
+      <div className="chart-actions">
+        <ChartSnapshotButton target={canvasRef} name="spring-in" />
       </div>
       <label className="inline-field">
         <span className="field-label">{t("springIn.exaggeration")}</span>

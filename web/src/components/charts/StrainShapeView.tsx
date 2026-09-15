@@ -11,6 +11,7 @@ import { autoStrainScale, strainShape, type StrainState } from "../../lib/strain
 import { useChartColors } from "../../lib/chartColors";
 import { formatSignificant } from "../../lib/numberFormat";
 import { useLocale, useT } from "../../i18n";
+import { ChartSnapshotButton } from "./ChartSnapshotButton";
 
 // What the load case does to the laminate, as one picture - the Java
 // original's "3D-Ansicht" of a CLT calculation.
@@ -214,6 +215,9 @@ export const StrainShapeView = memo(function StrainShapeView({ strains }: { stra
         >
           <RotateCcw size={14} />
         </button>
+        <div className="chart-actions">
+          <ChartSnapshotButton target={canvasRef} name="verformtes-quadrat" />
+        </div>
         <p className="plate3d-scales">
           {probe.peak > 0
             ? t("strainShape.scale", { factor: formatSignificant(scale, 3, locale) })

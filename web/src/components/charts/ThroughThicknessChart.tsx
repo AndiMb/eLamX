@@ -1,10 +1,11 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useState, useRef } from "react";
 import { useAtomValue } from "jotai";
 import { throughThicknessFamily, type ThroughThicknessLayer } from "../../store/derivedAtoms";
 import { ChartTooltip } from "./ChartTooltip";
 import { formatFixed, formatScientific } from "../../lib/numberFormat";
 import { useLocale, useT } from "../../i18n";
 import { symText, type SymbolSpec } from "../../lib/symbols";
+import { ChartSnapshotButton } from "./ChartSnapshotButton";
 
 // WIDTH matches AngleSweepChart/ReserveFactorChart (both 600) so all three
 // charts share the same viewBox-to-rendered-width scale factor when placed
@@ -50,6 +51,7 @@ function valueOf(layer: ThroughThicknessLayer, field: FieldKey, idx: 0 | 1 | 2, 
 // See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
 export const ThroughThicknessChart = memo(function ThroughThicknessChart({ laminateId }: { laminateId: string }) {
   const t = useT();
+  const svgRef = useRef<SVGSVGElement>(null);
   const locale = useLocale();
   const layers = useAtomValue(throughThicknessFamily(laminateId));
   const [componentKey, setComponentKey] = useState(COMPONENTS[0].key);
@@ -107,6 +109,7 @@ export const ThroughThicknessChart = memo(function ThroughThicknessChart({ lamin
       {!showTable && (
         <div className="chart-svg-wrap">
           <svg
+            ref={svgRef}
             className="chart-svg"
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
             width="100%"
@@ -206,6 +209,9 @@ export const ThroughThicknessChart = memo(function ThroughThicknessChart({ lamin
           </tbody>
         </table>
       )}
+      <div className="chart-actions">
+        <ChartSnapshotButton target={svgRef} name="dickenverlauf" title={t("chart.throughThickness.title")} />
+      </div>
     </div>
   );
 });

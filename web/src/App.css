@@ -3388,3 +3388,22 @@ table.matrix td.block-d {
   border: 1px solid var(--border, rgba(127, 127, 127, 0.25));
   border-radius: 6px;
 }
+
+/* The camera button on a chart. Sits under the drawing rather than over it:
+   a chart is read, and a control floating on top of one is in the way of
+   exactly the thing it is a control for. */
+.chart-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.chart-snapshot {
+  opacity: 0.55;
+}
+
+.chart-snapshot:hover,
+.chart-snapshot:focus-visible {
+  opacity: 1;
+}

@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useState, useRef } from "react";
 import { useAtomValue } from "jotai";
 import { abdMatrixFamily } from "../../store/derivedAtoms";
 import { ChartTooltip } from "./ChartTooltip";
@@ -7,6 +7,7 @@ import { formatScientific } from "../../lib/numberFormat";
 import { useLocale, useT } from "../../i18n";
 import type { SymbolSpec } from "../../lib/symbols";
 import { Sym } from "../Sym";
+import { ChartSnapshotButton } from "./ChartSnapshotButton";
 
 const CELL = 40;
 const GAP = 2;
@@ -43,6 +44,7 @@ function cellColor(value: number, blockMax: number, neg: string, mid: string, po
 // right above this chart, so every value here is reachable without hovering.
 export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId: string }) {
   const t = useT();
+  const svgRef = useRef<SVGSVGElement>(null);
   const locale = useLocale();
   const abd = useAtomValue(abdMatrixFamily(laminateId));
   const [hover, setHover] = useState<{ i: number; j: number; x: number; y: number } | null>(null);
@@ -77,6 +79,7 @@ export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId:
       <p className="chart-title">{t("chart.abdHeatmap.title")}</p>
       <div className="chart-svg-wrap">
         <svg
+          ref={svgRef}
           className="chart-svg"
           viewBox={`0 0 ${size} ${size}`}
           width={Math.min(size, 320)}
@@ -115,6 +118,9 @@ export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId:
             : {formatScientific(abd[hover.i][hover.j], 3, locale)}
           </ChartTooltip>
         )}
+      </div>
+      <div className="chart-actions">
+        <ChartSnapshotButton target={svgRef} name="abd-matrix" title={t("chart.abdHeatmap.title")} />
       </div>
     </div>
   );

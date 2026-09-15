@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useState, useRef } from "react";
 import { useAtomValue } from "jotai";
 import { loadableAngleSweepFamily } from "../../store/derivedAtoms";
 import { ChartLegend } from "./ChartLegend";
@@ -7,6 +7,7 @@ import { formatFixed, formatScientific } from "../../lib/numberFormat";
 import { useLocale, useT } from "../../i18n";
 import type { SymbolSpec } from "../../lib/symbols";
 import { Sym } from "../Sym";
+import { ChartSnapshotButton } from "./ChartSnapshotButton";
 
 // How a laminate's stiffness depends on the direction it is loaded from, as a
 // POLAR diagram - which is what eLamX 3.x draws, and for a good reason: the
@@ -65,6 +66,7 @@ const DEFAULT_SELECTION = new Set(["a11", "a12", "a22", "a66"]);
 // See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
 export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { laminateId: string }) {
   const t = useT();
+  const svgRef = useRef<SVGSVGElement>(null);
   const locale = useLocale();
   const loadableState = useAtomValue(loadableAngleSweepFamily(laminateId));
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -191,6 +193,7 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
           />
           <div className="chart-svg-wrap">
             <svg
+              ref={svgRef}
               className="chart-svg polar"
               viewBox={`0 0 ${SIZE} ${SIZE}`}
               width="100%"
@@ -323,6 +326,9 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
           </tbody>
         </table>
       )}
+      <div className="chart-actions">
+        <ChartSnapshotButton target={svgRef} name="winkelsweep" title={t("chart.angleSweep.title")} />
+      </div>
     </div>
   );
 });

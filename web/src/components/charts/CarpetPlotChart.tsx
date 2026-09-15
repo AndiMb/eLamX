@@ -1,8 +1,9 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useRef } from "react";
 import { useChartColors } from "../../lib/chartColors";
 import { formatSignificant } from "../../lib/numberFormat";
 import type { CarpetPlotDto } from "../../lib/types";
 import { useLocale, useT } from "../../i18n";
+import { ChartSnapshotButton } from "./ChartSnapshotButton";
 
 // The carpet, drawn as the carpet it is named after.
 //
@@ -20,6 +21,7 @@ const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 
 export const CarpetPlotChart = memo(function CarpetPlotChart({ plot }: { plot: CarpetPlotDto }) {
   const t = useT();
+  const svgRef = useRef<SVGSVGElement>(null);
   const locale = useLocale();
   const colors = useChartColors();
 
@@ -59,6 +61,7 @@ export const CarpetPlotChart = memo(function CarpetPlotChart({ plot }: { plot: C
   return (
     <div className="chart">
       <svg
+        ref={svgRef}
         className="chart-svg"
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         width="100%"
@@ -140,6 +143,9 @@ export const CarpetPlotChart = memo(function CarpetPlotChart({ plot }: { plot: C
         )}
       </svg>
       <p className="hint">{t("carpet.chart.hint")}</p>
+      <div className="chart-actions">
+        <ChartSnapshotButton target={svgRef} name="carpet-plot" title={t("carpet.title")} />
+      </div>
     </div>
   );
 });

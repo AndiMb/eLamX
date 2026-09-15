@@ -1,9 +1,10 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useState, useRef } from "react";
 import { ChartLegend } from "./ChartLegend";
 import { useChartColors } from "../../lib/chartColors";
 import { formatSignificant } from "../../lib/numberFormat";
 import type { CutoutPointDto } from "../../lib/types";
 import { useLocale, useT } from "../../i18n";
+import { ChartSnapshotButton } from "./ChartSnapshotButton";
 
 // What the load does as it runs round the hole.
 //
@@ -33,6 +34,7 @@ export const CutoutEdgeChart = memo(function CutoutEdgeChart({
   peakAlpha: number;
 }) {
   const t = useT();
+  const svgRef = useRef<SVGSVGElement>(null);
   const locale = useLocale();
   const colors = useChartColors();
   const [series, setSeries] = useState<SeriesId>("n_theta");
@@ -83,6 +85,7 @@ export const CutoutEdgeChart = memo(function CutoutEdgeChart({
       </label>
 
       <svg
+        ref={svgRef}
         className="chart-svg"
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         width="100%"
@@ -151,6 +154,9 @@ export const CutoutEdgeChart = memo(function CutoutEdgeChart({
 
         <path d={path} fill="none" stroke={color} strokeWidth={1.75} />
       </svg>
+      <div className="chart-actions">
+        <ChartSnapshotButton target={svgRef} name="ausschnitt" title={t("cutout.chart.aria")} />
+      </div>
     </div>
   );
 });
