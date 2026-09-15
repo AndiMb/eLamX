@@ -1,6 +1,6 @@
 import { useAtom } from "jotai";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronRight, Diamond, Plus } from "lucide-react";
+import { ChevronRight, Diamond, Library, Plus } from "lucide-react";
 import { materialsAtom } from "../store/materialsAtoms";
 import { defaultMaterial } from "../lib/constants";
 import { useT } from "../i18n";
@@ -36,9 +36,14 @@ export function MaterialListPage() {
           </li>
         ))}
       </ul>
-      <button type="button" onClick={handleAdd}>
-        <Plus size={16} /> {t("material.add")}
-      </button>
+      <div className="button-row">
+        <button type="button" onClick={handleAdd}>
+          <Plus size={16} /> {t("material.add")}
+        </button>
+        <button type="button" onClick={() => navigate("/materials/database")}>
+          <Library size={16} /> {t("catalog.open")}
+        </button>
+      </div>
     </section>
   );
 }

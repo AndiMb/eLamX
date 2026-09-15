@@ -3299,3 +3299,35 @@ table.matrix td.block-d {
 .spring-in-outline .inline-field .field-label {
   white-space: nowrap;
 }
+
+/* Zwei gleichrangige Schaltflaechen nebeneinander - "neues Material" und
+   "aus dem Katalog" sind zwei Wege zum selben Ziel, keiner davon der
+   zweite. */
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}
+
+/* Die Katalogtabelle hat acht Spalten und lebt von der Breite; die
+   Auswahlspalte bleibt schmal, damit die Namensspalte sie bekommt. */
+.catalog-table td:first-child,
+.catalog-table th:first-child {
+  width: 2.5rem;
+}
+
+/* Die vier Zahlenspalten sind schmaler als ihre Ueberschriften, die dadurch
+   ohne Abstand aneinanderstossen. */
+.catalog-table th,
+.catalog-table td {
+  padding-inline: var(--s-2);
+}
+
+.catalog-table tbody tr.selected td {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.responsive-card.selected {
+  border-color: var(--accent);
+}

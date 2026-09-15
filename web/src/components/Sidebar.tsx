@@ -8,6 +8,7 @@ import {
   Diamond,
   Droplet,
   Layers,
+  Library,
   Plus,
   Ruler,
   Spline,
@@ -353,6 +354,18 @@ export function Sidebar() {
       <section className="tree-section">
         <div className="tree-section-header">
           <h3>{t("nav.materials")}</h3>
+          {/* The catalogue sits beside "new material" rather than inside it:
+              picking a published ply is at least as common a start as typing
+              one in, and in the original it is a menu item of its own. */}
+          <button
+            type="button"
+            className="icon-button"
+            onClick={() => navigate("/materials/database")}
+            aria-label={t("catalog.open")}
+            title={t("catalog.open")}
+          >
+            <Library size={16} />
+          </button>
           <button
             type="button"
             className="icon-button"

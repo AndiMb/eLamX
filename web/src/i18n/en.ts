@@ -702,6 +702,32 @@ export const en = {
   "vibration.modes.hint": "Frequencies close together mean the plate has several modes at nearly the same frequency — excitation near one of them will stir the others too.",
 
 
+  // --- Material database ---------------------------------------------------
+  "catalog.open": "From the database",
+  "catalog.title": "Material database",
+  "catalog.intro": "The collection eLamX ships with: 33 plies from the literature, each named after its fibre and matrix. Pick one or more to adopt them as materials of this project — they are ordinary materials afterwards and can be edited.",
+  "catalog.search": "Search",
+  "catalog.search.placeholder": "fibre, matrix or name, e.g. AS4 or PEEK",
+  "catalog.kind": "Form",
+  "catalog.kind.all": "all",
+  "catalog.kind.ud": "UD",
+  "catalog.kind.fabric": "fabric",
+  "catalog.kind.ncf": "NCF",
+  "catalog.kind.unknown": "not stated",
+  "catalog.column.pick": "Pick",
+  "catalog.column.name": "Fibre | matrix",
+  "catalog.column.kind": "Form",
+  "catalog.column.phi": "φ",
+  "catalog.column.ePar": "E∥ in MPa",
+  "catalog.column.eNor": "E⊥ in MPa",
+  "catalog.column.rParTen": "R∥,t in MPa",
+  "catalog.column.rho": "ρ in g/cm³",
+  "catalog.pick.aria": "select {name}",
+  "catalog.adopt": "Adopt {count}",
+  "catalog.nameWithPhi": "{name} (Ï {phi}Â %)",
+  "catalog.empty": "Nothing matches that search.",
+  "catalog.hint": "Some names appear more than once — the same fibre and matrix, but from different sources or at a different fibre volume fraction. The φ and E∥ columns tell them apart. The values are taken from eLamX unchanged; the database carries no transverse shear modulus, so that one stays zero.",
+
   // --- Spring-in -----------------------------------------------------------
   "module.springIn.label": "Spring-in",
   "module.springIn.description": "How far a corner cured from this laminate closes when it leaves the tool",

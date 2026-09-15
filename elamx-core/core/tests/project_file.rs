@@ -507,6 +507,38 @@ fn keeps_material_parameters_of_unported_criteria() {
     assert!(write_elamx(&project).contains(&format!("<{key}>53.0</{key}>")));
 }
 
+/// A material catalogue file opens even though three of the tags it may carry
+/// hold text.
+///
+/// `MaterialDataBase.getMaterialsFromFile` reads `fibreName`, `fibreType`,
+/// `matrixName`, `matrixType` and `type` when a user points eLamX at their own
+/// `.elamx` as a catalogue. They say where a ply came from, not how it
+/// behaves, so this reader skips them - but it has to skip them deliberately:
+/// every other unknown tag is a criterion parameter and is read as a number,
+/// and "AS4" is not one.
+#[test]
+fn reads_a_material_carrying_the_catalogue_description_tags() {
+    let xml = minimal_with("de.elamx.laminate.failure.Puck").replace(
+        "<G>4500.0</G>",
+        "<G>4500.0</G>
+            <fibreType>C</fibreType>
+            <fibreName>AS4</fibreName>
+            <matrixType>EP</matrixType>
+            <matrixName>3501-6</matrixName>
+            <type>0</type>",
+    );
+    let project = read_elamx(&xml).expect("Katalogdatei muss lesbar sein");
+    let material = &project.materials[0];
+    assert_eq!(material.e_par, 141000.0);
+    // And they do not turn into criterion parameters on the way through.
+    for tag in ["fibreName", "fibreType", "matrixName", "matrixType", "type"] {
+        assert!(
+            !material.additional_values.contains_key(tag),
+            "{tag} sollte kein Zusatzwert sein"
+        );
+    }
+}
+
 /// Java reads every boolean in the format with `Boolean.parseBoolean`, where
 /// anything that is not the word "true" - including a missing element - means
 /// false; this reader has to agree, or a project would come back with a

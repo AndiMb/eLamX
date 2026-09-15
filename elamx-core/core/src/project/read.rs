@@ -263,10 +263,20 @@ fn read_material(node: Node) -> Result<Material> {
     // so that writing the file back does not drop them.
     // The micromechanic tags are listed too: they are read above, and a
     // `<fibre>` holding a UUID would otherwise be parsed as a number and fail.
-    const FIXED: [&str; 23] = [
+    //
+    // So are the five the material database uses. `MaterialDataBase
+    // .getMaterialsFromFile` reads `fibreName`, `fibreType`, `matrixName`,
+    // `matrixType` and `type` out of a `<material>` when a user points eLamX at
+    // their own `.elamx` as a catalogue - they describe where a ply came from,
+    // not how it behaves. No eLamX writer produces them (the shipped catalogue
+    // is generated Java source, not a file), but a hand-written one may, and
+    // three of the five are text: without this a catalogue file would not open
+    // at all.
+    const FIXED: [&str; 28] = [
         "Epar", "Enor", "nue12", "G", "G13", "G23", "rho", "alphaTPar", "alphaTNor", "betaPar",
         "betaNor", "RParTen", "RParCom", "RNorTen", "RNorCom", "RShear", "fibre", "matrix", "phi",
         "Epar_micromechmodel", "Enor_micromechmodel", "Nue12_micromechmodel", "G_micromechmodel",
+        "fibreName", "fibreType", "matrixName", "matrixType", "type",
     ];
     for extra in node.children().filter(|n| n.is_element()) {
         let tag = extra.tag_name().name();

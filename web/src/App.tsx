@@ -10,6 +10,7 @@ import { IndexPage } from "./routes/IndexPage";
 import { LaminatePage } from "./routes/LaminatePage";
 import { ModulePage, MaterialModulePage, ProjectModulePage } from "./routes/ModulePage";
 import { MaterialPage } from "./routes/MaterialPage";
+import { MaterialCatalogPage } from "./routes/MaterialCatalogPage";
 import { MaterialListPage } from "./routes/MaterialListPage";
 import { FibrePage, MatrixPage } from "./routes/ConstituentPage";
 import { FormatSettingsPage } from "./routes/FormatSettingsPage";
@@ -23,6 +24,7 @@ function AppRoutes() {
       <Route path="/laminates/:laminateId/modules/:moduleId" element={<ModulePage />} />
       <Route path="/modules/:moduleId" element={<ProjectModulePage />} />
       <Route path="/materials" element={<MaterialListPage />} />
+      <Route path="/materials/database" element={<MaterialCatalogPage />} />
       <Route path="/materials/:materialId" element={<MaterialPage />} />
       <Route path="/materials/:materialId/modules/:moduleId" element={<MaterialModulePage />} />
       <Route path="/fibres/:fibreId" element={<FibrePage />} />

@@ -681,6 +681,32 @@ export const de: Messages = {
   "vibration.modes.hint": "Dicht beieinanderliegende Frequenzen bedeuten, dass die Platte mehrere Eigenformen fast gleicher Frequenz hat — eine Anregung nahe einer davon regt die anderen mit an.",
 
 
+  // --- Materialdatenbank ---------------------------------------------------
+  "catalog.open": "Aus der Datenbank",
+  "catalog.title": "Materialdatenbank",
+  "catalog.intro": "Die mitgelieferte Sammlung aus eLamX: 33 Einzelschichten aus der Literatur, benannt nach Faser und Matrix. Wähle eine oder mehrere aus, um sie als eigene Materialien in dieses Projekt zu übernehmen — danach sind sie ganz normal änderbar.",
+  "catalog.search": "Suche",
+  "catalog.search.placeholder": "Faser, Matrix oder Name, z. B. AS4 oder PEEK",
+  "catalog.kind": "Halbzeug",
+  "catalog.kind.all": "alle",
+  "catalog.kind.ud": "UD",
+  "catalog.kind.fabric": "Gewebe",
+  "catalog.kind.ncf": "Gelege",
+  "catalog.kind.unknown": "ohne Angabe",
+  "catalog.column.pick": "Wahl",
+  "catalog.column.name": "Faser | Matrix",
+  "catalog.column.kind": "Halbzeug",
+  "catalog.column.phi": "φ",
+  "catalog.column.ePar": "E∥ in MPa",
+  "catalog.column.eNor": "E⊥ in MPa",
+  "catalog.column.rParTen": "R∥,z in MPa",
+  "catalog.column.rho": "ρ in g/cm³",
+  "catalog.pick.aria": "{name} auswählen",
+  "catalog.adopt": "{count} übernehmen",
+  "catalog.nameWithPhi": "{name} (Ï {phi}Â %)",
+  "catalog.empty": "Kein Eintrag passt zur Suche.",
+  "catalog.hint": "Einige Namen kommen mehrfach vor — dieselbe Faser-Matrix-Paarung, aber aus verschiedenen Quellen oder mit anderem Faservolumengehalt. Die Spalten φ und E∥ unterscheiden sie. Die Werte sind unverändert aus eLamX übernommen; eine Querschubsteifigkeit G∥⊥' enthält die Datenbank nicht, sie bleibt deshalb null.",
+
   // --- Spring-In -----------------------------------------------------------
   "module.springIn.label": "Spring-In",
   "module.springIn.description": "Wie weit sich ein Winkel aus diesem Laminat beim Entformen zuzieht",
