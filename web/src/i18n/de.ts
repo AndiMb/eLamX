@@ -556,6 +556,7 @@ export const de: Messages = {
   "layerDetail.qGlobal": "Q global (Laminatsystem)",
   "layerDetail.sLocal": "q lokal (Nachgiebigkeit)",
   "layerDetail.sGlobal": "q global (Nachgiebigkeit)",
+  "failureBody.export": "Als VTK exportieren",
   "module.export.label": "FE-Export",
   "module.export.description": "Werkstoffkarten und Lagenaufbau als Eingabe für Nastran, Abaqus, ANSYS oder LS-DYNA.",
   "export.intro": "Was hier herausgeht, sind die Werkstoffkarten und der Lagenaufbau — kein Netz, keine Randbedingungen, kein Lastfall. Die Datei gehört in ein Modell, das den Rest schon hat.",

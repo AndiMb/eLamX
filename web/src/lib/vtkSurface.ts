@@ -17,7 +17,9 @@
 //
 // What this cannot do is verify itself against a file eLamX produced - there
 // is none in the repository. The tests below check the reading of the Java,
-// which is the honest limit of it.
+// which is the honest limit of it. `vtkExport.ts` narrows that limit a little:
+// it writes what `View3D.exportQuadArrays` writes, and its tests read the
+// result back through this parser.
 
 export interface VtkSurface {
   /** Faces, four corners each, in the file's own order. */

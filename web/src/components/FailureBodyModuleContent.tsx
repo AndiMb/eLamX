@@ -5,6 +5,7 @@ import { failureBodiesKey, loadableFailureBodiesFamily } from "../store/failureB
 import { CRITERIA, type CriterionId } from "../lib/types";
 import { DEFAULT_CRITERION_ID } from "../lib/constants";
 import { FailureBody3D, type FailureBodySurface } from "./charts/FailureBody3D";
+import { downloadVtk, gridToQuads, quadsToVtk } from "../lib/vtkExport";
 import { ChartLegend } from "./charts/ChartLegend";
 import { BackLink } from "./BackLink";
 import { useChartColors } from "../lib/chartColors";
@@ -148,6 +149,7 @@ function FailureBodies({
   selected: CriterionId[];
   imported?: VtkSurface;
 }) {
+  const exportName = `versagenskoerper-${materialId}`;
   const t = useT();
   // Resolved colours, not CSS variables: these are painted into a canvas.
   const colors = useChartColors();
@@ -190,6 +192,23 @@ function FailureBodies({
         }))}
       />
       <FailureBody3D bodies={bodies} markers={[]} />
+      <div className="flags">
+        {/* The scene as a file, the way the original's 3D views export it: one
+            four-cornered cell per face, points listed per corner. The importer
+            next door reads exactly this, which is the only reason it can now be
+            checked against a file rather than against a description of one. */}
+        <button
+          type="button"
+          onClick={() =>
+            downloadVtk(
+              quadsToVtk(bodies.flatMap((body) => body.quads ?? gridToQuads(body.points ?? []))),
+              exportName,
+            )
+          }
+        >
+          {t("failureBody.export")}
+        </button>
+      </div>
     </>
   );
 }

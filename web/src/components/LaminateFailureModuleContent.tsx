@@ -9,6 +9,7 @@ import {
 import { layerContributionsFamily } from "../store/derivedAtoms";
 import { LAMINATE_FAILURE_KINDS, type LaminateFailureKindId } from "../lib/types";
 import { FailureBody3D, type FailureBodySurface } from "./charts/FailureBody3D";
+import { downloadVtk, gridToQuads, quadsToVtk } from "../lib/vtkExport";
 import { ChartLegend } from "./charts/ChartLegend";
 import { ResponsiveTable } from "./ResponsiveTable";
 import { BackLink } from "./BackLink";
@@ -142,6 +143,21 @@ export function LaminateFailureModuleContent({ laminateId }: { laminateId: strin
               }))}
             />
             <FailureBody3D bodies={bodies} markers={[]} axisLabels={AXES} />
+            <div className="flags">
+              <button
+                type="button"
+                onClick={() =>
+                  downloadVtk(
+                    quadsToVtk(
+                      bodies.flatMap((body) => body.quads ?? gridToQuads(body.points ?? [])),
+                    ),
+                    `laminatversagenskoerper-${laminateId}`,
+                  )
+                }
+              >
+                {t("failureBody.export")}
+              </button>
+            </div>
             <p className="hint">{t("laminateFailure.hint")}</p>
           </>
         )}
