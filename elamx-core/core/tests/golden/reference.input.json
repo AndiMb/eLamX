@@ -37,7 +37,12 @@
         "autodesk_tsai_wu.f12_star": -0.3,
         "autodesk_tsai_wu.sig_biax": 0,
         "autodesk_hashin.alpha": 0.7,
-        "autodesk_hashin.r23": 70
+        "autodesk_hashin.r23": 70,
+        "ls_dyna_chang_chang.beta": 0.4,
+        "ls_dyna_tsai_wu.beta": 0.6,
+        "ls_dyna_daimler_camanho.g1c": 0.28,
+        "ls_dyna_daimler_camanho.g2c": 0.79,
+        "ls_dyna_daimler_pinho.alpha_0": 52.4
       },
       "micro": null
     },
@@ -78,7 +83,12 @@
         "autodesk_tsai_wu.f12_star": -0.3,
         "autodesk_tsai_wu.sig_biax": 0,
         "autodesk_hashin.alpha": 0.7,
-        "autodesk_hashin.r23": 70
+        "autodesk_hashin.r23": 70,
+        "ls_dyna_chang_chang.beta": 0.4,
+        "ls_dyna_tsai_wu.beta": 0.6,
+        "ls_dyna_daimler_camanho.g1c": 0.28,
+        "ls_dyna_daimler_camanho.g2c": 0.79,
+        "ls_dyna_daimler_pinho.alpha_0": 52.4
       },
       "micro": null
     },
@@ -119,7 +129,12 @@
         "autodesk_tsai_wu.f12_star": -0.3,
         "autodesk_tsai_wu.sig_biax": 0,
         "autodesk_hashin.alpha": 0.7,
-        "autodesk_hashin.r23": 70
+        "autodesk_hashin.r23": 70,
+        "ls_dyna_chang_chang.beta": 0.4,
+        "ls_dyna_tsai_wu.beta": 0.6,
+        "ls_dyna_daimler_camanho.g1c": 0.28,
+        "ls_dyna_daimler_camanho.g2c": 0.79,
+        "ls_dyna_daimler_pinho.alpha_0": 52.4
       },
       "micro": null
     },
@@ -616,14 +631,46 @@
           {
             "id": "00000000-0000-4000-8000-00000000019b",
             "name": "Lage 20",
+            "angle": 5,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "ls_dyna_chang_chang"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000020b",
+            "name": "Lage 21",
+            "angle": -5,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "ls_dyna_tsai_wu"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000021b",
+            "name": "Lage 22",
+            "angle": 65,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "ls_dyna_daimler_camanho"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000022b",
+            "name": "Lage 23",
+            "angle": -65,
+            "thickness": 0.125,
+            "material_id": "m-cfk",
+            "criterion_id": "ls_dyna_daimler_pinho"
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000023b",
+            "name": "Lage 24",
             "angle": -10,
             "thickness": 0.125,
             "material_id": "m-gfk",
             "criterion_id": "max_strain"
           },
           {
-            "id": "00000000-0000-4000-8000-00000000020b",
-            "name": "Lage 21",
+            "id": "00000000-0000-4000-8000-00000000024b",
+            "name": "Lage 25",
             "angle": 25,
             "thickness": 0.125,
             "material_id": "m-gfk",
@@ -655,6 +702,10 @@
         "Azzi-Tsai-Hill (Abaqus)",
         "TsaiWu (Autodesk Helius)",
         "Hashin (Autodesk Helius)",
+        "Chang Chang  MAT054 (LS-DYNA)",
+        "TsaiWu MAT055 (LS-DYNA)",
+        "Daimler Camanho (LS-DYNA)",
+        "Daimler-Pinho (LS-DYNA)",
         "maximum Strain",
         "TsaiWu (Abaqus)"
       ],

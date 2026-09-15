@@ -8,7 +8,7 @@
 //! `envelope`: the sampling is the criterion's own arithmetic and belongs
 //! here, while turning the sampled grid into pixels is the frontend's job.
 //! The FEA-specific criterion variants live beside the ordinary ones, one
-//! module per solver: `abaqus` and `autodesk` so far, with LS-DYNA and ANSYS
+//! module per solver: `abaqus`, `autodesk` and `ls_dyna` so far, with ANSYS
 //! still to come. They are not refinements - they are what those solvers
 //! compute.
 
@@ -22,6 +22,7 @@ mod fmc;
 mod hashin;
 mod hoffman;
 mod laminate_envelope;
+mod ls_dyna;
 mod max_strain;
 mod max_stress;
 mod mayes;
@@ -52,6 +53,12 @@ pub use hoffman::Hoffman;
 pub use laminate_envelope::{
     laminate_envelope, LaminateEnvelope, LaminateEnvelopeError, LaminateEnvelopeInput,
     LaminateEnvelopePoint, LaminateFailureKind,
+};
+pub use ls_dyna::{
+    LsDynaChangChang, LsDynaDaimlerCamanho, LsDynaDaimlerPinho, LsDynaTsaiWu,
+    CAMANHO_G1C as LS_DYNA_CAMANHO_G1C, CAMANHO_G2C as LS_DYNA_CAMANHO_G2C,
+    CHANG_CHANG_BETA as LS_DYNA_CHANG_CHANG_BETA, PINHO_ALPHA_0 as LS_DYNA_PINHO_ALPHA_0,
+    TSAI_WU_BETA as LS_DYNA_TSAI_WU_BETA,
 };
 pub use max_strain::{MaxStrain, EPS_X, EPS_Y, GAMMA_XY, GLOBAL_LOCAL};
 pub use max_stress::MaxStress;
@@ -120,6 +127,10 @@ pub const ZTL_ID: &str = "ztl";
 pub const ABAQUS_TSAI_WU_ID: &str = "abaqus_tsai_wu";
 pub const AUTODESK_TSAI_WU_ID: &str = "autodesk_tsai_wu";
 pub const AUTODESK_HASHIN_ID: &str = "autodesk_hashin";
+pub const LS_DYNA_CHANG_CHANG_ID: &str = "ls_dyna_chang_chang";
+pub const LS_DYNA_TSAI_WU_ID: &str = "ls_dyna_tsai_wu";
+pub const LS_DYNA_DAIMLER_CAMANHO_ID: &str = "ls_dyna_daimler_camanho";
+pub const LS_DYNA_DAIMLER_PINHO_ID: &str = "ls_dyna_daimler_pinho";
 pub const ABAQUS_AZZI_TSAI_HILL_ID: &str = "abaqus_azzi_tsai_hill";
 pub const VON_MISES_ID: &str = "von_mises";
 pub const TRESCA_ID: &str = "tresca";
@@ -147,6 +158,10 @@ pub fn default_criterion_registry() -> CriterionRegistry {
     registry.insert(ABAQUS_AZZI_TSAI_HILL_ID.to_string(), Box::new(AbaqusAzziTsaiHill));
     registry.insert(AUTODESK_TSAI_WU_ID.to_string(), Box::new(AUTODESK_TSAI_WU));
     registry.insert(AUTODESK_HASHIN_ID.to_string(), Box::new(AutodeskHashin));
+    registry.insert(LS_DYNA_CHANG_CHANG_ID.to_string(), Box::new(LsDynaChangChang));
+    registry.insert(LS_DYNA_TSAI_WU_ID.to_string(), Box::new(LsDynaTsaiWu));
+    registry.insert(LS_DYNA_DAIMLER_CAMANHO_ID.to_string(), Box::new(LsDynaDaimlerCamanho));
+    registry.insert(LS_DYNA_DAIMLER_PINHO_ID.to_string(), Box::new(LsDynaDaimlerPinho));
     // The two isotropic yield criteria, for a metal ply in a hybrid laminate.
     registry.insert(VON_MISES_ID.to_string(), Box::new(VonMises));
     registry.insert(TRESCA_ID.to_string(), Box::new(Tresca));
@@ -192,6 +207,13 @@ pub const DEFAULT_ADDITIONAL_VALUES: &[(&str, f64)] = &[
     // strength of nothing - see `abaqus::SIG_BIAX`.
     (ABAQUS_SIG_BIAX, 0.0),
     (AUTODESK_SIG_BIAX, 0.0),
+    // LS-DYNA's own defaults: no shear in fibre tension, Camanho's two rates,
+    // and the fracture plane at 53 degrees.
+    (LS_DYNA_CHANG_CHANG_BETA, 0.0),
+    (LS_DYNA_TSAI_WU_BETA, 0.0),
+    (LS_DYNA_CAMANHO_G1C, 0.28),
+    (LS_DYNA_CAMANHO_G2C, 0.79),
+    (LS_DYNA_PINHO_ALPHA_0, 53.0),
 ];
 
 /// [`DEFAULT_ADDITIONAL_VALUES`] as the map a [`Material`] carries.

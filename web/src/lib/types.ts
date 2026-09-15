@@ -159,6 +159,10 @@ export const CRITERIA = [
   { id: "abaqus_azzi_tsai_hill", labelKey: "criterion.abaqus_azzi_tsai_hill" },
   { id: "autodesk_tsai_wu", labelKey: "criterion.autodesk_tsai_wu" },
   { id: "autodesk_hashin", labelKey: "criterion.autodesk_hashin" },
+  { id: "ls_dyna_chang_chang", labelKey: "criterion.ls_dyna_chang_chang" },
+  { id: "ls_dyna_tsai_wu", labelKey: "criterion.ls_dyna_tsai_wu" },
+  { id: "ls_dyna_daimler_camanho", labelKey: "criterion.ls_dyna_daimler_camanho" },
+  { id: "ls_dyna_daimler_pinho", labelKey: "criterion.ls_dyna_daimler_pinho" },
   // The two isotropic yield criteria. Last in the list because they belong to
   // a metal ply, which most laminates here do not have.
   { id: "von_mises", labelKey: "criterion.von_mises" },
@@ -237,6 +241,19 @@ export const AUTODESK_HASHIN_KEYS = {
   r23: "autodesk_hashin.r23",
 } as const;
 
+export const LS_DYNA_KEYS = {
+  /** How much of the shear stress reaches fibre tension. LS-DYNA's own default
+   *  is 0, which leaves fibre tension a plain stress ratio. */
+  changChangBeta: "ls_dyna_chang_chang.beta",
+  tsaiWuBeta: "ls_dyna_tsai_wu.beta",
+  /** Camanho's two critical energy release rates; only their ratio enters. */
+  camanhoG1c: "ls_dyna_daimler_camanho.g1c",
+  camanhoG2c: "ls_dyna_daimler_camanho.g2c",
+  /** The fracture-plane angle in degrees, which the core rounds UP to a whole
+   *  degree because the original does. */
+  pinhoAlpha0: "ls_dyna_daimler_pinho.alpha_0",
+} as const;
+
 export const ABAQUS_TSAI_WU_KEYS = {
   f12Star: "abaqus_tsai_wu.f12_star",
   /** The equibiaxial strength. Zero means none was measured, and then F12* is
@@ -268,6 +285,11 @@ export const DEFAULT_ADDITIONAL_VALUES: Record<string, number> = {
   [AUTODESK_TSAI_WU_KEYS.sigBiax]: 0,
   [AUTODESK_HASHIN_KEYS.alpha]: 1,
   [AUTODESK_HASHIN_KEYS.r23]: 150,
+  [LS_DYNA_KEYS.changChangBeta]: 0,
+  [LS_DYNA_KEYS.tsaiWuBeta]: 0,
+  [LS_DYNA_KEYS.camanhoG1c]: 0.28,
+  [LS_DYNA_KEYS.camanhoG2c]: 0.79,
+  [LS_DYNA_KEYS.pinhoAlpha0]: 53,
 };
 
 export const emptyLoads = (): LoadsDto => ({

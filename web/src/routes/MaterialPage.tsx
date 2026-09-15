@@ -12,6 +12,7 @@ import {
   ABAQUS_TSAI_WU_KEYS,
   AUTODESK_TSAI_WU_KEYS,
   AUTODESK_HASHIN_KEYS,
+  LS_DYNA_KEYS,
   type MaterialDto,
 } from "../lib/types";
 import { Quantity } from "../components/Quantity";
@@ -416,6 +417,71 @@ export function MaterialPage() {
               <SafeNumberInput
                 value={material.additional_values[AUTODESK_HASHIN_KEYS.r23] ?? 0}
                 onChange={(v) => updateAdditionalValue(AUTODESK_HASHIN_KEYS.r23, v)}
+              />
+            </label>
+          </div>
+        </details>
+
+        <details className="criterion-params">
+          <summary>{t("criterion.ls_dyna_chang_chang")}</summary>
+          <div className="field-grid">
+            <label>
+              <span className="field-label">&beta;</span>
+              <SafeNumberInput
+                value={material.additional_values[LS_DYNA_KEYS.changChangBeta] ?? 0}
+                onChange={(v) => updateAdditionalValue(LS_DYNA_KEYS.changChangBeta, v)}
+              />
+            </label>
+          </div>
+        </details>
+
+        <details className="criterion-params">
+          <summary>{t("criterion.ls_dyna_tsai_wu")}</summary>
+          <div className="field-grid">
+            <label>
+              <span className="field-label">&beta;</span>
+              <SafeNumberInput
+                value={material.additional_values[LS_DYNA_KEYS.tsaiWuBeta] ?? 0}
+                onChange={(v) => updateAdditionalValue(LS_DYNA_KEYS.tsaiWuBeta, v)}
+              />
+            </label>
+          </div>
+        </details>
+
+        <details className="criterion-params">
+          <summary>{t("criterion.ls_dyna_daimler_camanho")}</summary>
+          <div className="field-grid">
+            <label>
+              <span className="field-label">
+                G<sub>1c</sub>
+              </span>
+              <SafeNumberInput
+                value={material.additional_values[LS_DYNA_KEYS.camanhoG1c] ?? 0}
+                onChange={(v) => updateAdditionalValue(LS_DYNA_KEYS.camanhoG1c, v)}
+              />
+            </label>
+            <label>
+              <span className="field-label">
+                G<sub>2c</sub>
+              </span>
+              <SafeNumberInput
+                value={material.additional_values[LS_DYNA_KEYS.camanhoG2c] ?? 0}
+                onChange={(v) => updateAdditionalValue(LS_DYNA_KEYS.camanhoG2c, v)}
+              />
+            </label>
+          </div>
+        </details>
+
+        <details className="criterion-params">
+          <summary>{t("criterion.ls_dyna_daimler_pinho")}</summary>
+          <div className="field-grid">
+            <label>
+              <span className="field-label">
+                &alpha;<sub>0</sub> [&deg;]
+              </span>
+              <SafeNumberInput
+                value={material.additional_values[LS_DYNA_KEYS.pinhoAlpha0] ?? 0}
+                onChange={(v) => updateAdditionalValue(LS_DYNA_KEYS.pinhoAlpha0, v)}
               />
             </label>
           </div>

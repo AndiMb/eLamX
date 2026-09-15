@@ -25,6 +25,7 @@ const ADD = "de.elamx.laminate.addFailureCriteria.";
 const METAL = "de.elamx.laminate.addFailureCriteriaMetal.";
 const ABAQUS = "de.elamx.laminate.addFailureCriteriaAbaqus.";
 const AUTODESK = "de.elamx.laminate.addFailureCriteriaAutodesk.";
+const LSDYNA = "de.elamx.laminate.addFailureCriteriaLSDYNA.";
 const CRITERIA = {
   max_stress:    { java: ADD + "MaxStress",    display: "maximum Stress" },
   max_strain:    { java: ADD + "MaxStrain",    display: "maximum Strain" },
@@ -49,6 +50,12 @@ const CRITERIA = {
   // is not this crate's Hashin (an alpha on the shear term, its own R23).
   autodesk_tsai_wu:     { java: AUTODESK + "AutodeskTsaiWu", display: "TsaiWu (Autodesk Helius)" },
   autodesk_hashin:      { java: AUTODESK + "AutodeskHashin", display: "Hashin (Autodesk Helius)" },
+  // LS-DYNA's four: MAT54, MAT55 and the two Daimler fracture-plane models.
+  // Note the TWO spaces in the Chang-Chang display name - the original's.
+  ls_dyna_chang_chang:  { java: LSDYNA + "LSDYNAChangChang", display: "Chang Chang  MAT054 (LS-DYNA)" },
+  ls_dyna_tsai_wu:      { java: LSDYNA + "LSDYNATsaiWu",     display: "TsaiWu MAT055 (LS-DYNA)" },
+  ls_dyna_daimler_camanho: { java: LSDYNA + "LSDYNADaimlerCamanho", display: "Daimler Camanho (LS-DYNA)" },
+  ls_dyna_daimler_pinho:   { java: LSDYNA + "LSDYNADaimlerPinho",   display: "Daimler-Pinho (LS-DYNA)" },
   // The two isotropic yield criteria live in their own module, hence the
   // different package. They are only meaningful on an isotropic material, and
   // eLamX pops a MODAL DIALOG when they meet anything else - which in a batch
@@ -99,6 +106,14 @@ function material(id, name, props, globalLokal, sigBiax = 0.0) {
       // spells the tag `alp`.
       "autodesk_hashin.alpha":     [AUTODESK + "AutodeskHashin.alp", 0.7],
       "autodesk_hashin.r23":       [AUTODESK + "AutodeskHashin.R23", 70.0],
+      // Beta at 0.4 rather than LS-DYNA's default 0, so the shear term in
+      // fibre tension has to be read; alpha_0 deliberately NOT a whole degree,
+      // because the original rounds it up before using it.
+      "ls_dyna_chang_chang.beta":      [LSDYNA + "LSDYNAChangChang.beta", 0.4],
+      "ls_dyna_tsai_wu.beta":          [LSDYNA + "LSDYNATsaiWu.beta", 0.6],
+      "ls_dyna_daimler_camanho.g1c":   [LSDYNA + "LSDYNADaimlerCamanho.g1c", 0.28],
+      "ls_dyna_daimler_camanho.g2c":   [LSDYNA + "LSDYNADaimlerCamanho.g2c", 0.79],
+      "ls_dyna_daimler_pinho.alpha_0": [LSDYNA + "LSDYNADaimlerPinho.alp0", 52.4],
     },
   };
 }
@@ -410,7 +425,7 @@ const NO_STRAIN = [false, false, false, false, false, false];
 // one, and Abaqus's Tsai-Wu with an equibiaxial strength measured.
 const CRITERION_ANGLES = [
   0, 15, 30, 45, 60, 75, 90, -15, -30, -45, -60, -75, 20, -20, 10, 35, -35, 50,
-  -50,
+  -50, 5, -5, 65, -65,
 ];
 const criterionLayers = [
   ...COMPOSITE_CRITERIA.map((c, i) => layer(CRITERION_ANGLES[i], 0.125, "m-cfk", c)),

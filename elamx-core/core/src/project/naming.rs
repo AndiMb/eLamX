@@ -45,6 +45,10 @@ const CRITERIA: &[(&str, &str)] = &[
     ),
     (failure::AUTODESK_TSAI_WU_ID, "de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu"),
     (failure::AUTODESK_HASHIN_ID, "de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin"),
+    (failure::LS_DYNA_CHANG_CHANG_ID, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNAChangChang"),
+    (failure::LS_DYNA_TSAI_WU_ID, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNATsaiWu"),
+    (failure::LS_DYNA_DAIMLER_CAMANHO_ID, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho"),
+    (failure::LS_DYNA_DAIMLER_PINHO_ID, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerPinho"),
     // The two isotropic ones come from their own module, hence the package.
     (failure::VON_MISES_ID, "de.elamx.laminate.addFailureCriteriaMetal.vonMises"),
     (failure::TRESCA_ID, "de.elamx.laminate.addFailureCriteriaMetal.Tresca"),
@@ -53,7 +57,7 @@ const CRITERIA: &[(&str, &str)] = &[
 /// Extra per-material values: `(core key, Java tag name)`.
 ///
 /// Only the parameters the ported criteria actually read are listed. Anything
-/// else in the file - the Ansys/LS-Dyna parameters, say - is
+/// else in the file - the Ansys parameters, say - is
 /// preserved verbatim under its Java name (see `Material::additional_values`),
 /// so writing a file back does not silently drop what this crate cannot use.
 const ADDITIONAL_VALUES: &[(&str, &str)] = &[
@@ -88,6 +92,11 @@ const ADDITIONAL_VALUES: &[(&str, &str)] = &[
     // The Java names this one `alp`, and the tag is what the file has.
     (failure::AUTODESK_ALPHA, "de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.alp"),
     (failure::AUTODESK_R23, "de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.R23"),
+    (failure::LS_DYNA_CHANG_CHANG_BETA, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNAChangChang.beta"),
+    (failure::LS_DYNA_TSAI_WU_BETA, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNATsaiWu.beta"),
+    (failure::LS_DYNA_CAMANHO_G1C, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g1c"),
+    (failure::LS_DYNA_CAMANHO_G2C, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g2c"),
+    (failure::LS_DYNA_PINHO_ALPHA_0, "de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerPinho.alp0"),
 ];
 
 /// Bending-stiffness idealisations: `(kind, Java class name)`. Same silent
