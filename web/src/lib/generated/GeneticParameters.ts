@@ -34,5 +34,8 @@ delta_max_layers: number,
  * Not in the original, which calls `Math.random()` and therefore answers
  * a different laminate every time it is asked the same question. A search
  * may be stochastic; a program should still be able to repeat itself.
+ *
+ * 32 bits rather than 64 because it crosses a JSON boundary, where a
+ * 64-bit integer is a `bigint` and every caller would have to care.
  */
-seed: bigint, };
+seed: number, };

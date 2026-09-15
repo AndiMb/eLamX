@@ -9,6 +9,7 @@ import { ModuleContextBar } from "../components/ModuleContextBar";
 import { PressureVesselModuleContent } from "../components/PressureVesselModuleContent";
 import { DeformationModuleContent } from "../components/DeformationModuleContent";
 import { CutoutModuleContent } from "../components/CutoutModuleContent";
+import { OptimizationModuleContent } from "../components/OptimizationModuleContent";
 import { SpringInModuleContent } from "../components/SpringInModuleContent";
 import { VibrationModuleContent } from "../components/VibrationModuleContent";
 import { LaminateFailureModuleContent } from "../components/LaminateFailureModuleContent";
@@ -88,6 +89,13 @@ export function ProjectModulePage() {
   switch (moduleId as ModuleType) {
     case "compare":
       return <ComparePage />;
+    case "optimization":
+      return (
+        <>
+          <h1 className="visually-hidden">{t(MODULE_REGISTRY.optimization.labelKey)}</h1>
+          <OptimizationModuleContent />
+        </>
+      );
     default:
       return <p className="empty-note">{t("modules.unknown")}</p>;
   }

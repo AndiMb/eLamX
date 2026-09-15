@@ -43,7 +43,12 @@ import type { LayerResult as GenLayerResult } from "./generated/LayerResult";
 import type { Loads as GenLoads } from "./generated/Loads";
 import type { MassMomentsDto as GenMassMomentsDto } from "./generated/MassMomentsDto";
 import type { Material as GenMaterial } from "./generated/Material";
+import type { Constraint as GenConstraint } from "./generated/Constraint";
+import type { GeneticParameters as GenGeneticParameters } from "./generated/GeneticParameters";
 import type { NamedLoad as GenNamedLoad } from "./generated/NamedLoad";
+import type { OptimizationInput as GenOptimizationInput } from "./generated/OptimizationInput";
+import type { OptimizationResult as GenOptimizationResult } from "./generated/OptimizationResult";
+import type { OptimizerKind as GenOptimizerKind } from "./generated/OptimizerKind";
 import type { PlateField as GenPlateField } from "./generated/PlateField";
 import type { PlateFieldResult as GenPlateFieldResult } from "./generated/PlateFieldResult";
 import type { PressureVesselInput as GenPressureVesselInput } from "./generated/PressureVesselInput";
@@ -97,7 +102,13 @@ export type LayerResultDto = GenLayerResult;
 export type LoadsDto = GenLoads;
 export type MassMomentsDto = GenMassMomentsDto;
 export type MaterialDto = GenMaterial;
+export type ConstraintDto = GenConstraint;
+export type ConstraintKindId = GenConstraint["kind"];
+export type GeneticParametersDto = GenGeneticParameters;
 export type NamedLoadDto = GenNamedLoad;
+export type OptimizationInputDto = GenOptimizationInput;
+export type OptimizationResponse = GenOptimizationResult;
+export type OptimizerKindId = GenOptimizerKind;
 export type PlateFieldId = GenPlateField;
 export type PlateFieldResponse = GenPlateFieldResult;
 export type PressureVesselInputDto = GenPressureVesselInput;
@@ -313,6 +324,31 @@ export const LAMINATE_FAILURE_KINDS = [
  * `CutoutGeometry` union already says it, and a second list would be a second
  * opinion. The form narrows on the union directly.
  */
+/**
+ * The four searches, in the order they are worth reaching for.
+ *
+ * They answer the same question and differ in what they pay for it, which is
+ * what the descriptions are there to say - see `optimization` in the core.
+ */
+export const OPTIMIZERS = [
+  { id: "sequential", labelKey: "optimizer.sequential", hintKey: "optimizer.sequential.hint" },
+  { id: "todoroki", labelKey: "optimizer.todoroki", hintKey: "optimizer.todoroki.hint" },
+  { id: "genetic", labelKey: "optimizer.genetic", hintKey: "optimizer.genetic.hint" },
+  { id: "exhaustive", labelKey: "optimizer.exhaustive", hintKey: "optimizer.exhaustive.hint" },
+] as const satisfies readonly {
+  id: OptimizerKindId;
+  labelKey: MessageKey;
+  hintKey: MessageKey;
+}[];
+
+/** The constraint kinds a search can be given. */
+export const CONSTRAINT_KINDS = [
+  { id: "clt", labelKey: "constraint.clt" },
+  { id: "buckling", labelKey: "constraint.buckling" },
+  { id: "deformation", labelKey: "constraint.deformation" },
+  { id: "pressure_vessel", labelKey: "constraint.pressureVessel" },
+] as const satisfies readonly { id: ConstraintKindId; labelKey: MessageKey }[];
+
 export const CUTOUT_SHAPES = [
   { id: "circular", labelKey: "cutout.shape.circular" },
   { id: "elliptical", labelKey: "cutout.shape.elliptical" },

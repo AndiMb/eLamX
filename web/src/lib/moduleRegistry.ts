@@ -2,8 +2,7 @@
 // small, known set of calculation modules (unlike Java eLamX's
 // Lookup/NetBeans-module plugin mechanism, which existed to let separately
 // deployed .nbm files register new module types at runtime - not a
-// constraint this app has). New module types (e.g. optimization -> Target,
-// once the Rust core supports it) are added here as a new entry -
+// constraint this app has). A new module type is added here as a new entry -
 // the sidebar tree, the module list on the laminate page and the mobile
 // navigation all render from this registry, so a new module needs no UI
 // changes beyond its own page (see UI-Konzept §7).
@@ -18,6 +17,7 @@ import {
   Globe,
   Layers2,
   Spline,
+  Target,
   TriangleRight,
   Waves,
 } from "lucide-react";
@@ -34,6 +34,7 @@ export type ModuleType =
   | "pressureVessel"
   | "failureBody"
   | "laminateFailure"
+  | "optimization"
   | "compare";
 
 /**
@@ -126,6 +127,13 @@ export const MODULE_REGISTRY: Record<ModuleType, ModuleDefinition> = {
     labelKey: "module.failureBody.label",
     icon: Diamond,
     descriptionKey: "module.failureBody.description",
+  },
+  optimization: {
+    id: "optimization",
+    scope: "project",
+    labelKey: "module.optimization.label",
+    icon: Target,
+    descriptionKey: "module.optimization.description",
   },
   compare: {
     id: "compare",

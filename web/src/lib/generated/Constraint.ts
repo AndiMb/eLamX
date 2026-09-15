@@ -2,6 +2,7 @@
 import type { BucklingInput } from "./BucklingInput";
 import type { DeformationInput } from "./DeformationInput";
 import type { Loads } from "./Loads";
+import type { PressureVesselInput } from "./PressureVesselInput";
 
 /**
  * One requirement the stack has to meet.
@@ -12,4 +13,4 @@ import type { Loads } from "./Loads";
  * fixed, it has to survive JSON, and a reader should be able to see what the
  * alternatives are.
  */
-export type Constraint = { "kind": "clt", loads: Loads, } | { "kind": "buckling", input: BucklingInput, } | { "kind": "deformation", input: DeformationInput, };
+export type Constraint = { "kind": "clt", loads: Loads, } | { "kind": "buckling", input: BucklingInput, } | { "kind": "deformation", input: DeformationInput, } | { "kind": "pressure_vessel", input: PressureVesselInput, };

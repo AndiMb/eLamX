@@ -23,7 +23,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::clt::{determine_values, get_layer_results, CltLaminate, Loads, Strains};
+use crate::clt::{
+    calculate_pressure_vessel, determine_values, get_layer_results, CltLaminate, Loads,
+    PressureVesselInput, Strains,
+};
 use crate::failure::CriterionRegistry;
 use crate::model::{Laminate, Layer, Material};
 use crate::plate::{
@@ -51,6 +54,9 @@ pub enum Constraint {
     /// A plate cut from the laminate has to stay within an allowable
     /// deflection: the reserve factor is that allowable over the actual.
     Deformation { input: DeformationInput },
+    /// The laminate has to hold as the wall of a pressure vessel: the reserve
+    /// factor is the worst ply's under the boiler formula's load.
+    PressureVessel { input: PressureVesselInput },
 }
 
 impl Constraint {
@@ -61,7 +67,7 @@ impl Constraint {
     /// of them is present - not as an option but as a consequence.
     pub fn needs_symmetric_laminate(&self) -> bool {
         match self {
-            Constraint::Clt { .. } => false,
+            Constraint::Clt { .. } | Constraint::PressureVessel { .. } => false,
             Constraint::Buckling { .. } | Constraint::Deformation { .. } => true,
         }
     }
@@ -111,6 +117,14 @@ impl Constraint {
                     return Some(f64::INFINITY);
                 }
                 Some(input.max_displacement_z / peak)
+            }
+            Constraint::PressureVessel { input } => {
+                let result = calculate_pressure_vessel(laminate, materials, criteria, input).ok()?;
+                let worst = result.layer_results.iter().fold(f64::INFINITY, |acc, r| {
+                    acc.min(r.rr_lower.minimal_reserve_factor)
+                        .min(r.rr_upper.minimal_reserve_factor)
+                });
+                Some(worst)
             }
         }
     }
@@ -703,7 +717,10 @@ pub struct GeneticParameters {
     /// Not in the original, which calls `Math.random()` and therefore answers
     /// a different laminate every time it is asked the same question. A search
     /// may be stochastic; a program should still be able to repeat itself.
-    pub seed: u64,
+    ///
+    /// 32 bits rather than 64 because it crosses a JSON boundary, where a
+    /// 64-bit integer is a `bigint` and every caller would have to care.
+    pub seed: u32,
 }
 
 impl Default for GeneticParameters {
@@ -716,7 +733,7 @@ impl Default for GeneticParameters {
             max_generations: 6000,
             restart_after_unchanged: 400,
             delta_max_layers: 0,
-            seed: 0x005e_ed0f_1a11_a7e5,
+            seed: 0x5eed_1a11,
         }
     }
 }
@@ -807,7 +824,7 @@ pub fn genetic(
 
     let symmetric =
         input.symmetric || input.constraints.iter().any(Constraint::needs_symmetric_laminate);
-    let mut rng = Rng::new(params.seed);
+    let mut rng = Rng::new(params.seed as u64);
     let mut checked = 0usize;
     let mut evaluations = 0usize;
 

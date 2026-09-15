@@ -20,6 +20,9 @@ use elamx_core::micromechanics::{self, Fibre, MatrixMaterial};
 use elamx_core::model::{Laminate, Material};
 use elamx_core::project::{read_elamx, write_elamx, Project};
 use elamx_core::cutout::{calculate as calculate_cutout, CutoutInput};
+use elamx_core::optimization::{
+    exhaustive, genetic, sequential_decision, todoroki, GeneticParameters, OptimizationInput,
+};
 use elamx_core::spring_in::{calculate as calculate_spring_in, SpringInInput};
 use elamx_core::clt::LayerPosition;
 use elamx_core::plate::{
@@ -753,6 +756,71 @@ struct MicroMechanicsRequest {
     materials: Vec<Material>,
     fibres: Vec<Fibre>,
     matrices: Vec<MatrixMaterial>,
+}
+
+/// Which of the four searches to run.
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+#[serde(rename_all = "snake_case")]
+enum OptimizerKind {
+    Sequential,
+    Exhaustive,
+    Todoroki,
+    Genetic,
+}
+
+#[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+struct OptimizationRequest {
+    materials: HashMap<String, Material>,
+    input: OptimizationInput,
+    optimizer: OptimizerKind,
+    /// Only the genetic search reads this; the others ignore it.
+    #[serde(default)]
+    genetic: GeneticParameters,
+    /// The most candidates any search may evaluate.
+    ///
+    /// The exhaustive one needs it (it enumerates every order) and so does the
+    /// genetic one (it runs for a fixed number of generations, which can be
+    /// large). Passing it from the caller rather than fixing it here is the
+    /// point: a browser tab and a batch run want different numbers.
+    budget: usize,
+}
+
+/// Searches for a stacking sequence that meets every constraint.
+///
+/// The response is `OptimizationResult` as the core defines it. Slow by the
+/// standards of everything else here - each candidate is a full analysis, and
+/// there are hundreds to thousands of them - so this belongs in the worker
+/// even more than the rest.
+#[wasm_bindgen]
+pub fn optimize(request_json: &str) -> Result<String, JsValue> {
+    optimize_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn optimize_impl(request_json: &str) -> Result<String, String> {
+    let request: OptimizationRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let criteria = default_criterion_registry();
+    let result = match request.optimizer {
+        OptimizerKind::Sequential => {
+            sequential_decision(&request.input, &request.materials, &criteria)
+        }
+        OptimizerKind::Exhaustive => {
+            exhaustive(&request.input, &request.materials, &criteria, request.budget)
+        }
+        OptimizerKind::Todoroki => {
+            todoroki(&request.input, &request.materials, &criteria, request.budget)
+        }
+        OptimizerKind::Genetic => genetic(
+            &request.input,
+            &request.materials,
+            &criteria,
+            &request.genetic,
+            request.budget,
+        ),
+    };
+    serde_json::to_string(&result.map_err(|e| e.to_string())?).map_err(|e| e.to_string())
 }
 
 #[derive(Deserialize)]

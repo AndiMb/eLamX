@@ -126,6 +126,7 @@ export const elamx = {
     call("compute_vibration_surface", [request]),
   compute_spring_in: (request: string) => call("compute_spring_in", [request]),
   compute_cutout: (request: string) => call("compute_cutout", [request]),
+  optimize: (request: string) => call("optimize", [request]),
   compute_failure_envelope: (request: string) => call("compute_failure_envelope", [request]),
   compute_laminate_envelope: (request: string) =>
     call("compute_laminate_envelope", [request]),

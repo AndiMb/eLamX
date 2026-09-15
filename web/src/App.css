@@ -3331,3 +3331,29 @@ table.matrix td.block-d {
 .responsive-card.selected {
   border-color: var(--accent);
 }
+
+/* Eine Anforderung der Optimierung ist eine kleine Karte in der Eingabespalte:
+   sie hat eine Ueberschrift, eigene Felder und muss entfernbar sein, ohne dass
+   die Liste auseinanderfaellt. */
+.constraint-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: var(--s-3);
+  margin-bottom: var(--s-2);
+  background: var(--inset);
+}
+
+.constraint-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--s-2);
+}
+
+/* Der gefundene Lagenaufbau, in der Schreibweise, in der man ihn notiert. */
+.stacking {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.05rem;
+  margin: var(--s-3) 0;
+  word-break: break-word;
+}
