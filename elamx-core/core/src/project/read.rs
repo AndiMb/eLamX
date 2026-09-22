@@ -863,7 +863,19 @@ fn read_stiffeners(node: Node, parent: &str) -> Result<Vec<Stiffener>> {
                 g: v("G")?,
                 rho: v("Rho")?,
             },
-            other => unreachable!("unmapped stiffener profile '{other}'"),
+            // Unreachable as the table stands: `stiffener_profile_from_java`
+            // above only yields these three. It is an error rather than an
+            // `unreachable!` because a `match` on a `&str` gets no
+            // exhaustiveness check - adding a fourth profile to
+            // naming::STIFFENER_PROFILES and forgetting this arm would
+            // otherwise turn a file the reader accepts into a panic, and a
+            // panic in the core takes the whole wasm module with it.
+            other => {
+                return Err(ReadError::Unknown {
+                    context: format!("{ctx}, Profil"),
+                    value: other.to_string(),
+                });
+            }
         };
 
         stiffeners.push(Stiffener {

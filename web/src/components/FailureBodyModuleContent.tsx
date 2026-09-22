@@ -183,10 +183,19 @@ function FailureBodies({
       <ChartLegend
         items={bodies.map((body, index) => ({
           key: body.key,
+          // The id falls back to itself rather than being asserted into a
+          // label: a criterion the core can return but this table does not
+          // list used to end the lookup in `undefined` and take the whole
+          // module down with it. The core's own tests keep the two in step
+          // (elamx-core/core/tests/frontend_tables.rs); this is what the
+          // legend does on the day they are not.
           label:
             body.key === "imported"
               ? t("failureBody.import.legend")
-              : t(CRITERIA.find((c) => c.id === body.key)!.labelKey),
+              : (() => {
+                  const criterion = CRITERIA.find((c) => c.id === body.key);
+                  return criterion ? t(criterion.labelKey) : body.key;
+                })(),
           color: body.color ?? colors.surface,
           shape: index === 0 ? "swatch" : "line",
         }))}
