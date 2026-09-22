@@ -1,12 +1,7 @@
-import { memo, useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
-import {
-  clampElevation,
-  clampZoom,
-  project,
-  DEFAULT_CAMERA,
-  type Camera,
-} from "../../lib/plate3d";
+import { project, CAMERA_GESTURES, DEFAULT_CAMERA, type Camera } from "../../lib/plate3d";
+import { useOrbitControls } from "../../lib/useOrbitControls";
 import { useChartColors } from "../../lib/chartColors";
 import { useT } from "../../i18n";
 
@@ -54,10 +49,7 @@ export const BucklingPlate3D = memo(function BucklingPlate3D({
   const colors = useChartColors();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [camera, setCamera] = useState<Camera>(DEFAULT_CAMERA);
-  const drag = useRef<{ x: number; y: number; camera: Camera } | null>(null);
-  // Distance between the two active pointers when a pinch started.
-  const pinch = useRef<{ distance: number; zoom: number } | null>(null);
-  const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const controls = useOrbitControls(canvasRef, camera, setCamera, CAMERA_GESTURES);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -185,62 +177,6 @@ export const BucklingPlate3D = memo(function BucklingPlate3D({
     return () => observer.disconnect();
   }, [draw]);
 
-  const onPointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointers.current.size === 2) {
-      const [a, b] = [...pointers.current.values()];
-      pinch.current = { distance: Math.hypot(a.x - b.x, a.y - b.y), zoom: camera.zoom };
-      drag.current = null;
-    } else {
-      drag.current = { x: e.clientX, y: e.clientY, camera };
-    }
-  };
-
-  const onPointerMove = (e: PointerEvent<HTMLCanvasElement>) => {
-    if (!pointers.current.has(e.pointerId)) return;
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-    if (pinch.current && pointers.current.size === 2) {
-      const [a, b] = [...pointers.current.values()];
-      const distance = Math.hypot(a.x - b.x, a.y - b.y);
-      if (pinch.current.distance > 0) {
-        const factor = distance / pinch.current.distance;
-        setCamera((c) => ({ ...c, zoom: clampZoom(pinch.current!.zoom * factor) }));
-      }
-      return;
-    }
-
-    const start = drag.current;
-    if (!start) return;
-    const dx = e.clientX - start.x;
-    const dy = e.clientY - start.y;
-    setCamera({
-      azimuth: start.camera.azimuth + dx * 0.01,
-      elevation: clampElevation(start.camera.elevation + dy * 0.01),
-      zoom: start.camera.zoom,
-    });
-  };
-
-  const endPointer = (e: PointerEvent<HTMLCanvasElement>) => {
-    pointers.current.delete(e.pointerId);
-    if (pointers.current.size < 2) pinch.current = null;
-    if (pointers.current.size === 0) drag.current = null;
-  };
-
-  // Non-passive wheel listener: React's onWheel is passive, so it cannot
-  // preventDefault, and the page would scroll while zooming.
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      setCamera((c) => ({ ...c, zoom: clampZoom(c.zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12)) }));
-    };
-    canvas.addEventListener("wheel", onWheel, { passive: false });
-    return () => canvas.removeEventListener("wheel", onWheel);
-  }, []);
-
   return (
     <div className="plate3d">
       <canvas
@@ -248,10 +184,7 @@ export const BucklingPlate3D = memo(function BucklingPlate3D({
         className="plate3d-canvas"
         role="img"
         aria-label={t("buckling.plate3d.aria")}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endPointer}
-        onPointerCancel={endPointer}
+        {...controls}
       />
       <button
         type="button"

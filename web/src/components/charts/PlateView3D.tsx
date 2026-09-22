@@ -30,15 +30,15 @@ import {
   peakOf,
 } from "../../lib/plateScene/scale";
 import {
-  clampDistance,
   DEFAULT_ORBIT,
-  orbitAfterDrag,
+  ORBIT_GESTURES,
   projectToScreen,
   screenDirectionOf,
   STANDARD_VIEWS,
   viewProjectionOf,
   type OrbitCamera,
 } from "../../lib/gl/camera";
+import { useOrbitControls } from "../../lib/useOrbitControls";
 import { pickPlate } from "../../lib/gl/pick";
 import { useChartColors } from "../../lib/chartColors";
 import { formatSignificant } from "../../lib/numberFormat";
@@ -180,9 +180,6 @@ export const PlateView3D = memo(function PlateView3D({
   // Where the pointer last met the plate, or null when it was off it.
   const [probe, setProbe] = useState<{ u: number; v: number; x: number; y: number } | null>(null);
 
-  const drag = useRef<{ x: number; y: number; camera: OrbitCamera } | null>(null);
-  const pinch = useRef<{ distance: number; cameraDistance: number } | null>(null);
-  const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
 
   // Arrays as props are new objects on every render; the effects below key off
   // these instead, so a recomputed-but-identical field does not rebuild a body.
@@ -383,21 +380,6 @@ export const PlateView3D = memo(function PlateView3D({
     };
   }, []);
 
-  // React's onWheel is passive and cannot preventDefault, so the page would
-  // scroll while zooming.
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const onWheel = (event: WheelEvent) => {
-      event.preventDefault();
-      setCamera((current) => ({
-        ...current,
-        distance: clampDistance(current.distance * (event.deltaY < 0 ? 1 / 1.12 : 1.12)),
-      }));
-    };
-    canvas.addEventListener("wheel", onWheel, { passive: false });
-    return () => canvas.removeEventListener("wheel", onWheel);
-  }, []);
 
   // Projected from the same camera and the same field of view as the frame
   // being drawn, so a caption and its arrowhead move together.
@@ -531,47 +513,6 @@ export const PlateView3D = memo(function PlateView3D({
     [legend, colors, captionLine, exportName, length, width, t, requestRender],
   );
 
-  const onPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
-    event.currentTarget.setPointerCapture(event.pointerId);
-    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    if (pointers.current.size === 2) {
-      const [a, b] = [...pointers.current.values()];
-      pinch.current = {
-        distance: Math.hypot(a.x - b.x, a.y - b.y),
-        cameraDistance: camera.distance,
-      };
-      drag.current = null;
-    } else {
-      drag.current = { x: event.clientX, y: event.clientY, camera };
-    }
-  };
-
-  const onPointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
-    if (!pointers.current.has(event.pointerId)) {
-      // Not a drag: read the value under the pointer instead (FR-11).
-      updateProbe(event);
-      return;
-    }
-    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-
-    if (pinch.current && pointers.current.size === 2) {
-      const [a, b] = [...pointers.current.values()];
-      const distance = Math.hypot(a.x - b.x, a.y - b.y);
-      if (pinch.current.distance > 0) {
-        const factor = pinch.current.distance / distance;
-        setCamera((current) => ({
-          ...current,
-          distance: clampDistance(pinch.current!.cameraDistance * factor),
-        }));
-      }
-      return;
-    }
-
-    const start = drag.current;
-    if (!start) return;
-    setCamera(orbitAfterDrag(start.camera, event.clientX - start.x, event.clientY - start.y));
-  };
-
   const updateProbe = (event: PointerEvent<HTMLCanvasElement>) => {
     if (!readoutText) return;
     const canvas = canvasRef.current;
@@ -592,11 +533,11 @@ export const PlateView3D = memo(function PlateView3D({
     setProbe(hit ? { u: hit.u, v: hit.v, x: hit.u * length, y: hit.v * width } : null);
   };
 
-  const endPointer = (event: PointerEvent<HTMLCanvasElement>) => {
-    pointers.current.delete(event.pointerId);
-    if (pointers.current.size < 2) pinch.current = null;
-    if (pointers.current.size === 0) drag.current = null;
-  };
+  // Drag to turn, two fingers or the wheel to zoom - the same gestures as the
+  // other two 3D views, over a camera that measures distance rather than zoom.
+  // Pointer movement with nothing held down is this view's own: it reads off
+  // the value under the cursor (FR-11) instead of moving anything.
+  const controls = useOrbitControls(canvasRef, camera, setCamera, ORBIT_GESTURES, updateProbe);
 
   if (!supported) {
     return (
@@ -619,10 +560,7 @@ export const PlateView3D = memo(function PlateView3D({
         className="plate3d-canvas"
         role="img"
         aria-label={ariaLabel}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endPointer}
-        onPointerCancel={endPointer}
+        {...controls}
         onPointerLeave={() => setProbe(null)}
       />
       <PlateViewOverlay

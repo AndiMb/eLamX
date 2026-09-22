@@ -8,6 +8,8 @@
 // a single-valued height field viewed from outside, which is the only scene
 // this ever draws.
 
+import type { OrbitGestures } from "./orbitGesture";
+
 export interface Camera {
   /** Rotation about the plate's z axis, radians. */
   azimuth: number;
@@ -71,3 +73,25 @@ export function clampElevation(value: number): number {
 export function clampZoom(value: number): number {
   return Math.min(6, Math.max(0.25, value));
 }
+
+/**
+ * What dragging, pinching and the wheel mean for this camera - the buckling
+ * mode and the failure body both orbit exactly this way, so it is defined once
+ * here beside the camera rather than in each of them.
+ *
+ * A constant, not built per render: useOrbitControls holds on to it across a
+ * gesture, and these views re-render while one is in progress.
+ */
+export const CAMERA_GESTURES: OrbitGestures<Camera> = {
+  drag: (start, dx, dy) => ({
+    azimuth: start.azimuth + dx * 0.01,
+    elevation: clampElevation(start.elevation + dy * 0.01),
+    zoom: start.zoom,
+  }),
+  // The camera carries a zoom factor, so spreading the fingers scales it up.
+  pinch: (start, factor) => ({ ...start, zoom: clampZoom(start.zoom * factor) }),
+  wheel: (current, deltaY) => ({
+    ...current,
+    zoom: clampZoom(current.zoom * (deltaY < 0 ? 1.12 : 1 / 1.12)),
+  }),
+};

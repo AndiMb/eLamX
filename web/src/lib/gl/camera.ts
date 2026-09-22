@@ -10,6 +10,8 @@
 
 import { lookAt, multiply, perspective, transformPoint, type Mat4, type Vec3 } from "./mat4";
 
+import type { OrbitGestures } from "../orbitGesture";
+
 export interface OrbitCamera {
   /** Rotation about the plate's z axis, radians. */
   azimuth: number;
@@ -135,3 +137,20 @@ export const STANDARD_VIEWS = {
 } as const satisfies Record<string, OrbitCamera>;
 
 export type StandardViewId = keyof typeof STANDARD_VIEWS;
+
+/**
+ * What dragging, pinching and the wheel mean for an orbit camera.
+ *
+ * The sense of the pinch is the other way round from a camera that carries a
+ * zoom factor (see `CAMERA_GESTURES` in lib/plate3d): this one measures how
+ * far the eye stands from the subject, so spreading the fingers has to bring
+ * it CLOSER, and the factor divides rather than multiplies.
+ */
+export const ORBIT_GESTURES: OrbitGestures<OrbitCamera> = {
+  drag: orbitAfterDrag,
+  pinch: (start, factor) => ({ ...start, distance: clampDistance(start.distance / factor) }),
+  wheel: (current, deltaY) => ({
+    ...current,
+    distance: clampDistance(current.distance * (deltaY < 0 ? 1 / 1.12 : 1.12)),
+  }),
+};
