@@ -179,6 +179,13 @@ the port against numbers the original Java eLamX 3.x produced. Those numbers are
 checked in, so the suite needs no Java installation - see
 `core/tests/golden/README.md` for how to regenerate them when the cases change.
 
+It comes in two halves. `golden_master.rs` drives the reference cases from a
+JSON twin of the inputs, so the Java run and the Rust one cannot drift apart on
+what they were asked. `batch_crosscheck.rs` hands both programs the *same*
+`.elamx` file - the port reads it with `project::read_elamx` - and compares
+what each made of it, which is the half that can fail on the reader rather than
+the arithmetic.
+
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs the Rust suite, the `wasm-pack` build and the

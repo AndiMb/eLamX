@@ -17,6 +17,8 @@ and would stay green even if a formula were mistranscribed.
 | `reference.txt` | **the expected values** | eLamX batch mode |
 | `reduced.elamxb` | the original's OWN example of the reduced input format | copied from `eLamX2/Example_Files/` |
 | `reduced.txt` | **the expected values for it** | eLamX batch mode |
+| `crosscheck/*.elamx` | a second suite's inputs, which the Rust side reads itself | hand-written |
+| `crosscheck/*.txt` | **their expected values** | eLamX batch mode |
 
 Both input files come from one `CASES` definition, so the Java run and the Rust
 test cannot drift apart on the inputs; only `reference.txt` carries expectations.
@@ -240,6 +242,82 @@ diff <(tail -n +12 core/tests/golden/reference.txt) <(tail -n +12 rewritten.txt)
 The first 11 lines carry a timestamp, the input path and its MD5 sum, so they
 differ by construction; everything after them must be identical. Both
 `reference.elamx` and eLamX's own `Example_Files/batchexample1.elamx` pass.
+
+## A second suite on whole files: `crosscheck/`
+
+Everything above takes ONE case definition (`generate.mjs`) into two forms, so
+that the Java run and the Rust test cannot drift apart on the inputs. The price
+of that arrangement is that the Rust side never reads the file the original
+read: `reference.input.json` is a twin written by the same generator, not the
+`.elamx`.
+
+`crosscheck/` closes that gap. Each case there is a pair of files, and both
+programs start from the same one:
+
+```text
+  crosscheck/<case>.elamx ─┬─[eLamX batch]──────────> crosscheck/<case>.txt
+                           └─[project::read_elamx]──> tests/batch_crosscheck.rs
+```
+
+So a stack the reader assembles differently - a mirrored one, an offset
+reference plane, a reversed stacking order, an angle written outside -90..90 -
+fails here even where the arithmetic downstream of it is perfect. Dropping the
+`offset` attribute in `project::read` turns 241 comparisons red; that fault is
+invisible to `golden_master.rs`, which would read the offset from the JSON
+either way.
+
+The inputs are hand-written rather than generated, and chosen independently of
+the cases above:
+
+| File | Laminates |
+|---|---|
+| `stacks.elamx` | `XC-QI`, the quasi-isotropic `[45/-45/0/90]s`; `XC-Kreuz`, a two-ply `[0/90]` whose B matrix is as large as B gets, under a temperature change alone; `XC-Hybrid`, two materials and two ply thicknesses around a shared middle layer, with a different criterion on every ply |
+| `awkward.elamx` | `XC-Dick`, 24 plies of an ultra-high-modulus carbon (E11/E22 ≈ 48) under a 14x14 Ritz problem; `XC-Versetzt`, a 1.5 mm reference-plane offset, `invert_z`, five plies in five thicknesses of two materials at angles a user would type (12.5, -78, 100, -135, 220) and every degree of freedom prescribed as a strain in one of its load cases; `XC-Gewebe`, a balanced fabric where E11 = E22 but the strengths differ |
+
+Regenerating a `.txt` after changing its `.elamx` - same three warnings as in
+step 2 above about `--locale`, the `=` and the stale `lock`:
+
+```sh
+cd elamx-core/core/tests/golden/crosscheck
+"<eLamX>/bin/elamx64.exe" --locale en --userdir /tmp/elamx-batch     --input="$(pwd)/stacks.elamx" --output="$(pwd)/stacks.txt"
+```
+
+Adding a case is dropping two more files into that directory: the test walks
+it and needs no edit.
+
+### Two tolerances this suite sets for itself
+
+Both are in `mod limits` in `batch_crosscheck.rs`, and neither is a concession
+to the port:
+
+- **Ply stresses and strains are compared in separate groups**, with an
+  absolute floor per unit (a micropascal, and a strain of 1e-12). `close_group`
+  takes its floor from the largest value in the group, and a stress in MPa is
+  some thousands of times a strain - so a group holding both compares the
+  strains to the precision of the stresses, which is to say not at all. The
+  floors themselves are for the plies that are exactly zero in theory: the
+  mid-plane ply of `XC-QI` under pure bending prints 1.9e-15 MPa on one side
+  and 1.4e-14 on the other, and comparing two kinds of rounding noise to each
+  other says only which one rounded first.
+- **The eigenvalue spectrum is compared to eight significant digits** rather
+  than the eleven the batch prints, while `n_crit` keeps the full precision.
+  `XC-QI-Beul-Schub` is a shear-loaded plate, so its geometric stiffness is
+  indefinite and its spectrum spans nine decades (32 to 1.2e10); the largest
+  eigenvalue is where Java's eigensolver and nalgebra's stop agreeing to the
+  last digit, by 8e-9 relative. Every other eigenvalue in both files agrees to
+  the eleven digits printed.
+
+### Keeping this one honest too
+
+The same standard as above - each of these faults, introduced and then
+reverted, turns `every_crosscheck_file_matches_elamx` red:
+
+| Fault | Failing comparisons of 15763 |
+|---|---|
+| `project::read` ignores the laminate's `offset` attribute | 241 |
+| `all_layers` does not reverse for `invert_z` | 311 |
+| the special-orthotropic D matrix keeps its `D_{16}` | 59 |
+| Puck reads `p_spz` where `p_spd` belongs | 5 |
 
 ## Quirks of the batch output worth knowing
 

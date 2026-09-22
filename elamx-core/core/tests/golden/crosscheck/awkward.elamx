@@ -1,0 +1,387 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<elamx version="1">
+    <laminates>
+        <laminate invert_z="false" name="XC-Dick" offset="0.0" symmetric="true" uuid="00000000-0000-4000-8000-000000000026" with_middle_layer="false">
+            <layer name="Lage 1" uuid="00000000-0000-4000-8000-000000000014">
+                <thickness>0.125</thickness>
+                <angle>0.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.failure.Puck</criterion>
+            </layer>
+            <layer name="Lage 2" uuid="00000000-0000-4000-8000-000000000015">
+                <thickness>0.125</thickness>
+                <angle>45.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.failure.Puck</criterion>
+            </layer>
+            <layer name="Lage 3" uuid="00000000-0000-4000-8000-000000000016">
+                <thickness>0.125</thickness>
+                <angle>-45.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.failure.Puck</criterion>
+            </layer>
+            <layer name="Lage 4" uuid="00000000-0000-4000-8000-000000000017">
+                <thickness>0.125</thickness>
+                <angle>90.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.failure.Puck</criterion>
+            </layer>
+            <layer name="Lage 5" uuid="00000000-0000-4000-8000-000000000018">
+                <thickness>0.125</thickness>
+                <angle>0.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.failure.Puck</criterion>
+            </layer>
+            <layer name="Lage 6" uuid="00000000-0000-4000-8000-000000000019">
+                <thickness>0.125</thickness>
+                <angle>45.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.failure.Puck</criterion>
+            </layer>
+            <layer name="Lage 7" uuid="00000000-0000-4000-8000-000000000020">
+                <thickness>0.125</thickness>
+                <angle>-45.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.failure.Puck</criterion>
+            </layer>
+            <layer name="Lage 8" uuid="00000000-0000-4000-8000-000000000021">
+                <thickness>0.125</thickness>
+                <angle>90.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.failure.Puck</criterion>
+            </layer>
+            <layer name="Lage 9" uuid="00000000-0000-4000-8000-000000000022">
+                <thickness>0.125</thickness>
+                <angle>0.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.failure.Puck</criterion>
+            </layer>
+            <layer name="Lage 10" uuid="00000000-0000-4000-8000-000000000023">
+                <thickness>0.125</thickness>
+                <angle>45.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.failure.Puck</criterion>
+            </layer>
+            <layer name="Lage 11" uuid="00000000-0000-4000-8000-000000000024">
+                <thickness>0.125</thickness>
+                <angle>-45.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.failure.Puck</criterion>
+            </layer>
+            <layer name="Lage 12" uuid="00000000-0000-4000-8000-000000000025">
+                <thickness>0.125</thickness>
+                <angle>90.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.failure.Puck</criterion>
+            </layer>
+            <calculation name="XC-Dick-Zug">
+                <n_x>2000.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>40.0</m_y>
+                <m_xy>0.0</m_xy>
+                <deltat>0.0</deltat>
+                <deltah>0.0</deltah>
+                <useStrain0>false</useStrain0>
+                <useStrain1>false</useStrain1>
+                <useStrain2>false</useStrain2>
+                <useStrain3>false</useStrain3>
+                <useStrain4>false</useStrain4>
+                <useStrain5>false</useStrain5>
+                <epsilon_x>0</epsilon_x>
+                <epsilon_y>0</epsilon_y>
+                <gamma_xy>0</gamma_xy>
+                <kappa_x>0</kappa_x>
+                <kappa_y>0</kappa_y>
+                <kappa_xy>0</kappa_xy>
+            </calculation>
+            <buckling name="XC-Dick-Beul-CC">
+                <n_x>-1.0</n_x>
+                <n_y>-1.0</n_y>
+                <n_xy>0.3</n_xy>
+                <length>800.0</length>
+                <width>200.0</width>
+                <bcx>1</bcx>
+                <bcy>1</bcy>
+                <m>14</m>
+                <n>14</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl</dmatrixservice>
+            </buckling>
+            <lastplyfailure name="XC-Dick-LPF">
+                <n_x>2500.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <degradationFactor>0.02</degradationFactor>
+                <degradeAllOnFibreFailure>true</degradeAllOnFibreFailure>
+                <epsilon_crit>0.004</epsilon_crit>
+                <j_a>1.0</j_a>
+            </lastplyfailure>
+        </laminate>
+        <laminate invert_z="true" name="XC-Versetzt" offset="1.5" symmetric="false" uuid="00000000-0000-4000-8000-000000000032" with_middle_layer="false">
+            <layer name="Lage 1" uuid="00000000-0000-4000-8000-000000000027">
+                <thickness>0.0625</thickness>
+                <angle>12.5</angle>
+                <material>xc-gewebe</material>
+                <criterion>de.elamx.laminate.addFailureCriteria.MaxStress</criterion>
+            </layer>
+            <layer name="Lage 2" uuid="00000000-0000-4000-8000-000000000028">
+                <thickness>0.3</thickness>
+                <angle>-78.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.failure.Puck</criterion>
+            </layer>
+            <layer name="Lage 3" uuid="00000000-0000-4000-8000-000000000029">
+                <thickness>0.125</thickness>
+                <angle>100.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.addFailureCriteria.Hoffman</criterion>
+            </layer>
+            <layer name="Lage 4" uuid="00000000-0000-4000-8000-000000000030">
+                <thickness>0.5</thickness>
+                <angle>-135.0</angle>
+                <material>xc-gewebe</material>
+                <criterion>de.elamx.laminate.addFailureCriteria.TsaiHill</criterion>
+            </layer>
+            <layer name="Lage 5" uuid="00000000-0000-4000-8000-000000000031">
+                <thickness>0.2</thickness>
+                <angle>220.0</angle>
+                <material>xc-uhm</material>
+                <criterion>de.elamx.laminate.addFailureCriteria.FMC</criterion>
+            </layer>
+            <calculation name="XC-Versetzt-Komb">
+                <n_x>180.0</n_x>
+                <n_y>-95.0</n_y>
+                <n_xy>70.0</n_xy>
+                <m_x>12.0</m_x>
+                <m_y>-6.0</m_y>
+                <m_xy>9.0</m_xy>
+                <deltat>-95.0</deltat>
+                <deltah>0.35</deltah>
+                <useStrain0>false</useStrain0>
+                <useStrain1>false</useStrain1>
+                <useStrain2>false</useStrain2>
+                <useStrain3>false</useStrain3>
+                <useStrain4>false</useStrain4>
+                <useStrain5>false</useStrain5>
+                <epsilon_x>0</epsilon_x>
+                <epsilon_y>0</epsilon_y>
+                <gamma_xy>0</gamma_xy>
+                <kappa_x>0</kappa_x>
+                <kappa_y>0</kappa_y>
+                <kappa_xy>0</kappa_xy>
+            </calculation>
+            <calculation name="XC-Versetzt-Dehnung">
+                <n_x>0.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <deltat>0.0</deltat>
+                <deltah>0.0</deltah>
+                <useStrain0>true</useStrain0>
+                <useStrain1>true</useStrain1>
+                <useStrain2>true</useStrain2>
+                <useStrain3>true</useStrain3>
+                <useStrain4>true</useStrain4>
+                <useStrain5>true</useStrain5>
+                <epsilon_x>0.0015</epsilon_x>
+                <epsilon_y>-0.0008</epsilon_y>
+                <gamma_xy>0.0022</gamma_xy>
+                <kappa_x>0.00035</kappa_x>
+                <kappa_y>-0.0002</kappa_y>
+                <kappa_xy>0.00012</kappa_xy>
+            </calculation>
+            <buckling name="XC-Versetzt-Beul-FF">
+                <n_x>-1.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <length>300.0</length>
+                <width>450.0</width>
+                <bcx>3</bcx>
+                <bcy>0</bcy>
+                <m>7</m>
+                <n>13</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.StandardDMatrixServiceImpl</dmatrixservice>
+            </buckling>
+            <buckling name="XC-Versetzt-Beul-SF">
+                <n_x>-1.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.4</n_xy>
+                <length>300.0</length>
+                <width>450.0</width>
+                <bcx>5</bcx>
+                <bcy>2</bcy>
+                <m>8</m>
+                <n>8</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.DtildeDMatrixServiceImpl</dmatrixservice>
+            </buckling>
+            <lastplyfailure name="XC-Versetzt-LPF">
+                <n_x>60.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <degradationFactor>0.1</degradationFactor>
+                <degradeAllOnFibreFailure>false</degradeAllOnFibreFailure>
+                <epsilon_crit>0.0035</epsilon_crit>
+                <j_a>1.0</j_a>
+            </lastplyfailure>
+        </laminate>
+        <laminate invert_z="false" name="XC-Gewebe" offset="0.0" symmetric="true" uuid="00000000-0000-4000-8000-000000000035" with_middle_layer="false">
+            <layer name="Lage 1" uuid="00000000-0000-4000-8000-000000000033">
+                <thickness>0.22</thickness>
+                <angle>0.0</angle>
+                <material>xc-gewebe</material>
+                <criterion>de.elamx.laminate.addFailureCriteria.TsaiWu</criterion>
+            </layer>
+            <layer name="Lage 2" uuid="00000000-0000-4000-8000-000000000034">
+                <thickness>0.22</thickness>
+                <angle>90.0</angle>
+                <material>xc-gewebe</material>
+                <criterion>de.elamx.laminate.addFailureCriteria.TsaiWu</criterion>
+            </layer>
+            <calculation name="XC-Gewebe-Druck">
+                <n_x>-260.0</n_x>
+                <n_y>140.0</n_y>
+                <n_xy>0.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <deltat>0.0</deltat>
+                <deltah>0.0</deltah>
+                <useStrain0>false</useStrain0>
+                <useStrain1>false</useStrain1>
+                <useStrain2>false</useStrain2>
+                <useStrain3>false</useStrain3>
+                <useStrain4>false</useStrain4>
+                <useStrain5>false</useStrain5>
+                <epsilon_x>0</epsilon_x>
+                <epsilon_y>0</epsilon_y>
+                <gamma_xy>0</gamma_xy>
+                <kappa_x>0</kappa_x>
+                <kappa_y>0</kappa_y>
+                <kappa_xy>0</kappa_xy>
+            </calculation>
+            <buckling name="XC-Gewebe-Beul-SC">
+                <n_x>-1.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>0.0</n_xy>
+                <length>350.0</length>
+                <width>350.0</width>
+                <bcx>4</bcx>
+                <bcy>4</bcy>
+                <m>10</m>
+                <n>10</n>
+                <dmatrixservice>de.elamx.clt.plate.dmatrix.SpecialOrthotropicDMatrixServiceImpl</dmatrixservice>
+            </buckling>
+            <lastplyfailure name="XC-Gewebe-LPF">
+                <n_x>0.0</n_x>
+                <n_y>0.0</n_y>
+                <n_xy>220.0</n_xy>
+                <m_x>0.0</m_x>
+                <m_y>0.0</m_y>
+                <m_xy>0.0</m_xy>
+                <degradationFactor>0.001</degradationFactor>
+                <degradeAllOnFibreFailure>true</degradeAllOnFibreFailure>
+                <epsilon_crit>0.012</epsilon_crit>
+                <j_a>1.0</j_a>
+            </lastplyfailure>
+        </laminate>
+    </laminates>
+    <materials>
+        <material class="de.elamx.laminate.DefaultMaterial" name="XC-UHM-UD" uuid="xc-uhm">
+            <Epar>290000.0</Epar>
+            <Enor>6000.0</Enor>
+            <nue12>0.32</nue12>
+            <G>4200.0</G>
+            <G13>4200.0</G13>
+            <G23>2800.0</G23>
+            <rho>1.81e-9</rho>
+            <alphaTPar>-1.1e-6</alphaTPar>
+            <alphaTNor>3.4e-5</alphaTNor>
+            <betaPar>0.0</betaPar>
+            <betaNor>0.3</betaNor>
+            <RParTen>1200.0</RParTen>
+            <RParCom>600.0</RParCom>
+            <RNorTen>25.0</RNorTen>
+            <RNorCom>130.0</RNorCom>
+            <RShear>48.0</RShear>
+            <de.elamx.laminate.failure.Puck.pspd>0.2</de.elamx.laminate.failure.Puck.pspd>
+            <de.elamx.laminate.failure.Puck.pspz>0.25</de.elamx.laminate.failure.Puck.pspz>
+            <de.elamx.laminate.failure.Puck.a0>0.5</de.elamx.laminate.failure.Puck.a0>
+            <de.elamx.laminate.failure.Puck.lambda_min>0.5</de.elamx.laminate.failure.Puck.lambda_min>
+            <de.elamx.laminate.addFailureCriteria.TsaiWu.f12star>-0.5</de.elamx.laminate.addFailureCriteria.TsaiWu.f12star>
+            <de.elamx.laminate.addFailureCriteria.ZTL.f12star>-0.5</de.elamx.laminate.addFailureCriteria.ZTL.f12star>
+            <de.elamx.laminate.addFailureCriteria.MaxStrain.eps_x>0.004</de.elamx.laminate.addFailureCriteria.MaxStrain.eps_x>
+            <de.elamx.laminate.addFailureCriteria.MaxStrain.eps_y>0.0042</de.elamx.laminate.addFailureCriteria.MaxStrain.eps_y>
+            <de.elamx.laminate.addFailureCriteria.MaxStrain.gamma_xy>0.0114</de.elamx.laminate.addFailureCriteria.MaxStrain.gamma_xy>
+            <de.elamx.laminate.addFailureCriteria.MaxStrain.global_lokal>0.3</de.elamx.laminate.addFailureCriteria.MaxStrain.global_lokal>
+            <de.elamx.laminate.addFailureCriteria.FMC.m>2.9</de.elamx.laminate.addFailureCriteria.FMC.m>
+            <de.elamx.laminate.addFailureCriteria.FMC.muesp>0.2</de.elamx.laminate.addFailureCriteria.FMC.muesp>
+            <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>-0.5</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>
+            <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>0.0</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.f12star>-0.5</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.f12star>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.sigbiax>0.0</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.sigbiax>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.alp>0.7</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.alp>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.R23>35.0</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.R23>
+            <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNAChangChang.beta>0.4</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNAChangChang.beta>
+            <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNATsaiWu.beta>0.6</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNATsaiWu.beta>
+            <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g1c>0.28</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g1c>
+            <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g2c>0.79</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g2c>
+            <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerPinho.alp0>52.4</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerPinho.alp0>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g1c>0.31</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g1c>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g2c>0.85</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g2c>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0>51.6</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0>
+        </material>
+        <material class="de.elamx.laminate.DefaultMaterial" name="XC-Gewebe" uuid="xc-gewebe">
+            <Epar>62000.0</Epar>
+            <Enor>62000.0</Enor>
+            <nue12>0.05</nue12>
+            <G>4000.0</G>
+            <G13>4000.0</G13>
+            <G23>3200.0</G23>
+            <rho>1.65e-9</rho>
+            <alphaTPar>4.5e-6</alphaTPar>
+            <alphaTNor>4.5e-6</alphaTNor>
+            <betaPar>0.05</betaPar>
+            <betaNor>0.05</betaNor>
+            <RParTen>780.0</RParTen>
+            <RParCom>690.0</RParCom>
+            <RNorTen>740.0</RNorTen>
+            <RNorCom>650.0</RNorCom>
+            <RShear>96.0</RShear>
+            <de.elamx.laminate.failure.Puck.pspd>0.28</de.elamx.laminate.failure.Puck.pspd>
+            <de.elamx.laminate.failure.Puck.pspz>0.32</de.elamx.laminate.failure.Puck.pspz>
+            <de.elamx.laminate.failure.Puck.a0>0.5</de.elamx.laminate.failure.Puck.a0>
+            <de.elamx.laminate.failure.Puck.lambda_min>0.5</de.elamx.laminate.failure.Puck.lambda_min>
+            <de.elamx.laminate.addFailureCriteria.TsaiWu.f12star>-0.36</de.elamx.laminate.addFailureCriteria.TsaiWu.f12star>
+            <de.elamx.laminate.addFailureCriteria.ZTL.f12star>-0.36</de.elamx.laminate.addFailureCriteria.ZTL.f12star>
+            <de.elamx.laminate.addFailureCriteria.MaxStrain.eps_x>0.0126</de.elamx.laminate.addFailureCriteria.MaxStrain.eps_x>
+            <de.elamx.laminate.addFailureCriteria.MaxStrain.eps_y>0.0119</de.elamx.laminate.addFailureCriteria.MaxStrain.eps_y>
+            <de.elamx.laminate.addFailureCriteria.MaxStrain.gamma_xy>0.024</de.elamx.laminate.addFailureCriteria.MaxStrain.gamma_xy>
+            <de.elamx.laminate.addFailureCriteria.MaxStrain.global_lokal>0.7</de.elamx.laminate.addFailureCriteria.MaxStrain.global_lokal>
+            <de.elamx.laminate.addFailureCriteria.FMC.m>3.4</de.elamx.laminate.addFailureCriteria.FMC.m>
+            <de.elamx.laminate.addFailureCriteria.FMC.muesp>0.18</de.elamx.laminate.addFailureCriteria.FMC.muesp>
+            <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>-0.36</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.f12star>
+            <de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>0.0</de.elamx.laminate.addFailureCriteriaAbaqus.AbaqusTsaiWu.sigbiax>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.f12star>-0.36</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.f12star>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.sigbiax>0.0</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskTsaiWu.sigbiax>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.alp>0.7</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.alp>
+            <de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.R23>750.0</de.elamx.laminate.addFailureCriteriaAutodesk.AutodeskHashin.R23>
+            <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNAChangChang.beta>0.4</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNAChangChang.beta>
+            <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNATsaiWu.beta>0.6</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNATsaiWu.beta>
+            <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g1c>0.28</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g1c>
+            <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g2c>0.79</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerCamanho.g2c>
+            <de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerPinho.alp0>52.4</de.elamx.laminate.addFailureCriteriaLSDYNA.LSDYNADaimlerPinho.alp0>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g1c>0.31</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g1c>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g2c>0.85</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.g2c>
+            <de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0>51.6</de.elamx.laminate.addFailureCriteriaAnsys.AnsysLaRC03.alp0>
+        </material>
+    </materials>
+</elamx>
