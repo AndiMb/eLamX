@@ -28,8 +28,3 @@ export function BlockMath({ math }: { math: string }) {
   return <div className="katex-block" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-export function InlineMath({ math }: { math: string }) {
-  const html = useKatexHtml(math, false);
-  // eslint-disable-next-line react/no-danger
-  return <span dangerouslySetInnerHTML={{ __html: html }} />;
-}

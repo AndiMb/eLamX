@@ -9,13 +9,19 @@
 # arithmetic and state the browser tests cannot pin down cheaply - stacking
 # notation, number formatting, unit round-trips, the store's migrations.
 #
-# Deliberately absent: `cargo fmt --check` and `cargo clippy -D warnings`.
-# Neither passes today, and for reasons that are not simply neglect - the
-# transcribed constants in plate/boundary_tables.rs trip clippy::approx_constant
-# by design (they are the Java tables' literals, kept literal so they can be
-# diffed against the source), and rustfmt would reflow those same hand-aligned
-# tables. Both can be added once that has been decided deliberately, rather
-# than being forced by a red build.
+# Clippy IS run, with `-D warnings`, and so is the frontend's linter (oxlint
+# `--deny-warnings`, since oxlint reports most of what it finds as warnings and
+# would otherwise exit 0 on them). The transcribed constants in
+# plate/boundary_tables.rs trip clippy::approx_constant by design - they are
+# the Java tables' literals, kept literal so they can be diffed against the
+# source - and the allowances that settle that carry their reasoning.
+#
+# Deliberately absent: `cargo fmt --check`. It does not pass, and not only
+# because rustfmt would reflow those hand-aligned tables: they account for 6 of
+# the 572 places it would rewrite, the rest being ordinary drift. Enabling it
+# means one reformatting commit across the core (`#[rustfmt::skip]` on the
+# tables, as cutout/geometry.rs already uses), which is a decision to take
+# deliberately rather than under a red build.
 
 name: CI
 

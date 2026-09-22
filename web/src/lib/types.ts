@@ -481,7 +481,6 @@ export const STIFFENER_PROFILES = [
 }[];
 
 export type StiffenerProfileId = (typeof STIFFENER_PROFILES)[number]["id"];
-export type StiffenerFieldId = (typeof STIFFENER_PROFILES)[number]["fields"][number];
 
 /** eLamX2 caps the Ritz term counts here, and so do the ported integral tables. */
 export const MAX_RITZ_TERMS = 20;

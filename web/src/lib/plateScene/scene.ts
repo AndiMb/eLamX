@@ -27,7 +27,7 @@ import {
   type OrbitCamera,
 } from "../gl/camera";
 import { perspective } from "../gl/mat4";
-import { EMPTY_MESH, type AnnotationMesh } from "./annotation";
+import type { AnnotationMesh } from "./annotation";
 import type { PlateBody } from "./body";
 
 export type Rgba = [number, number, number, number];
@@ -58,12 +58,6 @@ export interface PlateAnnotation {
   loads: AnnotationMesh;
   stiffeners: AnnotationMesh;
 }
-
-export const NO_ANNOTATION: PlateAnnotation = {
-  supports: EMPTY_MESH,
-  loads: EMPTY_MESH,
-  stiffeners: EMPTY_MESH,
-};
 
 export interface PlateScene {
   setBody(body: PlateBody): void;

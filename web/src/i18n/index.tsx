@@ -118,11 +118,6 @@ export function t(key: MessageKey, params?: MessageParams): string {
   return translate(currentLocale, key, params);
 }
 
-/** The active locale outside React - e.g. for Intl in non-component code. */
-export function getLocale(): Locale {
-  return currentLocale;
-}
-
 export function useLocale(): Locale {
   return useAtomValue(localeAtom);
 }

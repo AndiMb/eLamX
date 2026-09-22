@@ -48,6 +48,11 @@ function valueOf(layer: ThroughThicknessLayer, field: FieldKey, idx: 0 | 1 | 2, 
   return layer[field][which][idx];
 }
 
+/** The <option> text and the aria-label, which must agree. */
+function labelOf(c: (typeof COMPONENTS)[number], t: ReturnType<typeof useT>) {
+  return `${symText(c.sym)} (${t(c.frame === "local" ? "common.local" : "common.global")})`;
+}
+
 // See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
 export const ThroughThicknessChart = memo(function ThroughThicknessChart({ laminateId }: { laminateId: string }) {
   const t = useT();
@@ -58,31 +63,40 @@ export const ThroughThicknessChart = memo(function ThroughThicknessChart({ lamin
   const [hoverLayer, setHoverLayer] = useState<{ layer: ThroughThicknessLayer; x: number; y: number } | null>(null);
   const [showTable, setShowTable] = useState(false);
 
+  // Only the key and the label: spreading the whole entry made the list hold
+  // copies React Compiler cannot prove are never mutated, and anything taken
+  // off them then poisoned the memo below.
   const components = useMemo(
-    () =>
-      COMPONENTS.map((c) => ({
-        ...c,
-        label: `${symText(c.sym)} (${t(c.frame === "local" ? "common.local" : "common.global")})`,
-      })),
+    () => COMPONENTS.map((c) => ({ key: c.key, label: labelOf(c, t) })),
     [t],
   );
 
-  const component = components.find((c) => c.key === componentKey)!;
+  // Falling back to the first entry rather than asserting: a key persisted
+  // from a list that has since changed should pick a component, not throw.
+  const component = COMPONENTS.find((c) => c.key === componentKey) ?? COMPONENTS[0];
   const { field, idx } = component;
+  const componentLabel = labelOf(component, t);
 
-  // Depends on the selected field/index, not on the `component` object, whose
-  // identity changes on every language switch - the numbers plotted do not.
+  // Keyed on `componentKey`, a string, rather than on the field and index read
+  // off the table entry: those are properties of an object, and React Compiler
+  // treats them as possibly mutated later, which made it skip optimising this
+  // component entirely. The lookup moves inside instead - it is a find over
+  // twelve entries, against a pass over every ply.
   const scales = useMemo(() => {
     if (!layers || layers.length === 0) return null;
+    const selected = COMPONENTS.find((c) => c.key === componentKey) ?? COMPONENTS[0];
     const zMin = Math.min(...layers.map((l) => l.zLower));
     const zMax = Math.max(...layers.map((l) => l.zUpper));
-    const values = layers.flatMap((l) => [valueOf(l, field, idx, "lower"), valueOf(l, field, idx, "upper")]);
+    const values = layers.flatMap((l) => [
+      valueOf(l, selected.field, selected.idx, "lower"),
+      valueOf(l, selected.field, selected.idx, "upper"),
+    ]);
     const vMin = Math.min(...values, 0);
     const vMax = Math.max(...values, 0);
     const zScale = (z: number) => PLOT_H - ((z - zMin) / (zMax - zMin || 1)) * PLOT_H;
     const vScale = (v: number) => ((v - vMin) / (vMax - vMin || 1)) * PLOT_W;
     return { zMin, zMax, vMin, vMax, zScale, vScale };
-  }, [layers, field, idx]);
+  }, [layers, componentKey]);
 
   if (!layers || layers.length === 0 || !scales) return null;
   const { zScale, vScale, zMin, zMax, vMin, vMax } = scales;
@@ -114,7 +128,7 @@ export const ThroughThicknessChart = memo(function ThroughThicknessChart({ lamin
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
             width="100%"
             role="img"
-            aria-label={t("chart.throughThickness.aria", { component: component.label })}
+            aria-label={t("chart.throughThickness.aria", { component: componentLabel })}
           >
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
               {/* Keyed by position: all three collapse onto 0 for a laminate

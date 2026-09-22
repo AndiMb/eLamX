@@ -124,11 +124,6 @@ export function scaled(v: Vec3, factor: number): Vec3 {
   return [v[0] * factor, v[1] * factor, v[2] * factor];
 }
 
-/** Mix `a` and `b`, `t = 0` giving `a`. */
-export function lerp(a: Vec3, b: Vec3, t: number): Vec3 {
-  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-}
-
 /** Two unit vectors spanning the plane normal to `axis`. */
 function perpendicularsOf(axis: Vec3): [Vec3, Vec3] {
   // Cross with whichever cardinal axis is least parallel; picking a fixed one
