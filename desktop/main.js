@@ -111,8 +111,12 @@ function serveWebRoot() {
     const requested = new URL(request.url).pathname;
     const target = path.join(WEB_ROOT, decodeURIComponent(requested));
     // The renderer decides these paths, so a bug there must not be able to
-    // read the rest of the disk.
-    if (!target.startsWith(WEB_ROOT)) {
+    // read the rest of the disk. Asked as a relative path rather than as a
+    // string prefix: `startsWith(WEB_ROOT)` also accepts a sibling directory
+    // whose name merely begins with it (".../web/dist-old" beside
+    // ".../web/dist"), which is not what the check means to allow.
+    const relative = path.relative(WEB_ROOT, target);
+    if (relative.startsWith("..") || path.isAbsolute(relative)) {
       return new Response("Not found", { status: 404 });
     }
     const response = await net.fetch(pathToFileURL(target).toString());
@@ -122,6 +126,28 @@ function serveWebRoot() {
     headers.set("Content-Type", type);
     return new Response(response.body, { status: response.status, headers });
   });
+}
+
+/** What may be handed to the operating system to open. */
+const EXTERNAL_SCHEMES = new Set(["http:", "https:", "mailto:"]);
+
+/**
+ * Opens a link in the user's real browser.
+ *
+ * `shell.openExternal` does whatever the OS associates with the scheme, which
+ * on Windows includes schemes that start a program - so it is given a URL only
+ * after the scheme has been checked against the three a link in this app can
+ * legitimately carry. Everything else is dropped rather than launched: the
+ * links here are ours, and one that is not is not a link we want to follow.
+ */
+function openInBrowser(url) {
+  let scheme;
+  try {
+    scheme = new URL(url).protocol;
+  } catch {
+    return;
+  }
+  if (EXTERNAL_SCHEMES.has(scheme)) void shell.openExternal(url);
 }
 
 function createWindow() {
@@ -151,13 +177,13 @@ function createWindow() {
   // A desktop shell has nowhere to navigate to. Anything that tries - a link
   // in a hint, a stray target=_blank - goes to the real browser instead.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    openInBrowser(url);
     return { action: "deny" };
   });
   mainWindow.webContents.on("will-navigate", (event, url) => {
     if (!url.startsWith(`${SCHEME}://`)) {
       event.preventDefault();
-      void shell.openExternal(url);
+      openInBrowser(url);
     }
   });
 
