@@ -28,6 +28,7 @@ export const failureBodyFamily = atomFamily((key: FailureBodyKey) =>
 
     const json = await elamx.compute_failure_envelope(
       JSON.stringify({ material, criterion_id: criterionId, quality: ENVELOPE_QUALITY }),
+      key,
     );
     return JSON.parse(json) as FailureEnvelopeResponse;
   }),

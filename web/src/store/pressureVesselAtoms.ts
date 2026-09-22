@@ -41,7 +41,10 @@ export const pressureVesselResponseFamily = atomFamily((laminateId: string) =>
   atom<Promise<PressureVesselResponse>>(async (get) => {
     const { laminate, materials } = get(laminateRequestFamily(laminateId));
     const input = get(pressureVesselInputFamily(laminateId));
-    const json = await elamx.compute_pressure_vessel(JSON.stringify({ laminate, materials, input }));
+    const json = await elamx.compute_pressure_vessel(
+      JSON.stringify({ laminate, materials, input }),
+      laminateId,
+    );
     return JSON.parse(json) as PressureVesselResponse;
   }),
 );

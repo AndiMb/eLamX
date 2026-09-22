@@ -22,7 +22,7 @@ export const carpetPlotFamily = atomFamily((materialId: string) =>
       throw new Error(`Unbekannter Werkstoff: ${materialId}`);
     }
     const value = get(carpetValueAtom);
-    const json = await elamx.compute_carpet_plot(JSON.stringify({ material, value }));
+    const json = await elamx.compute_carpet_plot(JSON.stringify({ material, value }), materialId);
     return JSON.parse(json) as CarpetPlotDto;
   }),
 );

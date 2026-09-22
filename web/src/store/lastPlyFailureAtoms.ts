@@ -54,7 +54,10 @@ export const lastPlyFailureResponseFamily = atomFamily((laminateId: string) =>
   atom<Promise<LastPlyFailureResponse>>(async (get) => {
     const { laminate, materials } = get(laminateRequestFamily(laminateId));
     const input = get(lastPlyFailureInputFamily(laminateId));
-    const json = await elamx.compute_last_ply_failure(JSON.stringify({ laminate, materials, input }));
+    const json = await elamx.compute_last_ply_failure(
+      JSON.stringify({ laminate, materials, input }),
+      laminateId,
+    );
     return JSON.parse(json) as LastPlyFailureResponse;
   }),
 );

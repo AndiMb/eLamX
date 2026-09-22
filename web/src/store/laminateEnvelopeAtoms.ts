@@ -53,6 +53,7 @@ export const laminateEnvelopeFamily = atomFamily((key: string) =>
         materials,
         input: { kind, ...ENVELOPE_RESOLUTIONS[resolution] },
       }),
+      key,
     );
     return JSON.parse(json) as LaminateEnvelopeResponse;
   }),

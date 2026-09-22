@@ -73,7 +73,10 @@ export const bucklingResponseFamily = atomFamily((laminateId: string) =>
   atom<Promise<BucklingResponse>>(async (get) => {
     const { laminate, materials } = get(laminateRequestFamily(laminateId));
     const input = get(bucklingInputFamily(laminateId));
-    const json = await elamx.compute_buckling(JSON.stringify({ laminate, materials, input }));
+    const json = await elamx.compute_buckling(
+      JSON.stringify({ laminate, materials, input }),
+      laminateId,
+    );
     return JSON.parse(json) as BucklingResponse;
   }),
 );
@@ -136,6 +139,7 @@ export const bucklingSurfaceFamily = atomFamily((laminateId: string) =>
     const input = get(bucklingInputFamily(laminateId));
     const json = await elamx.compute_buckling_surface(
       JSON.stringify({ input, shape: modes[selected].shape, samples: SURFACE_SAMPLES }),
+      laminateId,
     );
     return JSON.parse(json) as number[][];
   }),

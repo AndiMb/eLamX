@@ -45,7 +45,12 @@ export const recomputeMicromechanicsAtom = atom(null, async (get, set) => {
 
   let resolved: MaterialDto[];
   try {
-    resolved = JSON.parse(await elamx.resolve_micromechanics(request)) as MaterialDto[];
+    // One slot for the whole catalogue, because that is what the call
+    // resolves: editing a fibre while the previous edit is still queued should
+    // resolve once, against the newer constituents.
+    resolved = JSON.parse(
+      await elamx.resolve_micromechanics(request, "materials"),
+    ) as MaterialDto[];
   } catch (error) {
     if (import.meta.env?.DEV) console.error("resolve_micromechanics", error);
     return;

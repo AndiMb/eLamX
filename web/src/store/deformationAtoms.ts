@@ -57,7 +57,10 @@ export const deformationResponseFamily = atomFamily((laminateId: string) =>
   atom<Promise<DeformationResponse>>(async (get) => {
     const { laminate, materials } = get(laminateRequestFamily(laminateId));
     const input = get(deformationInputFamily(laminateId));
-    const json = await elamx.compute_deformation(JSON.stringify({ laminate, materials, input }));
+    const json = await elamx.compute_deformation(
+      JSON.stringify({ laminate, materials, input }),
+      laminateId,
+    );
     return JSON.parse(json) as DeformationResponse;
   }),
 );

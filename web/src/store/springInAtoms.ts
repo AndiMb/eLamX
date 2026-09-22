@@ -67,7 +67,10 @@ export const springInResponseFamily = atomFamily((laminateId: string) =>
   atom<Promise<SpringInResponse>>(async (get) => {
     const { laminate, materials } = get(laminateRequestFamily(laminateId));
     const input = get(springInInputFamily(laminateId));
-    const json = await elamx.compute_spring_in(JSON.stringify({ laminate, materials, input }));
+    const json = await elamx.compute_spring_in(
+      JSON.stringify({ laminate, materials, input }),
+      laminateId,
+    );
     return JSON.parse(json) as SpringInResponse;
   }),
 );

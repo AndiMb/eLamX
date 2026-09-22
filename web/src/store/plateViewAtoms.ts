@@ -102,15 +102,21 @@ export interface PlateFieldSlice {
   result: PlateFieldResponse;
 }
 
+/** `slot` names which of the two samplings this is, so that the body's own
+ *  shape and the quantity painted on it supersede themselves while the plate
+ *  is being typed at, and never each other - they are both in flight at once
+ *  and answer different questions. */
 async function fetchField(
   base: FieldRequestBase,
   field: PlateFieldId,
   layer: number,
   position: LayerPositionId,
   samples: number,
+  slot: string,
 ): Promise<PlateFieldSlice> {
   const json = await elamx.compute_deformation_field(
     JSON.stringify({ ...base, field, layer, position, samples }),
+    slot,
   );
   return { field, layer, position, result: JSON.parse(json) as PlateFieldResponse };
 }
@@ -125,7 +131,7 @@ async function fetchField(
 export const plateGeometryFamily = atomFamily((laminateId: string) =>
   atom<Promise<PlateFieldSlice>>(async (get) => {
     const base = await get(requestFamily(laminateId));
-    return fetchField(base, "Deflection", 0, "Upper", PLATE_SAMPLES);
+    return fetchField(base, "Deflection", 0, "Upper", PLATE_SAMPLES, `${laminateId}|geometry`);
   }),
 );
 
@@ -137,7 +143,7 @@ export const plateFieldFamily = atomFamily((laminateId: string) =>
     // Clamped here rather than on write: a saved selection has to survive a
     // ply being removed and added back.
     const layer = Math.min(Math.max(0, view.layer), Math.max(0, (plies?.length ?? 1) - 1));
-    return fetchField(base, view.field, layer, view.position, PLATE_SAMPLES);
+    return fetchField(base, view.field, layer, view.position, PLATE_SAMPLES, `${laminateId}|field`);
   }),
 );
 

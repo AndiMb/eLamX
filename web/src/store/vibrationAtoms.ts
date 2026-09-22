@@ -61,7 +61,10 @@ export const vibrationResponseFamily = atomFamily((laminateId: string) =>
   atom<Promise<VibrationResponse>>(async (get) => {
     const { laminate, materials } = get(laminateRequestFamily(laminateId));
     const input = get(vibrationInputFamily(laminateId));
-    const json = await elamx.compute_vibration(JSON.stringify({ laminate, materials, input }));
+    const json = await elamx.compute_vibration(
+      JSON.stringify({ laminate, materials, input }),
+      laminateId,
+    );
     return JSON.parse(json) as VibrationResponse;
   }),
 );
@@ -118,6 +121,7 @@ export const vibrationSurfaceFamily = atomFamily((laminateId: string) =>
     if (!mode) return null;
     const json = await elamx.compute_vibration_surface(
       JSON.stringify({ input, shape: mode.shape, samples: SURFACE_SAMPLES }),
+      laminateId,
     );
     return JSON.parse(json) as number[][];
   }),

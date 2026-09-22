@@ -23,6 +23,7 @@ export const layerStiffnessFamily = atomFamily((key: string) =>
     if (!material) throw new Error(`Unbekannter Werkstoff: ${materialId}`);
     const json = await elamx.compute_layer_stiffness(
       JSON.stringify({ material, angle_deg: Number(angle) }),
+      key,
     );
     return JSON.parse(json) as LayerStiffnessDto;
   }),

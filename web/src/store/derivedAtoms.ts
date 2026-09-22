@@ -126,8 +126,11 @@ export const variantResponseFamily = atomFamily((key: string) =>
     if (!loadCase) return null;
 
     const { laminate, materials } = get(laminateRequestFamily(laminateId));
+    // Keyed by the variant, not the laminate: a comparison column must not
+    // supersede another column of the same laminate under a different case.
     const json = await elamx.compute_clt(
       JSON.stringify(buildCltRequest(laminate, materials, loadCase)),
+      key,
     );
     return JSON.parse(json) as CltResponse;
   }),
@@ -144,7 +147,7 @@ export const loadableVariantFamily = atomFamily((key: string) =>
 export const cltResponseFamily = atomFamily((laminateId: string) =>
   atom<Promise<CltResponse>>(async (get) => {
     const request = get(cltRequestFamily(laminateId));
-    const json = await elamx.compute_clt(JSON.stringify(request));
+    const json = await elamx.compute_clt(JSON.stringify(request), laminateId);
     return JSON.parse(json) as CltResponse;
   }),
 );
@@ -216,7 +219,11 @@ export const cltErrorFamily = atomFamily((laminateId: string) =>
 export const angleSweepFamily = atomFamily((laminateId: string) =>
   atom<Promise<AngleSweepResponse>>(async (get) => {
     const { laminate, materials } = get(cltRequestFamily(laminateId));
-    const json = await elamx.compute_angle_sweep(JSON.stringify({ laminate, materials }), 5);
+    const json = await elamx.compute_angle_sweep(
+      JSON.stringify({ laminate, materials }),
+      5,
+      laminateId,
+    );
     return JSON.parse(json) as AngleSweepResponse;
   }),
 );
