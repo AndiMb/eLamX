@@ -35,7 +35,7 @@ use std::collections::HashMap;
 
 mod common;
 use common::{
-    bc_short, check_reserve_factor, failure_type_code, failure_type_short, parse_reference,
+    bc_short, check_buckling_spectrum, check_reserve_factor, failure_type_code, failure_type_short, parse_reference,
     tolerances, ExpectedBuckling, ExpectedCalculation, ExpectedLaminate, ExpectedLastPlyFailure,
     Report,
 };
@@ -591,21 +591,8 @@ fn buckling_matches_elamx() {
             let n_crit = result
                 .n_crit
                 .unwrap_or_else(|| panic!("{label}: eLamX fand eine kritische Last, der Port nicht"));
-            report.close_group(&format!("{label}/n_crit"), &n_crit, &expected.n_crit, tolerances::ELEVEN_DIGITS);
-
-            // Both sides order the spectrum by ascending magnitude, so this
-            // compares element-wise. Signs are part of the result: a negative
-            // factor means the plate buckles under the REVERSED load.
             let actual: Vec<f64> = result.modes.iter().map(|m| m.eigenvalue).collect();
-            report.eq(format!("{label}/Eigenwertanzahl"), actual.len(), expected.eigenvalues.len());
-            if actual.len() == expected.eigenvalues.len() {
-                report.close_group(
-                    &format!("{label}/Eigenwerte"),
-                    &actual,
-                    &expected.eigenvalues,
-                    tolerances::ELEVEN_DIGITS,
-                );
-            }
+            check_buckling_spectrum(&mut report, label, &n_crit, &expected.n_crit, &actual, &expected.eigenvalues);
         }
     }
 

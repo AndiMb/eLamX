@@ -42,7 +42,7 @@ use std::collections::HashMap;
 
 mod common;
 use common::{
-    bc_short, check_reserve_factor, failure_type_code, failure_type_short, parse_reference,
+    bc_short, check_buckling_spectrum, check_reserve_factor, failure_type_code, failure_type_short, parse_reference,
     tolerances, ExpectedBuckling, ExpectedLaminate, ExpectedLastPlyFailure, Report,
 };
 
@@ -92,17 +92,6 @@ mod limits {
     /// The same for the strains that go with them, in their own unit: a strain
     /// of 1e-12 is noise on any laminate.
     pub const STRAIN_FLOOR: f64 = 1e-12;
-    /// The eigenvalue spectrum, unlike the critical load it starts with, is
-    /// compared to eight significant digits rather than the eleven the batch
-    /// prints.
-    ///
-    /// Not a concession to the port: a shear-loaded plate's Ritz problem has
-    /// an indefinite geometric stiffness and a spectrum spanning nine decades
-    /// (32 to 1.2e10 in `XC-QI-Beul-Schub`), and its TOP is where two
-    /// different eigensolvers - Java's and nalgebra's - stop agreeing to the
-    /// last printed digit. The bottom is where the physics is, and `n_crit` is
-    /// still compared at the full printed precision.
-    pub const EIGENVALUE: f64 = 1e-8;
 }
 
 /// One ply face: three stresses and three strains, each in its own unit.
@@ -448,18 +437,8 @@ fn check_buckling(
     let n_crit = result
         .n_crit
         .unwrap_or_else(|| panic!("{label}: eLamX fand eine kritische Last, der Port nicht"));
-    report.close_group(&format!("{label}/n_crit"), &n_crit, &expected.n_crit, tolerances::ELEVEN_DIGITS);
-
     let eigenvalues: Vec<f64> = result.modes.iter().map(|m| m.eigenvalue).collect();
-    report.eq(format!("{label}/Eigenwertanzahl"), eigenvalues.len(), expected.eigenvalues.len());
-    if eigenvalues.len() == expected.eigenvalues.len() {
-        report.close_group(
-            &format!("{label}/Eigenwerte"),
-            &eigenvalues,
-            &expected.eigenvalues,
-            limits::EIGENVALUE,
-        );
-    }
+    check_buckling_spectrum(report, label, &n_crit, &expected.n_crit, &eigenvalues, &expected.eigenvalues);
 }
 
 /// The whole degradation path, as in `golden_master.rs`: which ply fails in

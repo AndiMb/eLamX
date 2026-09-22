@@ -135,6 +135,68 @@ pub mod tolerances {
     /// meaningful number (the Java side reports POSITIVE_INFINITY for an
     /// unstressed ply, which prints as a huge or literally infinite value).
     pub const RF_EFFECTIVELY_INFINITE: f64 = 1e12;
+    /// How far the buckling solver's mu = -1/lambda may move, absolutely, at
+    /// the critical load and across the rest of the spectrum. Measured, not
+    /// derived - see `check_buckling_spectrum` - and each about three times the
+    /// worst seen on either platform (3.3e-10 and 3.0e-7, both in
+    /// `XC-QI-Beul-Schub` on Linux).
+    pub const MU_CRIT_ABS: f64 = 1e-9;
+    pub const MU_SPECTRUM_ABS: f64 = 1e-6;
+}
+
+/// The critical load and the eigenvalue spectrum of a buckling analysis.
+///
+/// Printed to eleven digits, but not solved to eleven. The Jacobi solver both
+/// programs share works on mu = -1/lambda and stops once a rotation moves no
+/// diagonal entry by more than 1e-10, so what it leaves behind is absolute in
+/// mu - and larger wherever two eigenvalues sit close together, since a
+/// leftover off-diagonal term r moves them by about r^2 / gap. Windows and
+/// Linux round a libm call in the stiffness matrix differently, which is
+/// enough to stop the solver at another rotation (6212 against 6021 in
+/// `XC-QI-Beul-Schub`); the eleven digits only ever agreed where both sides
+/// ran bit for bit the same arithmetic.
+///
+/// Hence three choices. Everything is compared in mu, absolutely, plus the
+/// printed precision relative to it. The critical load keeps a tolerance of
+/// its own, a thousand times tighter than the spectrum's: it is the largest
+/// |mu|, well clear of its neighbours, and on Linux it moves by 1e-8 where a
+/// clustered pair in mid-spectrum moves by 3e-4 in lambda. And the spectrum
+/// is compared as a set, sorted by mu, not by position: both sides order it
+/// by magnitude, and a shear-loaded plate's spectrum comes in +/- pairs whose
+/// magnitudes agree only to the precision above, so which of the two is
+/// listed first is decided by rounding.
+pub fn check_buckling_spectrum(
+    report: &mut Report,
+    label: &str,
+    n_crit: &[f64; 3],
+    expected_n_crit: &[f64; 3],
+    eigenvalues: &[f64],
+    expected_eigenvalues: &[f64],
+) {
+    let lambda_crit = expected_eigenvalues.iter().copied().find(|v| *v >= 0.0).unwrap_or(0.0);
+    // d(lambda) / lambda = d(mu) * lambda, since mu = -1/lambda.
+    let rel = tolerances::ELEVEN_DIGITS.max(tolerances::MU_CRIT_ABS * lambda_crit);
+    report.close_group(&format!("{label}/n_crit"), n_crit, expected_n_crit, rel);
+
+    report.eq(format!("{label}/Eigenwertanzahl"), eigenvalues.len(), expected_eigenvalues.len());
+    if eigenvalues.len() != expected_eigenvalues.len() {
+        return;
+    }
+    let mu_sorted = |values: &[f64]| {
+        let mut mu: Vec<f64> = values.iter().map(|v| -1.0 / v).collect();
+        mu.sort_by(f64::total_cmp);
+        mu
+    };
+    let (actual, expected) = (mu_sorted(eigenvalues), mu_sorted(expected_eigenvalues));
+    for (i, (a, e)) in actual.iter().zip(&expected).enumerate() {
+        report.close(
+            format!("{label}/mu[{i}]"),
+            *a,
+            *e,
+            tolerances::MU_SPECTRUM_ABS,
+            tolerances::ELEVEN_DIGITS,
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------

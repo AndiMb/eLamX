@@ -262,7 +262,7 @@ programs start from the same one:
 So a stack the reader assembles differently - a mirrored one, an offset
 reference plane, a reversed stacking order, an angle written outside -90..90 -
 fails here even where the arithmetic downstream of it is perfect. Dropping the
-`offset` attribute in `project::read` turns 241 comparisons red; that fault is
+`offset` attribute in `project::read` turns 319 comparisons red; that fault is
 invisible to `golden_master.rs`, which would read the offset from the JSON
 either way.
 
@@ -285,27 +285,40 @@ cd elamx-core/core/tests/golden/crosscheck
 Adding a case is dropping two more files into that directory: the test walks
 it and needs no edit.
 
-### Two tolerances this suite sets for itself
+### Two tolerances that are not the printed precision
 
-Both are in `mod limits` in `batch_crosscheck.rs`, and neither is a concession
-to the port:
+Neither is a concession to the port.
 
-- **Ply stresses and strains are compared in separate groups**, with an
-  absolute floor per unit (a micropascal, and a strain of 1e-12). `close_group`
-  takes its floor from the largest value in the group, and a stress in MPa is
-  some thousands of times a strain - so a group holding both compares the
-  strains to the precision of the stresses, which is to say not at all. The
-  floors themselves are for the plies that are exactly zero in theory: the
-  mid-plane ply of `XC-QI` under pure bending prints 1.9e-15 MPa on one side
-  and 1.4e-14 on the other, and comparing two kinds of rounding noise to each
-  other says only which one rounded first.
-- **The eigenvalue spectrum is compared to eight significant digits** rather
-  than the eleven the batch prints, while `n_crit` keeps the full precision.
-  `XC-QI-Beul-Schub` is a shear-loaded plate, so its geometric stiffness is
-  indefinite and its spectrum spans nine decades (32 to 1.2e10); the largest
-  eigenvalue is where Java's eigensolver and nalgebra's stop agreeing to the
-  last digit, by 8e-9 relative. Every other eigenvalue in both files agrees to
-  the eleven digits printed.
+**Ply stresses and strains are compared in separate groups**, with an
+absolute floor per unit (a micropascal, and a strain of 1e-12) - in `mod
+limits` in `batch_crosscheck.rs`. `close_group` takes its floor from the
+largest value in the group, and a stress in MPa is some thousands of times a
+strain - so a group holding both compares the strains to the precision of the
+stresses, which is to say not at all. The floors themselves are for the plies
+that are exactly zero in theory: the mid-plane ply of `XC-QI` under pure
+bending prints 1.9e-15 MPa on one side and 1.4e-14 on the other, and comparing
+two kinds of rounding noise to each other says only which one rounded first.
+
+**The buckling spectrum is compared in mu = -1/lambda, as a set** - in
+`check_buckling_spectrum` in `tests/common/mod.rs`, which both suites use. The
+batch prints eleven digits, but the Jacobi solver both programs share does not
+solve to eleven: it stops once a rotation moves no diagonal entry of the mu
+problem by more than 1e-10, so what it leaves is absolute in mu, and larger
+where two eigenvalues sit close together. Windows and Linux round a libm call
+in the stiffness matrix differently, which is enough to stop it at another
+rotation - 6212 against 6021 in `XC-QI-Beul-Schub`, a shear-loaded plate whose
+spectrum spans 32 to 1.2e10. On Windows, Rust and Java then agree to every
+printed digit; on Linux, a clustered pair in mid-spectrum moves by 3e-7 in mu
+(3e-4 in lambda), `n_crit` by 1e-8 relative, and the +/- pairs a shear load
+produces swap places, since their magnitudes agree only that far.
+
+So the spectrum is sorted by mu on both sides and compared to 1e-6 absolute,
+and the critical load to 1e-9 in mu - a thousand times tighter, because it is
+the largest |mu| and clear of its neighbours. Both limits are about three times
+the worst seen on either platform. The old comparison, eight digits relative
+to the group, looked stricter and was not: it took its floor from the largest
+eigenvalue, 1e-8 x 1.2e10, so it passed anything within about 100 at the
+bottom of the spectrum. The fault counts below rose when it was replaced.
 
 ### Keeping this one honest too
 
@@ -314,9 +327,9 @@ reverted, turns `every_crosscheck_file_matches_elamx` red:
 
 | Fault | Failing comparisons of 15763 |
 |---|---|
-| `project::read` ignores the laminate's `offset` attribute | 241 |
-| `all_layers` does not reverse for `invert_z` | 311 |
-| the special-orthotropic D matrix keeps its `D_{16}` | 59 |
+| `project::read` ignores the laminate's `offset` attribute | 319 |
+| `all_layers` does not reverse for `invert_z` | 387 |
+| the special-orthotropic D matrix keeps its `D_{16}` | 83 |
 | Puck reads `p_spz` where `p_spd` belongs | 5 |
 
 ## Quirks of the batch output worth knowing
