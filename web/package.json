@@ -14,20 +14,20 @@
     "fast-deep-equal": "^3.1.3",
     "jotai": "^2.20.2",
     "jotai-family": "^1.0.2",
-    "katex": "^0.18.5",
-    "lucide-react": "^1.24.0",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "react-router-dom": "^7.18.1"
+    "katex": "^0.18.7",
+    "lucide-react": "^1.47.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
-    "@types/node": "^26.4.1",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.0.3",
-    "oxlint": "^1.71.0",
+    "oxlint": "^1.83.0",
     "typescript": "^7.0.2",
-    "vite": "^8.1.1",
+    "vite": "^8.3.0",
     "vitest": "^4.1.11"
   }
 }
