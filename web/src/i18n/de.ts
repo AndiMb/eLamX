@@ -51,6 +51,7 @@ export const de: Messages = {
   "laminate.add": "Laminat hinzufügen",
   "laminate.duplicate": "Laminat duplizieren",
   "laminate.delete": "Laminat löschen",
+  "laminate.notFound": "Dieses Laminat existiert nicht.",
 
   // --- Materials -----------------------------------------------------------
   "material.add": "Material hinzufügen",

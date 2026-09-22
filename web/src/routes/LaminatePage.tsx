@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { ArrowDown, ArrowUp, ArrowUpDown, Copy, Layers, Plus, RotateCw, Trash2 } from "lucide-react";
-import { laminateConfigFamily } from "../store/laminateAtoms";
+import { laminateConfigFamily, laminateExistsFamily } from "../store/laminateAtoms";
 import { materialsAtom } from "../store/materialsAtoms";
 import { Quantity } from "../components/Quantity";
 import { SafeNumberInput } from "../components/SafeNumberInput";
@@ -19,7 +19,19 @@ import { useT } from "../i18n";
 export function LaminatePage() {
   const t = useT();
   const { laminateId } = useParams<{ laminateId: string }>();
-  const id = laminateId!;
+  const exists = useAtomValue(laminateExistsFamily(laminateId ?? ""));
+
+  if (!laminateId || !exists) {
+    return <p className="empty-note">{t("laminate.notFound")}</p>;
+  }
+  return <LaminateEditor id={laminateId} />;
+}
+
+// Split from LaminatePage so its hooks only run for a laminate that is in the
+// list: laminateConfigFamily answers any id, and editing that answer would
+// store a laminate no list shows.
+function LaminateEditor({ id }: { id: string }) {
+  const t = useT();
   const [config, setConfig] = useAtom(laminateConfigFamily(id));
   const materials = useAtomValue(materialsAtom);
   const [angleStackText, setAngleStackText] = useState("");

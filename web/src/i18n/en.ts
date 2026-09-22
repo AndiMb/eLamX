@@ -56,6 +56,7 @@ export const en = {
   "laminate.add": "Add laminate",
   "laminate.duplicate": "Duplicate laminate",
   "laminate.delete": "Delete laminate",
+  "laminate.notFound": "This laminate does not exist.",
 
   // --- Materials -----------------------------------------------------------
   "material.add": "Add material",

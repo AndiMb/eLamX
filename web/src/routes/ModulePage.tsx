@@ -1,3 +1,4 @@
+import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { MODULE_REGISTRY, type ModuleType } from "../lib/moduleRegistry";
 import { FailureBodyModuleContent } from "../components/FailureBodyModuleContent";
@@ -15,6 +16,7 @@ import { OptimizationModuleContent } from "../components/OptimizationModuleConte
 import { SpringInModuleContent } from "../components/SpringInModuleContent";
 import { VibrationModuleContent } from "../components/VibrationModuleContent";
 import { LaminateFailureModuleContent } from "../components/LaminateFailureModuleContent";
+import { laminateExistsFamily } from "../store/laminateAtoms";
 import { useT } from "../i18n";
 
 // Dispatches on :moduleId via MODULE_REGISTRY. A new module type gets a new
@@ -23,6 +25,7 @@ import { useT } from "../i18n";
 export function ModulePage() {
   const t = useT();
   const { laminateId, moduleId } = useParams<{ laminateId: string; moduleId: string }>();
+  const laminateExists = useAtomValue(laminateExistsFamily(laminateId ?? ""));
 
   if (!laminateId || !moduleId || !(moduleId in MODULE_REGISTRY)) {
     return <p className="empty-note">{t("modules.unknown")}</p>;
@@ -31,6 +34,9 @@ export function ModulePage() {
   // not a laminate without that module.
   if (MODULE_REGISTRY[moduleId as ModuleType].scope !== "laminate") {
     return <p className="empty-note">{t("modules.unknown")}</p>;
+  }
+  if (!laminateExists) {
+    return <p className="empty-note">{t("laminate.notFound")}</p>;
   }
 
   return (
