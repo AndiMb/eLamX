@@ -480,6 +480,7 @@ function LaminateEditor({ id }: { id: string }) {
                     layers={config.layers}
                     symmetric={config.symmetric}
                     withMiddleLayer={config.withMiddleLayer}
+                    compact
                   />
                 </div>
                 <ResponsiveTable
@@ -540,7 +541,12 @@ function LaminateEditor({ id }: { id: string }) {
 
           <div className="tool-group">
             <div className="tool-group-title">{t("layers.preview")}</div>
-            <StackViz layers={config.layers} symmetric={config.symmetric} withMiddleLayer={config.withMiddleLayer} />
+            <StackViz
+              layers={config.layers}
+              symmetric={config.symmetric}
+              withMiddleLayer={config.withMiddleLayer}
+              controls
+            />
             <p className="stack-info">
               {t("layers.totalThickness")}: <QuantityDisplay category="thickness" value={totalThickness} /> ·{" "}
               {totalLayers} {t(totalLayers === 1 ? "layers.count.one" : "layers.count.other")}
