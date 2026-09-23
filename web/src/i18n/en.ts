@@ -30,6 +30,13 @@ export const en = {
   "project.readError": "{message}",
   "project.readError.title": "This file could not be opened",
   "project.dismiss": "Dismiss",
+  "project.notices.title": "Notes on the opened file",
+  "project.notice.unknownWebExtensionSchema":
+    "The file holds web-version data of a newer format (schema {schema}). It is kept unchanged on saving but not shown here, and what this version would add - such as the comparison - is not saved to this file.",
+  "project.notice.invalidWebExtension":
+    "The file's web-version data could not be read ({message}). It is kept unchanged on saving.",
+  "project.notice.comparisonVariantDropped":
+    "The comparison column “{laminate} / {loadCase}” no longer exists in the file and was removed.",
 
   "nav.laminates": "Laminates",
   "nav.laminate": "Laminate",

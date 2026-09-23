@@ -15,6 +15,12 @@ import type {
   CutoutInputDto,
 } from "../lib/types";
 import type { ProjectSnapshot } from "../lib/projectFile";
+import {
+  EMPTY_WEB_EXTENSION_CARRY,
+  type ImportNotice,
+  type WebExtensionCarry,
+} from "../lib/webExtension";
+import { comparisonVariantsAtom } from "./comparisonAtoms";
 import { bucklingInputFamily, bucklingStorageKey } from "./bucklingAtoms";
 import { fibresAtom, matricesAtom } from "./micromechanicsAtoms";
 import { cutoutInputFamily, cutoutStorageKey } from "./cutoutAtoms";
@@ -65,6 +71,15 @@ export const projectSectionsAtom = atom<unknown[]>([]);
 /** Optimisations past the first, which the module does not show. Carried for
  *  the same reason, and session state for the same reason. */
 export const extraOptimizationsAtom = atom<unknown[]>([]);
+
+/** The parts of the file's `<webExtension>` that no feature of this build
+ *  edits yet. Carried for the same reason as the sections above, and session
+ *  state for the same reason. */
+export const webExtensionCarryAtom = atom<WebExtensionCarry>(EMPTY_WEB_EXTENSION_CARRY);
+
+/** What could not be used when the open project was read, for the user to be
+ *  told about. Replaced by every open; dismissing empties it. */
+export const importNoticesAtom = atom<ImportNotice[]>([]);
 
 /** Whether a laminate has a stored input for a module.
  *
@@ -144,6 +159,8 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
     extraOptimizations: get(extraOptimizationsAtom),
     version: get(projectVersionAtom),
     unsupportedSections: get(projectSectionsAtom),
+    comparison: get(comparisonVariantsAtom),
+    webExtensionCarry: get(webExtensionCarryAtom),
   };
 });
 
@@ -178,6 +195,11 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
   set(projectVersionAtom, project.version);
   set(projectSectionsAtom, project.unsupportedSections);
   set(extraOptimizationsAtom, project.extraOptimizations);
+  // The file's comparison, or none: the columns of the project that was open
+  // before point at laminates this one does not have.
+  set(comparisonVariantsAtom, project.comparison ?? []);
+  set(webExtensionCarryAtom, project.webExtensionCarry ?? EMPTY_WEB_EXTENSION_CARRY);
+  set(importNoticesAtom, project.importNotices ?? []);
   if (project.optimization) {
     set(optimizationInputAtom, project.optimization.input);
     set(optimizerAtom, project.optimization.optimizer);

@@ -4,7 +4,9 @@ import { FolderOpen, Save } from "lucide-react";
 import { downloadProject, exportProject, importProject } from "../lib/projectFile";
 import type { ProjectFormat } from "../lib/projectFile";
 import { desktop, type DesktopProject } from "../lib/desktop";
+import type { ImportNotice } from "../lib/webExtension";
 import {
+  importNoticesAtom,
   loadProjectAtom,
   projectFilePathAtom,
   projectNameAtom,
@@ -23,6 +25,21 @@ import { useLocale, useT } from "../i18n";
  *  the reduced one with a switch rather than by looking. */
 function formatOf(name: string): ProjectFormat {
   return /\.elamxb$/i.test(name) ? "reduced" : "project";
+}
+
+/** One notice as a sentence. */
+function noticeText(notice: ImportNotice, t: ReturnType<typeof useT>): string {
+  switch (notice.kind) {
+    case "unknown_web_extension_schema":
+      return t("project.notice.unknownWebExtensionSchema", { schema: notice.schema });
+    case "invalid_web_extension":
+      return t("project.notice.invalidWebExtension", { message: notice.message });
+    case "comparison_variant_dropped":
+      return t("project.notice.comparisonVariantDropped", {
+        laminate: notice.laminate,
+        loadCase: notice.loadCase,
+      });
+  }
 }
 //
 // Two paths, one set of buttons. In a browser it is a hidden <input
@@ -49,6 +66,7 @@ export function ProjectActions() {
   const [projectName, setProjectName] = useAtom(projectNameAtom);
   const [filePath, setFilePath] = useAtom(projectFilePathAtom);
   const [error, setError] = useState<string | null>(null);
+  const [notices, setNotices] = useAtom(importNoticesAtom);
   const [busy, setBusy] = useState(false);
   const shell = desktop();
 
@@ -183,6 +201,19 @@ export function ProjectActions() {
           <Save size={18} strokeWidth={1.75} />
         </button>
       </div>
+      {notices.length > 0 && !error && (
+        // What was read but could not be used. Not an error - the project is
+        // open - but nothing the user should find out about by its absence.
+        <div className="project-error project-notice" role="status">
+          <strong>{t("project.notices.title")}</strong>
+          {notices.map((notice, i) => (
+            <span key={i}>{noticeText(notice, t)}</span>
+          ))}
+          <button type="button" onClick={() => setNotices([])}>
+            {t("project.dismiss")}
+          </button>
+        </div>
+      )}
       {error && (
         <div className="project-error" role="alert">
           <strong>{t("project.readError.title")}</strong>

@@ -66,3 +66,106 @@ describe("ein Projekt durch die App und zurück", () => {
     expect(written).toContain("Laminate HSB 37103-01 Buckling");
   });
 });
+
+// `<webExtension>`: what only this app keeps in a project.
+describe("die Web-Erweiterung der Projektdatei", () => {
+  /// A project that uses nothing web-only must come out exactly as the desktop
+  /// would write it - otherwise every desktop file opened and saved here would
+  /// carry a diff for nothing.
+  it("schreibt keine Erweiterung, solange nichts drinsteht", async () => {
+    const snapshot = await importProject(REFERENCE);
+    expect(snapshot.comparison).toEqual([]);
+    expect(snapshot.importNotices).toEqual([]);
+    expect(await exportProject(snapshot)).not.toContain("webExtension");
+  });
+
+  it("nimmt den Vergleich in die Datei mit und bringt ihn zurück", async () => {
+    const opened = await importProject(REFERENCE);
+    const [first, second] = opened.laminates;
+    const comparison = [
+      { laminateId: first.id, loadCaseId: first.loadCases[1].id },
+      { laminateId: second.id, loadCaseId: second.loadCases[0].id },
+    ];
+
+    const written = await exportProject({ ...opened, comparison });
+    expect(written).toContain('<webExtension schema="1">');
+    const reopened = await importProject(written);
+
+    // Load cases get fresh ids on every open, so what has to survive is which
+    // laminate and which of its load cases each column shows.
+    const named = (s: typeof reopened) =>
+      s.comparison.map((v) => {
+        const laminate = s.laminates.find((l) => l.id === v.laminateId)!;
+        return [laminate.name, laminate.loadCases.find((c) => c.id === v.loadCaseId)!.name];
+      });
+    expect(named(reopened)).toEqual(named({ ...opened, comparison }));
+    expect(reopened.importNotices).toEqual([]);
+  });
+
+  /// A load case renamed or reordered in eLamX 3.x: the position no longer
+  /// matches, the name still finds it.
+  it("findet eine Vergleichsspalte über den Namen, wenn die Position nicht mehr stimmt", async () => {
+    const opened = await importProject(REFERENCE);
+    const laminate = opened.laminates[0];
+    const target = laminate.loadCases[2];
+    const written = await exportProject({
+      ...opened,
+      comparison: [{ laminateId: laminate.id, loadCaseId: target.id }],
+    });
+    // What an edit in the desktop amounts to: the first load case is gone.
+    const edited = written.replace(/<calculation name="[^"]*">[\s\S]*?<\/calculation>/, "");
+    const reopened = await importProject(edited);
+    const column = reopened.comparison[0];
+    expect(
+      reopened.laminates[0].loadCases.find((c) => c.id === column.loadCaseId)?.name,
+    ).toBe(target.name);
+  });
+
+  it("meldet eine Vergleichsspalte, die es nicht mehr gibt, statt sie still zu verlieren", async () => {
+    const opened = await importProject(REFERENCE);
+    const laminate = opened.laminates[0];
+    const written = await exportProject({
+      ...opened,
+      comparison: [{ laminateId: laminate.id, loadCaseId: laminate.loadCases[0].id }],
+    });
+    const renamed = written.replaceAll(
+      `"load_case_name":"${laminate.loadCases[0].name}"`,
+      '"load_case_name":"Gibt es nicht"',
+    );
+    const reopened = await importProject(renamed);
+    expect(reopened.comparison).toEqual([]);
+    expect(reopened.importNotices).toEqual([
+      { kind: "comparison_variant_dropped", laminate: laminate.name, loadCase: "Gibt es nicht" },
+    ]);
+  });
+
+  /// The fields later features will own are carried untouched by this build,
+  /// so opening and saving here does not lose what a newer one wrote.
+  it("trägt die Teile der Erweiterung weiter, die hier noch niemand bearbeitet", async () => {
+    const opened = await importProject(REFERENCE);
+    const carry = {
+      layerCriteria: [
+        { laminate_uuid: "l", layer_uuid: "y", primary: "puck", extra: ["tsai_wu"] },
+      ],
+      studies: [{ id: "s1", kind: "matrix" }],
+      snapshots: [{ id: "snap" }],
+      reportTemplates: [{ name: "Standard" }],
+      stackingRuleSettings: { maxSameAngle: 4 },
+    };
+    const reopened = await importProject(
+      await exportProject({ ...opened, webExtensionCarry: carry }),
+    );
+    expect(reopened.webExtensionCarry).toEqual(carry);
+  });
+
+  it("reicht den Hinweis des Kerns auf ein unbekanntes Schema durch", async () => {
+    const newer = REFERENCE.replace(
+      "</elamx>",
+      '    <webExtension schema="9"><![CDATA[{"schema":9}]]></webExtension>\n</elamx>',
+    );
+    const opened = await importProject(newer);
+    expect(opened.importNotices).toEqual([{ kind: "unknown_web_extension_schema", schema: "9" }]);
+    // Kept as it came.
+    expect(await exportProject(opened)).toContain('<webExtension schema="9">');
+  });
+});

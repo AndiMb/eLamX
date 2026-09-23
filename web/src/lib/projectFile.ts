@@ -30,6 +30,15 @@ import {
   type OptimizationInputDto,
   type OptimizerKindId,
 } from "./types";
+import type { ComparisonVariant } from "./generated/ComparisonVariant";
+import type { ImportNotice as CoreImportNotice } from "./generated/ImportNotice";
+import type { WebExtension } from "./generated/WebExtension";
+import type { Variant } from "../store/comparisonAtoms";
+import {
+  EMPTY_WEB_EXTENSION_CARRY,
+  type ImportNotice,
+  type WebExtensionCarry,
+} from "./webExtension";
 import {
   defaultLaminateConfig,
   defaultLoadCase,
@@ -51,6 +60,10 @@ interface ProjectDto {
    *  this app does not touch, carried so that saving a desktop project does
    *  not delete work the desktop put there. */
   unsupported_sections?: unknown[];
+  /** `<webExtension>`: what only this app uses, read by the core. */
+  web_extension?: WebExtension | null;
+  /** What the core could not use - filled on read, ignored on write. */
+  import_notices?: CoreImportNotice[];
 }
 
 interface ProjectLaminateDto {
@@ -165,6 +178,73 @@ export interface ProjectSnapshot {
   version: string;
   /** Project-level sections carried through untouched - see ProjectDto. */
   unsupportedSections: unknown[];
+  /** The comparison page's columns. In the file since `<webExtension>`
+   *  gave them a place; before that they lived in browser storage only. */
+  comparison: Variant[];
+  /** The rest of `<webExtension>`, carried until the features that fill it
+   *  exist, so that a round trip through this build does not lose what a
+   *  newer one wrote. */
+  webExtensionCarry: WebExtensionCarry;
+  /** What could not be used when the file was read. Empty on the way out. */
+  importNotices?: ImportNotice[];
+}
+
+/** A comparison column from the file, as a laminate id and load-case id of
+ *  this session - or null when the file no longer has it.
+ *
+ *  Load cases get fresh ids on every open, so the file names one by position
+ *  and name. The position is tried first; if the name there differs, the
+ *  file was edited in eLamX 3.x and the name is searched instead, as long as
+ *  it is unambiguous. */
+function resolveVariant(variant: ComparisonVariant, laminates: LaminateConfig[]): Variant | null {
+  const laminate = laminates.find((l) => l.id === variant.laminate_uuid);
+  if (!laminate) return null;
+  const atIndex = laminate.loadCases[variant.load_case_index];
+  if (atIndex && atIndex.name === variant.load_case_name) {
+    return { laminateId: laminate.id, loadCaseId: atIndex.id };
+  }
+  const byName = laminate.loadCases.filter((c) => c.name === variant.load_case_name);
+  return byName.length === 1 ? { laminateId: laminate.id, loadCaseId: byName[0].id } : null;
+}
+
+/** The reverse: a column of this session as the file names it, or null when
+ *  it points at something that no longer exists. */
+function toFileVariant(variant: Variant, laminates: LaminateConfig[]): ComparisonVariant | null {
+  const laminate = laminates.find((l) => l.id === variant.laminateId);
+  const index = laminate?.loadCases.findIndex((c) => c.id === variant.loadCaseId) ?? -1;
+  if (!laminate || index < 0) return null;
+  return {
+    laminate_uuid: laminate.id,
+    load_case_index: index,
+    load_case_name: laminate.loadCases[index].name,
+  };
+}
+
+/** The extension to write, or null when there is nothing in it - the core
+ *  writes no element then, so a project using no web-only feature stays
+ *  exactly what the desktop would write. */
+function toWebExtension(snapshot: ProjectSnapshot): WebExtension | null {
+  const carry = snapshot.webExtensionCarry ?? EMPTY_WEB_EXTENSION_CARRY;
+  const variants = (snapshot.comparison ?? [])
+    .map((v) => toFileVariant(v, snapshot.laminates))
+    .filter((v): v is ComparisonVariant => v !== null);
+  const extension: WebExtension = {
+    schema: 1,
+    layer_criteria: carry.layerCriteria,
+    studies: carry.studies,
+    snapshots: carry.snapshots,
+    report_templates: carry.reportTemplates,
+    comparison: variants.length > 0 ? { variants } : null,
+    stacking_rule_settings: carry.stackingRuleSettings ?? null,
+  };
+  const empty =
+    extension.layer_criteria.length === 0 &&
+    extension.studies.length === 0 &&
+    extension.snapshots.length === 0 &&
+    extension.report_templates.length === 0 &&
+    extension.comparison === null &&
+    extension.stacking_rule_settings === null;
+  return empty ? null : extension;
 }
 
 const KNOWN_CRITERIA = new Set<string>(CRITERIA.map((c) => c.id));
@@ -276,6 +356,23 @@ export async function importProject(
     return config;
   });
 
+  const extension = project.web_extension ?? null;
+  const importNotices: ImportNotice[] = [...(project.import_notices ?? [])];
+  const comparison: Variant[] = [];
+  for (const variant of extension?.comparison?.variants ?? []) {
+    const resolved = resolveVariant(variant, laminates);
+    if (resolved) {
+      comparison.push(resolved);
+    } else {
+      importNotices.push({
+        kind: "comparison_variant_dropped",
+        laminate:
+          laminates.find((l) => l.id === variant.laminate_uuid)?.name ?? variant.laminate_uuid,
+        loadCase: variant.load_case_name,
+      });
+    }
+  }
+
   return {
     materials: project.materials,
     fibres: project.fibres ?? [],
@@ -292,6 +389,17 @@ export async function importProject(
     extraOptimizations,
     version: project.version,
     unsupportedSections: project.unsupported_sections ?? [],
+    comparison,
+    webExtensionCarry: extension
+      ? {
+          layerCriteria: extension.layer_criteria,
+          studies: extension.studies,
+          snapshots: extension.snapshots,
+          reportTemplates: extension.report_templates,
+          stackingRuleSettings: extension.stacking_rule_settings ?? null,
+        }
+      : EMPTY_WEB_EXTENSION_CARRY,
+    importNotices,
   };
 }
 
@@ -301,6 +409,7 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
   const project: ProjectDto = {
     version: snapshot.version || "1",
     unsupported_sections: snapshot.unsupportedSections,
+    web_extension: toWebExtension(snapshot),
     materials: snapshot.materials,
     fibres: snapshot.fibres,
     matrices: snapshot.matrices,

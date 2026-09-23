@@ -25,6 +25,13 @@ export const de: Messages = {
   "project.readError": "{message}",
   "project.readError.title": "Diese Datei konnte nicht geöffnet werden",
   "project.dismiss": "Schließen",
+  "project.notices.title": "Hinweise zur geöffneten Datei",
+  "project.notice.unknownWebExtensionSchema":
+    "Die Datei enthält Daten der Web-Version in einem neueren Format (Schema {schema}). Sie bleiben beim Speichern unverändert erhalten, werden hier aber nicht angezeigt; was diese Version ergänzen würde, etwa der Vergleich, wird nicht in diese Datei gespeichert.",
+  "project.notice.invalidWebExtension":
+    "Die Daten der Web-Version in dieser Datei ließen sich nicht lesen ({message}). Sie bleiben beim Speichern unverändert erhalten.",
+  "project.notice.comparisonVariantDropped":
+    "Die Vergleichsspalte „{laminate} / {loadCase}“ gibt es in der Datei nicht mehr; sie wurde entfernt.",
 
   "nav.laminates": "Laminate",
   "nav.laminate": "Laminat",

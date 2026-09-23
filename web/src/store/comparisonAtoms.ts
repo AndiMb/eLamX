@@ -7,9 +7,9 @@
 // Persisted, after all. The first version treated a comparison as a question
 // asked right now rather than part of the project, and every reload emptied
 // it - which is exactly what the spreadsheet this surface exists to beat does
-// not do. It stays in browser storage rather than in the `.elamx` file: the
-// file format has no place for it, and a comparison is about the session, not
-// something to hand to eLamX 3.x.
+// not do. It is in the `.elamx` file too, in the `<webExtension>` element
+// eLamX 3.x carries without reading (see lib/projectFile.ts), so a comparison
+// set up for a project travels with it.
 import { atom } from "jotai";
 import { atomWithStorage, createJSONStorage } from "jotai/utils";
 

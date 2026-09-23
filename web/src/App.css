@@ -3407,3 +3407,14 @@ table.matrix td.block-d {
 .chart-snapshot:focus-visible {
   opacity: 1;
 }
+
+/* The same box as a read error, in the calmer colour: the file is open, this
+   is only what could not be used from it. */
+.project-notice {
+  border-color: var(--chrome-border);
+  border-left-color: var(--accent);
+}
+
+.project-notice strong {
+  color: inherit;
+}

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createStore } from "jotai";
-import { loadProjectAtom, projectSnapshotAtom } from "./projectAtoms";
+import { importNoticesAtom, loadProjectAtom, projectSnapshotAtom } from "./projectAtoms";
+import { comparisonVariantsAtom } from "./comparisonAtoms";
 import {
   OPTIMIZATION_STORAGE_KEY,
   defaultOptimizationInput,
@@ -9,6 +10,7 @@ import {
 } from "./optimizationAtoms";
 import { defaultMaterial } from "../lib/constants";
 import type { ProjectSnapshot } from "../lib/projectFile";
+import { EMPTY_WEB_EXTENSION_CARRY } from "../lib/webExtension";
 
 // The optimisation is the only module that hangs off the project rather than
 // off a laminate, so it is the only one whose state does not travel with a
@@ -33,6 +35,8 @@ function emptySnapshot(): ProjectSnapshot {
     extraOptimizations: [],
     version: "1",
     unsupportedSections: [],
+    comparison: [],
+    webExtensionCarry: EMPTY_WEB_EXTENSION_CARRY,
   };
 }
 
@@ -110,5 +114,36 @@ describe("das Projekt und die Optimierung", () => {
       extraOptimizations: [],
     });
     expect(localStorage.getItem(OPTIMIZATION_STORAGE_KEY)).not.toBeNull();
+  });
+});
+
+describe("das Projekt und seine Web-Erweiterung", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("übernimmt Vergleich, Mitgeführtes und Hinweise der Datei beim Öffnen", () => {
+    const store = createStore();
+    // A comparison left over from the project open before.
+    store.set(comparisonVariantsAtom, [{ laminateId: "alt", loadCaseId: "alt" }]);
+    const carry = { ...EMPTY_WEB_EXTENSION_CARRY, studies: [{ id: "s1" }] };
+    store.set(loadProjectAtom, {
+      ...emptySnapshot(),
+      comparison: [{ laminateId: "l1", loadCaseId: "c1" }],
+      webExtensionCarry: carry,
+      importNotices: [{ kind: "unknown_web_extension_schema", schema: "2" }],
+    });
+
+    expect(store.get(comparisonVariantsAtom)).toEqual([{ laminateId: "l1", loadCaseId: "c1" }]);
+    expect(store.get(importNoticesAtom)).toHaveLength(1);
+    const saved = store.get(projectSnapshotAtom);
+    expect(saved.comparison).toEqual([{ laminateId: "l1", loadCaseId: "c1" }]);
+    expect(saved.webExtensionCarry).toEqual(carry);
+
+    // A file without a comparison clears the old one: its columns point at
+    // laminates the new project does not have.
+    store.set(loadProjectAtom, emptySnapshot());
+    expect(store.get(comparisonVariantsAtom)).toEqual([]);
+    expect(store.get(importNoticesAtom)).toEqual([]);
   });
 });
