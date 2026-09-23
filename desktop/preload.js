@@ -1,12 +1,12 @@
 // The only door between the web app and the machine it is running on.
 //
 // Four verbs, each of them a thing the browser cannot do: pick a file to open,
-// write a file back to where it came from, save a picture where the user says,
-// and hear the menu. Everything else the app does - the whole calculation
+// write a file back to where it came from, save a picture or any other file
+// the app produced where the user says, and hear the menu. Everything else the app does - the whole calculation
 // core, the state, the drawing - is unchanged web code and needs nothing from
 // here.
 //
-// `contextBridge` rather than a global: the renderer gets these four functions
+// `contextBridge` rather than a global: the renderer gets these functions
 // and no way to reach `ipcRenderer`, `require`, or the file system behind them.
 
 const { contextBridge, ipcRenderer } = require("electron");
@@ -28,9 +28,17 @@ contextBridge.exposeInMainWorld("elamxDesktop", {
   saveProject: (xml, filePath, suggestedName) =>
     ipcRenderer.invoke("project:save", { xml, filePath: filePath ?? null, suggestedName }),
 
-  /** Saves a PNG the app has already rendered. */
+  /** Saves a PNG the app has already rendered. Kept beside `saveFile` for
+   *  callers written before it. */
   saveImage: (bytes, suggestedName) =>
     ipcRenderer.invoke("image:save", { data: bytes, suggestedName }),
+
+  /**
+   * Saves any file the app has produced. `kinds` ("png", "svg", "csv", "pdf")
+   * are the filters the dialog offers; the main process owns what they mean.
+   */
+  saveFile: (bytes, suggestedName, kinds) =>
+    ipcRenderer.invoke("file:save", { data: bytes, suggestedName, kinds }),
 
   /** Keeps the native menu in the language the app is in. */
   setLocale: (locale) => ipcRenderer.send("desktop:locale", locale),

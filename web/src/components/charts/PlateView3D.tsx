@@ -10,7 +10,8 @@ import {
 import { createPlateScene, type PlateScene } from "../../lib/plateScene/scene";
 import { buildPlateBody } from "../../lib/plateScene/body";
 import { buildColormap, rgbaOf, type ColormapKind } from "../../lib/plateScene/colormap";
-import { plateImageBlob, saveBlob } from "../../lib/plateScene/exportImage";
+import { plateImageBlob } from "../../lib/plateScene/exportImage";
+import { saveFile } from "../../lib/saveFile";
 import type { PlateLegendModel } from "./PlateLegend";
 import { EMPTY_MESH } from "../../lib/plateScene/annotation";
 import { supportEdges, supportMesh } from "../../lib/plateScene/supports";
@@ -508,7 +509,7 @@ export const PlateView3D = memo(function PlateView3D({
       // The export left the drawing buffer at the export size; the next frame
       // is what puts it back to the size the element is shown at.
       requestRender();
-      if (blob) await saveBlob(blob, `${exportName ?? "plate"}-${factor}x.png`);
+      if (blob) await saveFile(blob, `${exportName ?? "plate"}-${factor}x.png`);
     },
     [legend, colors, captionLine, exportName, length, width, t, requestRender],
   );

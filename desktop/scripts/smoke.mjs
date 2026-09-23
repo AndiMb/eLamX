@@ -9,8 +9,9 @@
 // then does nothing.
 //
 // So this drives the packaged binary through the DevTools protocol and asks it
-// four questions: is it where it should be, can the page reach Node (it must
-// not), is the shell there, and - the real one - does a calculation come back.
+// five questions: is it where it should be, can the page reach Node (it must
+// not), is the shell there, can it save files, and - the real one - does a
+// calculation come back.
 // That last one is the whole chain: worker started, wasm compiled, results
 // rendered.
 //
@@ -206,6 +207,12 @@ async function main() {
       await evaluate(session, "typeof require === 'undefined' && typeof process === 'undefined'"),
     );
     check("the shell is exposed", await evaluate(session, "!!window.elamxDesktop"));
+    // Every export goes through this one; a preload that lost it would only
+    // show when someone tried to save a table.
+    check(
+      "the shell can save files",
+      await evaluate(session, "typeof window.elamxDesktop?.saveFile === 'function'"),
+    );
     // Not a failure: a build machine without a GPU falls back to the 2D view,
     // which is what that fallback is for. Worth reporting all the same.
     console.log(

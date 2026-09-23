@@ -13,7 +13,7 @@
 // report or a slide, where a 680-pixel PNG of a 680-pixel chart is exactly one
 // device pixel per CSS pixel and looks soft on every display made since 2012.
 
-import { saveBlob } from "./plateScene/exportImage";
+import { saveFile } from "./saveFile";
 
 /** Rendered at this multiple of the on-screen size. */
 export const SNAPSHOT_SCALE = 2;
@@ -174,5 +174,5 @@ export async function saveChartPng(
       ? await canvasToPngBlob(target)
       : await svgToPngBlob(target, title);
   if (!blob) return;
-  await saveBlob(blob, name.endsWith(".png") ? name : `${name}.png`);
+  await saveFile(blob, name.endsWith(".png") ? name : `${name}.png`);
 }

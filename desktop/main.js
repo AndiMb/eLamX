@@ -76,6 +76,8 @@ function projectPathFrom(argv) {
 }
 
 let pendingOpen = projectPathFrom(process.argv);
+/** The language the menu was last built in, which the dialogs follow too. */
+let menuLocale = "de";
 let mainWindow = null;
 
 // One window, one instance: a second launch (or a double-clicked file) hands
@@ -225,16 +227,39 @@ ipcMain.handle("project:save", async (_event, { xml, filePath, suggestedName }) 
   return { filePath: target, name: path.basename(target, ".elamx") };
 });
 
-ipcMain.handle("image:save", async (_event, { data, suggestedName }) => {
+// What the save dialog offers per kind of file. The renderer names kinds from
+// this list and nothing else: which filters a native dialog shows is this
+// process's decision, not something a page hands in.
+const FILE_KINDS = {
+  png: { name: "PNG", extensions: ["png"] },
+  svg: { name: "SVG", extensions: ["svg"] },
+  csv: { name: "CSV", extensions: ["csv"] },
+  pdf: { name: "PDF", extensions: ["pdf"] },
+};
+
+async function saveFile(data, suggestedName, kinds) {
+  const filters = (Array.isArray(kinds) ? kinds : [])
+    .filter((kind) => Object.hasOwn(FILE_KINDS, kind))
+    .map((kind) => FILE_KINDS[kind]);
+  const pictures = filters.length > 0 && filters.every((f) => f === FILE_KINDS.png || f === FILE_KINDS.svg);
   const result = await dialog.showSaveDialog(mainWindow, {
-    title: label("de", "saveImage"),
+    title: label(menuLocale, pictures ? "saveImage" : "saveFile"),
     defaultPath: suggestedName,
-    filters: [{ name: "PNG", extensions: ["png"] }],
+    filters: filters.length > 0 ? filters : [FILE_KINDS.png],
   });
   if (result.canceled || !result.filePath) return null;
   await fs.writeFile(result.filePath, Buffer.from(data));
   return result.filePath;
-});
+}
+
+ipcMain.handle("file:save", (_event, { data, suggestedName, kinds }) =>
+  saveFile(data, suggestedName, kinds),
+);
+
+// The channel from before `file:save`, kept as what it always was - a PNG.
+ipcMain.handle("image:save", (_event, { data, suggestedName }) =>
+  saveFile(data, suggestedName, ["png"]),
+);
 
 // The menu is built in this process, which has none of the app's message
 // catalogs - so the renderer tells it which language it is in, and the menu is
@@ -279,6 +304,7 @@ const LABELS = {
     save: "Speichern",
     saveAs: "Speichern unter …",
     saveImage: "Bild speichern",
+    saveFile: "Datei speichern",
     quit: "Beenden",
     view: "Ansicht",
     reload: "Neu laden",
@@ -301,6 +327,7 @@ const LABELS = {
     save: "Save",
     saveAs: "Save as …",
     saveImage: "Save the picture",
+    saveFile: "Save the file",
     quit: "Quit",
     view: "View",
     reload: "Reload",
@@ -329,6 +356,7 @@ function label(locale, key) {
  * "open" and one of "save" rather than two that can drift.
  */
 function buildMenu(locale) {
+  menuLocale = locale;
   const text = (key) => label(locale, key);
   const command = (name) => () => mainWindow?.webContents.send("desktop:command", name);
 

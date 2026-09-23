@@ -14,7 +14,6 @@
 
 import type { PlateScene } from "./scene";
 import { sampleColormap } from "./colormap";
-import { desktop } from "../desktop";
 
 export interface PlateImageLegend {
   title: string;
@@ -142,26 +141,4 @@ function drawLegend(
 
   context.textBaseline = "bottom";
   context.fillText(legend.range, left, imageHeight - PADDING * scale);
-}
-
-/**
- * Writes the picture where the reader wants it.
- *
- * In the desktop shell that is a system dialog and a real path; in a browser
- * it is a download, because a page cannot be told where to put a file.
- */
-export async function saveBlob(blob: Blob, filename: string) {
-  const shell = desktop();
-  if (shell) {
-    await shell.saveImage(new Uint8Array(await blob.arrayBuffer()), filename);
-    return;
-  }
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  // Revoked on the next task rather than immediately: Safari has not started
-  // reading the blob by the time click() returns.
-  setTimeout(() => URL.revokeObjectURL(url), 0);
 }

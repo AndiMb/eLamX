@@ -28,7 +28,14 @@ export interface DesktopBridge {
     filePath: string | null,
     suggestedName: string,
   ): Promise<{ filePath: string; name: string } | null>;
+  /** Kept for shells built before `saveFile`; a PNG-only save. */
   saveImage(bytes: Uint8Array, suggestedName: string): Promise<string | null>;
+  /** Saves any file the app produced, with the dialog offering `kinds`. */
+  saveFile?(
+    bytes: Uint8Array,
+    suggestedName: string,
+    kinds: ("png" | "svg" | "csv" | "pdf")[],
+  ): Promise<string | null>;
   setLocale(locale: string): void;
   ready(): void;
   onCommand(handler: (command: DesktopCommand) => void): () => void;
