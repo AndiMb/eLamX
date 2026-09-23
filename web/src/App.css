@@ -3724,3 +3724,82 @@ table.matrix td.block-d {
 .paste-preview .num {
   text-align: right;
 }
+
+/* --- Befehlspalette --- */
+
+.command-palette {
+  width: min(560px, calc(100vw - 24px));
+  margin-top: 12vh;
+  overflow: hidden;
+}
+
+.palette-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.palette-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--text);
+  font-size: var(--fs-lg);
+  padding: 4px 0;
+}
+
+.palette-results {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: min(420px, 60vh);
+  overflow: auto;
+}
+
+.palette-results li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.palette-results li.active {
+  background: var(--accent-bg);
+}
+
+.palette-label {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-group {
+  flex: 1 1 auto;
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-results kbd {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text-muted);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 0 5px;
+}
+
+.palette-empty {
+  color: var(--text-muted);
+  cursor: default;
+}

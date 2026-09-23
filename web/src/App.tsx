@@ -7,6 +7,7 @@ import { useGlobalShortcuts } from "./lib/commands";
 import { useProjectHistory } from "./lib/history";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
+import { CommandPalette } from "./components/CommandPalette";
 import { BottomTabs } from "./components/BottomTabs";
 import { IndexPage } from "./routes/IndexPage";
 import { LaminatePage } from "./routes/LaminatePage";
@@ -65,6 +66,7 @@ function Shell() {
   return (
     <div className="app">
       <TopBar />
+      <CommandPalette />
       <div className="app-body">
         <Sidebar />
         <div className="content">
