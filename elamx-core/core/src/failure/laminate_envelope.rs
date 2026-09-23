@@ -252,9 +252,17 @@ fn along(
             let criterion_id = layer
                 .criterion_id()
                 .ok_or_else(|| LaminateEnvelopeError::MissingCriterion(String::new()))?;
-            let criterion = criteria
-                .get(criterion_id)
-                .ok_or_else(|| LaminateEnvelopeError::MissingCriterion(criterion_id.to_string()))?;
+            // The ply's whole list, primary first: the minimum over it is the
+            // ply's reserve factor, a tie going to the earlier criterion.
+            let ply_criteria = layer
+                .criterion_ids(criterion_id)
+                .into_iter()
+                .map(|id| {
+                    criteria
+                        .get(id)
+                        .ok_or_else(|| LaminateEnvelopeError::MissingCriterion(id.to_string()))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
             let material = degraded
                 .get(layer.material_id())
                 .ok_or_else(|| LaminateEnvelopeError::MissingMaterial(layer.material_id().into()))?;
@@ -264,12 +272,14 @@ fn along(
             let mut worst_type = FailureType::Undamaged;
             for position in [LayerPosition::Lower, LayerPosition::Upper] {
                 let (state, _) = layer.stress_state(&strains, 0.0, 0.0, position, false);
-                let rf = criterion
-                    .reserve_factor(material, Some(&context), &state)
-                    .map_err(|e| LaminateEnvelopeError::MissingCriterion(e.to_string()))?;
-                if rf.minimal_reserve_factor < worst {
-                    worst = rf.minimal_reserve_factor;
-                    worst_type = rf.failure_type;
+                for criterion in &ply_criteria {
+                    let rf = criterion
+                        .reserve_factor(material, Some(&context), &state)
+                        .map_err(|e| LaminateEnvelopeError::MissingCriterion(e.to_string()))?;
+                    if rf.minimal_reserve_factor < worst {
+                        worst = rf.minimal_reserve_factor;
+                        worst_type = rf.failure_type;
+                    }
                 }
             }
             per_ply[index] = (worst, worst_type);
@@ -384,6 +394,7 @@ fn expand(
 
         let mut layer = Layer::new("", "", id, ply.angle, ply.thickness);
         layer.criterion_id = ply.criterion_id.map(str::to_string);
+        layer.extra_criteria = ply.extra_criteria.to_vec();
         working.layers.push(layer);
     }
 

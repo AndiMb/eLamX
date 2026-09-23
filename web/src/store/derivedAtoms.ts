@@ -58,6 +58,7 @@ export const laminateRequestFamily = atomFamily((laminateId: string) =>
         thickness: l.thickness,
         material_id: l.materialId,
         criterion_id: l.criterionId,
+        extra_criteria: l.extraCriteria ?? [],
       })),
       symmetric: config.symmetric,
       with_middle_layer: config.withMiddleLayer,

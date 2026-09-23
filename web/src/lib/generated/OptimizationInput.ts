@@ -13,7 +13,14 @@ angles: Array<number>,
  * The thickness of one ply, in mm. Every ply has it - that is what makes
  * "thinnest" the same question as "fewest plies".
  */
-thickness: number, material_id: string, criterion_id: string, constraints: Array<Constraint>, 
+thickness: number, material_id: string, criterion_id: string, 
+/**
+ * Criteria every candidate ply is checked against besides
+ * `criterion_id`; a ply's reserve factor is the minimum over all of them.
+ * Kept beside `criterion_id` rather than folded into one list, like
+ * `model::Layer::extra_criteria`, so stored inputs read unchanged.
+ */
+extra_criteria: Array<string>, constraints: Array<Constraint>, 
 /**
  * Whether the stack must be symmetric. Forced on by a constraint that
  * needs it, whatever this says.

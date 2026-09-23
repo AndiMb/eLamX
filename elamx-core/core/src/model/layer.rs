@@ -23,6 +23,14 @@ pub struct Layer {
     /// the Java original falls back to a default Puck criterion here, which is
     /// deferred until that module exists.
     pub criterion_id: Option<String>,
+    /// Further criteria the ply is checked against besides `criterion_id`, in
+    /// the user's order. The layer's reserve factor is the minimum over all of
+    /// them, a tie going to the one listed first (so `criterion_id` wins ties).
+    /// eLamX 3.x knows only the one criterion; these travel in the
+    /// `<webExtension>` of the project file and are empty for everything the
+    /// Java original wrote.
+    #[serde(default)]
+    pub extra_criteria: Vec<String>,
 }
 
 impl Layer {
@@ -40,6 +48,7 @@ impl Layer {
             thickness,
             material_id: material_id.into(),
             criterion_id: None,
+            extra_criteria: Vec::new(),
         }
     }
 

@@ -16,7 +16,7 @@ pub mod strains;
 
 pub use calculator::{
     alpha_global, beta_global, determine_values, get_layer_results, get_layer_results_radial,
-    hygro_thermal_forces, LayerResult, LayerResultError,
+    hygro_thermal_forces, CriterionRf, LayerResult, LayerResultError,
 };
 pub use laminate::{CltLaminate, LayerContribution, MassMoments, MissingMaterialError};
 pub use last_ply_failure::{

@@ -8,7 +8,9 @@
 use super::laminate::CltLaminate;
 use super::loads::Loads;
 use super::strains::Strains;
-use crate::failure::{CriterionError, CriterionRegistry, LayerContext, ReserveFactor};
+use crate::failure::{
+    governing_index, Criterion, CriterionError, CriterionRegistry, LayerContext, ReserveFactor,
+};
 use crate::mathtools;
 use crate::model::{Material, StressStrainState};
 use std::collections::HashMap;
@@ -175,10 +177,31 @@ pub struct LayerResult {
     pub sss_upper: StressStrainState,
     pub sss_lower_global: StressStrainState,
     pub sss_upper_global: StressStrainState,
+    /// The governing reserve factor at the lower surface: the smallest over
+    /// the ply's criteria, its `failure_name`/`failure_type` those of the
+    /// criterion that produced it.
     pub rr_lower: ReserveFactor,
     pub rr_upper: ReserveFactor,
     /// `true` if either surface's reserve factor is below 1.0.
     pub failed: bool,
+    /// Id of the criterion that governs `rr_lower` - the ply's primary
+    /// criterion (Puck when none is assigned) unless an extra criterion is
+    /// strictly smaller.
+    pub governing_lower: String,
+    pub governing_upper: String,
+    /// Every criterion's own reserve factors, primary first. Filled only when
+    /// the ply has extra criteria; with one criterion it would just repeat
+    /// `rr_lower`/`rr_upper`.
+    pub by_criterion: Vec<CriterionRf>,
+}
+
+/// One criterion's reserve factors at both surfaces of a ply.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+pub struct CriterionRf {
+    pub id: String,
+    pub rr_lower: ReserveFactor,
+    pub rr_upper: ReserveFactor,
 }
 
 /// A layer could not be evaluated: its material or failure criterion isn't in
@@ -283,10 +306,17 @@ fn layer_results_with(
             let material = materials
                 .get(cl.material_id())
                 .ok_or_else(|| LayerResultError::MissingMaterial(cl.material_id().to_string()))?;
-            let criterion_id = cl.criterion_id().unwrap_or(crate::failure::PUCK_ID);
-            let criterion = criteria
-                .get(criterion_id)
-                .ok_or_else(|| LayerResultError::MissingCriterion(criterion_id.to_string()))?;
+            let primary = cl.criterion_id().unwrap_or(crate::failure::PUCK_ID);
+            let resolved = cl
+                .criterion_ids(primary)
+                .into_iter()
+                .map(|id| {
+                    criteria
+                        .get(id)
+                        .map(|c| (id, c.as_ref()))
+                        .ok_or_else(|| LayerResultError::MissingCriterion(id.to_string()))
+                })
+                .collect::<Result<Vec<(&str, &dyn Criterion)>, _>>()?;
 
             let layer_context = LayerContext {
                 angle_deg: cl.angle_deg,
@@ -296,10 +326,18 @@ fn layer_results_with(
             let (sss_lower, sss_lower_global) = lower(cl, &epskappa, delta_temp, delta_hygro);
             let (sss_upper, sss_upper_global) = upper(cl, &epskappa, delta_temp, delta_hygro);
 
-            let rr_lower = criterion.reserve_factor(material, Some(&layer_context), &sss_lower)?;
-            let rr_upper = criterion.reserve_factor(material, Some(&layer_context), &sss_upper)?;
+            let evaluate = |state: &StressStrainState| {
+                resolved
+                    .iter()
+                    .map(|(_, c)| c.reserve_factor(material, Some(&layer_context), state))
+                    .collect::<Result<Vec<ReserveFactor>, CriterionError>>()
+            };
+            let lower_rfs = evaluate(&sss_lower)?;
+            let upper_rfs = evaluate(&sss_upper)?;
+            let governing = GoverningPair::new(&resolved, lower_rfs, upper_rfs);
 
-            let failed = rr_lower.minimal_reserve_factor < 1.0 || rr_upper.minimal_reserve_factor < 1.0;
+            let failed = governing.rr_lower.minimal_reserve_factor < 1.0
+                || governing.rr_upper.minimal_reserve_factor < 1.0;
 
             Ok(LayerResult {
                 layer_number: cl.number,
@@ -307,12 +345,61 @@ fn layer_results_with(
                 sss_upper,
                 sss_lower_global: sss_lower_global.expect("calc_global was requested"),
                 sss_upper_global: sss_upper_global.expect("calc_global was requested"),
-                rr_lower,
-                rr_upper,
+                rr_lower: governing.rr_lower,
+                rr_upper: governing.rr_upper,
                 failed,
+                governing_lower: governing.governing_lower,
+                governing_upper: governing.governing_upper,
+                by_criterion: governing.by_criterion,
             })
         })
         .collect()
+}
+
+/// The minimum over a ply's criteria at both surfaces, picked independently
+/// per surface (the lower surface may be governed by one criterion, the upper
+/// by another).
+struct GoverningPair {
+    rr_lower: ReserveFactor,
+    rr_upper: ReserveFactor,
+    governing_lower: String,
+    governing_upper: String,
+    by_criterion: Vec<CriterionRf>,
+}
+
+impl GoverningPair {
+    fn new(
+        resolved: &[(&str, &dyn Criterion)],
+        lower: Vec<ReserveFactor>,
+        upper: Vec<ReserveFactor>,
+    ) -> Self {
+        let pick = |rfs: &[ReserveFactor]| {
+            governing_index(rfs.iter().map(|rf| rf.minimal_reserve_factor))
+                .expect("a ply always has at least one criterion")
+        };
+        let lower_index = pick(&lower);
+        let upper_index = pick(&upper);
+        let by_criterion = if resolved.len() > 1 {
+            resolved
+                .iter()
+                .zip(lower.iter().zip(&upper))
+                .map(|((id, _), (l, u))| CriterionRf {
+                    id: id.to_string(),
+                    rr_lower: l.clone(),
+                    rr_upper: u.clone(),
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        GoverningPair {
+            rr_lower: lower.into_iter().nth(lower_index).expect("index from the same list"),
+            rr_upper: upper.into_iter().nth(upper_index).expect("index from the same list"),
+            governing_lower: resolved[lower_index].0.to_string(),
+            governing_upper: resolved[upper_index].0.to_string(),
+            by_criterion,
+        }
+    }
 }
 
 #[cfg(test)]

@@ -35,6 +35,7 @@ export function defaultOptimizationInput(materialId: string): OptimizationInputD
     thickness: 0.125,
     material_id: materialId,
     criterion_id: "puck",
+    extra_criteria: [],
     constraints: [{ kind: "clt", loads: emptyLoads(1000) }],
     symmetric: false,
     max_layers: 200,

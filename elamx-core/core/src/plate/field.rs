@@ -202,15 +202,22 @@ pub fn evaluate(
     let material = materials
         .get(layer.material_id())
         .ok_or_else(|| PlateFieldError::MissingMaterial(layer.material_id().to_string()))?;
-    let criterion = if wants_failure {
-        let id = layer.criterion_id().unwrap_or(crate::failure::PUCK_ID);
-        Some(
-            criteria
-                .get(id)
-                .ok_or_else(|| PlateFieldError::MissingCriterion(id.to_string()))?,
-        )
+    // Every criterion of the ply, primary first; the field shows the minimum
+    // over them, a tie going to the earlier one as everywhere else.
+    let ply_criteria = if wants_failure {
+        let primary = layer.criterion_id().unwrap_or(crate::failure::PUCK_ID);
+        layer
+            .criterion_ids(primary)
+            .into_iter()
+            .map(|id| {
+                criteria
+                    .get(id)
+                    .map(|c| c.as_ref())
+                    .ok_or_else(|| PlateFieldError::MissingCriterion(id.to_string()))
+            })
+            .collect::<Result<Vec<&dyn crate::failure::Criterion>, _>>()?
     } else {
-        None
+        Vec::new()
     };
     let context = LayerContext {
         angle_deg: layer.angle_deg,
@@ -246,11 +253,7 @@ pub fn evaluate(
                 PlateField::StressNor => local.stress[1],
                 PlateField::StressShear => local.stress[2],
                 PlateField::ReserveFactor => {
-                    match criterion.expect("looked up above").reserve_factor(
-                        material,
-                        Some(&context),
-                        &local,
-                    ) {
+                    match governing_rf(&ply_criteria, material, &context, &local) {
                         Ok(rf) => {
                             if let Some(modes) = failure.as_mut() {
                                 modes[row][col] = Some(rf.failure_type);
@@ -272,6 +275,23 @@ pub fn evaluate(
     }
 
     Ok(summarise(values, failure, gaps, input, samples))
+}
+
+/// The smallest reserve factor over a ply's criteria. Any criterion that
+/// cannot answer makes the point a hole, as a single failing criterion did.
+fn governing_rf(
+    ply_criteria: &[&dyn crate::failure::Criterion],
+    material: &Material,
+    context: &LayerContext,
+    state: &crate::model::StressStrainState,
+) -> Result<crate::failure::ReserveFactor, crate::failure::CriterionError> {
+    let rfs = ply_criteria
+        .iter()
+        .map(|c| c.reserve_factor(material, Some(context), state))
+        .collect::<Result<Vec<_>, _>>()?;
+    let index = crate::failure::governing_index(rfs.iter().map(|rf| rf.minimal_reserve_factor))
+        .expect("a ply always has at least one criterion");
+    Ok(rfs.into_iter().nth(index).expect("index from the same list"))
 }
 
 /// The three curvature fields, sign as decided at the top of this module.
@@ -618,5 +638,51 @@ mod tests {
             )
             .is_err());
         }
+    }
+
+    /// With extra criteria the field shows, point by point, the smallest of
+    /// the single-criterion fields - checked against those, and with the mode
+    /// of the criterion that is smallest there.
+    #[test]
+    fn the_reserve_factor_of_a_list_is_the_pointwise_minimum() {
+        let (single_ply, mut materials) = ud_plate();
+        materials.get_mut("ud").unwrap().additional_values = crate::failure::default_additional_values();
+        let input = navier_input(0.01);
+        let solution = deformation::calculate(&single_ply, &input).unwrap();
+        let criteria = crate::failure::default_criterion_registry();
+        let field_for = |primary: &str, extras: &[&str]| {
+            let mut laminate = Laminate::new("lam", "plate");
+            let mut layer = Layer::new("l0", "", "ud", 0.0, 2.0);
+            layer.criterion_id = Some(primary.to_string());
+            layer.extra_criteria = extras.iter().map(|e| e.to_string()).collect();
+            laminate.layers.push(layer);
+            let clt = CltLaminate::new(&laminate, &materials).unwrap();
+            evaluate(
+                &clt,
+                &materials,
+                &criteria,
+                &input,
+                &solution.coefficients,
+                selection(PlateField::ReserveFactor, LayerPosition::Upper),
+            )
+            .unwrap()
+        };
+        let ids = [crate::failure::MAX_STRESS_ID, crate::failure::HASHIN_ID, crate::failure::TSAI_WU_ID];
+        let listed = field_for(ids[0], &ids[1..]);
+        let singles: Vec<PlateFieldResult> = ids.iter().map(|id| field_for(id, &[])).collect();
+        let mut governed_by = [0usize; 3];
+        for (row, values) in listed.values.iter().enumerate() {
+            for (col, value) in values.iter().enumerate() {
+                let rfs: Vec<f64> = singles.iter().map(|s| s.values[row][col]).collect();
+                let index = crate::failure::governing_index(rfs.iter().copied()).unwrap();
+                assert_eq!(value.to_bits(), rfs[index].to_bits());
+                assert_eq!(
+                    listed.failure.as_ref().unwrap()[row][col],
+                    singles[index].failure.as_ref().unwrap()[row][col]
+                );
+                governed_by[index] += 1;
+            }
+        }
+        assert!(governed_by.iter().filter(|n| **n > 0).count() >= 2, "{governed_by:?}");
     }
 }

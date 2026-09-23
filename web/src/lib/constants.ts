@@ -22,6 +22,11 @@ export interface LayerRow {
   thickness: number;
   materialId: string;
   criterionId: CriterionId;
+  /** Criteria checked besides `criterionId`, in order; the ply's reserve
+   *  factor is the minimum over all of them. Absent means none - eLamX 3.x
+   *  knows only the one, so every layer that came from it has no extras and
+   *  nothing needs migrating. Travels in the file's `<webExtension>`. */
+  extraCriteria?: CriterionId[];
 }
 
 // Base/index pairs rather than pre-rendered strings so each call site can pick

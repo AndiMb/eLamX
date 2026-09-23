@@ -11,4 +11,13 @@ export type Layer = { id: string, name: string, angle: number, thickness: number
  * the Java original falls back to a default Puck criterion here, which is
  * deferred until that module exists.
  */
-criterion_id: string | null, };
+criterion_id: string | null, 
+/**
+ * Further criteria the ply is checked against besides `criterion_id`, in
+ * the user's order. The layer's reserve factor is the minimum over all of
+ * them, a tie going to the one listed first (so `criterion_id` wins ties).
+ * eLamX 3.x knows only the one criterion; these travel in the
+ * `<webExtension>` of the project file and are empty for everything the
+ * Java original wrote.
+ */
+extra_criteria: Array<string>, };

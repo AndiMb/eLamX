@@ -114,6 +114,40 @@ pub trait Criterion {
 /// these keys via its `criterion_id`.
 pub type CriterionRegistry = HashMap<String, Box<dyn Criterion>>;
 
+/// The criteria a ply is checked against, in order: `primary` first, then the
+/// extra criteria, each id once. A repeated id adds nothing - the minimum over
+/// a list cannot change by listing a member twice - so it is dropped rather
+/// than evaluated again.
+pub fn criterion_ids<'a>(primary: &'a str, extras: &'a [String]) -> Vec<&'a str> {
+    let mut ids = Vec::with_capacity(1 + extras.len());
+    ids.push(primary);
+    for extra in extras {
+        if !ids.contains(&extra.as_str()) {
+            ids.push(extra.as_str());
+        }
+    }
+    ids
+}
+
+/// Index of the smallest of `values`, a tie going to the EARLIER one: a later
+/// value has to be strictly smaller to take over. That rule is what makes a
+/// one-criterion list reproduce the single criterion bit for bit, and it
+/// keeps the primary criterion - the one eLamX 3.x sees - governing whenever
+/// an extra criterion merely agrees with it. `None` for an empty list.
+pub fn governing_index(values: impl IntoIterator<Item = f64>) -> Option<usize> {
+    let mut governing: Option<(usize, f64)> = None;
+    for (index, value) in values.into_iter().enumerate() {
+        let takes_over = match governing {
+            None => true,
+            Some((_, best)) => value < best,
+        };
+        if takes_over {
+            governing = Some((index, value));
+        }
+    }
+    governing.map(|(index, _)| index)
+}
+
 /// Canonical id for [`Puck`] - the default criterion new layers fall back to
 /// in the Java original (see `DataLayer`'s constructor).
 pub const PUCK_ID: &str = "puck";
@@ -309,6 +343,23 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn criterion_ids_put_the_primary_first_and_drop_repeats() {
+        let extras = vec!["hashin".to_string(), "puck".to_string(), "hashin".to_string(), "tsai_wu".to_string()];
+        assert_eq!(criterion_ids("puck", &extras), vec!["puck", "hashin", "tsai_wu"]);
+        assert_eq!(criterion_ids("puck", &[]), vec!["puck"]);
+    }
+
+    #[test]
+    fn governing_index_takes_the_minimum_and_keeps_the_earlier_one_on_a_tie() {
+        assert_eq!(governing_index([3.0, 1.5, 2.0]), Some(1));
+        assert_eq!(governing_index([1.5, 1.5, 2.0]), Some(0));
+        assert_eq!(governing_index([2.0, 1.5, 1.5]), Some(1));
+        assert_eq!(governing_index([f64::INFINITY, f64::INFINITY]), Some(0));
+        assert_eq!(governing_index([f64::INFINITY, 4.0]), Some(1));
+        assert_eq!(governing_index(std::iter::empty()), None);
     }
 
     #[test]

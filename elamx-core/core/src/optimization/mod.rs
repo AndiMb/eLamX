@@ -141,6 +141,12 @@ pub struct OptimizationInput {
     pub thickness: f64,
     pub material_id: String,
     pub criterion_id: String,
+    /// Criteria every candidate ply is checked against besides
+    /// `criterion_id`; a ply's reserve factor is the minimum over all of them.
+    /// Kept beside `criterion_id` rather than folded into one list, like
+    /// `model::Layer::extra_criteria`, so stored inputs read unchanged.
+    #[serde(default)]
+    pub extra_criteria: Vec<String>,
     pub constraints: Vec<Constraint>,
     /// Whether the stack must be symmetric. Forced on by a constraint that
     /// needs it, whatever this says.
@@ -160,6 +166,7 @@ impl Default for OptimizationInput {
             thickness: 0.125,
             material_id: String::new(),
             criterion_id: String::new(),
+            extra_criteria: Vec::new(),
             constraints: Vec::new(),
             symmetric: false,
             max_layers: 200,
@@ -370,6 +377,7 @@ fn build(
             input.thickness,
         );
         layer.criterion_id = Some(input.criterion_id.clone());
+        layer.extra_criteria = input.extra_criteria.clone();
         laminate.layers.push(layer);
     }
     CltLaminate::new(&laminate, materials).ok()
@@ -626,6 +634,9 @@ fn worst_case_mixed(
         // given rather than a composite one.
         layer.criterion_id =
             Some(if is_super { "max_stress".to_string() } else { input.criterion_id.clone() });
+        if !is_super {
+            layer.extra_criteria = input.extra_criteria.clone();
+        }
         laminate.layers.push(layer);
     }
     let Ok(clt) = CltLaminate::new(&laminate, catalogue) else {
@@ -1605,5 +1616,36 @@ mod tests {
             ),
             Err(OptimizationError::Exhausted { layers: 12 })
         );
+    }
+
+    /// Extra criteria make every candidate's reserve factor the minimum over
+    /// the list, so the thinnest stack that carries the load under the list
+    /// can be no thinner than under any one of its criteria - checked against
+    /// the single-criterion searches - and its reported reserve factor is the
+    /// smallest of the single-criterion ones on that same stack.
+    #[test]
+    fn extra_criteria_can_only_thicken_the_exhaustive_answer() {
+        let constraints = vec![Constraint::Clt { loads: loads(300.0, -120.0, 60.0) }];
+        let search = |criterion: &str, extras: &[&str]| {
+            let input = OptimizationInput {
+                criterion_id: criterion.to_string(),
+                extra_criteria: extras.iter().map(|e| e.to_string()).collect(),
+                ..base(constraints.clone())
+            };
+            exhaustive(&input, &carbon(), &default_criterion_registry(), 200_000).unwrap()
+        };
+        let listed = search("max_stress", &["hashin"]);
+        let max_stress = search("max_stress", &[]);
+        let hashin = search("hashin", &[]);
+        assert!(listed.succeeded && max_stress.succeeded && hashin.succeeded);
+        assert!(listed.layer_count >= max_stress.layer_count.max(hashin.layer_count));
+
+        let on_listed_stack = |criterion: &str| {
+            let input = OptimizationInput { criterion_id: criterion.to_string(), ..base(constraints.clone()) };
+            let clt = build(&listed.angles, &input, &carbon(), listed.symmetric).unwrap();
+            constraints[0].reserve_factor(&clt, &carbon(), &default_criterion_registry()).unwrap()
+        };
+        let expected = on_listed_stack("max_stress").min(on_listed_stack("hashin"));
+        assert_eq!(listed.min_reserve_factor.to_bits(), expected.to_bits());
     }
 }

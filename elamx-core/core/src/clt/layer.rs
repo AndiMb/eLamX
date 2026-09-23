@@ -34,6 +34,8 @@ pub struct CltLayer {
     pub embedded: bool,
     material_id: String,
     criterion_id: Option<String>,
+    /// Criteria checked besides `criterion_id` - see `model::Layer::extra_criteria`.
+    extra_criteria: Vec<String>,
     q_local: Matrix,
     alpha_t_par: f64,
     alpha_t_nor: f64,
@@ -66,6 +68,7 @@ impl CltLayer {
             embedded: false,
             material_id: material.id.clone(),
             criterion_id,
+            extra_criteria: Vec::new(),
             q_local,
             alpha_t_par: material.alpha_t_par,
             alpha_t_nor: material.alpha_t_nor,
@@ -79,6 +82,19 @@ impl CltLayer {
     }
     pub fn criterion_id(&self) -> Option<&str> {
         self.criterion_id.as_deref()
+    }
+    /// Criteria checked besides [`CltLayer::criterion_id`], in the user's order.
+    pub fn extra_criteria(&self) -> &[String] {
+        &self.extra_criteria
+    }
+    pub fn set_extra_criteria(&mut self, extra_criteria: Vec<String>) {
+        self.extra_criteria = extra_criteria;
+    }
+    /// Every criterion this ply is checked against, primary first: `primary`
+    /// (the caller's reading of `criterion_id`, fallback included) followed by
+    /// the extra criteria, each id once.
+    pub fn criterion_ids<'a>(&'a self, primary: &'a str) -> Vec<&'a str> {
+        crate::failure::criterion_ids(primary, &self.extra_criteria)
     }
     pub fn alpha_t_par(&self) -> f64 {
         self.alpha_t_par

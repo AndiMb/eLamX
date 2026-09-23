@@ -36,6 +36,7 @@ pub struct ResolvedLayer<'a> {
     pub thickness: f64,
     pub material_id: &'a str,
     pub criterion_id: Option<&'a str>,
+    pub extra_criteria: &'a [String],
     pub embedded: bool,
 }
 
@@ -188,6 +189,7 @@ fn resolved_from(
         thickness: layer.thickness,
         material_id: &layer.material_id,
         criterion_id: layer.criterion_id.as_deref(),
+        extra_criteria: &layer.extra_criteria,
         embedded: embedded_at(stored_index, stored_len, symmetric),
     }
 }

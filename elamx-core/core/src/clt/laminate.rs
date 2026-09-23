@@ -108,12 +108,16 @@ impl CltLaminate {
                 let material = materials
                     .get(r.material_id)
                     .ok_or_else(|| MissingMaterialError(r.material_id.to_string()))?;
-                Ok(CltLayer::new(
+                let mut layer = CltLayer::new(
                     r.angle,
                     r.thickness,
                     material,
                     r.criterion_id.map(str::to_string),
-                ))
+                );
+                if !r.extra_criteria.is_empty() {
+                    layer.set_extra_criteria(r.extra_criteria.to_vec());
+                }
+                Ok(layer)
             })
             .collect::<Result<Vec<_>, MissingMaterialError>>()?;
 
