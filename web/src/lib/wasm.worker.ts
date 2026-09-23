@@ -33,6 +33,7 @@ const ENTRY_POINTS = [
   "compute_carpet_plot",
   "compute_layer_stiffness",
   "check_stacking_rules",
+  "compute_laminate_envelope_ray",
 ] as const;
 
 export type WasmEntryPoint = (typeof ENTRY_POINTS)[number];

@@ -62,6 +62,19 @@ export const de: Messages = {
   "history.label.bulk": "Ausgewählte Lagen geändert",
   "history.label.criteria": "Kriterien geändert",
   "history.label.ruleSettings": "Schwellwerte der Aufbauregeln geändert",
+  "laminateFailure.ray.summary":
+    "Lastfall „{name}“: {metric} = {value} bis zur Hülle, maßgebend Lage {nr}. Der Ring markiert den Schnittpunkt des Strahls mit der Fläche.",
+  "laminateFailure.ray.hygrothermal":
+    "Temperatur- und Feuchteänderung des Lastfalls sind im Versagenskörper nicht enthalten; gezeigt ist nur die mechanische Last.",
+  "laminateFailure.ray.unsupported.moments":
+    "Lastfall „{name}“ hat Momente. Der Versagenskörper ist nur für Scheibenlasten (n_x, n_y, n_xy) definiert, deshalb wird kein Lastpunkt gezeigt.",
+  "laminateFailure.ray.unsupported.strains":
+    "Lastfall „{name}“ gibt Dehnungen vor. Der Versagenskörper ist im Raum der Kraftflüsse definiert, deshalb wird kein Lastpunkt gezeigt.",
+  "laminateFailure.ray.unsupported.zero": "Lastfall „{name}“ hat keine Last, also keinen Punkt und keinen Strahl.",
+  "laminateFailure.ray.surfaceWord": "Hülle",
+  "laminateFailure.ray.howTitle": "Lastpunkt auf dem Versagenskörper",
+  "laminateFailure.ray.howHint":
+    "Die Last des Lastfalls wird bei fester Richtung so lange skaliert, bis das Laminat nach der gewählten Versagensdefinition versagt – dieselbe Suche, die jeden Punkt der Fläche liefert.",
   "rules.title": "Regeln für den Lagenaufbau",
   "rules.intro":
     "Übliche Konstruktionsregeln, geprüft am vollständigen Aufbau einschließlich gespiegelter Lagen. Sie sind Hinweise: Gerechnet wird jeder Aufbau.",

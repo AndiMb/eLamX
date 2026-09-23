@@ -14,7 +14,7 @@ use elamx_core::clt::{
 };
 use elamx_core::failure::{
     default_criterion_registry, failure_envelope, laminate_envelope, FailureEnvelope,
-    LaminateEnvelope, LaminateEnvelopeInput, DEFAULT_QUALITY,
+    laminate_rf_along, LaminateEnvelope, LaminateEnvelopeInput, LaminateFailureKind, DEFAULT_QUALITY,
 };
 use elamx_core::mathtools;
 use elamx_core::micromechanics::{self, Fibre, MatrixMaterial};
@@ -929,6 +929,38 @@ fn compute_laminate_envelope_impl(request_json: &str) -> Result<String, String> 
         laminate_envelope(&request.laminate, &request.materials, &registry, &request.input)
             .map_err(|e| e.to_string())?;
     serde_json::to_string(&envelope).map_err(|e| e.to_string())
+}
+
+#[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+struct LaminateEnvelopeRayRequest {
+    laminate: Laminate,
+    materials: HashMap<String, Material>,
+    kind: LaminateFailureKind,
+    /// The load case's in-plane load, [n_x, n_y, n_xy] in N/mm.
+    load: [f64; 3],
+}
+
+/// Where one load case meets the laminate's failure surface: the load factor
+/// and the point on the surface, for the marker in the 3D view (F2.4).
+#[wasm_bindgen]
+pub fn compute_laminate_envelope_ray(request_json: &str) -> Result<String, JsValue> {
+    compute_laminate_envelope_ray_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn compute_laminate_envelope_ray_impl(request_json: &str) -> Result<String, String> {
+    let request: LaminateEnvelopeRayRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let registry = default_criterion_registry();
+    let ray = laminate_rf_along(
+        &request.laminate,
+        &request.materials,
+        &registry,
+        request.kind,
+        request.load,
+    )
+    .map_err(|e| e.to_string())?;
+    serde_json::to_string(&ray).map_err(|e| e.to_string())
 }
 
 /// Serialises a project back to `.elamx` XML, in the element order and number
@@ -1872,5 +1904,40 @@ mod tests {
         assert!(parsed.as_array().unwrap().iter().all(|r| r["passed"] == true));
         assert_eq!(parsed[3]["detail"]["kind"], "longest_run");
         assert_eq!(parsed[3]["detail"]["length"], 2);
+    }
+
+    /// The ray over the JSON boundary: a uniaxial load on a single 0 degree
+    /// max-stress ply fails at R_par_t * t, whatever the load's size.
+    #[test]
+    fn compute_laminate_envelope_ray_scales_the_load_to_the_surface() {
+        let laminate = serde_json::json!({
+            "id": "l", "name": "l", "symmetric": false, "with_middle_layer": false,
+            "invert_z": false, "offset": 0.0,
+            "layers": [{"id": "a", "name": "a", "angle": 0.0, "thickness": 0.5,
+                        "material_id": "m", "criterion_id": "max_stress"}]
+        });
+        let mut material = Material::new("m", "m", 140000.0, 10000.0, 0.3, 5000.0, 1.6e-9);
+        material.r_par_ten = 2000.0;
+        material.set_r_par_com(1200.0);
+        material.r_nor_ten = 50.0;
+        material.set_r_nor_com(150.0);
+        material.set_r_shear(70.0);
+        let request = serde_json::json!({
+            "laminate": laminate,
+            "materials": {"m": material},
+            "kind": "first_ply",
+            "load": [250.0, 0.0, 0.0],
+        });
+        let response = compute_laminate_envelope_ray_impl(&request.to_string()).unwrap();
+        let ray: serde_json::Value = serde_json::from_str(&response).unwrap();
+        // sigma_1 = 250 / 0.5 = 500 MPa, so RF = 2000 / 500 = 4, n_x = 1000.
+        assert!((ray["rf"].as_f64().unwrap() - 4.0).abs() < 1e-9);
+        assert!((ray["failure_load"][0].as_f64().unwrap() - 1000.0).abs() < 1e-6);
+        assert_eq!(ray["failure_type"], "FiberFailure");
+        assert!(compute_laminate_envelope_ray_impl(
+            &serde_json::json!({"laminate": request["laminate"], "materials": request["materials"],
+                                "kind": "first_ply", "load": [0.0, 0.0, 0.0]}).to_string()
+        )
+        .is_err());
     }
 }

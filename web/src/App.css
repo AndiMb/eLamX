@@ -4131,3 +4131,13 @@ table.matrix td.block-d {
 .rules-threshold input {
   width: 70px;
 }
+
+/* --- Lastpunkt im Laminat-Versagenskörper (F2.4) --- */
+
+.ray-note {
+  margin: var(--s-2) 0;
+}
+
+.ray-note p {
+  margin: 4px 0;
+}

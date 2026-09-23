@@ -58,8 +58,8 @@ pub use fmc::{Fmc, M as FMC_M, MUE_SP as FMC_MUE_SP};
 pub use hashin::Hashin;
 pub use hoffman::Hoffman;
 pub use laminate_envelope::{
-    laminate_envelope, LaminateEnvelope, LaminateEnvelopeError, LaminateEnvelopeInput,
-    LaminateEnvelopePoint, LaminateFailureKind,
+    laminate_envelope, laminate_rf_along, LaminateEnvelope, LaminateEnvelopeError,
+    LaminateEnvelopeInput, LaminateEnvelopePoint, LaminateEnvelopeRay, LaminateFailureKind,
 };
 pub use ls_dyna::{
     LsDynaChangChang, LsDynaDaimlerCamanho, LsDynaDaimlerPinho, LsDynaTsaiWu,

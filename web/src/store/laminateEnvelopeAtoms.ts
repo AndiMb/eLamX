@@ -15,6 +15,8 @@ import { loadableWithLastValue } from "../lib/loadable";
 import type { LaminateEnvelopeResponse, LaminateFailureKindId } from "../lib/types";
 import { elamx } from "../lib/wasm";
 import { laminateRequestFamily } from "./derivedAtoms";
+import { activeLoadCaseFamily, type LoadCase } from "./laminateAtoms";
+import type { LaminateEnvelopeRay } from "../lib/generated/LaminateEnvelopeRay";
 
 /**
  * How finely the sphere is swept, by name.
@@ -61,4 +63,48 @@ export const laminateEnvelopeFamily = atomFamily((key: string) =>
 
 export const loadableLaminateEnvelopeFamily = atomFamily((key: string) =>
   loadableWithLastValue(laminateEnvelopeFamily(key)),
+);
+
+/** Whether the active load case can be drawn in the surface's space (F2.4).
+ *
+ *  The surface lives in (n_x, n_y, n_xy) and nothing else. A load case with a
+ *  moment or a prescribed strain is a point somewhere else, and projecting it
+ *  onto the membrane space would draw a load that is not the one computed -
+ *  so there is no marker then, only the reason. A temperature or moisture
+ *  change the surface does not know either, but the mechanical load is still
+ *  its point, so that one is drawn with a note. */
+export type RayCase =
+  | { kind: "ray"; load: [number, number, number]; hygrothermal: boolean; loadCase: LoadCase }
+  | { kind: "unsupported"; reason: "moments" | "strains" | "zero"; loadCase: LoadCase };
+
+export function rayCaseOf(loadCase: LoadCase): RayCase {
+  if (loadCase.useStrain.some(Boolean)) return { kind: "unsupported", reason: "strains", loadCase };
+  if (loadCase.dofValues.slice(3).some((v) => v !== 0)) {
+    return { kind: "unsupported", reason: "moments", loadCase };
+  }
+  const load = loadCase.dofValues.slice(0, 3) as [number, number, number];
+  if (load.every((v) => v === 0)) return { kind: "unsupported", reason: "zero", loadCase };
+  return { kind: "ray", load, hygrothermal: loadCase.deltaT !== 0 || loadCase.deltaH !== 0, loadCase };
+}
+
+/** `${laminateId}|${kind}`: the ray does not depend on the grid resolution. */
+export const laminateEnvelopeRayKey = (laminateId: string, kind: LaminateFailureKindId): string =>
+  `${laminateId}|${kind}`;
+
+export const laminateEnvelopeRayFamily = atomFamily((key: string) =>
+  atom<Promise<{ ray: LaminateEnvelopeRay | null; rayCase: RayCase }>>(async (get) => {
+    const [laminateId, kind] = key.split("|") as [string, LaminateFailureKindId];
+    const rayCase = rayCaseOf(get(activeLoadCaseFamily(laminateId)));
+    if (rayCase.kind !== "ray") return { ray: null, rayCase };
+    const { laminate, materials } = get(laminateRequestFamily(laminateId));
+    const json = await elamx.compute_laminate_envelope_ray(
+      JSON.stringify({ laminate, materials, kind, load: rayCase.load }),
+      `ray:${key}`,
+    );
+    return { ray: JSON.parse(json) as LaminateEnvelopeRay, rayCase };
+  }),
+);
+
+export const loadableLaminateEnvelopeRayFamily = atomFamily((key: string) =>
+  loadableWithLastValue(laminateEnvelopeRayFamily(key)),
 );

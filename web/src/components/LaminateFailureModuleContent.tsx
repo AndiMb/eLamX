@@ -3,9 +3,18 @@ import { useAtomValue } from "jotai";
 import {
   ENVELOPE_RESOLUTIONS,
   laminateEnvelopeKey,
+  laminateEnvelopeRayKey,
   loadableLaminateEnvelopeFamily,
+  loadableLaminateEnvelopeRayFamily,
   type EnvelopeResolutionId,
+  type RayCase,
 } from "../store/laminateEnvelopeAtoms";
+import type { LaminateEnvelopeRay } from "../lib/generated/LaminateEnvelopeRay";
+import { LoadCaseBar } from "./LoadCaseBar";
+import { HowWasThisComputed } from "./HowWasThisComputed";
+import { failureMetricAtom } from "../store/settingsAtoms";
+import { METRIC_LABEL_KEYS, toMetric } from "../lib/failureMetric";
+import type { StressMarker } from "./charts/FailureBody3D";
 import { layerContributionsFamily } from "../store/derivedAtoms";
 import { LAMINATE_FAILURE_KINDS, type LaminateFailureKindId } from "../lib/types";
 import { FailureBody3D, type FailureBodySurface } from "./charts/FailureBody3D";
@@ -42,6 +51,30 @@ export function LaminateFailureModuleContent({ laminateId }: { laminateId: strin
     loadableLaminateEnvelopeFamily(laminateEnvelopeKey(laminateId, kind, resolution)),
   );
   const envelope = state.state === "hasData" ? state.data : null;
+  const rayState = useAtomValue(loadableLaminateEnvelopeRayFamily(laminateEnvelopeRayKey(laminateId, kind)));
+  const rayData = rayState.state === "hasData" ? rayState.data : null;
+  const metric = useAtomValue(failureMetricAtom);
+
+  // The active load case on the surface (F2.4): the load as a point, the ray
+  // from the origin through it to the surface, and the load factor where
+  // they meet. Straight from the core (N4); only its display follows the
+  // metric setting.
+  const markers: StressMarker[] = useMemo(() => {
+    if (!rayData?.ray || rayData.rayCase.kind !== "ray") return [];
+    const { ray, rayCase } = rayData;
+    const shown = formatSignificant(toMetric(ray.rf, metric), 3, locale);
+    return [
+      {
+        stress: rayCase.load,
+        reserveFactor: ray.rf,
+        label: rayCase.loadCase.name,
+        hull: {
+          point: ray.failure_load as [number, number, number],
+          label: `${t(METRIC_LABEL_KEYS[metric])} = ${shown}`,
+        },
+      },
+    ];
+  }, [rayData, metric, locale, t]);
 
   // One colour per ply, so the same ply keeps its colour as the reader
   // switches between the two failure definitions.
@@ -90,6 +123,7 @@ export function LaminateFailureModuleContent({ laminateId }: { laminateId: strin
     <>
       <BackLink to={`/laminates/${laminateId}`} label={t("nav.laminate")} />
       <p className="hint">{t("laminateFailure.intro")}</p>
+      <LoadCaseBar laminateId={laminateId} />
 
       <section className="panel">
         <h2>{t("laminateFailure.title")}</h2>
@@ -142,7 +176,8 @@ export function LaminateFailureModuleContent({ laminateId }: { laminateId: strin
                 shape: "swatch",
               }))}
             />
-            <FailureBody3D bodies={bodies} markers={[]} axisLabels={AXES} />
+            <FailureBody3D bodies={bodies} markers={markers} axisLabels={AXES} />
+            <RayNote data={rayData} />
             <div className="flags">
               <button
                 type="button"
@@ -194,5 +229,50 @@ export function LaminateFailureModuleContent({ laminateId }: { laminateId: strin
         </section>
       )}
     </>
+  );
+}
+
+/** What the marker in the view says, in words - or why there is none. */
+function RayNote({
+  data,
+}: {
+  data: { ray: LaminateEnvelopeRay | null; rayCase: RayCase } | null;
+}) {
+  const t = useT();
+  const locale = useLocale();
+  const metric = useAtomValue(failureMetricAtom);
+  if (!data) return null;
+  const { ray, rayCase } = data;
+  if (rayCase.kind === "unsupported") {
+    return (
+      <p className="hint ray-note unsupported">
+        {t(`laminateFailure.ray.unsupported.${rayCase.reason}`, { name: rayCase.loadCase.name })}
+      </p>
+    );
+  }
+  if (!ray) return null;
+  const fmt = (v: number) => formatSignificant(v, 4, locale);
+  const [nx, ny, nxy] = rayCase.load;
+  const [fx, fy, fxy] = ray.failure_load;
+  return (
+    <div className="ray-note">
+      <p>
+        {t("laminateFailure.ray.summary", {
+          name: rayCase.loadCase.name,
+          metric: t(METRIC_LABEL_KEYS[metric]),
+          value: formatSignificant(toMetric(ray.rf, metric), 4, locale),
+          nr: ray.layer === null ? "–" : ray.layer + 1,
+        })}
+      </p>
+      {rayCase.hygrothermal && <p className="hint">{t("laminateFailure.ray.hygrothermal")}</p>}
+      <HowWasThisComputed
+        title={t("laminateFailure.ray.howTitle")}
+        formula={`\\vec n_{\\text{${t("laminateFailure.ray.surfaceWord")}}} = RF \\cdot \\vec n, \\qquad \\vec n = (n_x;\\, n_y;\\, n_{xy})`}
+        // Semicolons between the components: a German number has a comma.
+        substituted={`(${fmt(fx)};\\; ${fmt(fy)};\\; ${fmt(fxy)}) = ${fmt(ray.rf)} \\cdot (${fmt(nx)};\\; ${fmt(ny)};\\; ${fmt(nxy)})`}
+      >
+        <p className="hint">{t("laminateFailure.ray.howHint")}</p>
+      </HowWasThisComputed>
+    </div>
   );
 }

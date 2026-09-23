@@ -67,6 +67,19 @@ export const en = {
   "history.label.bulk": "Selected layers changed",
   "history.label.criteria": "Criteria changed",
   "history.label.ruleSettings": "Stacking rule thresholds changed",
+  "laminateFailure.ray.summary":
+    "Load case “{name}”: {metric} = {value} to the surface, governed by ply {nr}. The ring marks where the ray meets the surface.",
+  "laminateFailure.ray.hygrothermal":
+    "The load case's temperature and moisture change is not part of the failure surface; only the mechanical load is shown.",
+  "laminateFailure.ray.unsupported.moments":
+    "Load case “{name}” has moments. The failure surface is defined for in-plane loads (n_x, n_y, n_xy) only, so no load point is shown.",
+  "laminateFailure.ray.unsupported.strains":
+    "Load case “{name}” prescribes strains. The failure surface lives in the space of load flows, so no load point is shown.",
+  "laminateFailure.ray.unsupported.zero": "Load case “{name}” has no load, so there is no point and no ray.",
+  "laminateFailure.ray.surfaceWord": "surface",
+  "laminateFailure.ray.howTitle": "Load point on the failure surface",
+  "laminateFailure.ray.howHint":
+    "The load case's load is scaled at a fixed direction until the laminate fails by the chosen failure definition - the same search that gives every point of the surface.",
   "rules.title": "Stacking rules",
   "rules.intro":
     "Common design rules, checked on the full stack including mirrored plies. They are advice: every stack is computed.",

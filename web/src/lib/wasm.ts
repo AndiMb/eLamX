@@ -215,6 +215,8 @@ export const elamx = {
     call("compute_failure_envelope", [request], slot ?? null),
   compute_laminate_envelope: (request: string, slot?: string) =>
     call("compute_laminate_envelope", [request], slot ?? null),
+  compute_laminate_envelope_ray: (request: string, slot?: string) =>
+    call("compute_laminate_envelope_ray", [request], slot ?? null),
   compute_last_ply_failure: (request: string, slot?: string) =>
     call("compute_last_ply_failure", [request], slot ?? null),
   compute_pressure_vessel: (request: string, slot?: string) =>

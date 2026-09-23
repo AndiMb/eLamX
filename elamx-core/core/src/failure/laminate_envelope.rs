@@ -103,6 +103,8 @@ pub enum LaminateEnvelopeError {
     MissingCriterion(String),
     /// Fewer than two steps in a direction leaves no surface to draw.
     ResolutionTooLow { alpha_steps: usize, beta_steps: usize },
+    /// A ray was asked for through the origin, which has no direction.
+    ZeroLoad,
 }
 
 impl std::fmt::Display for LaminateEnvelopeError {
@@ -115,6 +117,7 @@ impl std::fmt::Display for LaminateEnvelopeError {
                 f,
                 "alpha_steps={alpha_steps}, beta_steps={beta_steps}: both must be at least 2"
             ),
+            LaminateEnvelopeError::ZeroLoad => write!(f, "the load is zero and has no direction"),
         }
     }
 }
@@ -171,7 +174,8 @@ pub fn laminate_envelope(
                 direction,
                 input.kind,
                 ply_count,
-            )?;
+            )?
+            .point();
 
             for value in point.load {
                 peak = peak.max(value.abs());
@@ -197,6 +201,70 @@ pub fn laminate_envelope(
     Ok(LaminateEnvelope { points, peak, axis_intersections })
 }
 
+/// One load case on the failure surface (F2.4): how far its in-plane load
+/// can be scaled before the laminate fails, and where the ray from the origin
+/// through the load meets the surface.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+pub struct LaminateEnvelopeRay {
+    /// The load factor: `failure_load = rf * load`. For `FirstPly` it is the
+    /// laminate's smallest ply reserve factor under that load; for `Final`
+    /// the largest load factor reached along the degradation path.
+    pub rf: f64,
+    /// The point on the surface, [n_x, n_y, n_xy] in N/mm.
+    pub failure_load: [f64; 3],
+    /// Stacking-order index of the ply that governed, as in
+    /// [`LaminateEnvelopePoint::layer`].
+    pub layer: Option<usize>,
+    /// How that ply failed at the reported point.
+    pub failure_type: FailureType,
+}
+
+/// The ray through one in-plane load: the same search a grid point of
+/// [`laminate_envelope`] runs, in the load's own direction instead of a grid
+/// direction, so the marker and the surface drawn around it agree.
+///
+/// `load` is [n_x, n_y, n_xy]. A zero load has no direction and is reported
+/// as `ZeroLoad`; the surface lives in the membrane space only, so moments or
+/// prescribed strains are the caller's to refuse (see the module
+/// documentation).
+pub fn laminate_rf_along(
+    laminate: &Laminate,
+    materials: &HashMap<String, Material>,
+    criteria: &HashMap<String, Box<dyn Criterion>>,
+    kind: LaminateFailureKind,
+    load: [f64; 3],
+) -> Result<LaminateEnvelopeRay, LaminateEnvelopeError> {
+    if load.iter().all(|v| *v == 0.0) {
+        return Err(LaminateEnvelopeError::ZeroLoad);
+    }
+    let (working, working_materials) = expand(laminate, materials)?;
+    let ply_count = working.layers.len();
+    let mut degraded = working_materials.clone();
+    let reach = along(&working, &working_materials, &mut degraded, criteria, load, kind, ply_count)?;
+    Ok(LaminateEnvelopeRay {
+        rf: reach.factor,
+        failure_load: reach.load,
+        layer: reach.layer,
+        failure_type: reach.failure_type,
+    })
+}
+
+/// How far one direction reaches: the factor on the direction vector, the
+/// load it gives, and which ply governed how.
+struct Reach {
+    factor: f64,
+    load: [f64; 3],
+    layer: Option<usize>,
+    failure_type: FailureType,
+}
+
+impl Reach {
+    fn point(self) -> LaminateEnvelopePoint {
+        LaminateEnvelopePoint { load: self.load, layer: self.layer }
+    }
+}
+
 /// Pushes the load along one direction until the laminate fails.
 ///
 /// A note for whoever next finds the numbers suspiciously round: they are.
@@ -215,7 +283,7 @@ fn along(
     direction: [f64; 3],
     kind: LaminateFailureKind,
     ply_count: usize,
-) -> Result<LaminateEnvelopePoint, LaminateEnvelopeError> {
+) -> Result<Reach, LaminateEnvelopeError> {
     // Everything starts from the undamaged stack.
     for (id, material) in pristine {
         degraded.insert(id.clone(), material.clone());
@@ -225,6 +293,7 @@ fn along(
     let mut broken_count = 0usize;
     let mut best = 0.0f64;
     let mut best_layer: Option<usize> = None;
+    let mut best_type = FailureType::Undamaged;
     let mut load = [0.0; 3];
 
     loop {
@@ -246,6 +315,7 @@ fn along(
 
         let mut governing = f64::MAX;
         let mut governing_layer = 0usize;
+        let mut governing_type = FailureType::Undamaged;
         let mut per_ply = vec![(f64::MAX, FailureType::Undamaged); ply_count];
 
         for (index, layer) in clt.layers().iter().enumerate() {
@@ -286,12 +356,14 @@ fn along(
             if worst < governing {
                 governing = worst;
                 governing_layer = index;
+                governing_type = worst_type;
             }
         }
 
         if governing > best {
             best = governing;
             best_layer = Some(governing_layer);
+            best_type = governing_type;
             load = [
                 governing * direction[0],
                 governing * direction[1],
@@ -337,7 +409,7 @@ fn along(
         }
     }
 
-    Ok(LaminateEnvelopePoint { load, layer: best_layer })
+    Ok(Reach { factor: best, load, layer: best_layer, failure_type: best_type })
 }
 
 /// Whether the ABD matrix still describes a laminate. A stack whose plies have
@@ -535,5 +607,69 @@ mod tests {
             laminate_envelope(&empty, &materials, &registry, &LaminateEnvelopeInput::default()),
             Err(LaminateEnvelopeError::NoLayers)
         ));
+    }
+
+    /// The ray through a load meets the surface where the grid does: along a
+    /// grid direction, scaled to any length, it reports that grid point.
+    #[test]
+    fn the_ray_meets_the_surface_where_the_grid_point_is() {
+        let angles = [0.0, 45.0, -45.0, 90.0];
+        let (laminate, materials) = stack(&angles);
+        let registry = default_criterion_registry();
+        for kind in [LaminateFailureKind::FirstPly, LaminateFailureKind::Final] {
+            let input = LaminateEnvelopeInput { kind, alpha_steps: 12, beta_steps: 24 };
+            let envelope = laminate_envelope(&laminate, &materials, &registry, &input).unwrap();
+            let d_alpha = std::f64::consts::PI / 12.0;
+            let d_beta = 2.0 * std::f64::consts::PI / 24.0;
+            for (i, j) in [(6, 0), (6, 6), (3, 5), (9, 17), (2, 11)] {
+                let alpha = -std::f64::consts::FRAC_PI_2 + d_alpha * i as f64;
+                let beta = d_beta * j as f64;
+                let unit = [alpha.sin(), beta.sin() * alpha.cos(), beta.cos() * alpha.cos()];
+                let scale = 137.0;
+                let load = [unit[0] * scale, unit[1] * scale, unit[2] * scale];
+                let ray = laminate_rf_along(&laminate, &materials, &registry, kind, load).unwrap();
+                let point = envelope.points[i][j];
+                let tolerance = 1e-9 * envelope.peak;
+                for ((on_ray, on_grid), applied) in ray.failure_load.iter().zip(point.load).zip(load) {
+                    assert!(
+                        (on_ray - on_grid).abs() < tolerance,
+                        "{kind:?} ({i},{j}): {on_ray} vs {on_grid}"
+                    );
+                    assert!((ray.rf * applied - on_ray).abs() < tolerance);
+                }
+                assert_eq!(ray.layer, point.layer);
+            }
+        }
+    }
+
+    /// First-ply failure is linear in the load, so the ray's factor is the
+    /// laminate's smallest reserve factor under that load - checked against
+    /// the ordinary ply-by-ply analysis, a different code path.
+    #[test]
+    fn the_first_ply_ray_factor_is_the_smallest_ply_reserve_factor() {
+        use crate::clt::{determine_values, get_layer_results, Loads};
+        let (laminate, materials) = stack(&[0.0, 45.0, -45.0, 90.0, 90.0, -45.0, 45.0, 0.0]);
+        let registry = default_criterion_registry();
+        let clt = CltLaminate::new(&laminate, &materials).unwrap();
+        for load in [[120.0, -30.0, 15.0], [-80.0, 60.0, 0.0], [0.0, 0.0, 45.0]] {
+            let ray = laminate_rf_along(&laminate, &materials, &registry, LaminateFailureKind::FirstPly, load)
+                .unwrap();
+            let mut loads = Loads { n_x: load[0], n_y: load[1], n_xy: load[2], ..Default::default() };
+            let mut strains = Default::default();
+            determine_values(&clt, &mut loads, &mut strains, &[false; 6]);
+            let results = get_layer_results(&clt, &loads, &strains, &materials, &registry).unwrap();
+            let (worst, worst_type) = results
+                .iter()
+                .flat_map(|r| [&r.rr_lower, &r.rr_upper])
+                .fold((f64::MAX, FailureType::Undamaged), |acc, rf| {
+                    if rf.minimal_reserve_factor < acc.0 { (rf.minimal_reserve_factor, rf.failure_type) } else { acc }
+                });
+            assert!((ray.rf - worst).abs() < 1e-9 * worst, "{load:?}: {} vs {worst}", ray.rf);
+            assert_eq!(ray.failure_type, worst_type);
+        }
+        assert_eq!(
+            laminate_rf_along(&laminate, &materials, &registry, LaminateFailureKind::FirstPly, [0.0; 3]),
+            Err(LaminateEnvelopeError::ZeroLoad)
+        );
     }
 }

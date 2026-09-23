@@ -27,6 +27,9 @@ export interface StressMarker {
   /** Reserve factor there - decides the colour, and whether it is outside. */
   reserveFactor: number;
   label: string;
+  /** Where the ray from the origin through the state meets the surface, when
+   *  known: drawn as a ring with its own label, the ray running on to it. */
+  hull?: { point: [number, number, number]; label: string };
 }
 
 interface Quad {
@@ -183,8 +186,10 @@ export const FailureBody3D = memo(function FailureBody3D({
     // ...but the frame does have to hold them, or a ply that fails badly would
     // have its marker off-canvas - the one thing the view exists to show.
     for (const m of markers) {
-      const n = norm(m.stress);
-      probe.push(project(n[0], n[1], n[2], { ...camera, zoom: 1 }, centre));
+      for (const p of m.hull ? [m.stress, m.hull.point] : [m.stress]) {
+        const n = norm(p);
+        probe.push(project(n[0], n[1], n[2], { ...camera, zoom: 1 }, centre));
+      }
     }
     const spanX = Math.max(...probe.map((p) => Math.abs(p.x))) * 2 || 1;
     const spanY = Math.max(...probe.map((p) => Math.abs(p.y))) * 2 || 1;
@@ -318,12 +323,17 @@ export const FailureBody3D = memo(function FailureBody3D({
 
     // The ply's own stress state: a line from the origin (the load path) and a
     // dot at its end. Green inside the body, red outside - which is the same
-    // statement as RF >= 1, drawn where it can be seen.
+    // statement as RF >= 1, drawn where it can be seen. The shape says it too
+    // (N7): a filled dot inside, a cross outside.
     for (const marker of markers) {
       const origin = to2d([0, 0, 0]);
       const point = to2d(marker.stress);
       const failed = marker.reserveFactor < 1;
       const color = failed ? colors.status.danger : colors.status.ok;
+      const hull = marker.hull ? to2d(marker.hull.point) : null;
+      // The ray runs to whichever is farther out: the surface for a load that
+      // holds, the load itself for one that does not.
+      const rayEnd = hull && marker.reserveFactor > 1 ? hull : point;
 
       ctx.save();
       ctx.strokeStyle = color;
@@ -331,17 +341,41 @@ export const FailureBody3D = memo(function FailureBody3D({
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
       ctx.moveTo(origin.x, origin.y);
-      ctx.lineTo(point.x, point.y);
+      ctx.lineTo(rayEnd.x, rayEnd.y);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, 4.5, 0, 2 * Math.PI);
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.strokeStyle = getComputedStyle(canvas).backgroundColor || "#fff";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      if (hull && marker.hull) {
+        ctx.beginPath();
+        ctx.arc(hull.x, hull.y, 6, 0, 2 * Math.PI);
+        ctx.strokeStyle = axisColor;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = axisColor;
+        ctx.font = "600 11px system-ui, sans-serif";
+        // Below the ring, where the load label beside the point is not.
+        ctx.fillText(marker.hull.label, hull.x + 9, hull.y + 16);
+      }
+
+      if (failed) {
+        const r = 5;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(point.x - r, point.y - r);
+        ctx.lineTo(point.x + r, point.y + r);
+        ctx.moveTo(point.x + r, point.y - r);
+        ctx.lineTo(point.x - r, point.y + r);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 4.5, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = getComputedStyle(canvas).backgroundColor || "#fff";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
 
       ctx.fillStyle = color;
       ctx.font = "11px system-ui, sans-serif";
