@@ -23,10 +23,15 @@
 pub mod naming;
 mod read;
 mod reduced;
+mod web_extension;
 mod write;
 
 pub use read::{read_elamx, ReadError};
 pub use reduced::read_elamxb;
+pub use web_extension::{
+    ComparisonState, ComparisonVariant, ImportNotice, LayerCriteriaEntry, WebExtension,
+    WEB_EXTENSION_SCHEMA, WEB_EXTENSION_TAG,
+};
 pub use write::write_elamx;
 
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, Strains};
@@ -66,6 +71,15 @@ pub struct Project {
     /// laminate module: a search is not about a stack, it is looking for one.
     #[serde(default)]
     pub optimizations: Vec<NamedOptimization>,
+    /// `<webExtension>`: what only the web version uses. `None` when the file
+    /// had none it could read - one of an unknown schema stays in
+    /// `unsupported_sections` instead, see `project::web_extension`.
+    #[serde(default)]
+    pub web_extension: Option<WebExtension>,
+    /// What the reader could not use, for the UI to report. Filled on read and
+    /// ignored on write.
+    #[serde(default)]
+    pub import_notices: Vec<ImportNotice>,
 }
 
 /// One saved search.

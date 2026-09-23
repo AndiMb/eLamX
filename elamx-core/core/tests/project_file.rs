@@ -9,12 +9,15 @@
 
 use elamx_core::clt::RadiusType;
 use elamx_core::plate::Stiffener;
-use elamx_core::project::{read_elamx, write_elamx, Project, ReadError};
+use elamx_core::project::{
+    read_elamx, write_elamx, ComparisonState, ComparisonVariant, ImportNotice, LayerCriteriaEntry,
+    Project, ReadError, WebExtension, WEB_EXTENSION_TAG,
+};
 use elamx_core::cutout::CutoutInput;
 use elamx_core::optimization::Constraint;
 use elamx_core::plate::DeformationInput;
 use elamx_core::spring_in::SpringInInput;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 fn golden_dir() -> String {
     concat!(env!("CARGO_MANIFEST_DIR"), "/tests/golden").to_string()
@@ -851,4 +854,158 @@ fn handles_an_empty_project() {
     assert!(back.materials.is_empty());
     assert!(back.laminates.is_empty());
     assert_eq!(back.version, "1");
+}
+
+// ---------------------------------------------------------------------------
+// <webExtension>
+// ---------------------------------------------------------------------------
+
+fn full_extension() -> WebExtension {
+    WebExtension {
+        layer_criteria: vec![LayerCriteriaEntry {
+            laminate_uuid: "lam-1".into(),
+            layer_uuid: "layer-1".into(),
+            primary: "puck".into(),
+            extra: vec!["tsai_wu".into(), "max_stress".into()],
+        }],
+        // Opaque today, so any JSON has to come back as it went in - including
+        // strings that would end a CDATA section or look like eLamX's tags.
+        studies: vec![json!({"id": "s1", "name": "Studie ]]> <laminate>", "kind": "matrix"})],
+        snapshots: vec![json!({"id": "snap", "keyFigures": {"minRf": 1.25}})],
+        report_templates: vec![json!({"name": "Standard", "sections": ["abd", "layerResults"]})],
+        comparison: Some(ComparisonState {
+            variants: vec![ComparisonVariant {
+                laminate_uuid: "lam-1".into(),
+                load_case_index: 1,
+                load_case_name: "Zug & Druck".into(),
+            }],
+        }),
+        stacking_rule_settings: Some(json!({"maxSameAngle": 4})),
+        ..WebExtension::new()
+    }
+}
+
+fn project_with(extension: Option<WebExtension>) -> Project {
+    Project {
+        web_extension: extension,
+        ..read_elamx(&reference_xml()).unwrap()
+    }
+}
+
+#[test]
+fn web_extension_round_trips_every_field() {
+    let xml = write_elamx(&project_with(Some(full_extension())));
+    let back = read_elamx(&xml).expect("Datei mit Erweiterung muss lesbar sein");
+    assert_eq!(back.web_extension, Some(full_extension()));
+    assert!(back.import_notices.is_empty(), "{:?}", back.import_notices);
+    assert!(
+        back.unsupported_sections.iter().all(|s| s.tag != WEB_EXTENSION_TAG),
+        "eine lesbare Erweiterung ist kein Fremdabschnitt"
+    );
+    // And stable: saving what was read gives the same file.
+    assert_eq!(write_elamx(&back), xml);
+}
+
+/// eLamX 3.x finds its sections with `getElementsByTagName`, which searches
+/// every descendant. Nothing of the extension may therefore look like an
+/// element - not even a user-typed name that happens to contain one.
+#[test]
+fn web_extension_contains_no_element_elamx_could_mistake_for_its_own() {
+    let xml = write_elamx(&project_with(Some(full_extension())));
+    let doc = roxmltree::Document::parse(&xml).unwrap();
+    let extension = doc
+        .root_element()
+        .children()
+        .find(|n| n.has_tag_name(WEB_EXTENSION_TAG))
+        .expect("Erweiterung geschrieben");
+    assert_eq!(extension.attribute("schema"), Some("1"));
+    assert_eq!(extension.descendants().filter(|n| n.is_element()).count(), 1);
+}
+
+/// A project that uses no web-only feature has to be written exactly as it was
+/// before the extension existed - otherwise every desktop file opened and saved
+/// in the web version would come back with a diff.
+#[test]
+fn an_empty_web_extension_is_not_written() {
+    let without = write_elamx(&project_with(None));
+    let empty = write_elamx(&project_with(Some(WebExtension::new())));
+    assert_eq!(without, empty);
+    assert!(!without.contains(WEB_EXTENSION_TAG));
+    assert_eq!(read_elamx(&without).unwrap().web_extension, None);
+}
+
+/// Java's writer is free to turn the CDATA section into escaped text; both are
+/// the same XML and both have to read.
+#[test]
+fn reads_a_web_extension_stored_as_escaped_text() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<elamx version="1">
+    <laminates/>
+    <materials/>
+    <webExtension schema="1">{&quot;schema&quot;:1,&quot;comparison&quot;:{&quot;variants&quot;:[]}}</webExtension>
+</elamx>"#;
+    let project = read_elamx(xml).unwrap();
+    assert_eq!(
+        project.web_extension,
+        Some(WebExtension {
+            comparison: Some(ComparisonState::default()),
+            ..WebExtension::new()
+        })
+    );
+}
+
+fn with_raw_extension(element: &str) -> String {
+    format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<elamx version=\"1\">\n    <laminates/>\n    <materials/>\n    {element}\n</elamx>\n"
+    )
+}
+
+/// A newer version's extension is neither interpreted nor lost: it travels as
+/// it came, the user is told, and this build's own extension gives way to it
+/// rather than standing beside it as a second, competing one.
+#[test]
+fn keeps_a_web_extension_of_an_unknown_schema() {
+    let xml = with_raw_extension(r#"<webExtension schema="7"><![CDATA[{"schema":7,"neu":true}]]></webExtension>"#);
+    let project = read_elamx(&xml).unwrap();
+    assert_eq!(project.web_extension, None);
+    assert_eq!(
+        project.import_notices,
+        [ImportNotice::UnknownWebExtensionSchema { schema: "7".into() }]
+    );
+    let kept: Vec<&str> = project.unsupported_sections.iter().map(|s| s.tag.as_str()).collect();
+    assert_eq!(kept, [WEB_EXTENSION_TAG]);
+
+    let written = write_elamx(&Project {
+        web_extension: Some(full_extension()),
+        ..project
+    });
+    assert_eq!(written.matches(WEB_EXTENSION_TAG).count(), 2, "genau ein Element: {written}");
+    let again = read_elamx(&written).unwrap();
+    assert_eq!(
+        again.import_notices,
+        [ImportNotice::UnknownWebExtensionSchema { schema: "7".into() }]
+    );
+    let doc = roxmltree::Document::parse(&written).unwrap();
+    let text: String = doc
+        .descendants()
+        .find(|n| n.has_tag_name(WEB_EXTENSION_TAG))
+        .unwrap()
+        .text()
+        .unwrap()
+        .to_string();
+    assert_eq!(text, r#"{"schema":7,"neu":true}"#);
+}
+
+/// Content that is not valid JSON of the schema is somebody's data all the
+/// same, and must not stop the project from opening.
+#[test]
+fn keeps_a_web_extension_it_cannot_parse() {
+    let xml = with_raw_extension(r#"<webExtension schema="1"><![CDATA[{"layer_criteria": 3}]]></webExtension>"#);
+    let project = read_elamx(&xml).expect("das Projekt selbst ist lesbar");
+    assert_eq!(project.web_extension, None);
+    assert!(matches!(
+        project.import_notices.as_slice(),
+        [ImportNotice::InvalidWebExtension { .. }]
+    ));
+    assert!(write_elamx(&project).contains(r#"<webExtension schema="1">"#));
 }

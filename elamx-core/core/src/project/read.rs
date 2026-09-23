@@ -13,6 +13,7 @@ use super::{
     NamedCutout, NamedOptimization, NamedSpringIn, NamedVibration, Project, ProjectLaminate,
     RawElement,
 };
+use super::web_extension::{ImportNotice, WebExtension, WEB_EXTENSION_SCHEMA, WEB_EXTENSION_TAG};
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, RadiusType, Strains};
 use crate::micromechanics::{self, Fibre, MatrixMaterial, MicroMechanics, Model};
 use crate::model::{Laminate, Layer, Material};
@@ -125,11 +126,11 @@ pub fn read_elamx(xml: &str) -> Result<Project> {
     // Sections that belong to the project rather than to a laminate and that
     // this crate does not model - `<optimizations>` today. They travel as raw
     // XML: dropping them would delete real work on the next save.
-    let unsupported_sections = root
+    let mut unsupported_sections: Vec<RawElement> = root
         .children()
         .filter(|n| n.is_element())
         .filter(|n| {
-            !["materials", "laminates", "fibres", "matrices", "optimizations"]
+            !["materials", "laminates", "fibres", "matrices", "optimizations", WEB_EXTENSION_TAG]
                 .contains(&n.tag_name().name())
         })
         .map(|n| RawElement {
@@ -137,6 +138,24 @@ pub fn read_elamx(xml: &str) -> Result<Project> {
             xml: serialise(n),
         })
         .collect();
+
+    let mut import_notices = Vec::new();
+    let mut web_extension = None;
+    if let Some(node) = child(root, WEB_EXTENSION_TAG) {
+        match read_web_extension(node) {
+            Ok(extension) => web_extension = Some(extension),
+            // Not an error for the file: everything eLamX itself stores was
+            // read. What this build cannot interpret stays as it is - it may
+            // be a newer version's data - and the user is told.
+            Err(notice) => {
+                import_notices.push(notice);
+                unsupported_sections.push(RawElement {
+                    tag: WEB_EXTENSION_TAG.to_string(),
+                    xml: serialise(node),
+                });
+            }
+        }
+    }
 
     Ok(Project {
         version,
@@ -146,7 +165,35 @@ pub fn read_elamx(xml: &str) -> Result<Project> {
         laminates,
         unsupported_sections,
         optimizations: read_optimizations(root)?,
+        web_extension,
+        import_notices,
     })
+}
+
+/// Reads `<webExtension>`, or says why it cannot.
+fn read_web_extension(node: Node) -> std::result::Result<WebExtension, ImportNotice> {
+    let schema = attr(node, "schema").unwrap_or_default();
+    if schema.trim().parse::<u32>().ok() != Some(WEB_EXTENSION_SCHEMA) {
+        return Err(ImportNotice::UnknownWebExtensionSchema {
+            schema: schema.to_string(),
+        });
+    }
+    // All text below the element rather than `node.text()`: a writer that
+    // splits the CDATA section around a `]]>` - this one does - or that turns
+    // it into escaped text leaves more than one text node behind.
+    let json: String = node
+        .descendants()
+        .filter(|n| n.is_text())
+        .filter_map(|n| n.text())
+        .collect();
+    let mut extension: WebExtension =
+        serde_json::from_str(&json).map_err(|e| ImportNotice::InvalidWebExtension {
+            message: e.to_string(),
+        })?;
+    // The attribute decides, not the copy inside the JSON: it is what was
+    // checked above.
+    extension.schema = WEB_EXTENSION_SCHEMA;
+    Ok(extension)
 }
 
 // ---------------------------------------------------------------------------

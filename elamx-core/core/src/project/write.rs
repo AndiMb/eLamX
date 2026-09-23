@@ -6,6 +6,7 @@
 //! the same file saved there - not a reformatting of the whole document.
 
 use super::naming;
+use super::web_extension::{to_cdata, WebExtension, WEB_EXTENSION_SCHEMA, WEB_EXTENSION_TAG};
 use super::{
     NamedBuckling, NamedCalculation, NamedDeformation, NamedLastPlyFailure, NamedPressureVessel,
     NamedCutout, NamedOptimization, NamedSpringIn, NamedVibration, Project, ProjectLaminate,
@@ -66,6 +67,31 @@ pub fn write_elamx(project: &Project) -> String {
             write_optimization(optimization, &mut out);
         }
         out.push_str("    </optimizations>\n");
+    }
+
+    // Only when there is something in it, so a project that uses no web-only
+    // feature is written exactly as eLamX 3.x would write it. And not at all
+    // when the file already carried one this build could not read: that is a
+    // newer version's data, it travels below as it came, and a second element
+    // beside it would leave the next reader to guess which one counts.
+    let foreign_extension = project
+        .unsupported_sections
+        .iter()
+        .any(|s| s.tag == WEB_EXTENSION_TAG);
+    if let Some(extension) = project.web_extension.as_ref() {
+        if !extension.is_empty() && !foreign_extension {
+            let extension = WebExtension {
+                schema: WEB_EXTENSION_SCHEMA,
+                ..extension.clone()
+            };
+            // Serialising plain data with string keys cannot fail.
+            let json = serde_json::to_string(&extension).expect("WebExtension ist serialisierbar");
+            out.push_str(&format!(
+                "    <{WEB_EXTENSION_TAG} schema=\"{WEB_EXTENSION_SCHEMA}\">{}</{WEB_EXTENSION_TAG}>
+",
+                to_cdata(&json)
+            ));
+        }
     }
 
     for section in &project.unsupported_sections {
