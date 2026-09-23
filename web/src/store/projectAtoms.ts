@@ -25,6 +25,8 @@ import {
   type WebExtensionCarry,
 } from "../lib/webExtension";
 import { comparisonVariantsAtom } from "./comparisonAtoms";
+import { stackingRuleSettingsAtom } from "./stackingRuleAtoms";
+import type { RuleSettings } from "../lib/generated/RuleSettings";
 import { bucklingInputFamily, bucklingStorageKey } from "./bucklingAtoms";
 import { fibresAtom, matricesAtom } from "./micromechanicsAtoms";
 import { cutoutInputFamily, cutoutStorageKey } from "./cutoutAtoms";
@@ -168,6 +170,7 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
     unsupportedSections: get(projectSectionsAtom),
     comparison: get(comparisonVariantsAtom),
     webExtensionCarry: get(webExtensionCarryAtom),
+    stackingRuleSettings: get(stackingRuleSettingsAtom),
   };
 });
 
@@ -211,6 +214,8 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
   // before point at laminates this one does not have.
   set(comparisonVariantsAtom, project.comparison ?? []);
   set(webExtensionCarryAtom, project.webExtensionCarry ?? EMPTY_WEB_EXTENSION_CARRY);
+  // The file's thresholds, or the defaults: rule settings are the project's.
+  set(stackingRuleSettingsAtom, project.stackingRuleSettings ?? null);
   set(importNoticesAtom, project.importNotices ?? []);
   if (project.optimization) {
     set(optimizationInputAtom, project.optimization.input);
@@ -374,9 +379,12 @@ export interface ProjectSnapshotV2 {
   unsupportedSections: unknown[];
   version: string;
   comparison: Variant[];
-  /** Placeholders for layer criteria, studies, snapshots, report templates
-   *  and rule settings until their features exist. */
+  /** Placeholders for studies, snapshots and report templates until their
+   *  features exist. */
   webExtensionCarry: WebExtensionCarry;
+  /** The stacking-rule thresholds, null for the defaults. Optional so that a
+   *  snapshot from before the rules existed restores the defaults. */
+  stackingRuleSettings?: RuleSettings | null;
 }
 
 function readModules(get: Getter, id: string): ModuleInputs {
@@ -415,6 +423,7 @@ export const projectSnapshotV2Atom = atom<ProjectSnapshotV2>((get) => {
     version: get(projectVersionAtom),
     comparison: get(comparisonVariantsAtom),
     webExtensionCarry: get(webExtensionCarryAtom),
+    stackingRuleSettings: get(stackingRuleSettingsAtom),
   };
 });
 
@@ -454,6 +463,7 @@ export const restoreProjectAtom = atom(null, (get, set, snapshot: ProjectSnapsho
   setIfChanged(get, set, extraOptimizationsAtom, snapshot.extraOptimizations);
   setIfChanged(get, set, comparisonVariantsAtom, snapshot.comparison);
   setIfChanged(get, set, webExtensionCarryAtom, snapshot.webExtensionCarry);
+  setIfChanged(get, set, stackingRuleSettingsAtom, snapshot.stackingRuleSettings ?? null);
 
   const optimization = snapshot.optimization;
   const searchStored = hasStoredInput(OPTIMIZATION_STORAGE_KEY);

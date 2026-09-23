@@ -147,7 +147,6 @@ describe("die Web-Erweiterung der Projektdatei", () => {
       studies: [{ id: "s1", kind: "matrix" }],
       snapshots: [{ id: "snap" }],
       reportTemplates: [{ name: "Standard" }],
-      stackingRuleSettings: { maxSameAngle: 4 },
     };
     const reopened = await importProject(
       await exportProject({ ...opened, webExtensionCarry: carry }),
@@ -229,5 +228,17 @@ describe("Zusatzkriterien je Lage in der Datei", () => {
         extra: ["puck"],
       },
     ]);
+  });
+});
+
+describe("Schwellwerte der Aufbauregeln in der Datei", () => {
+  it("überstehen Speichern und Öffnen, und fehlen, wenn nie geändert", async () => {
+    const opened = await importProject(REFERENCE);
+    expect(opened.stackingRuleSettings).toBeNull();
+    expect(await exportProject(opened)).not.toContain("stacking_rule_settings");
+
+    const settings = { min_fraction: 0.125, max_consecutive: 3 };
+    const reopened = await importProject(await exportProject({ ...opened, stackingRuleSettings: settings }));
+    expect(reopened.stackingRuleSettings).toEqual(settings);
   });
 });

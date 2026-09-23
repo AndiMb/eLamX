@@ -60,10 +60,11 @@ pub struct WebExtension {
     /// What the comparison page shows.
     #[serde(default)]
     pub comparison: Option<ComparisonState>,
-    /// Thresholds of the stacking-rule check. Opaque for the same reason.
+    /// Thresholds of the stacking-rule check, when the user changed them.
+    /// Fields a newer version adds are ignored and missing ones take their
+    /// defaults, so this never makes a whole extension unreadable.
     #[serde(default)]
-    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
-    pub stacking_rule_settings: Option<serde_json::Value>,
+    pub stacking_rule_settings: Option<crate::stacking_rules::RuleSettings>,
 }
 
 impl WebExtension {

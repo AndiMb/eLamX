@@ -33,6 +33,7 @@ import {
 import type { ComparisonVariant } from "./generated/ComparisonVariant";
 import type { ImportNotice as CoreImportNotice } from "./generated/ImportNotice";
 import type { WebExtension } from "./generated/WebExtension";
+import type { RuleSettings } from "./generated/RuleSettings";
 import type { Variant } from "../store/comparisonAtoms";
 import {
   EMPTY_WEB_EXTENSION_CARRY,
@@ -187,6 +188,10 @@ export interface ProjectSnapshot {
    *  exist, so that a round trip through this build does not lose what a
    *  newer one wrote. */
   webExtensionCarry: WebExtensionCarry;
+  /** The thresholds of the stacking-rule check, or null for the defaults.
+   *  Optional so that a snapshot written before the check existed still
+   *  reads. */
+  stackingRuleSettings?: RuleSettings | null;
   /** What could not be used when the file was read. Empty on the way out. */
   importNotices?: ImportNotice[];
 }
@@ -238,7 +243,7 @@ function toWebExtension(snapshot: ProjectSnapshot): WebExtension | null {
     snapshots: carry.snapshots,
     report_templates: carry.reportTemplates,
     comparison: variants.length > 0 ? { variants } : null,
-    stacking_rule_settings: carry.stackingRuleSettings ?? null,
+    stacking_rule_settings: snapshot.stackingRuleSettings ?? null,
   };
   const empty =
     extension.layer_criteria.length === 0 &&
@@ -407,9 +412,9 @@ export async function importProject(
           studies: extension.studies,
           snapshots: extension.snapshots,
           reportTemplates: extension.report_templates,
-          stackingRuleSettings: extension.stacking_rule_settings ?? null,
         }
       : EMPTY_WEB_EXTENSION_CARRY,
+    stackingRuleSettings: extension?.stacking_rule_settings ?? null,
     importNotices,
   };
 }

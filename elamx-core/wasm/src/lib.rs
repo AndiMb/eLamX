@@ -6,6 +6,7 @@
 //! boundary small and lets the frontend evolve its own request/response
 //! builders without needing bindgen-generated classes for every domain type.
 
+use elamx_core::stacking_rules::RuleSettings;
 use elamx_core::clt::{
     calculate_last_ply_failure, calculate_pressure_vessel, determine_values, get_layer_results,
     CltLaminate, CltLayer, LastPlyFailureInput, LastPlyFailureResult, LayerContribution, LayerResult, Loads,
@@ -1055,6 +1056,38 @@ fn compute_layer_stiffness_impl(request_json: &str) -> Result<String, String> {
     serde_json::to_string(&stiffness).map_err(|e| e.to_string())
 }
 
+#[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+struct StackingRulesRequest {
+    /// The stored sequence, outside in, as the laminate keeps it.
+    angles: Vec<f64>,
+    symmetric: bool,
+    with_middle_layer: bool,
+    #[serde(default)]
+    settings: RuleSettings,
+}
+
+/// The design rules of a stacking sequence - symmetric, balanced, minimum
+/// share per orientation, longest run of one angle, +-45 outside.
+///
+/// Advisory: every laminate is computed whatever this says.
+#[wasm_bindgen]
+pub fn check_stacking_rules(request_json: &str) -> Result<String, JsValue> {
+    check_stacking_rules_impl(request_json).map_err(|e| JsValue::from_str(&e))
+}
+
+fn check_stacking_rules_impl(request_json: &str) -> Result<String, String> {
+    let request: StackingRulesRequest =
+        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let results = elamx_core::stacking_rules::check_stacking_rules(
+        &request.angles,
+        request.symmetric,
+        request.with_middle_layer,
+        &request.settings,
+    );
+    serde_json::to_string(&results).map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1823,5 +1856,21 @@ mod tests {
         assert!(import_elamx_impl("<nope").is_err());
         assert!(import_elamx_impl("<other/>").is_err());
         assert!(export_elamx_impl("not json").is_err());
+    }
+
+    /// The rules over the JSON boundary: the stored half expands, the
+    /// settings are optional, and each result names its rule.
+    #[test]
+    fn check_stacking_rules_reads_a_stored_half_and_default_settings() {
+        let response = check_stacking_rules_impl(
+            r#"{"angles":[45,-45,0,90],"symmetric":true,"with_middle_layer":false}"#,
+        )
+        .unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+        let rules: Vec<&str> = parsed.as_array().unwrap().iter().map(|r| r["rule"].as_str().unwrap()).collect();
+        assert_eq!(rules, ["symmetric", "balanced", "min_fraction", "max_consecutive", "outer_plies45"]);
+        assert!(parsed.as_array().unwrap().iter().all(|r| r["passed"] == true));
+        assert_eq!(parsed[3]["detail"]["kind"], "longest_run");
+        assert_eq!(parsed[3]["detail"]["length"], 2);
     }
 }

@@ -40,6 +40,7 @@ import { DragHandle, SortableLayers, SortableRowShell } from "../components/Sort
 import { LayerTableContext, type LayerTableState } from "../components/layerTableContext";
 import { CRITERIA, criterionName, type CriterionId, type MaterialDto } from "../lib/types";
 import { CriteriaPopover } from "../components/CriteriaPopover";
+import { StackingRuleBadges } from "../components/StackingRuleBadges";
 import { criteriaOf, withCriteria, withPrimary } from "../lib/criteriaList";
 import { useT } from "../i18n";
 
@@ -845,6 +846,7 @@ function LaminateEditor({ id }: { id: string }) {
                     compact
                   />
                 </div>
+                <StackingRuleBadges laminateId={id} />
                 <LayerTableContext.Provider value={tableState}>
                   <SortableLayers
                     ids={config.layers.map((l) => l.id)}

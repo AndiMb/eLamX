@@ -877,7 +877,7 @@ fn full_extension() -> WebExtension {
                 load_case_name: "Zug & Druck".into(),
             }],
         }),
-        stacking_rule_settings: Some(json!({"maxSameAngle": 4})),
+        stacking_rule_settings: Some(elamx_core::stacking_rules::RuleSettings { min_fraction: 0.125, max_consecutive: 3 }),
         ..WebExtension::new()
     }
 }

@@ -17,14 +17,12 @@ export interface WebExtensionCarry {
   studies: unknown[];
   snapshots: unknown[];
   reportTemplates: unknown[];
-  stackingRuleSettings: unknown;
 }
 
 export const EMPTY_WEB_EXTENSION_CARRY: WebExtensionCarry = {
   studies: [],
   snapshots: [],
   reportTemplates: [],
-  stackingRuleSettings: null,
 };
 
 /** Something about an opened file worth telling the user: the core's notices

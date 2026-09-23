@@ -4,6 +4,7 @@ import { activeLoadCaseFamily, laminateConfigFamily } from "../store/laminateAto
 import { expandedStack, shortStackNotation } from "../lib/angleStack";
 import { StackViz } from "./StackViz";
 import { QuantityDisplay } from "./QuantityDisplay";
+import { StackingRuleSummary } from "./StackingRuleBadges";
 import { useT } from "../i18n";
 
 // A permanent strip above every module page, showing the object the module is
@@ -51,6 +52,7 @@ export function ModuleContextBar({ laminateId }: { laminateId: string }) {
       </span>
       <span className="context-facts">
         <span className="context-load-case">{loadCase.name}</span>
+        <StackingRuleSummary laminateId={laminateId} />
         <span>{t("context.plies", { count: plies })}</span>
         <span>
           t<sub>ges</sub> = <QuantityDisplay category="thickness" value={thickness} />

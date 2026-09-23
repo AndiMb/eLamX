@@ -223,6 +223,8 @@ export const elamx = {
     call("compute_carpet_plot", [request], slot ?? null),
   compute_layer_stiffness: (request: string, slot?: string) =>
     call("compute_layer_stiffness", [request], slot ?? null),
+  check_stacking_rules: (request: string, slot?: string) =>
+    call("check_stacking_rules", [request], slot ?? null),
   resolve_micromechanics: (request: string, slot?: string) =>
     call("resolve_micromechanics", [request], slot ?? null),
 

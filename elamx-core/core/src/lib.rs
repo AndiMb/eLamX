@@ -8,5 +8,6 @@ pub mod optimization;
 pub mod cutout;
 pub mod spring_in;
 pub mod carpet;
+pub mod stacking_rules;
 pub mod export;
 pub mod project;
