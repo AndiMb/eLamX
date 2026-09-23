@@ -14,6 +14,7 @@
 // device pixel per CSS pixel and looks soft on every display made since 2012.
 
 import { saveFile } from "./saveFile";
+import { darkToLight } from "./chartColors";
 
 /** Rendered at this multiple of the on-screen size. */
 export const SNAPSHOT_SCALE = 2;
@@ -50,18 +51,27 @@ function inlineStyles(source: Element, clone: Element) {
   }
 }
 
-/** The colour to paint behind the chart, so a dark theme does not export dark
- *  ink on nothing. Walks up until it finds something opaque. */
-function backgroundOf(element: Element): string {
-  let current: Element | null = element;
-  while (current) {
-    const colour = window.getComputedStyle(current).backgroundColor;
-    if (colour && colour !== "transparent" && !colour.startsWith("rgba(0, 0, 0, 0)")) {
-      return colour;
-    }
-    current = current.parentElement;
+/** What a picture is painted on and written with: always the light theme's
+ *  paper and ink (N9). A chart goes into a report or onto a slide, and a
+ *  dark screen is a setting of the screen, not of the chart. */
+const PAPER = "#ffffff";
+const INK = "#0e131b";
+
+/**
+ * Runs `read` while the element wears the light theme.
+ *
+ * The chart's colours are custom properties the dark theme redefines, and
+ * what the serializer copies is their computed value. The class swaps in the
+ * light values for exactly as long as the styles are read: the page is not
+ * repainted in between, so nothing on screen flickers.
+ */
+export function inLightTheme<T>(element: Element, read: () => T): T {
+  element.classList.add("export-light");
+  try {
+    return read();
+  } finally {
+    element.classList.remove("export-light");
   }
-  return "#ffffff";
 }
 
 /**
@@ -86,17 +96,49 @@ export function chartToStandaloneSvg(svg: SVGSVGElement): {
   const height = Math.max(1, Math.round(rect.height || viewBox.height));
 
   const clone = svg.cloneNode(true) as SVGSVGElement;
-  inlineStyles(svg, clone);
+  inLightTheme(svg, () => inlineStyles(svg, clone));
+  clone.classList.remove("export-light");
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   clone.setAttribute("width", String(width));
   clone.setAttribute("height", String(height));
 
-  return { source: new XMLSerializer().serializeToString(clone), width, height };
+  // Colours the JS palette wrote as attributes do not follow the class; the
+  // dark palette's are swapped for their light counterparts by value.
+  let source = new XMLSerializer().serializeToString(clone);
+  for (const [dark, light] of darkToLight()) source = source.replaceAll(dark, light);
+  return { source, width, height };
 }
 
-/** The ink colour to write a title in: the chart's own inherited text colour. */
-function inkOf(element: Element): string {
-  return window.getComputedStyle(element).color || "#000000";
+/** Gap between the parts of a chart drawn as several SVGs, in pixels. */
+const PART_GAP = 12;
+
+/**
+ * A chart as one standalone SVG, whatever it is drawn as: an SVG element, or
+ * an element holding several - the through-thickness sheet draws one SVG per
+ * column. The parts are placed side by side, each as a nested SVG at the size
+ * it has on screen.
+ */
+export function standaloneSvgOf(target: Element): { source: string; width: number; height: number } {
+  if (target instanceof SVGSVGElement) return chartToStandaloneSvg(target);
+  const parts = Array.from(target.querySelectorAll<SVGSVGElement>("svg.chart-svg")).filter(
+    (svg) => !svg.parentElement?.closest("svg"),
+  );
+  const standalone = parts.map((svg) => chartToStandaloneSvg(svg));
+  let x = 0;
+  const nested = standalone.map((part) => {
+    const at = x;
+    x += part.width + PART_GAP;
+    return part.source.replace(/^<svg /, `<svg x="${at}" y="0" `);
+  });
+  const width = Math.max(1, x - PART_GAP);
+  const height = Math.max(1, ...standalone.map((p) => p.height));
+  return {
+    source:
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
+      `${nested.join("")}</svg>`,
+    width,
+    height,
+  };
 }
 
 /** Height of the title band, in CSS pixels before scaling. */
@@ -107,8 +149,8 @@ const TITLE_BAND = 26;
  *  The title is drawn into the picture rather than left behind, because a
  *  chart in a report without its caption is a shape with no subject - the
  *  plate exporter next door makes the same argument about its colour bar. */
-export async function svgToPngBlob(svg: SVGSVGElement, title?: string): Promise<Blob | null> {
-  const { source, width, height } = chartToStandaloneSvg(svg);
+export async function svgToPngBlob(svg: Element, title?: string): Promise<Blob | null> {
+  const { source, width, height } = standaloneSvgOf(svg);
   // A data URL rather than a blob URL: a blob URL taints the canvas in some
   // browsers, and a tainted canvas cannot be read back.
   const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`;
@@ -128,10 +170,10 @@ export async function svgToPngBlob(svg: SVGSVGElement, title?: string): Promise<
   canvas.height = (height + band) * SNAPSHOT_SCALE;
   const context = canvas.getContext("2d");
   if (!context) return null;
-  context.fillStyle = backgroundOf(svg);
+  context.fillStyle = PAPER;
   context.fillRect(0, 0, canvas.width, canvas.height);
   if (title) {
-    context.fillStyle = inkOf(svg);
+    context.fillStyle = INK;
     context.textBaseline = "middle";
     // Shrunk to fit rather than clipped: a caption cut off mid-word is worse
     // than a small one, and a chart title is short enough that two points of
@@ -165,7 +207,7 @@ export async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob |
 
 /** Saves either kind, under a name ending in `.png`. */
 export async function saveChartPng(
-  target: SVGSVGElement | HTMLCanvasElement,
+  target: Element,
   name: string,
   title?: string,
 ): Promise<void> {
@@ -175,4 +217,12 @@ export async function saveChartPng(
       : await svgToPngBlob(target, title);
   if (!blob) return;
   await saveFile(blob, name.endsWith(".png") ? name : `${name}.png`);
+}
+
+/** Saves an SVG chart as an SVG file: a vector drawing that opens in a
+ *  browser, Inkscape or a word processor at any size. */
+export async function saveChartSvg(svg: Element, name: string): Promise<void> {
+  const { source } = standaloneSvgOf(svg);
+  const blob = new Blob([`<?xml version="1.0" encoding="UTF-8"?>\n${source}`], { type: "image/svg+xml" });
+  await saveFile(blob, name.endsWith(".svg") ? name : `${name}.svg`, ["svg"]);
 }

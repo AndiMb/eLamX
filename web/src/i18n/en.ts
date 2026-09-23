@@ -1197,4 +1197,9 @@ export const en = {
   "format.export.decimal": "Decimal mark",
   "format.export.auto": "By language ({value})",
   "format.export.tab": "Tab",
+  "chart.export": "Export the chart",
+  "chart.export.png": "Picture (PNG)",
+  "chart.export.svg": "Vector graphic (SVG)",
+  "chart.export.csv": "Data (CSV)",
+  "carpet.csv.without90": "Without 90° plies",
 } as const;

@@ -4410,3 +4410,80 @@ table.matrix td.block-d {
   font-size: var(--fs-sm);
   color: var(--text-2);
 }
+
+/* --- Export immer hell (N9) ---
+   Waehrend ein Diagramm fuer PNG, SVG oder den Report abgegriffen wird, traegt
+   es kurz diese Klasse: die hellen Werte der Tokens, egal welches Theme die
+   Seite hat. Doppelte Klasse plus :root, damit sie die Dark-Scopes
+   (:root[data-theme="dark"] .viz) schlaegt. */
+:root .export-light.export-light,
+:root .export-light.export-light .viz {
+  color-scheme: light;
+  color: #0e131b;
+  --card: #ffffff;
+  --inset: #f2f4f8;
+  --border: #dce1e9;
+  --border-strong: #c3cad6;
+  --text: #0e131b;
+  --text-2: #48505f;
+  --text-muted: #6b7486;
+  --accent: #1a56db;
+  --ok: #0b7a41;
+  --warn: #8a5300;
+  --danger: #c02b26;
+
+  --viz-surface: #ffffff;
+  --viz-text-primary: #0e131b;
+  --viz-text-secondary: #48505f;
+  --viz-text-muted: #6b7486;
+  --viz-grid: #dce1e9;
+  --viz-axis: #c3cad6;
+  --viz-series-1: #2a78d6;
+  --viz-series-2: #1baf7a;
+  --viz-series-3: #eda100;
+  --viz-series-5: #4a3aa7;
+  --viz-series-6: #e34948;
+  --viz-series-8: #eb6834;
+  --viz-diverging-neg: #2a78d6;
+  --viz-diverging-pos: #e34948;
+  --viz-diverging-mid: #f2f4f8;
+  --viz-status-good: #0ca30c;
+}
+
+/* --- Export-Menue der Diagramme (P3.2) --- */
+.chart-export {
+  position: relative;
+  display: inline-flex;
+}
+
+.chart-export-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  padding: 4px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-md);
+}
+
+.chart-export-menu button {
+  justify-content: flex-start;
+  gap: var(--s-2);
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  font-size: var(--fs-sm);
+  padding: 6px 8px;
+  min-height: 30px;
+}
+
+.chart-export-menu button:hover,
+.chart-export-menu button:focus-visible {
+  background: var(--accent-bg);
+}

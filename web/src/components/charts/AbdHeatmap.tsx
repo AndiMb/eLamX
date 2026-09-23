@@ -8,6 +8,7 @@ import { useLocale, useT } from "../../i18n";
 import type { SymbolSpec } from "../../lib/symbols";
 import { Sym } from "../Sym";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
+import { abdTable } from "../../lib/tables";
 
 const CELL = 40;
 const GAP = 2;
@@ -120,7 +121,7 @@ export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId:
         )}
       </div>
       <div className="chart-actions">
-        <ChartSnapshotButton target={svgRef} name="abd-matrix" title={t("chart.abdHeatmap.title")} />
+        <ChartSnapshotButton target={svgRef} name="abd-matrix" title={t("chart.abdHeatmap.title")} data={() => abdTable(abd, t)} />
       </div>
     </div>
   );

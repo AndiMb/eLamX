@@ -6,6 +6,7 @@ import { formatFixed, formatScientific } from "../../lib/numberFormat";
 import { useLocale, useT } from "../../i18n";
 import { symText, type SymbolSpec } from "../../lib/symbols";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
+import { throughThicknessTable } from "../../lib/tables/charts";
 
 // WIDTH matches AngleSweepChart/ReserveFactorChart (both 600) so all three
 // charts share the same viewBox-to-rendered-width scale factor when placed
@@ -224,7 +225,24 @@ export const ThroughThicknessChart = memo(function ThroughThicknessChart({ lamin
         </table>
       )}
       <div className="chart-actions">
-        <ChartSnapshotButton target={svgRef} name="dickenverlauf" title={t("chart.throughThickness.title")} />
+        <ChartSnapshotButton
+          target={svgRef}
+          name="dickenverlauf"
+          title={t("chart.throughThickness.title")}
+          data={() =>
+            throughThicknessTable(
+              layers.map((l) => ({
+                number: l.layerNumber,
+                zLower: l.zLower,
+                zUpper: l.zUpper,
+                strain: l.strainLocal,
+                stress: l.stressLocal,
+              })),
+              "local",
+              t,
+            )
+          }
+        />
       </div>
     </div>
   );

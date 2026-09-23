@@ -1,4 +1,4 @@
-import { memo, useMemo, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { memo, useMemo, useRef, type KeyboardEvent, type PointerEvent, type ReactNode, type Ref } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import {
@@ -35,6 +35,8 @@ import { criterionName, type FailureType } from "../lib/types";
 import { QuantityDisplay } from "./QuantityDisplay";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { failureModeLabel, useLocale, useT } from "../i18n";
+import { ChartSnapshotButton } from "./charts/ChartSnapshotButton";
+import { throughThicknessTable } from "../lib/tables/charts";
 
 // The sampling-point sheet (F2.6): the stack and its state on one shared
 // z-axis - the plies, a strain component, a stress component and the
@@ -137,6 +139,8 @@ export interface ThroughThicknessSheetViewProps {
   onHoverZ: (z: number | null) => void;
   locale: string;
   labels: { stack: string; strain: string; stress: string; metric: string; z: string; aria: string };
+  /** The element holding the columns' SVGs - what an export takes. */
+  containerRef?: Ref<HTMLDivElement>;
 }
 
 /** The sheet itself: pure, everything through its props. */
@@ -149,6 +153,7 @@ export function ThroughThicknessSheetView({
   onHoverZ,
   locale,
   labels,
+  containerRef,
 }: ThroughThicknessSheetViewProps) {
   const scale = useMemo(() => verticalScale(plies, options.axis, PLOT_H), [plies, options.axis]);
   if (plies.length === 0) return null;
@@ -355,7 +360,7 @@ export function ThroughThicknessSheetView({
   };
 
   return (
-    <div className="tt-sheet viz" tabIndex={0} onKeyDown={onKey} aria-label={labels.aria}>
+    <div className="tt-sheet viz" tabIndex={0} onKeyDown={onKey} aria-label={labels.aria} ref={containerRef}>
       {COLUMN_KEYS.filter((k) => options.columns[k]).map((k) => (
         <div key={k} className={`tt-col tt-col-${k}`}>
           {columns[k]}
@@ -376,6 +381,7 @@ export const ThroughThicknessSheet = memo(function ThroughThicknessSheet({ lamin
   const metric = useAtomValue(failureMetricAtom);
   const [hoverZ, setHoverZ] = useAtom(hoverZFamily(laminateId));
   const [options, setOptions] = useAtom(sheetOptionsAtom);
+  const sheetRef = useRef<HTMLDivElement>(null);
   useAtomValue(materialsAtom);
 
   const plies = useMemo(
@@ -469,6 +475,7 @@ export const ThroughThicknessSheet = memo(function ThroughThicknessSheet({ lamin
         hoverZ={hoverZ}
         onHoverZ={setHoverZ}
         locale={locale}
+        containerRef={sheetRef}
         labels={{
           stack: t("sheet.column.stack"),
           strain: `${symText(strainSym)} (${t(options.system === "local" ? "common.local" : "common.global")})`,
@@ -495,6 +502,27 @@ export const ThroughThicknessSheet = memo(function ThroughThicknessSheet({ lamin
         </span>
         <span>{t("sheet.hint")}</span>
       </p>
+      <div className="chart-actions">
+        <ChartSnapshotButton
+          target={sheetRef}
+          name="arbeitsblatt"
+          title={t("sheet.title")}
+          data={() =>
+            throughThicknessTable(
+              plies.map((p) => ({
+                number: p.number,
+                zLower: p.zLower,
+                zUpper: p.zUpper,
+                strain: p.strain[options.system],
+                stress: p.stress[options.system],
+                rf: { lower: p.rf.lower.minimal_reserve_factor, upper: p.rf.upper.minimal_reserve_factor },
+              })),
+              options.system,
+              t,
+            )
+          }
+        />
+      </div>
 
       {strains && (
         <HowWasThisComputed

@@ -8,6 +8,7 @@ import { useLocale, useT } from "../../i18n";
 import type { SymbolSpec } from "../../lib/symbols";
 import { Sym } from "../Sym";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
+import { angleSweepTable } from "../../lib/tables/charts";
 
 // How a laminate's stiffness depends on the direction it is loaded from, as a
 // POLAR diagram - which is what eLamX 3.x draws, and for a good reason: the
@@ -327,7 +328,7 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
         </table>
       )}
       <div className="chart-actions">
-        <ChartSnapshotButton target={svgRef} name="winkelsweep" title={t("chart.angleSweep.title")} />
+        <ChartSnapshotButton target={svgRef} name="winkelsweep" title={t("chart.angleSweep.title")} data={() => angleSweepTable(data, t)} />
       </div>
     </div>
   );

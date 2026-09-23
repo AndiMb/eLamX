@@ -4,6 +4,7 @@ import { formatSignificant } from "../../lib/numberFormat";
 import type { CarpetPlotDto } from "../../lib/types";
 import { useLocale, useT } from "../../i18n";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
+import { carpetTable } from "../../lib/tables/charts";
 
 // The carpet, drawn as the carpet it is named after.
 //
@@ -144,7 +145,7 @@ export const CarpetPlotChart = memo(function CarpetPlotChart({ plot }: { plot: C
       </svg>
       <p className="hint">{t("carpet.chart.hint")}</p>
       <div className="chart-actions">
-        <ChartSnapshotButton target={svgRef} name="carpet-plot" title={t("carpet.title")} />
+        <ChartSnapshotButton target={svgRef} name="carpet-plot" title={t("carpet.title")} data={() => carpetTable(plot, t)} />
       </div>
     </div>
   );

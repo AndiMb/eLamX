@@ -6,6 +6,7 @@ import type { FailureType } from "../../lib/types";
 import { criterionName } from "../../lib/types";
 import { ChartTooltip } from "./ChartTooltip";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
+import { lpfPathTable } from "../../lib/tables";
 import { formatFixed, formatSignificant } from "../../lib/numberFormat";
 import { failureModeLabel, useLocale, useT, type MessageKey } from "../../i18n";
 
@@ -249,7 +250,12 @@ export const FailureSequenceChart = memo(function FailureSequenceChart({ laminat
       />
       <p className="hint">{t("lpf.sequence.hint")}</p>
       <div className="chart-actions">
-        <ChartSnapshotButton target={svgRef} name="versagensreihenfolge" title={t("lpf.sequence.title")} />
+        <ChartSnapshotButton
+          target={svgRef}
+          name="versagensreihenfolge"
+          title={t("lpf.sequence.title")}
+          data={() => lpfPathTable(path, t, locale)}
+        />
       </div>
     </div>
   );

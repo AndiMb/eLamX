@@ -10,6 +10,7 @@ import { formatFixed } from "../../lib/numberFormat";
 import { failureModeLabel, useLocale, useT } from "../../i18n";
 import type { MessageKey } from "../../i18n";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
+import { layerResultsTable } from "../../lib/tables";
 
 const WIDTH = 600;
 const HEIGHT = 240;
@@ -182,7 +183,12 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
         )}
       </div>
       <div className="chart-actions">
-        <ChartSnapshotButton target={svgRef} name="reservefaktoren" title={t("chart.reserveFactor.title")} />
+        <ChartSnapshotButton
+          target={svgRef}
+          name="reservefaktoren"
+          title={t("chart.reserveFactor.title")}
+          data={() => layerResultsTable(layerResults, { metric, minOnly: false, t, locale })}
+        />
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 // arithmetically interpolate between colors - CSS custom properties can't be
 // lerped in JS without first resolving them to concrete hex. Keep these in
 // sync with App.css's `.viz` block by hand.
+import { createContext, useContext } from "react";
 import { useAtomValue } from "jotai";
 import { themeAtom } from "../store/settingsAtoms";
 
@@ -51,9 +52,32 @@ const dark: ChartColors = {
 // data-theme attribute) and, when that is "system", the OS preference - the
 // same resolution order the CSS token scopes in index.css implement.
 export function useChartColors(): ChartColors {
+  const forceLight = useContext(LightChartColors);
   const theme = useAtomValue(themeAtom);
+  if (forceLight) return light;
   const systemPrefersDark =
     typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
   const isDark = theme === "dark" || (theme === "system" && systemPrefersDark);
   return isDark ? dark : light;
+}
+
+/** Set by whoever draws a chart for paper - the report's figure host: the
+ *  light palette whatever the screen's theme (N9). */
+export const LightChartColors = createContext(false);
+
+/** The dark palette's colours, each with its light counterpart - for turning
+ *  a chart drawn on a dark screen into the light one a saved picture is. */
+export function darkToLight(): [string, string][] {
+  const pairs: [string, string][] = [];
+  const walk = (d: unknown, l: unknown) => {
+    if (typeof d === "string" && typeof l === "string") {
+      if (d !== l) pairs.push([d, l]);
+    } else if (d && l && typeof d === "object") {
+      for (const key of Object.keys(d)) {
+        walk((d as Record<string, unknown>)[key], (l as Record<string, unknown>)[key]);
+      }
+    }
+  };
+  walk(dark, light);
+  return pairs;
 }

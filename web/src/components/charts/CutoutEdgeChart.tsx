@@ -5,6 +5,7 @@ import { formatSignificant } from "../../lib/numberFormat";
 import type { CutoutPointDto } from "../../lib/types";
 import { useLocale, useT } from "../../i18n";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
+import { cutoutEdgeTable } from "../../lib/tables/charts";
 
 // What the load does as it runs round the hole.
 //
@@ -155,7 +156,7 @@ export const CutoutEdgeChart = memo(function CutoutEdgeChart({
         <path d={path} fill="none" stroke={color} strokeWidth={1.75} />
       </svg>
       <div className="chart-actions">
-        <ChartSnapshotButton target={svgRef} name="ausschnitt" title={t("cutout.chart.aria")} />
+        <ChartSnapshotButton target={svgRef} name="ausschnitt" title={t("cutout.chart.aria")} data={() => cutoutEdgeTable(points, t)} />
       </div>
     </div>
   );

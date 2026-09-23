@@ -1176,4 +1176,9 @@ export const de: Messages = {
   "format.export.decimal": "Dezimalzeichen",
   "format.export.auto": "Nach Sprache ({value})",
   "format.export.tab": "Tabulator",
+  "chart.export": "Diagramm exportieren",
+  "chart.export.png": "Bild (PNG)",
+  "chart.export.svg": "Vektorgrafik (SVG)",
+  "chart.export.csv": "Daten (CSV)",
+  "carpet.csv.without90": "Ohne 90°-Lagen",
 };
