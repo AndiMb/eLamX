@@ -41,12 +41,15 @@ import { lastPlyFailureInputFamily, lastPlyFailureStorageKey } from "./lastPlyFa
 import { pressureVesselInputFamily, pressureVesselStorageKey } from "./pressureVesselAtoms";
 import { deformationInputFamily, deformationStorageKey } from "./deformationAtoms";
 import {
+  defaultLaminateConfig,
   forgetStoredLaminate,
   laminateConfigFamily,
   laminateIdsAtom,
   type LaminateConfig,
 } from "./laminateAtoms";
 import { materialsAtom } from "./materialsAtoms";
+import { DEFAULT_LAMINATE_ID, DEFAULT_MATERIAL_ID, defaultMaterial } from "../lib/constants";
+import { t } from "../i18n";
 
 /** Format generation of the file the session was loaded from, written back
  *  unchanged so opening and saving does not silently migrate a file. */
@@ -168,6 +171,11 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
   };
 });
 
+/** Counts the projects opened in this session - a file, or a new one. The
+ *  undo history listens to it: what was done to the previous project cannot
+ *  be undone into this one. */
+export const projectGenerationAtom = atom(0);
+
 /** Replaces the whole session with a project read from a file.
  *
  *  Replaces rather than merges: two projects can name different materials the
@@ -234,6 +242,49 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
     laminateIdsAtom,
     project.laminates.map((l) => l.id),
   );
+  set(projectGenerationAtom, (n) => n + 1);
+});
+
+/** A project as a first start has it: one material, one laminate, nothing
+ *  else. */
+export function emptyProject(): ProjectSnapshot {
+  return {
+    materials: [defaultMaterial()],
+    fibres: [],
+    matrices: [],
+    laminates: [
+      defaultLaminateConfig(
+        DEFAULT_LAMINATE_ID,
+        t("default.laminateName", { nr: 1 }),
+        DEFAULT_MATERIAL_ID,
+      ),
+    ],
+    bucklings: {},
+    lastPlyFailures: {},
+    pressureVessels: {},
+    deformations: {},
+    vibrations: {},
+    springIns: {},
+    cutouts: {},
+    extraOptimizations: [],
+    version: "1",
+    unsupportedSections: [],
+    comparison: [],
+    webExtensionCarry: EMPTY_WEB_EXTENSION_CARRY,
+  };
+}
+
+/** Starts over with an empty project - opening a document that has nothing
+ *  in it yet, with everything that opening means for the session. */
+export const newProjectAtom = atom(null, (_get, set) => {
+  set(loadProjectAtom, emptyProject());
+  // Opening a file keeps a search when the file has none; a new project has
+  // none, full stop.
+  set(optimizationInputAtom, RESET);
+  set(optimizerAtom, RESET);
+  set(optimizationMetaAtom, RESET);
+  set(projectNameAtom, "eLamX");
+  set(projectFilePathAtom, null);
 });
 
 function forgetStored(key: string) {
@@ -332,7 +383,12 @@ function readModules(get: Getter, id: string): ModuleInputs {
   const inputs: Partial<Record<ModuleKey, unknown>> = {};
   for (const module of MODULE_KEYS) {
     const { family, key } = MODULES[module];
-    inputs[module] = hasStoredInput(key(id)) ? get(family(id)) : null;
+    // Read even when nothing is stored, and only then ask storage. A derived
+    // atom depends on what it read last time: skipping the read for an
+    // unconfigured module would leave the snapshot deaf to the edit that
+    // configures it, and undo would never see that step.
+    const value = get(family(id));
+    inputs[module] = hasStoredInput(key(id)) ? value : null;
   }
   return inputs as ModuleInputs;
 }
@@ -341,6 +397,8 @@ export const projectSnapshotV2Atom = atom<ProjectSnapshotV2>((get) => {
   const ids = get(laminateIdsAtom);
   const modules: Record<string, ModuleInputs> = {};
   for (const id of ids) modules[id] = readModules(get, id);
+  // Read unconditionally, for the same reason as a module's input.
+  const searchInput = get(optimizationInputAtom);
   return {
     materials: get(materialsAtom),
     fibres: get(fibresAtom),
@@ -348,7 +406,7 @@ export const projectSnapshotV2Atom = atom<ProjectSnapshotV2>((get) => {
     laminates: ids.map((id) => get(laminateConfigFamily(id))),
     modules,
     optimization: {
-      input: hasStoredInput(OPTIMIZATION_STORAGE_KEY) ? get(optimizationInputAtom) : null,
+      input: hasStoredInput(OPTIMIZATION_STORAGE_KEY) ? searchInput : null,
       optimizer: get(optimizerAtom),
       meta: get(optimizationMetaAtom),
     },
