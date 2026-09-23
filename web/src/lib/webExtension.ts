@@ -6,11 +6,14 @@
 // the wasm worker - just to start.
 
 import type { ImportNotice as CoreImportNotice } from "./generated/ImportNotice";
-import type { LayerCriteriaEntry } from "./generated/LayerCriteriaEntry";
 
-/** The parts of `<webExtension>` no feature of this build edits yet. */
+/** The parts of `<webExtension>` no feature of this build edits yet.
+ *
+ *  The layers' extra criteria are not among them: the core moves them onto
+ *  the layers when it reads a file (`Layer.extra_criteria`) and writes them
+ *  back from there, so they live in the laminate like every other ply
+ *  property. */
 export interface WebExtensionCarry {
-  layerCriteria: LayerCriteriaEntry[];
   studies: unknown[];
   snapshots: unknown[];
   reportTemplates: unknown[];
@@ -18,7 +21,6 @@ export interface WebExtensionCarry {
 }
 
 export const EMPTY_WEB_EXTENSION_CARRY: WebExtensionCarry = {
-  layerCriteria: [],
   studies: [],
   snapshots: [],
   reportTemplates: [],

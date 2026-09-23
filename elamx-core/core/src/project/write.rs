@@ -6,7 +6,9 @@
 //! the same file saved there - not a reformatting of the whole document.
 
 use super::naming;
-use super::web_extension::{to_cdata, WebExtension, WEB_EXTENSION_SCHEMA, WEB_EXTENSION_TAG};
+use super::web_extension::{
+    collect_layer_criteria, to_cdata, WebExtension, WEB_EXTENSION_SCHEMA, WEB_EXTENSION_TAG,
+};
 use super::{
     NamedBuckling, NamedCalculation, NamedDeformation, NamedLastPlyFailure, NamedPressureVessel,
     NamedCutout, NamedOptimization, NamedSpringIn, NamedVibration, Project, ProjectLaminate,
@@ -78,20 +80,21 @@ pub fn write_elamx(project: &Project) -> String {
         .unsupported_sections
         .iter()
         .any(|s| s.tag == WEB_EXTENSION_TAG);
-    if let Some(extension) = project.web_extension.as_ref() {
-        if !extension.is_empty() && !foreign_extension {
-            let extension = WebExtension {
-                schema: WEB_EXTENSION_SCHEMA,
-                ..extension.clone()
-            };
-            // Serialising plain data with string keys cannot fail.
-            let json = serde_json::to_string(&extension).expect("WebExtension ist serialisierbar");
-            out.push_str(&format!(
-                "    <{WEB_EXTENSION_TAG} schema=\"{WEB_EXTENSION_SCHEMA}\">{}</{WEB_EXTENSION_TAG}>
+    // The layers' extra criteria are written from the layers themselves; any
+    // `layer_criteria` a caller left in the extension is not the truth.
+    let extension = WebExtension {
+        schema: WEB_EXTENSION_SCHEMA,
+        layer_criteria: collect_layer_criteria(&project.laminates),
+        ..project.web_extension.clone().unwrap_or_default()
+    };
+    if !extension.is_empty() && !foreign_extension {
+        // Serialising plain data with string keys cannot fail.
+        let json = serde_json::to_string(&extension).expect("WebExtension ist serialisierbar");
+        out.push_str(&format!(
+            "    <{WEB_EXTENSION_TAG} schema=\"{WEB_EXTENSION_SCHEMA}\">{}</{WEB_EXTENSION_TAG}>
 ",
-                to_cdata(&json)
-            ));
-        }
+            to_cdata(&json)
+        ));
     }
 
     for section in &project.unsupported_sections {

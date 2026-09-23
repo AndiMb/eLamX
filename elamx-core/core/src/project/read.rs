@@ -13,7 +13,9 @@ use super::{
     NamedCutout, NamedOptimization, NamedSpringIn, NamedVibration, Project, ProjectLaminate,
     RawElement,
 };
-use super::web_extension::{ImportNotice, WebExtension, WEB_EXTENSION_SCHEMA, WEB_EXTENSION_TAG};
+use super::web_extension::{
+    apply_layer_criteria, ImportNotice, WebExtension, WEB_EXTENSION_SCHEMA, WEB_EXTENSION_TAG,
+};
 use crate::clt::{LastPlyFailureInput, Loads, PressureVesselInput, RadiusType, Strains};
 use crate::micromechanics::{self, Fibre, MatrixMaterial, MicroMechanics, Model};
 use crate::model::{Laminate, Layer, Material};
@@ -114,7 +116,7 @@ pub fn read_elamx(xml: &str) -> Result<Project> {
         }
     })?;
 
-    let laminates = match child(root, "laminates") {
+    let mut laminates = match child(root, "laminates") {
         Some(node) => node
             .children()
             .filter(|n| n.has_tag_name("laminate"))
@@ -155,6 +157,13 @@ pub fn read_elamx(xml: &str) -> Result<Project> {
                 });
             }
         }
+    }
+
+    // The extra criteria belong on the layers; the extension keeps no copy,
+    // so there is one place they live while the project is open.
+    if let Some(extension) = web_extension.as_mut() {
+        let entries = std::mem::take(&mut extension.layer_criteria);
+        apply_layer_criteria(&mut laminates, entries, &mut import_notices);
     }
 
     Ok(Project {

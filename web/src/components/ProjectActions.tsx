@@ -6,6 +6,7 @@ import type { ProjectFormat } from "../lib/projectFile";
 import { desktop, type DesktopProject } from "../lib/desktop";
 import { registerCommand, runCommand } from "../lib/commands";
 import type { ImportNotice } from "../lib/webExtension";
+import { criterionName } from "../lib/types";
 import {
   importNoticesAtom,
   loadProjectAtom,
@@ -40,6 +41,22 @@ function noticeText(notice: ImportNotice, t: ReturnType<typeof useT>): string {
       return t("project.notice.comparisonVariantDropped", {
         laminate: notice.laminate,
         loadCase: notice.loadCase,
+      });
+    case "stale_layer_criteria": {
+      const criteria = notice.extra.map((id) => criterionName(id, t)).join(", ");
+      return notice.reason === "criterion_changed" && notice.layer !== null
+        ? t("project.notice.staleLayerCriteria.changed", {
+            laminate: notice.laminate,
+            layer: notice.layer,
+            criteria,
+          })
+        : t("project.notice.staleLayerCriteria.missing", { laminate: notice.laminate, criteria });
+    }
+    case "unknown_layer_criterion":
+      return t("project.notice.unknownLayerCriterion", {
+        laminate: notice.laminate,
+        layer: notice.layer,
+        criterion: notice.criterion,
       });
   }
 }

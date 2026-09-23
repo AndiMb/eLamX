@@ -75,6 +75,12 @@ export const en = {
     "The file's web-version data could not be read ({message}). It is kept unchanged on saving.",
   "project.notice.comparisonVariantDropped":
     "The comparison column “{laminate} / {loadCase}” no longer exists in the file and was removed.",
+  "project.notice.staleLayerCriteria.changed":
+    "Layer “{layer}” in “{laminate}”: its failure criterion was changed in eLamX 3.x. The extra criteria ({criteria}) belonged to the old one and were dropped.",
+  "project.notice.staleLayerCriteria.missing":
+    "A layer with extra criteria ({criteria}) no longer exists in “{laminate}”, probably deleted in eLamX 3.x. The extra criteria were dropped.",
+  "project.notice.unknownLayerCriterion":
+    "Layer “{layer}” in “{laminate}”: this version does not know the extra criterion “{criterion}”; it was removed.",
 
   "nav.laminates": "Laminates",
   "nav.laminate": "Laminate",

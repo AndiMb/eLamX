@@ -11,7 +11,7 @@ use elamx_core::clt::RadiusType;
 use elamx_core::plate::Stiffener;
 use elamx_core::project::{
     read_elamx, write_elamx, ComparisonState, ComparisonVariant, ImportNotice, LayerCriteriaEntry,
-    Project, ReadError, WebExtension, WEB_EXTENSION_TAG,
+    Project, ReadError, StaleLayerCriteriaReason, WebExtension, WEB_EXTENSION_TAG,
 };
 use elamx_core::cutout::CutoutInput;
 use elamx_core::optimization::Constraint;
@@ -860,14 +860,11 @@ fn handles_an_empty_project() {
 // <webExtension>
 // ---------------------------------------------------------------------------
 
+/// Every field the extension keeps as it is. `layer_criteria` is not one of
+/// them: the reader moves it onto the layers - see the layer-criteria tests
+/// further down.
 fn full_extension() -> WebExtension {
     WebExtension {
-        layer_criteria: vec![LayerCriteriaEntry {
-            laminate_uuid: "lam-1".into(),
-            layer_uuid: "layer-1".into(),
-            primary: "puck".into(),
-            extra: vec!["tsai_wu".into(), "max_stress".into()],
-        }],
         // Opaque today, so any JSON has to come back as it went in - including
         // strings that would end a CDATA section or look like eLamX's tags.
         studies: vec![json!({"id": "s1", "name": "Studie ]]> <laminate>", "kind": "matrix"})],
@@ -1029,13 +1026,176 @@ fn the_java_checked_fixture_is_the_reference_file_plus_an_extension() {
 
     let with = read_elamx(&fixture).unwrap();
     let plain = read_elamx(&reference_xml()).unwrap();
-    assert!(with.import_notices.is_empty(), "{:?}", with.import_notices);
     let extension = with.web_extension.clone().expect("Erweiterung gelesen");
-    assert_eq!(extension.layer_criteria[0].extra, ["tsai_wu", "max_stress"]);
+    // Its layer-criteria entry names Puck as the primary criterion of a layer
+    // the file gives max stress: exactly what a change in eLamX 3.x looks
+    // like, so the reader drops it and says so (the fixture predates the
+    // fingerprint check and stays as the Java batch saw it).
+    assert!(extension.layer_criteria.is_empty());
+    assert_eq!(
+        with.import_notices,
+        [ImportNotice::StaleLayerCriteria {
+            laminate: "GM-Kriterien".into(),
+            layer: Some("Lage 1".into()),
+            reason: StaleLayerCriteriaReason::CriterionChanged,
+            extra: vec!["tsai_wu".into(), "max_stress".into()],
+        }]
+    );
+    let with = Project { import_notices: Vec::new(), ..with };
     // The name that would end a CDATA section and looks like eLamX's tags.
     assert_eq!(extension.studies[0]["name"], "<laminate><layer><material> ]]> & Co");
     assert_eq!(
         serde_json::to_value(Project { web_extension: None, ..with }).unwrap(),
         serde_json::to_value(plain).unwrap()
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Extra failure criteria per layer (F2.1) in <webExtension>
+// ---------------------------------------------------------------------------
+
+const LAMINATE: &str = "00000000-0000-4000-8000-00000000000a";
+const FIRST_LAYER: &str = "00000000-0000-4000-8000-00000000000b";
+const THIRD_LAYER: &str = "00000000-0000-4000-8000-00000000002b";
+
+/// The reference project with extra criteria on two of its layers: the first
+/// (max stress in the file) and the third (Tsai-Hill).
+fn with_layer_criteria() -> Project {
+    let mut project = read_elamx(&reference_xml()).unwrap();
+    let laminate = &mut project.laminates[0].laminate;
+    assert_eq!(laminate.id, LAMINATE);
+    for layer in &mut laminate.layers {
+        if layer.id == FIRST_LAYER {
+            layer.extra_criteria = vec!["tsai_wu".into(), "hashin".into()];
+        } else if layer.id == THIRD_LAYER {
+            layer.extra_criteria = vec!["puck".into()];
+        }
+    }
+    project
+}
+
+fn extras_of(project: &Project, layer: &str) -> Vec<String> {
+    project.laminates[0]
+        .laminate
+        .layers
+        .iter()
+        .find(|l| l.id == layer)
+        .map(|l| l.extra_criteria.clone())
+        .unwrap_or_default()
+}
+
+/// Web -> file -> web: the criteria come back on the layers they were on, in
+/// their order; the file carries them with the primary criterion as it stands
+/// in the layer's own `<criterion>`; and a second save is the same file.
+#[test]
+fn extra_criteria_round_trip_through_the_web_extension() {
+    let xml = write_elamx(&with_layer_criteria());
+    assert!(xml.contains(&format!(
+        r#"{{"laminate_uuid":"{LAMINATE}","layer_uuid":"{FIRST_LAYER}","primary":"max_stress","extra":["tsai_wu","hashin"]}}"#
+    )));
+    assert!(xml.contains(r#""primary":"tsai_hill","extra":["puck"]"#));
+
+    let back = read_elamx(&xml).unwrap();
+    assert!(back.import_notices.is_empty(), "{:?}", back.import_notices);
+    assert_eq!(extras_of(&back, FIRST_LAYER), ["tsai_wu", "hashin"]);
+    assert_eq!(extras_of(&back, THIRD_LAYER), ["puck"]);
+    // One place for them while the project is open: the layers.
+    assert!(back.web_extension.as_ref().unwrap().layer_criteria.is_empty());
+    assert_eq!(write_elamx(&back), xml);
+
+    // What eLamX 3.x reads is untouched: every layer's own criterion.
+    let plain = read_elamx(&reference_xml()).unwrap();
+    for (a, b) in back.laminates[0].laminate.layers.iter().zip(&plain.laminates[0].laminate.layers) {
+        assert_eq!(a.criterion_id, b.criterion_id);
+    }
+}
+
+/// The layers are the truth: an entry a caller left in the extension is
+/// replaced by what the layers say, and without extra criteria nothing is
+/// written at all.
+#[test]
+fn the_writer_takes_the_layer_criteria_from_the_layers() {
+    let stale = WebExtension {
+        layer_criteria: vec![LayerCriteriaEntry {
+            laminate_uuid: "weg".into(),
+            layer_uuid: "weg".into(),
+            primary: "puck".into(),
+            extra: vec!["hashin".into()],
+        }],
+        ..WebExtension::new()
+    };
+    let without = write_elamx(&project_with(Some(stale.clone())));
+    assert!(!without.contains(WEB_EXTENSION_TAG), "nur ein veralteter Eintrag: nichts zu schreiben");
+
+    let written = write_elamx(&Project { web_extension: Some(stale), ..with_layer_criteria() });
+    assert!(!written.contains(r#""laminate_uuid":"weg""#));
+    assert!(written.contains(FIRST_LAYER));
+}
+
+/// eLamX 3.x keeps the element but not its meaning. When the layer's own
+/// criterion was changed there, the extra criteria were chosen beside a
+/// criterion that is gone, so they are dropped and the user is told.
+#[test]
+fn extra_criteria_are_dropped_when_the_criterion_was_changed_in_java() {
+    let xml = write_elamx(&with_layer_criteria());
+    // What a Java edit of the first layer's criterion leaves in the file.
+    let edited = xml.replacen(
+        "<criterion>de.elamx.laminate.addFailureCriteria.MaxStress</criterion>",
+        "<criterion>de.elamx.laminate.addFailureCriteria.Hoffman</criterion>",
+        1,
+    );
+    assert_ne!(edited, xml);
+    let back = read_elamx(&edited).unwrap();
+    assert!(extras_of(&back, FIRST_LAYER).is_empty());
+    assert_eq!(extras_of(&back, THIRD_LAYER), ["puck"], "the untouched layer keeps its own");
+    assert_eq!(
+        back.import_notices,
+        [ImportNotice::StaleLayerCriteria {
+            laminate: "GM-Kriterien".into(),
+            layer: Some("Lage 1".into()),
+            reason: StaleLayerCriteriaReason::CriterionChanged,
+            extra: vec!["tsai_wu".into(), "hashin".into()],
+        }]
+    );
+    // Saved again, the dropped entry is gone for good.
+    let resaved = write_elamx(&back);
+    assert!(!resaved.contains(&format!(r#""layer_uuid":"{FIRST_LAYER}""#)));
+    assert!(read_elamx(&resaved).unwrap().import_notices.is_empty());
+}
+
+/// A layer deleted in eLamX 3.x takes its extra criteria with it.
+#[test]
+fn extra_criteria_are_dropped_when_the_layer_was_deleted() {
+    let xml = write_elamx(&with_layer_criteria());
+    let start = xml.find(&format!(r#"<layer name="Lage 3" uuid="{THIRD_LAYER}">"#)).unwrap();
+    let end = start + xml[start..].find("</layer>").unwrap() + "</layer>".len();
+    let edited = format!("{}{}", &xml[..start], &xml[end..]);
+    let back = read_elamx(&edited).unwrap();
+    assert_eq!(extras_of(&back, FIRST_LAYER), ["tsai_wu", "hashin"]);
+    assert_eq!(
+        back.import_notices,
+        [ImportNotice::StaleLayerCriteria {
+            laminate: "GM-Kriterien".into(),
+            layer: None,
+            reason: StaleLayerCriteriaReason::LayerMissing,
+            extra: vec!["puck".into()],
+        }]
+    );
+}
+
+/// A criterion id a newer build wrote is dropped on its own; the layer keeps
+/// the criteria this build knows.
+#[test]
+fn an_unknown_extra_criterion_is_dropped_and_reported() {
+    let xml = write_elamx(&with_layer_criteria()).replacen(r#""extra":["puck"]"#, r#""extra":["puck","larc05"]"#, 1);
+    let back = read_elamx(&xml).unwrap();
+    assert_eq!(extras_of(&back, THIRD_LAYER), ["puck"]);
+    assert_eq!(
+        back.import_notices,
+        [ImportNotice::UnknownLayerCriterion {
+            laminate: "GM-Kriterien".into(),
+            layer: "Lage 3".into(),
+            criterion: "larc05".into(),
+        }]
     );
 }

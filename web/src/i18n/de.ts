@@ -70,6 +70,12 @@ export const de: Messages = {
     "Die Daten der Web-Version in dieser Datei ließen sich nicht lesen ({message}). Sie bleiben beim Speichern unverändert erhalten.",
   "project.notice.comparisonVariantDropped":
     "Die Vergleichsspalte „{laminate} / {loadCase}“ gibt es in der Datei nicht mehr; sie wurde entfernt.",
+  "project.notice.staleLayerCriteria.changed":
+    "Lage „{layer}“ in „{laminate}“: Ihr Versagenskriterium wurde in eLamX 3.x geändert. Die Zusatzkriterien ({criteria}) gehörten zum alten und wurden verworfen.",
+  "project.notice.staleLayerCriteria.missing":
+    "In „{laminate}“ gibt es eine Lage mit Zusatzkriterien ({criteria}) nicht mehr, vermutlich in eLamX 3.x gelöscht. Die Zusatzkriterien wurden verworfen.",
+  "project.notice.unknownLayerCriterion":
+    "Lage „{layer}“ in „{laminate}“: Das Zusatzkriterium „{criterion}“ kennt diese Version nicht; es wurde entfernt.",
 
   "nav.laminates": "Laminate",
   "nav.laminate": "Laminat",

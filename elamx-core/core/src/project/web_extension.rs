@@ -37,6 +37,10 @@ pub struct WebExtension {
     /// attribute so that the JSON on its own still says what it is.
     pub schema: u32,
     /// Failure criteria beyond the one eLamX 3.x stores per layer.
+    ///
+    /// Only the file's view: the reader moves these onto the layers
+    /// (`Layer::extra_criteria`) and leaves this empty, and the writer builds
+    /// it afresh from the layers, whatever a caller put here.
     #[serde(default)]
     pub layer_criteria: Vec<LayerCriteriaEntry>,
     /// Parameter studies (matrix and sweep definitions). Their shape belongs to
@@ -134,6 +138,122 @@ pub enum ImportNotice {
     /// A `<webExtension>` whose content is not valid JSON of its schema. Kept
     /// verbatim for the same reason: it is still somebody's data.
     InvalidWebExtension { message: String },
+    /// A layer's extra criteria were dropped because the file was changed in
+    /// eLamX 3.x since they were written: the layer is gone, or its own
+    /// criterion is no longer the one they were written beside.
+    StaleLayerCriteria {
+        /// The laminate's name, or its uuid when the laminate is gone too.
+        laminate: String,
+        /// The layer's name, `None` when the layer no longer exists.
+        layer: Option<String>,
+        reason: StaleLayerCriteriaReason,
+        /// The criteria that were dropped.
+        extra: Vec<String>,
+    },
+    /// An extra criterion this build does not know - written by a newer one.
+    /// Dropped from the layer; the layer's other criteria stay.
+    UnknownLayerCriterion { laminate: String, layer: String, criterion: String },
+}
+
+/// Why a layer's extra criteria were dropped.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+#[serde(rename_all = "snake_case")]
+pub enum StaleLayerCriteriaReason {
+    /// No layer with the entry's uuid exists any more.
+    LayerMissing,
+    /// The layer's `<criterion>` differs from the fingerprint.
+    CriterionChanged,
+}
+
+/// The criterion a layer's `<criterion>` element holds - or will hold once
+/// written: an id the file format cannot name is written as Puck, the
+/// format's default, so that is what the fingerprint has to say too.
+fn written_criterion(layer: &crate::model::Layer) -> &str {
+    layer
+        .criterion_id
+        .as_deref()
+        .filter(|id| super::naming::criterion_to_java(id).is_some())
+        .unwrap_or(crate::failure::PUCK_ID)
+}
+
+/// Moves the extra criteria of `entries` onto the layers they belong to.
+///
+/// An entry is dropped - and reported - when its layer is gone or when the
+/// layer's own criterion is no longer the `primary` it was written beside:
+/// both mean the file was edited in eLamX 3.x, which keeps this element
+/// without understanding it, so the extras may no longer be what the user
+/// wants for that layer. A criterion id this build does not know is dropped
+/// on its own and reported too.
+pub(super) fn apply_layer_criteria(
+    laminates: &mut [super::ProjectLaminate],
+    entries: Vec<LayerCriteriaEntry>,
+    notices: &mut Vec<ImportNotice>,
+) {
+    for entry in entries {
+        let laminate = laminates.iter_mut().find(|l| l.laminate.id == entry.laminate_uuid);
+        let Some(laminate) = laminate else {
+            notices.push(ImportNotice::StaleLayerCriteria {
+                laminate: entry.laminate_uuid,
+                layer: None,
+                reason: StaleLayerCriteriaReason::LayerMissing,
+                extra: entry.extra,
+            });
+            continue;
+        };
+        let laminate_name = laminate.laminate.name.clone();
+        let Some(layer) = laminate.laminate.layers.iter_mut().find(|l| l.id == entry.layer_uuid)
+        else {
+            notices.push(ImportNotice::StaleLayerCriteria {
+                laminate: laminate_name,
+                layer: None,
+                reason: StaleLayerCriteriaReason::LayerMissing,
+                extra: entry.extra,
+            });
+            continue;
+        };
+        if written_criterion(layer) != entry.primary {
+            notices.push(ImportNotice::StaleLayerCriteria {
+                laminate: laminate_name,
+                layer: Some(layer.name.clone()),
+                reason: StaleLayerCriteriaReason::CriterionChanged,
+                extra: entry.extra,
+            });
+            continue;
+        }
+        let mut extra = Vec::with_capacity(entry.extra.len());
+        for criterion in entry.extra {
+            if super::naming::criterion_to_java(&criterion).is_some() {
+                extra.push(criterion);
+            } else {
+                notices.push(ImportNotice::UnknownLayerCriterion {
+                    laminate: laminate_name.clone(),
+                    layer: layer.name.clone(),
+                    criterion,
+                });
+            }
+        }
+        layer.extra_criteria = extra;
+    }
+}
+
+/// The reverse: one entry per layer that has extra criteria, fingerprinted
+/// with the criterion its `<criterion>` element is written with.
+pub(super) fn collect_layer_criteria(laminates: &[super::ProjectLaminate]) -> Vec<LayerCriteriaEntry> {
+    laminates
+        .iter()
+        .flat_map(|entry| {
+            let laminate = &entry.laminate;
+            laminate.layers.iter().filter(|l| !l.extra_criteria.is_empty()).map(|layer| {
+                LayerCriteriaEntry {
+                    laminate_uuid: laminate.id.clone(),
+                    layer_uuid: layer.id.clone(),
+                    primary: written_criterion(layer).to_string(),
+                    extra: layer.extra_criteria.clone(),
+                }
+            })
+        })
+        .collect()
 }
 
 /// The element's body: the JSON, as a CDATA section.

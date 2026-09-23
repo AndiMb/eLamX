@@ -13,6 +13,10 @@ export type WebExtension = {
 schema: number, 
 /**
  * Failure criteria beyond the one eLamX 3.x stores per layer.
+ *
+ * Only the file's view: the reader moves these onto the layers
+ * (`Layer::extra_criteria`) and leaves this empty, and the writer builds
+ * it afresh from the layers, whatever a caller put here.
  */
 layer_criteria: Array<LayerCriteriaEntry>, 
 /**

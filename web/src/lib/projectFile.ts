@@ -96,6 +96,8 @@ interface LayerDto {
   thickness: number;
   material_id: string;
   criterion_id: string | null;
+  /** Absent in a JSON written before extra criteria existed. */
+  extra_criteria?: string[];
 }
 
 interface CalculationDto {
@@ -230,7 +232,8 @@ function toWebExtension(snapshot: ProjectSnapshot): WebExtension | null {
     .filter((v): v is ComparisonVariant => v !== null);
   const extension: WebExtension = {
     schema: 1,
-    layer_criteria: carry.layerCriteria,
+    // Written by the core from the layers themselves.
+    layer_criteria: [],
     studies: carry.studies,
     snapshots: carry.snapshots,
     report_templates: carry.reportTemplates,
@@ -255,6 +258,14 @@ function asCriterionId(value: string | null): CriterionId {
   // which case falling back keeps the file open instead of failing on a
   // dropdown value.
   return value && KNOWN_CRITERIA.has(value) ? (value as CriterionId) : DEFAULT_CRITERION_ID;
+}
+
+/** A layer's extra criteria as the row keeps them: absent when there are
+ *  none, so a layer from eLamX 3.x looks exactly as it did before extra
+ *  criteria existed. The core has already dropped ids it does not know. */
+function extraCriteriaOf(ids: string[] | undefined): { extraCriteria?: CriterionId[] } {
+  const known = (ids ?? []).filter((id): id is CriterionId => KNOWN_CRITERIA.has(id));
+  return known.length > 0 ? { extraCriteria: known } : {};
 }
 
 /** Which of the two input formats a file is.
@@ -317,6 +328,7 @@ export async function importProject(
           thickness: l.thickness,
           materialId: l.material_id,
           criterionId: asCriterionId(l.criterion_id),
+          ...extraCriteriaOf(l.extra_criteria),
         }),
       ),
       symmetric: dto.symmetric,
@@ -392,7 +404,6 @@ export async function importProject(
     comparison,
     webExtensionCarry: extension
       ? {
-          layerCriteria: extension.layer_criteria,
           studies: extension.studies,
           snapshots: extension.snapshots,
           reportTemplates: extension.report_templates,
@@ -455,6 +466,7 @@ export async function exportProject(snapshot: ProjectSnapshot): Promise<string> 
             thickness: l.thickness,
             material_id: l.materialId,
             criterion_id: l.criterionId,
+            extra_criteria: l.extraCriteria ?? [],
           })),
           symmetric: config.symmetric,
           with_middle_layer: config.withMiddleLayer,

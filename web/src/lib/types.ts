@@ -186,6 +186,12 @@ export const CRITERIA = [
   { id: "tresca", labelKey: "criterion.tresca" },
 ] as const satisfies readonly { id: string; labelKey: MessageKey }[];
 
+/** A criterion's display name, or its id when this build has no entry for it. */
+export function criterionName(id: string, t: (key: MessageKey) => string): string {
+  const entry = CRITERIA.find((c) => c.id === id);
+  return entry ? t(entry.labelKey) : id;
+}
+
 /** The criteria that assume an isotropic ply - a metal foil, a doubler. */
 export const ISOTROPIC_CRITERIA: readonly CriterionId[] = ["von_mises", "tresca"];
 

@@ -144,9 +144,6 @@ describe("die Web-Erweiterung der Projektdatei", () => {
   it("trägt die Teile der Erweiterung weiter, die hier noch niemand bearbeitet", async () => {
     const opened = await importProject(REFERENCE);
     const carry = {
-      layerCriteria: [
-        { laminate_uuid: "l", layer_uuid: "y", primary: "puck", extra: ["tsai_wu"] },
-      ],
       studies: [{ id: "s1", kind: "matrix" }],
       snapshots: [{ id: "snap" }],
       reportTemplates: [{ name: "Standard" }],
@@ -167,5 +164,70 @@ describe("die Web-Erweiterung der Projektdatei", () => {
     expect(opened.importNotices).toEqual([{ kind: "unknown_web_extension_schema", schema: "9" }]);
     // Kept as it came.
     expect(await exportProject(opened)).toContain('<webExtension schema="9">');
+  });
+});
+
+describe("Zusatzkriterien je Lage in der Datei", () => {
+  /// Web -> file -> web: what the table shows comes back as it was, and what
+  /// eLamX 3.x reads - each layer's own criterion - is untouched.
+  it("überstehen Speichern und Öffnen", async () => {
+    const opened = await importProject(REFERENCE);
+    const laminate = opened.laminates[0];
+    const [first, second] = laminate.layers;
+    const edited = {
+      ...opened,
+      laminates: [
+        {
+          ...laminate,
+          layers: laminate.layers.map((l) =>
+            l.id === first.id
+              ? { ...l, extraCriteria: ["tsai_wu" as const, "hashin" as const] }
+              : l,
+          ),
+        },
+        ...opened.laminates.slice(1),
+      ],
+    };
+    const written = await exportProject(edited);
+    expect(written).toContain(`"layer_uuid":"${first.id}","primary":"${first.criterionId}"`);
+
+    const reopened = await importProject(written);
+    expect(reopened.importNotices).toEqual([]);
+    expect(reopened.laminates[0].layers[0].extraCriteria).toEqual(["tsai_wu", "hashin"]);
+    expect(reopened.laminates[0].layers[1]).toEqual(second);
+    expect(reopened.laminates[0].layers.map((l) => l.criterionId)).toEqual(
+      laminate.layers.map((l) => l.criterionId),
+    );
+  });
+
+  /// A change of the layer's criterion in eLamX 3.x leaves the extension in
+  /// place but no longer true, so the extras go and the user is told.
+  it("werden verworfen, wenn eLamX 3.x das Kriterium geändert hat", async () => {
+    const opened = await importProject(REFERENCE);
+    const laminate = opened.laminates[0];
+    const first = laminate.layers[0];
+    const written = await exportProject({
+      ...opened,
+      laminates: [
+        { ...laminate, layers: [{ ...first, extraCriteria: ["puck"] }, ...laminate.layers.slice(1)] },
+        ...opened.laminates.slice(1),
+      ],
+    });
+    const javaEdited = written.replace(
+      "<criterion>de.elamx.laminate.addFailureCriteria.MaxStress</criterion>",
+      "<criterion>de.elamx.laminate.addFailureCriteria.Hoffman</criterion>",
+    );
+    const reopened = await importProject(javaEdited);
+    expect(reopened.laminates[0].layers[0].extraCriteria).toBeUndefined();
+    expect(reopened.laminates[0].layers[0].criterionId).toBe("hoffman");
+    expect(reopened.importNotices).toEqual([
+      {
+        kind: "stale_layer_criteria",
+        laminate: laminate.name,
+        layer: first.name,
+        reason: "criterion_changed",
+        extra: ["puck"],
+      },
+    ]);
   });
 });
