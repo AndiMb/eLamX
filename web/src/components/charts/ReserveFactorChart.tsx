@@ -1,13 +1,14 @@
-import { memo, useMemo, useState, useRef } from "react";
+import { memo, useMemo, useState, useRef, type Ref } from "react";
 import { useAtomValue } from "jotai";
 import { layerResultsFamily } from "../../store/derivedAtoms";
 import { failureMetricAtom } from "../../store/settingsAtoms";
-import { criticalLayerIndex, metricLimit, METRIC_LABEL_KEYS, toMetric } from "../../lib/failureMetric";
-import type { FailureType } from "../../lib/types";
+import { criticalLayerIndex, metricLimit, METRIC_LABEL_KEYS, toMetric, type FailureMetric } from "../../lib/failureMetric";
+import type { FailureType, LayerResultDto } from "../../lib/types";
+import type { Translate } from "../../lib/tables";
 import { ChartLegend } from "./ChartLegend";
 import { ChartTooltip } from "./ChartTooltip";
 import { formatFixed } from "../../lib/numberFormat";
-import { failureModeLabel, useLocale, useT } from "../../i18n";
+import { failureModeLabel, useLocale, useT, type Locale } from "../../i18n";
 import type { MessageKey } from "../../i18n";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
 import { layerResultsTable } from "../../lib/tables";
@@ -40,13 +41,17 @@ const FAILURE_LABEL_KEYS: Record<FailureType, MessageKey> = {
   GeneralMaterialFailure: "failureType.GeneralMaterialFailure",
 };
 
-// See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
-export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId }: { laminateId: string }) {
-  const t = useT();
-  const svgRef = useRef<SVGSVGElement>(null);
-  const locale = useLocale();
-  const layerResults = useAtomValue(layerResultsFamily(laminateId));
-  const metric = useAtomValue(failureMetricAtom);
+export interface ReserveFactorChartViewProps {
+  layerResults: readonly LayerResultDto[] | null;
+  metric: FailureMetric;
+  locale: Locale;
+  t: Translate;
+  svgRef?: Ref<SVGSVGElement>;
+}
+
+/** The chart itself - title, legend and bars - pure, everything through its
+ *  props, so the report can draw it for any laminate and load case. */
+export function ReserveFactorChartView({ layerResults, metric, locale, t, svgRef }: ReserveFactorChartViewProps) {
   const [hover, setHover] = useState<{
     layerNumber: number;
     position: "lower" | "upper";
@@ -182,6 +187,21 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
           </ChartTooltip>
         )}
       </div>
+    </div>
+  );
+}
+
+// See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
+export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId }: { laminateId: string }) {
+  const t = useT();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const locale = useLocale();
+  const layerResults = useAtomValue(layerResultsFamily(laminateId));
+  const metric = useAtomValue(failureMetricAtom);
+  if (!layerResults || layerResults.length === 0) return null;
+  return (
+    <>
+      <ReserveFactorChartView layerResults={layerResults} metric={metric} locale={locale} t={t} svgRef={svgRef} />
       <div className="chart-actions">
         <ChartSnapshotButton
           target={svgRef}
@@ -190,6 +210,6 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
           data={() => layerResultsTable(layerResults, { metric, minOnly: false, t, locale })}
         />
       </div>
-    </div>
+    </>
   );
 });

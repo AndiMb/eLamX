@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, useRef } from "react";
+import { memo, useMemo, useState, useRef, type Ref } from "react";
 import { useAtomValue } from "jotai";
 import { loadableAngleSweepFamily } from "../../store/derivedAtoms";
 import { ChartLegend } from "./ChartLegend";
@@ -6,6 +6,7 @@ import { ChartTooltip } from "./ChartTooltip";
 import { formatFixed, formatScientific } from "../../lib/numberFormat";
 import { useLocale, useT } from "../../i18n";
 import type { SymbolSpec } from "../../lib/symbols";
+import type { AngleSweepResponse } from "../../lib/types";
 import { Sym } from "../Sym";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
 import { angleSweepTable } from "../../lib/tables/charts";
@@ -64,20 +65,19 @@ const DASH: Record<SeriesDef["group"], string | undefined> = {
 /** eLamX's own defaults: the A terms, and nothing else. */
 const DEFAULT_SELECTION = new Set(["a11", "a12", "a22", "a66"]);
 
-// See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
-export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { laminateId: string }) {
-  const t = useT();
-  const svgRef = useRef<SVGSVGElement>(null);
-  const locale = useLocale();
-  const loadableState = useAtomValue(loadableAngleSweepFamily(laminateId));
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const [showTable, setShowTable] = useState(false);
-  // Local rather than persisted: this is a chart control, not part of the
-  // document, and the laminate page has no other per-panel state.
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(DEFAULT_SELECTION));
+export interface PolarChartViewProps {
+  data: AngleSweepResponse;
+  /** The components drawn, e.g. `a11`. */
+  keys: readonly string[];
+  locale: string;
+  aria: string;
+  svgRef?: Ref<SVGSVGElement>;
+}
 
-  const data = loadableState.state === "hasData" ? loadableState.data : null;
-  const shown = SERIES.filter((s) => selected.has(s.key));
+/** The polar diagram itself: pure, everything through its props. */
+export function PolarChartView({ data, keys, locale, aria, svgRef }: PolarChartViewProps) {
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const shown = SERIES.filter((s) => keys.includes(s.key));
 
   // One radial scale PER MATRIX, not one for the picture.
   //
@@ -102,7 +102,7 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
     return perGroup;
   }, [data, shown]);
 
-  if (!data || !scales) return null;
+  if (!scales) return null;
 
   const radiusIn = (group: SeriesDef["group"], value: number) => {
     const scale = scales[group];
@@ -150,48 +150,7 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
     setHoverIndex(index);
   };
 
-  const toggle = (key: string) =>
-    setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-
   return (
-    <div className="chart viz">
-      <p className="chart-title">{t("chart.angleSweep.title")}</p>
-      <div className="chart-controls">
-        <button type="button" className="chart-table-toggle" onClick={() => setShowTable((v) => !v)}>
-          {t(showTable ? "chart.showChart" : "chart.showTable")}
-        </button>
-      </div>
-
-      <div className="polar-series-picker" role="group" aria-label={t("chart.angleSweep.series")}>
-        {SERIES.map((s) => (
-          <label key={s.key}>
-            <input
-              type="checkbox"
-              checked={selected.has(s.key)}
-              onChange={() => toggle(s.key)}
-            />
-            <Sym {...s.sym} />
-          </label>
-        ))}
-      </div>
-
-      {shown.length === 0 && <p className="hint">{t("chart.angleSweep.none")}</p>}
-
-      {!showTable && shown.length > 0 && (
-        <>
-          <ChartLegend
-            items={shown.map((s) => ({
-              key: s.key,
-              label: <Sym {...s.sym} />,
-              color: s.color,
-              shape: "line",
-            }))}
-          />
           <div className="chart-svg-wrap">
             <svg
               ref={svgRef}
@@ -199,7 +158,7 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
               viewBox={`0 0 ${SIZE} ${SIZE}`}
               width="100%"
               role="img"
-              aria-label={t("chart.angleSweep.aria")}
+              aria-label={aria}
             >
               {/* Keyed by position, not value: a degenerate laminate collapses
                   the three rings onto one number. */}
@@ -298,6 +257,70 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
               </ChartTooltip>
             )}
           </div>
+  );
+}
+
+// See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
+export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { laminateId: string }) {
+  const t = useT();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const locale = useLocale();
+  const loadableState = useAtomValue(loadableAngleSweepFamily(laminateId));
+  const [showTable, setShowTable] = useState(false);
+  // Local rather than persisted: this is a chart control, not part of the
+  // document, and the laminate page has no other per-panel state.
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(DEFAULT_SELECTION));
+
+  const data = loadableState.state === "hasData" ? loadableState.data : null;
+  const shown = SERIES.filter((s) => selected.has(s.key));
+
+  if (!data || shown.length === 0) return null;
+  // The rings of each matrix shown have their own scale - see PolarChartView.
+  const groups = (["A", "B", "D"] as const).filter((g) => shown.some((s) => s.group === g));
+
+  const toggle = (key: string) =>
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  return (
+    <div className="chart viz">
+      <p className="chart-title">{t("chart.angleSweep.title")}</p>
+      <div className="chart-controls">
+        <button type="button" className="chart-table-toggle" onClick={() => setShowTable((v) => !v)}>
+          {t(showTable ? "chart.showChart" : "chart.showTable")}
+        </button>
+      </div>
+
+      <div className="polar-series-picker" role="group" aria-label={t("chart.angleSweep.series")}>
+        {SERIES.map((s) => (
+          <label key={s.key}>
+            <input
+              type="checkbox"
+              checked={selected.has(s.key)}
+              onChange={() => toggle(s.key)}
+            />
+            <Sym {...s.sym} />
+          </label>
+        ))}
+      </div>
+
+      {shown.length === 0 && <p className="hint">{t("chart.angleSweep.none")}</p>}
+
+      {!showTable && shown.length > 0 && (
+        <>
+          <ChartLegend
+            items={shown.map((s) => ({
+              key: s.key,
+              label: <Sym {...s.sym} />,
+              color: s.color,
+              shape: "line",
+            }))}
+          />
+          <PolarChartView data={data} keys={shown.map((s) => s.key)} locale={locale} aria={t("chart.angleSweep.aria")} svgRef={svgRef} />
           <p className="hint">{t("chart.angleSweep.hint")}</p>
           {groups.length > 1 && <p className="hint">{t("chart.angleSweep.scales.hint")}</p>}
         </>

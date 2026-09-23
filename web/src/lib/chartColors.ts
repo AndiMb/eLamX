@@ -32,7 +32,8 @@ export interface ChartColors {
   series: string[];
 }
 
-const light: ChartColors = {
+/** The light palette - what paper gets (N9). */
+export const LIGHT_CHART_COLORS: ChartColors = {
   diverging: { neg: "#2a78d6", mid: "#f0efec", pos: "#e34948" },
   surface: "#2a78d6",
   status: { ok: "#1baf7a", danger: "#e34948" },
@@ -54,11 +55,11 @@ const dark: ChartColors = {
 export function useChartColors(): ChartColors {
   const forceLight = useContext(LightChartColors);
   const theme = useAtomValue(themeAtom);
-  if (forceLight) return light;
+  if (forceLight) return LIGHT_CHART_COLORS;
   const systemPrefersDark =
     typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
   const isDark = theme === "dark" || (theme === "system" && systemPrefersDark);
-  return isDark ? dark : light;
+  return isDark ? dark : LIGHT_CHART_COLORS;
 }
 
 /** Set by whoever draws a chart for paper - the report's figure host: the
@@ -78,6 +79,6 @@ export function darkToLight(): [string, string][] {
       }
     }
   };
-  walk(dark, light);
+  walk(dark, LIGHT_CHART_COLORS);
   return pairs;
 }

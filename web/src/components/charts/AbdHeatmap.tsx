@@ -1,8 +1,8 @@
-import { memo, useState, useRef } from "react";
+import { memo, useState, useRef, type Ref } from "react";
 import { useAtomValue } from "jotai";
 import { abdMatrixFamily } from "../../store/derivedAtoms";
 import { ChartTooltip } from "./ChartTooltip";
-import { useChartColors } from "../../lib/chartColors";
+import { useChartColors, type ChartColors } from "../../lib/chartColors";
 import { formatScientific } from "../../lib/numberFormat";
 import { useLocale, useT } from "../../i18n";
 import type { SymbolSpec } from "../../lib/symbols";
@@ -40,18 +40,18 @@ function cellColor(value: number, blockMax: number, neg: string, mid: string, po
   return t >= 0 ? lerpColor(mid, pos, t) : lerpColor(mid, neg, -t);
 }
 
-// See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
-// The raw ABD values are already shown as an exact table in AbdMatrixPanel
-// right above this chart, so every value here is reachable without hovering.
-export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId: string }) {
-  const t = useT();
-  const svgRef = useRef<SVGSVGElement>(null);
-  const locale = useLocale();
-  const abd = useAtomValue(abdMatrixFamily(laminateId));
-  const [hover, setHover] = useState<{ i: number; j: number; x: number; y: number } | null>(null);
-  const colors = useChartColors();
+export interface AbdHeatmapViewProps {
+  abd: number[][];
+  colors: ChartColors;
+  locale: string;
+  aria: string;
+  svgRef?: Ref<SVGSVGElement>;
+}
 
-  if (!abd) return null;
+/** The heatmap itself: pure, everything through its props - so the report
+ *  can draw it for a laminate nobody has open. */
+export function AbdHeatmapView({ abd, colors, locale, aria, svgRef }: AbdHeatmapViewProps) {
+  const [hover, setHover] = useState<{ i: number; j: number; x: number; y: number } | null>(null);
 
   const blockMax = (rows: number[], cols: number[]) =>
     Math.max(...rows.flatMap((i) => cols.map((j) => Math.abs(abd[i][j]))), 1e-30);
@@ -76,8 +76,6 @@ export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId:
   };
 
   return (
-    <div className="chart viz">
-      <p className="chart-title">{t("chart.abdHeatmap.title")}</p>
       <div className="chart-svg-wrap">
         <svg
           ref={svgRef}
@@ -85,7 +83,7 @@ export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId:
           viewBox={`0 0 ${size} ${size}`}
           width={Math.min(size, 320)}
           role="img"
-          aria-label={t("chart.abdHeatmap.aria")}
+          aria-label={aria}
         >
           {abd.map((row, i) =>
             row.map((value, j) => {
@@ -120,6 +118,25 @@ export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId:
           </ChartTooltip>
         )}
       </div>
+  );
+}
+
+// See AbdMatrixPanel.tsx for why memo() matters for a laminate-scoped panel.
+// The raw ABD values are already shown as an exact table in AbdMatrixPanel
+// right above this chart, so every value here is reachable without hovering.
+export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId: string }) {
+  const t = useT();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const locale = useLocale();
+  const abd = useAtomValue(abdMatrixFamily(laminateId));
+  const colors = useChartColors();
+
+  if (!abd) return null;
+
+  return (
+    <div className="chart viz">
+      <p className="chart-title">{t("chart.abdHeatmap.title")}</p>
+      <AbdHeatmapView abd={abd} colors={colors} locale={locale} aria={t("chart.abdHeatmap.aria")} svgRef={svgRef} />
       <div className="chart-actions">
         <ChartSnapshotButton target={svgRef} name="abd-matrix" title={t("chart.abdHeatmap.title")} data={() => abdTable(abd, t)} />
       </div>
