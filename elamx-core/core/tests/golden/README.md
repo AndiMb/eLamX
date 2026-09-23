@@ -279,6 +279,26 @@ the reader accepts both (`reads_a_web_extension_stored_as_escaped_text`). A
 save by hand in the desktop GUI is still worth doing once before relying on
 this for anything valuable.
 
+Since the extra criteria per ply (P2.3), the reader checks each
+`layer_criteria` entry against the layer's own `<criterion>` - the
+fingerprint `primary` - and drops it when they differ. The entry in
+`with_extension.elamx` names Puck for a layer the file gives max stress, so
+the fixture now reads exactly as a file whose criterion was changed in eLamX
+3.x: the entry is dropped and reported. The fixture itself is unchanged, since
+it is what the Java batch was run on.
+
+The same batch check was repeated on 2026-09-24 with extra criteria written
+the way the web version writes them: `reference.elamx` read and written back
+through the wasm core with two extra criteria on every second ply (32 plies,
+one `layer_criteria` entry each). The batch output for that file and for the
+same file with the `<webExtension>` line removed differ only in the header's
+timestamp and checksum, and past the header both equal `reference.txt`. The
+file was not committed; it is `write_elamx` of the reference project and can
+be rebuilt from it. What a Java edit does to the entries is simulated by hand
+- the `<criterion>` of one ply changed in the XML - since the GUI cannot be
+driven from here (`extra_criteria_are_dropped_when_the_criterion_was_changed_in_java`
+in `project_file.rs`).
+
 ## A second suite on whole files: `crosscheck/`
 
 Everything above takes ONE case definition (`generate.mjs`) into two forms, so
