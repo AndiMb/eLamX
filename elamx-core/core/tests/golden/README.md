@@ -19,6 +19,7 @@ and would stay green even if a formula were mistranscribed.
 | `reduced.txt` | **the expected values for it** | eLamX batch mode |
 | `crosscheck/*.elamx` | a second suite's inputs, which the Rust side reads itself | hand-written |
 | `crosscheck/*.txt` | **their expected values** | eLamX batch mode |
+| `with_extension.elamx` | `reference.elamx` plus a `<webExtension>`, to show eLamX ignores it | by hand, see below |
 
 Both input files come from one `CASES` definition, so the Java run and the Rust
 test cannot drift apart on the inputs; only `reference.txt` carries expectations.
@@ -242,6 +243,41 @@ diff <(tail -n +12 core/tests/golden/reference.txt) <(tail -n +12 rewritten.txt)
 The first 11 lines carry a timestamp, the input path and its MD5 sum, so they
 differ by construction; everything after them must be identical. Both
 `reference.elamx` and eLamX's own `Example_Files/batchexample1.elamx` pass.
+
+## `with_extension.elamx`: the web version's own element, as eLamX sees it
+
+The web version stores what the format has no place for - comparisons, extra
+layer criteria, later studies and report templates - in one `<webExtension>`
+root element holding JSON in a CDATA section (`src/project/web_extension.rs`).
+That is only safe if eLamX 3.x ignores the element when it reads a file and
+keeps it when it saves one. `with_extension.elamx` is the check of the first
+half: `reference.elamx` plus such an element, whose JSON deliberately contains
+`<laminate><layer><material>` and a `]]>` - the names eLamX searches for with
+`getElementsByTagName`, and the one string a CDATA section cannot hold.
+
+```sh
+"<eLamX>/bin/elamx64.exe" --locale en --userdir /tmp/elamx-batch     --input="$(pwd)/with_extension.elamx" --output="$(pwd)/with_extension.txt"
+diff <(tail -n +12 reference.txt) <(tail -n +12 with_extension.txt)
+```
+
+Run on 2026-09-23 with the installed eLamX 3.x on Windows: no diff, all 6995
+lines. `the_java_checked_fixture_is_the_reference_file_plus_an_extension` in
+`project_file.rs` keeps the fixture exactly that, so regenerating
+`reference.elamx` means regenerating this file too (append the element before
+`</elamx>`) and running the check again.
+
+The second half - that a SAVE in eLamX 3.x keeps the element - is not
+something the batch mode can show, and the GUI cannot be driven from here. It
+rests on the source instead: `eLamXFileDataObject.storeData` re-parses the file
+on disk, lets each `LoadSaveHook` rewrite its own section in place and writes
+the whole document back; the four hooks (`DefaultMaterialLoadSaveImpl`,
+`LaminateLoadSaveImpl`, `MicroMechanicLoadSaveImpl`,
+`OptimizationLoadSaveHookImpl`) only look up `materials`, `laminates`,
+`fibres`/`matrices` and `optimizations` and touch nothing else under the root.
+Whether `XMLUtil.write` keeps the CDATA section or turns it into escaped text,
+the reader accepts both (`reads_a_web_extension_stored_as_escaped_text`). A
+save by hand in the desktop GUI is still worth doing once before relying on
+this for anything valuable.
 
 ## A second suite on whole files: `crosscheck/`
 

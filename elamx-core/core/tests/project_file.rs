@@ -1009,3 +1009,33 @@ fn keeps_a_web_extension_it_cannot_parse() {
     ));
     assert!(write_elamx(&project).contains(r#"<webExtension schema="1">"#));
 }
+
+/// `with_extension.elamx` is what the Java batch was run on to show that
+/// eLamX 3.x ignores the extension (see tests/golden/README.md). That proof
+/// only holds while the fixture IS the reference file plus the extension, so
+/// this pins it - and checks that the extension in it, the one Java saw, is
+/// the one this crate reads.
+#[test]
+fn the_java_checked_fixture_is_the_reference_file_plus_an_extension() {
+    let fixture = std::fs::read_to_string(format!("{}/with_extension.elamx", golden_dir()))
+        .expect("with_extension.elamx fehlt")
+        .replace("\r\n", "\n");
+    let without: String = fixture
+        .lines()
+        .filter(|line| !line.trim_start().starts_with("<webExtension"))
+        .map(|line| format!("{line}\n"))
+        .collect();
+    assert_eq!(without, reference_xml().replace("\r\n", "\n"));
+
+    let with = read_elamx(&fixture).unwrap();
+    let plain = read_elamx(&reference_xml()).unwrap();
+    assert!(with.import_notices.is_empty(), "{:?}", with.import_notices);
+    let extension = with.web_extension.clone().expect("Erweiterung gelesen");
+    assert_eq!(extension.layer_criteria[0].extra, ["tsai_wu", "max_stress"]);
+    // The name that would end a CDATA section and looks like eLamX's tags.
+    assert_eq!(extension.studies[0]["name"], "<laminate><layer><material> ]]> & Co");
+    assert_eq!(
+        serde_json::to_value(Project { web_extension: None, ..with }).unwrap(),
+        serde_json::to_value(plain).unwrap()
+    );
+}
