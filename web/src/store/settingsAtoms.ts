@@ -1,4 +1,5 @@
 import { atomWithStorage } from "jotai/utils";
+import type { FailureMetric } from "../lib/failureMetric";
 
 // Default open/closed state for every <HowWasThisComputed> panel: expanded
 // for lecture demos / learning CLT, collapsed for quick productive checks.
@@ -10,3 +11,12 @@ export const studentModeAtom = atomWithStorage<boolean>("elamx.studentMode", fal
 // the media query in both directions.
 export type ThemeChoice = "system" | "light" | "dark";
 export const themeAtom = atomWithStorage<ThemeChoice>("elamx.theme", "system");
+
+// How reserve factors are shown: RF, IRF = 1/RF or MoS = RF - 1 (F2.2). A
+// display setting like the theme - it changes numbers on screen and in
+// exports, never what governs.
+export const failureMetricAtom = atomWithStorage<FailureMetric>("elamx.failureMetric", "rf");
+
+// The ply table with one value per ply (its governing surface) instead of
+// both surfaces side by side.
+export const layerResultsMinOnlyAtom = atomWithStorage<boolean>("elamx.layerResults.minOnly", false);

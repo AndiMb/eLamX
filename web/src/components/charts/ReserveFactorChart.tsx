@@ -1,6 +1,8 @@
 import { memo, useMemo, useState, useRef } from "react";
 import { useAtomValue } from "jotai";
 import { layerResultsFamily } from "../../store/derivedAtoms";
+import { failureMetricAtom } from "../../store/settingsAtoms";
+import { criticalLayerIndex, metricLimit, METRIC_LABEL_KEYS, toMetric } from "../../lib/failureMetric";
 import type { FailureType } from "../../lib/types";
 import { ChartLegend } from "./ChartLegend";
 import { ChartTooltip } from "./ChartTooltip";
@@ -43,6 +45,7 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
   const svgRef = useRef<SVGSVGElement>(null);
   const locale = useLocale();
   const layerResults = useAtomValue(layerResultsFamily(laminateId));
+  const metric = useAtomValue(failureMetricAtom);
   const [hover, setHover] = useState<{
     layerNumber: number;
     position: "lower" | "upper";
@@ -53,15 +56,27 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
     y: number;
   } | null>(null);
 
+  // The bars show the chosen metric (F2.2), on an axis that always holds the
+  // limit line - 1 for RF and IRF, 0 for MoS - and, for a negative margin,
+  // reaches below zero. An infinite reserve is drawn to the top of the axis,
+  // as before.
   const scale = useMemo(() => {
     if (!layerResults || layerResults.length === 0) return null;
-    const values = layerResults.flatMap((l) => [l.rr_lower.minimal_reserve_factor, l.rr_upper.minimal_reserve_factor]);
-    const vMax = Math.max(...values, 1) * 1.1;
-    return { vMax, yScale: (v: number) => PLOT_H - (Math.min(v, vMax) / vMax) * PLOT_H };
-  }, [layerResults]);
+    const values = layerResults
+      .flatMap((l) => [l.rr_lower.minimal_reserve_factor, l.rr_upper.minimal_reserve_factor])
+      .map((rf) => toMetric(rf, metric))
+      .filter(Number.isFinite);
+    const limit = metricLimit(metric);
+    const vMax = Math.max(...values, limit, 0) * 1.1 || 1;
+    const vMin = Math.min(...values, 0) * 1.1;
+    const clamp = (v: number) => Math.max(vMin, Math.min(v, vMax));
+    return { vMax, vMin, limit, yScale: (v: number) => PLOT_H - ((clamp(v) - vMin) / (vMax - vMin)) * PLOT_H };
+  }, [layerResults, metric]);
 
   if (!layerResults || layerResults.length === 0 || !scale) return null;
-  const { vMax, yScale } = scale;
+  const { vMax, vMin, limit, yScale } = scale;
+  const critical = criticalLayerIndex(layerResults);
+  const metricName = t(METRIC_LABEL_KEYS[metric]);
 
   const usedTypes = Array.from(
     new Set(layerResults.flatMap((l) => [l.rr_lower.failure_type, l.rr_upper.failure_type])),
@@ -72,7 +87,7 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
 
   return (
     <div className="chart viz">
-      <p className="chart-title">{t("chart.reserveFactor.title")}</p>
+      <p className="chart-title">{t("chart.reserveFactor.titleMetric", { metric: metricName })}</p>
       <ChartLegend
         items={usedTypes.map((ft) => ({ key: ft, label: t(FAILURE_LABEL_KEYS[ft]), color: FAILURE_COLORS[ft] }))}
       />
@@ -83,9 +98,15 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
           <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
             {/* Keyed by position: vMax collapses onto 1 whenever no layer has
                 a reserve factor above 1. */}
-            {[0, 1, vMax].map((v, tickIndex) => (
+            {/* The limit first, so a tick crowding it is the one dropped. */}
+            {[limit, vMax, 0, vMin]
+              .reduce<number[]>(
+                (kept, v) => (kept.some((k) => Math.abs(yScale(k) - yScale(v)) < 12) ? kept : [...kept, v]),
+                [],
+              )
+              .map((v, tickIndex) => (
               <g key={tickIndex}>
-                <line x1={0} x2={PLOT_W} y1={yScale(v)} y2={yScale(v)} className={v === 1 ? "chart-axis" : "chart-gridline"} />
+                <line x1={0} x2={PLOT_W} y1={yScale(v)} y2={yScale(v)} className={v === limit ? "chart-axis" : "chart-gridline"} />
                 <text x={-8} y={yScale(v)} textAnchor="end" dominantBaseline="middle">
                   {formatFixed(v, 1, locale)}
                 </text>
@@ -99,16 +120,27 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
               ];
               return (
                 <g key={l.layer_number}>
-                  <text x={groupX} y={PLOT_H + 16} textAnchor="middle">
-                    {l.layer_number}
+                  <text
+                    x={groupX}
+                    y={PLOT_H + 16}
+                    textAnchor="middle"
+                    className={i === critical ? "chart-critical-label" : undefined}
+                  >
+                    {/* The governing ply carries a marker beside its number,
+                        not only a colour (N7). */}
+                    {i === critical ? `⌖ ${l.layer_number}` : l.layer_number}
                   </text>
-                  {bars.map((b) => (
+                  {bars.map((b) => {
+                    const shown = toMetric(b.rf.minimal_reserve_factor, metric);
+                    const top = Math.min(yScale(shown), yScale(0));
+                    const height = Math.max(1, Math.abs(yScale(0) - yScale(shown)));
+                    return (
                     <rect
                       key={b.position}
                       x={b.x}
-                      y={yScale(b.rf.minimal_reserve_factor)}
+                      y={top}
                       width={barW}
-                      height={Math.max(1, PLOT_H - yScale(b.rf.minimal_reserve_factor))}
+                      height={height}
                       rx={2}
                       fill={FAILURE_COLORS[b.rf.failure_type]}
                       onPointerMove={(e) => {
@@ -116,7 +148,7 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
                         setHover({
                           layerNumber: l.layer_number,
                           position: b.position,
-                          value: b.rf.minimal_reserve_factor,
+                          value: shown,
                           failureType: b.rf.failure_type,
                           failureName: b.rf.failure_name,
                           x: e.clientX - rect.left + 12,
@@ -125,7 +157,8 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
                       }}
                       onPointerLeave={() => setHover((h) => (h?.layerNumber === l.layer_number && h?.position === b.position ? null : h))}
                     />
-                  ))}
+                    );
+                  })}
                 </g>
               );
             })}
@@ -138,7 +171,9 @@ export const ReserveFactorChart = memo(function ReserveFactorChart({ laminateId 
                 {t("chart.layer", { nr: hover.layerNumber })} ({t(hover.position === "lower" ? "common.bottom" : "common.top")})
               </strong>
             </div>
-            <div>RF: {formatFixed(hover.value, 3, locale)}</div>
+            <div>
+              {metricName}: {formatFixed(hover.value, 3, locale)}
+            </div>
             <div>
               {t(FAILURE_LABEL_KEYS[hover.failureType])}
               {hover.failureName ? ` (${failureModeLabel(locale, hover.failureName)})` : ""}

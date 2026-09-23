@@ -3932,3 +3932,100 @@ table.matrix td.block-d {
     min-height: var(--touch-min);
   }
 }
+
+/* --- Metrik-Umschalter, maßgebende Lage, Kriterien-Matrix (F2.2, F2.3) --- */
+
+.verdict-headline .metric-toggle {
+  margin-left: auto;
+}
+
+.results-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-3);
+  justify-content: space-between;
+}
+
+.results-heading h3 {
+  margin: 0;
+}
+
+.results-heading-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The governing ply: a marker icon beside its number, and a tinted row -
+   never the tint alone (N7). */
+.layer-results-table tr.critical td,
+.responsive-card.critical {
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+
+.critical-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  color: var(--warn);
+}
+
+.metric-value.failing {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.governing-criterion.listed {
+  font-weight: 600;
+}
+
+.criterion-matrix {
+  margin: var(--s-3) 0;
+}
+
+.criterion-matrix > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: var(--fs-md);
+  padding: 4px 0;
+}
+
+.criterion-matrix-table td.numeric,
+.criterion-matrix-table th.numeric {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.criterion-matrix-table td.governing {
+  font-weight: 700;
+}
+
+.criterion-matrix-table td.failing {
+  color: var(--danger);
+}
+
+.criterion-matrix-table td.muted {
+  color: var(--text-muted);
+}
+
+.criterion-matrix-table .governing-mark {
+  margin-right: 4px;
+  vertical-align: -1px;
+  color: var(--accent);
+}
+
+.chart-critical-label {
+  font-weight: 700;
+  fill: var(--warn);
+}

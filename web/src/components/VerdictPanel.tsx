@@ -1,6 +1,15 @@
 import { useAtomValue } from "jotai";
 import { Check, TriangleAlert } from "lucide-react";
 import { layerResultsFamily, summaryFamily } from "../store/derivedAtoms";
+import { failureMetricAtom } from "../store/settingsAtoms";
+import {
+  criticalLayerIndex,
+  governingSurface,
+  METRIC_GOVERNING_KEYS,
+  toMetric,
+} from "../lib/failureMetric";
+import { criterionName } from "../lib/types";
+import { MetricToggle } from "./MetricToggle";
 import { QuantityDisplay } from "./QuantityDisplay";
 import { Sym } from "./Sym";
 import { failureModeLabel, useLocale, useT } from "../i18n";
@@ -17,23 +26,16 @@ export function VerdictPanel({ laminateId }: { laminateId: string }) {
   const locale = useLocale();
   const layerResults = useAtomValue(layerResultsFamily(laminateId));
   const summary = useAtomValue(summaryFamily(laminateId));
+  const metric = useAtomValue(failureMetricAtom);
 
   if (!layerResults || layerResults.length === 0) return null;
 
   // The governing ply: the smallest reserve factor over every ply and both of
-  // its surfaces.
-  let governing = layerResults[0];
-  let minimal = Infinity;
-  let failureName = "";
-  for (const layer of layerResults) {
-    for (const rf of [layer.rr_lower, layer.rr_upper]) {
-      if (rf.minimal_reserve_factor < minimal) {
-        minimal = rf.minimal_reserve_factor;
-        governing = layer;
-        failureName = rf.failure_name;
-      }
-    }
-  }
+  // its surfaces - decided on the RF, whatever metric is displayed.
+  const governing = layerResults[criticalLayerIndex(layerResults)];
+  const surface = governingSurface(governing);
+  const minimal = surface.rf.minimal_reserve_factor;
+  const failureName = surface.rf.failure_name;
 
   const holds = minimal >= 1;
   const failedCount = layerResults.filter((l) => l.failed).length;
@@ -46,18 +48,20 @@ export function VerdictPanel({ laminateId }: { laminateId: string }) {
           {t(holds ? "verdict.holds" : "verdict.fails")}
         </span>
         <span className="verdict-detail">
-          {t("verdict.governing", {
+          {t("verdict.governingCriterion", {
             nr: governing.layer_number,
+            criterion: criterionName(surface.criterion, t),
             mode: failureModeLabel(locale, failureName) || "–",
           })}
         </span>
+        <MetricToggle />
       </div>
 
       <div className="stat-tiles">
         <div className="stat-tile">
-          <span className="label">{t("verdict.minRf")}</span>
+          <span className="label">{t(METRIC_GOVERNING_KEYS[metric])}</span>
           <span className="value">
-            <QuantityDisplay category="reserveFactor" value={minimal} />
+            <QuantityDisplay category="reserveFactor" value={toMetric(minimal, metric)} />
           </span>
         </div>
         <div className="stat-tile">
