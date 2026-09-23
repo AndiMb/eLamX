@@ -1719,22 +1719,28 @@ table td.num,
   table-layout: fixed;
 }
 
-/* Column order: select, Nr., Name, Winkel, Dicke, Material, Kriterium,
-   Aktionen. Every column needs an explicit width under table-layout:fixed -
+/* Column order: drag handle, select, Nr., Name, Winkel, Dicke, Material,
+   Kriterium, Aktionen. Every column needs an explicit width under table-layout:fixed -
    an unspecified column doesn't shrink-to-fit its content the way auto
    layout does, so leaving one out lets it collapse or balloon unpredictably.
    Widths below are content-box sizes; add ~12px cell padding per column
    (~20px for Nr., which has extra padding-right) to get the rendered size. */
 .layer-table th:nth-child(1),
 .layer-table td:nth-child(1) {
+  width: 28px;
+  padding-right: 0;
+}
+
+.layer-table th:nth-child(2),
+.layer-table td:nth-child(2) {
   width: 20px;
 }
 
 /* Extra padding-left (not just the base 6px): the checkbox and the row
    number otherwise sit close enough to read as one merged "1[ ]" glyph
    instead of two distinct columns. */
-.layer-table th:nth-child(2),
-.layer-table td:nth-child(2) {
+.layer-table th:nth-child(3),
+.layer-table td:nth-child(3) {
   width: 24px;
   padding-left: 12px;
   padding-right: 14px;
@@ -1743,26 +1749,26 @@ table td.num,
 /* 100 statt 54: unter table-layout:fixed sind diese Werte Verhaeltnisse, und
    mit dem alten Anteil war das Namensfeld ab Lage 10 zu schmal - die Tabelle
    zeigte in jeder zweistelligen Zeile "Lage 1". */
-.layer-table th:nth-child(3),
-.layer-table td:nth-child(3) {
+.layer-table th:nth-child(4),
+.layer-table td:nth-child(4) {
   width: 100px;
 }
 
 /* Explicit widths on the cells themselves (not just the .quantity child) so
    the .quantity span's own fixed width (125px, see below) always fits inside
    its cell's content box. */
-.layer-table th:nth-child(4),
-.layer-table td:nth-child(4),
 .layer-table th:nth-child(5),
-.layer-table td:nth-child(5) {
+.layer-table td:nth-child(5),
+.layer-table th:nth-child(6),
+.layer-table td:nth-child(6) {
   width: 125px;
 }
 
 /* 130px comfortably fits the select's own 128px min-width (see below). */
-.layer-table th:nth-child(6),
-.layer-table td:nth-child(6),
 .layer-table th:nth-child(7),
-.layer-table td:nth-child(7) {
+.layer-table td:nth-child(7),
+.layer-table th:nth-child(8),
+.layer-table td:nth-child(8) {
   width: 130px;
 }
 
@@ -1772,7 +1778,7 @@ table td.num,
   white-space: nowrap;
 }
 
-.layer-table td:nth-child(3) input {
+.layer-table td:nth-child(4) input {
   width: 100%;
   box-sizing: border-box;
 }
@@ -1797,6 +1803,54 @@ table td.num,
   padding: var(--s-1) 6px;
   text-align: left;
   font-size: var(--fs-md);
+}
+
+/* Die Auswahl gilt fuer Kopieren, Verschieben und die Sammelaktionen; sie
+   muss auf einen Blick zu sehen sein, auch in einer langen Tabelle. */
+.layer-table tr.selected td,
+.responsive-card.selected {
+  background: var(--accent-bg);
+}
+
+/* Der Griff: nur an ihm beginnt ein Ziehen, also muss er auch so aussehen.
+   touch-action: none, damit ein Finger auf dem Griff die Seite nicht
+   scrollt, sobald das Halten zum Ziehen geworden ist. */
+.drag-handle {
+  cursor: grab;
+  touch-action: none;
+  width: 24px;
+  min-width: 24px;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.layer-table tr.dragging {
+  position: relative;
+  z-index: 2;
+  background: var(--card);
+  box-shadow: var(--shadow-md, 0 4px 12px rgb(0 0 0 / 18%));
+}
+
+.responsive-card.dragging {
+  position: relative;
+  z-index: 2;
+  box-shadow: var(--shadow-md, 0 4px 12px rgb(0 0 0 / 18%));
+}
+
+/* Die uebrigen Zeilen eines gezogenen Blocks: sie wandern beim Ablegen mit. */
+.drag-companion {
+  opacity: 0.45;
+}
+
+.responsive-card.card-collapsed > summary .drag-handle {
+  align-self: center;
+  margin: -6px 0 -6px -6px;
+}
+
+.layer-symmetric-hint {
+  margin: 0 0 8px;
 }
 
 .layer-table th {

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useIsMobile } from "../lib/useIsMobile";
 
 export interface ResponsiveTableColumn<T> {
@@ -13,6 +13,35 @@ export interface ResponsiveTableColumn<T> {
    *  as labels and belong at the left edge with the rest of the row's
    *  identity. */
   numeric?: boolean;
+  /** Left out of the mobile cards - for a control that only makes sense in
+   *  a table row, like a drag handle a card has in its summary instead. */
+  hideInCards?: boolean;
+}
+
+/** What a row is rendered into: a table row, or a card - open/closable when
+ *  the table has a card summary. */
+export interface RowShellProps<T> {
+  row: T;
+  kind: "tr" | "details" | "div";
+  className?: string;
+  onClick?: () => void;
+  children: ReactNode;
+}
+
+function DefaultRowShell<T>({ kind, className, onClick, children }: RowShellProps<T>) {
+  if (kind === "tr") {
+    return (
+      <tr className={className} onClick={onClick}>
+        {children}
+      </tr>
+    );
+  }
+  if (kind === "details") return <details className={className}>{children}</details>;
+  return (
+    <div className={className} onClick={onClick}>
+      {children}
+    </div>
+  );
 }
 
 type ResponsiveTableProps<T> =
@@ -42,6 +71,10 @@ type ResponsiveTableProps<T> =
        *  values here, not inputs - a control inside a <summary> fights the
        *  toggle for the tap. */
       cardSummary?: (row: T) => ReactNode;
+      /** Renders the row's element in place of the plain `<tr>` or card -
+       *  for rows that need a ref or props of their own, such as sortable
+       *  ones. It must render the element `kind` names. */
+      RowShell?: ComponentType<RowShellProps<T>>;
       className?: string;
     };
 
@@ -53,32 +86,37 @@ export function ResponsiveTable<T>(props: ResponsiveTableProps<T>) {
   }
 
   const { columns, rows, rowKey, rowClassName, onRowClick, cardSummary, className } = props;
+  const Row = props.RowShell ?? DefaultRowShell;
 
   if (isMobile) {
     return (
       <div className="responsive-cards">
         {rows.map((row) => {
-          const fields = columns.map((col) => (
-            <div className="responsive-card-row" key={col.key}>
-              <span className="responsive-card-label">{col.label}</span>
-              <span className={col.numeric ? "num" : undefined}>{col.render(row)}</span>
-            </div>
-          ));
+          const fields = columns
+            .filter((col) => !col.hideInCards)
+            .map((col) => (
+              <div className="responsive-card-row" key={col.key}>
+                <span className="responsive-card-label">{col.label}</span>
+                <span className={col.numeric ? "num" : undefined}>{col.render(row)}</span>
+              </div>
+            ));
           const cls = `responsive-card${rowClassName?.(row) ? ` ${rowClassName(row)}` : ""}`;
 
           return cardSummary ? (
-            <details className={`${cls} card-collapsed`} key={rowKey(row)}>
+            <Row row={row} kind="details" className={`${cls} card-collapsed`} key={rowKey(row)}>
               <summary>{cardSummary(row)}</summary>
               {fields}
-            </details>
+            </Row>
           ) : (
-            <div
+            <Row
+              row={row}
+              kind="div"
               className={cls}
               key={rowKey(row)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
             >
               {fields}
-            </div>
+            </Row>
           );
         })}
       </div>
@@ -99,7 +137,9 @@ export function ResponsiveTable<T>(props: ResponsiveTableProps<T>) {
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr
+            <Row
+              row={row}
+              kind="tr"
               key={rowKey(row)}
               className={rowClassName?.(row)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
@@ -109,7 +149,7 @@ export function ResponsiveTable<T>(props: ResponsiveTableProps<T>) {
                   {col.render(row)}
                 </td>
               ))}
-            </tr>
+            </Row>
           ))}
         </tbody>
       </table>

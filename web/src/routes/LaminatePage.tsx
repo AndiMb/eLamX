@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { ArrowDown, ArrowUp, ArrowUpDown, Copy, Layers, Plus, RotateCw, Trash2 } from "lucide-react";
@@ -13,6 +13,13 @@ import { ResponsiveTable, type ResponsiveTableColumn } from "../components/Respo
 import { normalizeLayerAngle, parseAngleStack } from "../lib/angleStack";
 import { QuantityDisplay } from "../components/QuantityDisplay";
 import { DEFAULT_CRITERION_ID, type LayerRow } from "../lib/constants";
+import { layerSelectionFamily } from "../store/uiAtoms";
+import { clickSelection, dropPlacement, moveBlock, shiftBlock } from "../lib/layerOps";
+import { historyStep } from "../lib/history";
+import { registerCommand } from "../lib/commands";
+import { t as translate } from "../i18n";
+import { DragHandle, SortableLayers, SortableRowShell } from "../components/SortableLayers";
+import { LayerTableContext, type LayerTableState } from "../components/layerTableContext";
 import { CRITERIA, type CriterionId, type MaterialDto } from "../lib/types";
 import { useT } from "../i18n";
 
@@ -36,7 +43,11 @@ function LaminateEditor({ id }: { id: string }) {
   const materials = useAtomValue(materialsAtom);
   const [angleStackText, setAngleStackText] = useState("");
   const [rotateDelta, setRotateDelta] = useState(0);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useAtom(layerSelectionFamily(id));
+  // The row a Shift+click extends from: the last one clicked without Shift.
+  const anchor = useRef<string | null>(null);
+  // The rows moving with a drag, while one is under way.
+  const [dragging, setDragging] = useState<ReadonlySet<string> | null>(null);
   const [bulkMaterialChoice, setBulkMaterialChoice] = useState("");
   const [bulkCriterionChoice, setBulkCriterionChoice] = useState("");
   const [bulkAngle, setBulkAngle] = useState(0);
@@ -58,7 +69,7 @@ function LaminateEditor({ id }: { id: string }) {
   const addLayers = () => {
     const angles = parseAngleStack(angleStackText || "0");
     if (!angles) return;
-    setConfig((c) => {
+    historyStep(t("history.label.added"), () => setConfig((c) => {
       const template = c.layers.at(-1);
       const thickness = template?.thickness ?? 0.2;
       const materialId = template?.materialId ?? materials[0]?.id ?? "";
@@ -78,7 +89,7 @@ function LaminateEditor({ id }: { id: string }) {
           })),
         ],
       };
-    });
+    }));
     setAngleStackText("");
   };
 
@@ -106,27 +117,90 @@ function LaminateEditor({ id }: { id: string }) {
   };
 
   const moveLayer = (layerId: string, direction: -1 | 1) => {
-    setConfig((c) => {
-      const at = c.layers.findIndex((l) => l.id === layerId);
-      const to = at + direction;
-      if (at < 0 || to < 0 || to >= c.layers.length) return c;
-      const layers = [...c.layers];
-      [layers[at], layers[to]] = [layers[to], layers[at]];
-      return { ...c, layers };
-    });
+    historyStep(t("history.label.moved"), () =>
+      setConfig((c) => ({ ...c, layers: shiftBlock(c.layers, new Set([layerId]), direction) })),
+    );
+  };
+
+  // Alt+Up/Down: the selected rows, or - with nothing selected - the row the
+  // focus is in, so the keys work straight from a ply's angle field.
+  const moveSelection = useCallback(
+    (direction: -1 | 1) => {
+      let ids: ReadonlySet<string> = selectedIds;
+      if (ids.size === 0) {
+        const row = (document.activeElement as HTMLElement | null)?.closest("[data-layer-id]");
+        const focusedId = row?.getAttribute("data-layer-id");
+        if (!focusedId) return;
+        ids = new Set([focusedId]);
+      }
+      historyStep(translate("history.label.moved"), () =>
+        setConfig((c) => ({ ...c, layers: shiftBlock(c.layers, ids, direction) })),
+      );
+    },
+    [selectedIds, setConfig],
+  );
+
+  useEffect(() => {
+    const stops = [
+      registerCommand({
+        id: "layers.moveUp",
+        label: "command.layers.moveUp",
+        shortcut: "Alt+ArrowUp",
+        run: () => moveSelection(-1),
+      }),
+      registerCommand({
+        id: "layers.moveDown",
+        label: "command.layers.moveDown",
+        shortcut: "Alt+ArrowDown",
+        run: () => moveSelection(1),
+      }),
+    ];
+    return () => stops.forEach((stop) => stop());
+  }, [moveSelection]);
+
+  // A drag moves the dragged row - and, when it is one of several selected
+  // rows, all of them, closed up into one block where it is dropped.
+  const blockFor = (activeId: string): ReadonlySet<string> =>
+    selectedIds.has(activeId) && selectedIds.size > 1 ? selectedIds : new Set([activeId]);
+
+  const dropLayers = (activeId: string, overId: string) => {
+    const block = blockFor(activeId);
+    setDragging(null);
+    historyStep(t("history.label.moved"), () =>
+      setConfig((c) => ({
+        ...c,
+        layers: moveBlock(c.layers, block, overId, dropPlacement(c.layers, activeId, overId)),
+      })),
+    );
+  };
+
+  const onRowClick = (layerId: string, event: MouseEvent) => {
+    const next = clickSelection(
+      config.layers.map((l) => l.id),
+      selectedIds,
+      anchor.current,
+      layerId,
+      { toggle: event.ctrlKey || event.metaKey, range: event.shiftKey },
+    );
+    anchor.current = next.anchor;
+    setSelectedIds(next.selection);
   };
 
   // Stack ops from the Java original's "Aufbau bearbeiten" panel.
   const invertStack = () => {
-    setConfig((c) => ({ ...c, layers: [...c.layers].reverse() }));
+    historyStep(t("history.label.inverted"), () =>
+      setConfig((c) => ({ ...c, layers: [...c.layers].reverse() })),
+    );
   };
 
   const rotateStack = () => {
     if (rotateDelta === 0) return;
-    setConfig((c) => ({
-      ...c,
-      layers: c.layers.map((l) => ({ ...l, angle: normalizeLayerAngle(l.angle + rotateDelta) })),
-    }));
+    historyStep(t("history.label.rotated"), () =>
+      setConfig((c) => ({
+        ...c,
+        layers: c.layers.map((l) => ({ ...l, angle: normalizeLayerAngle(l.angle + rotateDelta) })),
+      })),
+    );
   };
 
   // Bulk edit of selected layers: change material or failure criterion for
@@ -153,6 +227,7 @@ function LaminateEditor({ id }: { id: string }) {
   }
 
   const toggleSelected = (layerId: string) => {
+    anchor.current = layerId;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(layerId)) {
@@ -205,9 +280,13 @@ function LaminateEditor({ id }: { id: string }) {
   };
 
   const bulkDelete = () => {
-    setConfig((c) => ({ ...c, layers: c.layers.filter((l) => !selectedIds.has(l.id)) }));
+    historyStep(t("history.label.deleted"), () =>
+      setConfig((c) => ({ ...c, layers: c.layers.filter((l) => !selectedIds.has(l.id)) })),
+    );
     setSelectedIds(new Set());
   };
+
+  const tableState: LayerTableState = { selected: selectedIds, dragging, onRowClick };
 
   // Editor info line (Java "Informationen" panel): totals across the
   // EXPANDED stack, mirroring the core's symmetric/middle-layer expansion.
@@ -227,6 +306,13 @@ function LaminateEditor({ id }: { id: string }) {
     `${field}, ${t("layers.aria.ply", { nr: index + 1 })}`;
 
   const columns: ResponsiveTableColumn<LayerRow & { index: number }>[] = [
+    {
+      key: "handle",
+      label: "",
+      // A card has its handle in its summary, where it can be reached closed.
+      hideInCards: true,
+      render: (l) => <DragHandle label={t("layers.dnd.handle", { nr: l.index + 1 })} />,
+    },
     {
       key: "select",
       label: "",
@@ -483,25 +569,37 @@ function LaminateEditor({ id }: { id: string }) {
                     compact
                   />
                 </div>
-                <ResponsiveTable
-                  variant="records"
-                  className="layer-table"
-                  columns={columns}
-                  rows={config.layers.map((l, index) => ({ ...l, index }))}
-                  rowKey={(l) => l.id}
-                  cardSummary={(l) => (
-                    <>
-                      <span className="ply-nr">{l.index + 1}</span>
-                      <span className="ply-angle">
-                        <QuantityDisplay category="angle" value={l.angle} />
-                      </span>
-                      <span className="ply-thickness">
-                        <QuantityDisplay category="thickness" value={l.thickness} />
-                      </span>
-                      <span className="ply-name">{l.name}</span>
-                    </>
-                  )}
-                />
+                <LayerTableContext.Provider value={tableState}>
+                  <SortableLayers
+                    ids={config.layers.map((l) => l.id)}
+                    onDragStart={(activeId) => setDragging(blockFor(activeId))}
+                    onMove={dropLayers}
+                    onDragCancel={() => setDragging(null)}
+                  >
+                    <ResponsiveTable
+                      variant="records"
+                      className="layer-table"
+                      columns={columns}
+                      rows={config.layers.map((l, index) => ({ ...l, index }))}
+                      rowKey={(l) => l.id}
+                      RowShell={SortableRowShell}
+                      cardSummary={(l) => (
+                        <>
+                          <DragHandle label={t("layers.dnd.handle", { nr: l.index + 1 })} />
+                          <span className="ply-nr">{l.index + 1}</span>
+                          <span className="ply-angle">
+                            <QuantityDisplay category="angle" value={l.angle} />
+                          </span>
+                          <span className="ply-thickness">
+                            <QuantityDisplay category="thickness" value={l.thickness} />
+                          </span>
+                          <span className="ply-name">{l.name}</span>
+                        </>
+                      )}
+                    />
+                  </SortableLayers>
+                </LayerTableContext.Provider>
+                {config.symmetric && <p className="hint layer-symmetric-hint">{t("layers.symmetricHint")}</p>}
               </>
             )}
           </section>

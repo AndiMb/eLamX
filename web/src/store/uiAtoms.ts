@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
+import { atomFamily } from "jotai-family";
 
 // Which laminate nodes are expanded in the sidebar tree (showing their module
 // children). Pure UI state - deliberately not persisted alongside domain data.
@@ -24,3 +25,10 @@ export const stackVizOptionsAtom = atomWithStorage<StackVizOptions>(
   undefined,
   { getOnInit: true },
 );
+
+/** Which plies of a laminate are selected in its table - what the bulk
+ *  actions, the clipboard, Alt+↑/↓ and a drag of several rows act on.
+ *  View state, not project: outside undo and not saved. May name plies that
+ *  no longer exist (after an undo, say); readers intersect it with the
+ *  current plies. */
+export const layerSelectionFamily = atomFamily((_laminateId: string) => atom<ReadonlySet<string>>(new Set<string>()));
