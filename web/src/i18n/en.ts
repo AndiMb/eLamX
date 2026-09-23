@@ -27,6 +27,7 @@ export const en = {
   "topbar.save": "Save",
   "topbar.save.hint": "Save the project as an .elamx file",
   "topbar.save.toFile": "Save to {file}",
+  "command.saveAs": "Save as …",
   "project.readError": "{message}",
   "project.readError.title": "This file could not be opened",
   "project.dismiss": "Dismiss",

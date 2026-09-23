@@ -3,6 +3,7 @@ import { useIsMobile } from "./lib/useIsMobile";
 import { useApplyTheme } from "./lib/useApplyTheme";
 import { useApplyLocale } from "./i18n/useApplyLocale";
 import { useResolvedMicromechanics } from "./store/useResolvedMicromechanics";
+import { useGlobalShortcuts } from "./lib/commands";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { BottomTabs } from "./components/BottomTabs";
@@ -43,6 +44,7 @@ function Shell() {
   useApplyTheme();
   useApplyLocale();
   useResolvedMicromechanics();
+  useGlobalShortcuts();
 
   if (isMobile) {
     return (

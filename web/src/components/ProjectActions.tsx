@@ -4,6 +4,7 @@ import { FolderOpen, Save } from "lucide-react";
 import { downloadProject, exportProject, importProject } from "../lib/projectFile";
 import type { ProjectFormat } from "../lib/projectFile";
 import { desktop, type DesktopProject } from "../lib/desktop";
+import { registerCommand, runCommand } from "../lib/commands";
 import type { ImportNotice } from "../lib/webExtension";
 import {
   importNoticesAtom,
@@ -137,13 +138,45 @@ export function ProjectActions() {
     [shell, snapshot, projectName, filePath, setFilePath, setProjectName],
   );
 
-  // The native menu does not act on its own: it asks for the same two actions
-  // the buttons run, so there is one implementation of each.
+  // The file actions as commands, so a shortcut, the native menu and the
+  // buttons all run the same code. In the shell the menu has the accelerators
+  // for these keys and sends the command itself; see `nativeInDesktop`.
+  useEffect(() => {
+    const unregister = [
+      registerCommand({
+        id: "file.open",
+        label: "topbar.open",
+        shortcut: "Mod+O",
+        nativeInDesktop: true,
+        when: () => !busy,
+        run: open,
+      }),
+      registerCommand({
+        id: "file.save",
+        label: "topbar.save",
+        shortcut: "Mod+S",
+        nativeInDesktop: true,
+        when: () => !busy,
+        run: () => save(false),
+      }),
+      registerCommand({
+        id: "file.saveAs",
+        label: "command.saveAs",
+        shortcut: "Mod+Shift+S",
+        nativeInDesktop: true,
+        when: () => !busy,
+        run: () => save(true),
+      }),
+    ];
+    return () => unregister.forEach((stop) => stop());
+  }, [open, save, busy]);
+
+  // The native menu does not act on its own: it asks for the same commands
+  // the buttons and the shortcuts run, so there is one implementation of each.
   useEffect(() => {
     if (!shell) return;
     const stopCommands = shell.onCommand((command) => {
-      if (command === "open") void open();
-      else void save(command === "saveAs");
+      runCommand(command === "open" ? "file.open" : command === "saveAs" ? "file.saveAs" : "file.save");
     });
     const stopOpened = shell.onProjectOpened((project) => void load(project));
     // Only now can a double-clicked file be delivered - before this there was
