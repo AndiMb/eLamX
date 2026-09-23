@@ -1254,4 +1254,5 @@ export const de: Messages = {
   "report.dialog.stage.figures": "Abbildungen zeichnen",
   "report.dialog.stage.pdf": "PDF setzen",
   "report.dialog.error": "Der Report konnte nicht erstellt werden: {message}",
+  "report.figure.reserveFactorLegend": "Farbe nach Versagensart: rot Faserbruch, orange Zwischenfaserbruch, violett allgemeines Materialversagen, grün unbeschädigt; die markierte Lagennummer ist die maßgebende Lage",
 };

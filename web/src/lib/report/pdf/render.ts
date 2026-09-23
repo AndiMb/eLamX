@@ -197,9 +197,16 @@ function table(w: Writer, block: Extract<Block, { t: "table" }>, env: RenderEnv)
   const columns = shown.headers.length;
   // A wide table is set smaller rather than broken across the page width.
   const size = columns > 10 ? 6.5 : columns > 7 ? 7.5 : 8.5;
-  const columnStyles: Record<number, { halign: "right" }> = {};
+  const columnStyles: Record<number, { halign?: "right"; cellWidth?: "wrap" }> = {};
   shown.numeric.forEach((numeric, i) => {
     if (numeric) columnStyles[i] = { halign: "right" };
+  });
+  // A ply or step number is never broken over two lines - the critical
+  // ply's marker would otherwise push its number onto a second one.
+  block.table.columns.forEach((column, i) => {
+    if (column.key === "nr" || column.key === "step" || column.key === "layer") {
+      columnStyles[i] = { ...columnStyles[i], cellWidth: "wrap" };
+    }
   });
   autoTable(w.doc, {
     startY: w.y,

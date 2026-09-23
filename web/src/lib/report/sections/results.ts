@@ -49,7 +49,8 @@ function caseResults(lc: LoadCaseResults, ctx: ReportContext): Block[] {
   }
   blocks.push({
     t: "figure",
-    caption: t("report.figure.reserveFactor", { metric: metricName, loadCase: lc.loadCase.name }),
+    // The chart's legend is outside its SVG on screen; here it is said in words.
+    caption: `${t("report.figure.reserveFactor", { metric: metricName, loadCase: lc.loadCase.name })}. ${t("report.figure.reserveFactorLegend")}`,
     widthMm: 150,
     request: { kind: "reserveFactor", layers, metric: ctx.metric },
   });

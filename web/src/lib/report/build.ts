@@ -6,7 +6,7 @@
 // blocks - nothing else, so a new part is a new builder and a line here.
 
 import { createQuantityFormatter } from "../quantityFormat";
-import type { QuantityCategory } from "../units";
+import { CATEGORY_DEFINITIONS, type QuantityCategory } from "../units";
 import type { CollectedResults, LaminateResults } from "./collect";
 import type { ReportContext } from "./context";
 import type { Block, ReportDoc, ReportSection, ReportTemplate, SectionKind } from "./model";
@@ -38,8 +38,12 @@ const LAMINATE_PARTS: [SectionKind, (r: LaminateResults, c: CollectedResults, ct
 /** The units the report's numbers are in, for its header. */
 function unitSystem(ctx: ReportContext): string {
   const categories: QuantityCategory[] = ["stiffness", "stress", "thickness", "angle", "temperatureDelta"];
+  // Each unit with its quantity: "MPa, MPa" would not say which is which.
   return categories
-    .map((c) => createQuantityFormatter(c, ctx.formats(c), ctx.locale).unit)
+    .map((c) => {
+      const unit = createQuantityFormatter(c, ctx.formats(c), ctx.locale).unit;
+      return unit ? `${ctx.t(CATEGORY_DEFINITIONS[c].labelKey)} ${unit}` : null;
+    })
     .filter((u): u is string => !!u)
     .join(", ");
 }
