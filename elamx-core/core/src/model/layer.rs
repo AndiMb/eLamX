@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 /// A single ply. `angle` is kept private so it can only be set through
 /// [`Layer::new`]/[`Layer::set_angle`], which normalize it to -90..=90 degrees.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct Layer {
     pub id: String,

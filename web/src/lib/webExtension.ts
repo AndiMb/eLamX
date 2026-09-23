@@ -6,6 +6,7 @@
 // the wasm worker - just to start.
 
 import type { ImportNotice as CoreImportNotice } from "./generated/ImportNotice";
+import type { Snapshot } from "./generated/Snapshot";
 
 /** The parts of `<webExtension>` no feature of this build edits yet.
  *
@@ -14,12 +15,10 @@ import type { ImportNotice as CoreImportNotice } from "./generated/ImportNotice"
  *  back from there, so they live in the laminate like every other ply
  *  property. */
 export interface WebExtensionCarry {
-  studies: unknown[];
-  snapshots: unknown[];
+  snapshots: Snapshot[];
 }
 
 export const EMPTY_WEB_EXTENSION_CARRY: WebExtensionCarry = {
-  studies: [],
   snapshots: [],
 };
 
@@ -28,4 +27,5 @@ export const EMPTY_WEB_EXTENSION_CARRY: WebExtensionCarry = {
  *  the ids in the file were mapped to. */
 export type ImportNotice =
   | CoreImportNotice
-  | { kind: "comparison_variant_dropped"; laminate: string; loadCase: string };
+  | { kind: "comparison_variant_dropped"; laminate: string; loadCase: string }
+  | { kind: "study_load_case_dropped"; study: string; loadCase: string };

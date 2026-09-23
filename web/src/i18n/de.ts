@@ -1257,4 +1257,9 @@ export const de: Messages = {
   "report.figure.reserveFactorLegend": "Farbe nach Versagensart: rot Faserbruch, orange Zwischenfaserbruch, violett allgemeines Materialversagen, grün unbeschädigt; die markierte Lagennummer ist die maßgebende Lage",
   "batch.cancel": "Abbrechen",
   "optimization.cancelled": "Suche abgebrochen. Ein früheres Ergebnis bleibt stehen.",
+  "project.notice.studyLoadCaseDropped": "Die Studie „{study}“ nennt den Lastfall „{loadCase}“, den die Datei nicht mehr hat; sie rechnet ohne ihn weiter.",
+  "study.defaultName.matrix": "Matrix {nr}",
+  "study.defaultName.sweep": "Parameterstudie {nr}",
+  "history.label.study": "Studie „{name}“",
+  "history.label.studies": "Studien",
 };

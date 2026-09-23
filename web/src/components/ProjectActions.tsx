@@ -42,6 +42,8 @@ function noticeText(notice: ImportNotice, t: ReturnType<typeof useT>): string {
         laminate: notice.laminate,
         loadCase: notice.loadCase,
       });
+    case "study_load_case_dropped":
+      return t("project.notice.studyLoadCaseDropped", { study: notice.study, loadCase: notice.loadCase });
     case "stale_layer_criteria": {
       const criteria = notice.extra.map((id) => criterionName(id, t)).join(", ");
       return notice.reason === "criterion_changed" && notice.layer !== null

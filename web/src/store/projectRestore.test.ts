@@ -15,6 +15,8 @@ import { defaultLaminateConfig, laminateConfigFamily, laminateIdsAtom } from "./
 import { materialsAtom } from "./materialsAtoms";
 import { comparisonVariantsAtom } from "./comparisonAtoms";
 import { reportTemplatesAtom } from "./reportAtoms";
+import { addStudyAtom, studiesAtom, updateStudyAtom } from "./studyAtoms";
+import { describeChange } from "../lib/history";
 import { defaultReportTemplate } from "../lib/report/model";
 import { OPTIMIZATION_STORAGE_KEY, optimizationInputAtom, defaultOptimizationInput } from "./optimizationAtoms";
 import { defaultMaterial } from "../lib/constants";
@@ -82,6 +84,24 @@ describe("ProjectSnapshotV2 und restoreProjectAtom", () => {
     expect(store.get(projectSnapshotV2Atom).reportTemplates?.[0].name).toBe("Prüfbericht");
     store.set(restoreProjectAtom, before);
     expect(store.get(reportTemplatesAtom)).toEqual([]);
+  });
+
+  it("nimmt Studien in den Stand auf, benennt die Änderung und bringt sie zurück", () => {
+    const store = opened();
+    const before = store.get(projectSnapshotV2Atom);
+    expect(before.studies).toEqual([]);
+    const id = store.set(addStudyAtom, { kind: "sweep", laminateId: "lam-a" });
+    const added = store.get(projectSnapshotV2Atom);
+    expect(added.studies?.map((s) => s.id)).toEqual([id]);
+    const study = store.get(studiesAtom)[0];
+    store.set(updateStudyAtom, { ...study, name: "Winkelstudie" });
+    const renamed = store.get(projectSnapshotV2Atom);
+    // One study changed: a step of its own, named after it.
+    expect(describeChange(added, renamed).path).toBe(`study:${id}`);
+    store.set(restoreProjectAtom, before);
+    expect(store.get(studiesAtom)).toEqual([]);
+    store.set(restoreProjectAtom, renamed);
+    expect(store.get(studiesAtom)[0].name).toBe("Winkelstudie");
   });
 
   it("bringt den Stand zurück, auch „nicht eingerichtet“ und gelöschte Laminate", () => {

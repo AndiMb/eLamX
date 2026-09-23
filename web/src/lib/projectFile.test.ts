@@ -1,3 +1,4 @@
+import { defaultSweep, defaultVariation, type StudyDef } from "./study/model";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -139,18 +140,99 @@ describe("die Web-Erweiterung der Projektdatei", () => {
     ]);
   });
 
-  /// The fields later features will own are carried untouched by this build,
-  /// so opening and saving here does not lose what a newer one wrote.
-  it("trägt die Teile der Erweiterung weiter, die hier noch niemand bearbeitet", async () => {
+  /// Studies are project objects (E8): their definitions travel with the
+  /// file, load cases named by position and name since their ids do not.
+  it("schreibt Studien in die Datei und liest sie zurück", async () => {
     const opened = await importProject(REFERENCE);
-    const carry = {
-      studies: [{ id: "s1", kind: "matrix" }],
-      snapshots: [{ id: "snap" }],
-    };
-    const reopened = await importProject(
-      await exportProject({ ...opened, webExtensionCarry: carry }),
+    const [first, second] = opened.laminates;
+    const studies: StudyDef[] = [
+      {
+        id: "m1",
+        name: "Matrix ]]> <laminate>",
+        kind: "matrix",
+        matrix: {
+          laminates: [first.id, second.id],
+          columns: "load_case",
+          loadCases: [
+            { laminateId: first.id, loadCaseId: first.loadCases[1].id },
+            { laminateId: second.id, loadCaseId: second.loadCases[0].id },
+          ],
+          criteria: [],
+          output: "lpf",
+          transpose: true,
+        },
+      },
+      {
+        id: "s1",
+        name: "Winkel",
+        kind: "sweep",
+        sweep: {
+          laminateId: first.id,
+          loadCaseId: first.loadCases[2].id,
+          x: { ...defaultVariation("angle"), layers: [first.layers[0].id], negated: [first.layers[1].id] },
+          y: { ...defaultVariation("plate"), dim: "b" },
+          outputs: ["min_rf", "buckling_factor", "ex"],
+          plies: 24,
+          fractions: [0.4, 0.4, 0.2],
+        },
+      },
+    ];
+    const xml = await exportProject({ ...opened, studies });
+    const reopened = await importProject(xml);
+    // The same definitions, with the load cases found again by position.
+    const byName = (snapshot: typeof reopened, laminateId: string, loadCaseId: string | null) =>
+      snapshot.laminates.find((l) => l.id === laminateId)!.loadCases.find((c) => c.id === loadCaseId)?.name;
+    const [matrix, sweep] = reopened.studies!;
+    expect(matrix.kind).toBe("matrix");
+    expect(sweep.kind).toBe("sweep");
+    if (matrix.kind !== "matrix" || sweep.kind !== "sweep") return;
+    expect({ ...matrix.matrix, loadCases: [] }).toEqual({ ...studies[0].kind === "matrix" ? studies[0].matrix : {}, loadCases: [] });
+    expect(matrix.matrix.loadCases.map((s) => byName(reopened, s.laminateId, s.loadCaseId))).toEqual([
+      first.loadCases[1].name,
+      second.loadCases[0].name,
+    ]);
+    expect(byName(reopened, sweep.sweep.laminateId, sweep.sweep.loadCaseId)).toBe(first.loadCases[2].name);
+    expect({ ...sweep.sweep, loadCaseId: null }).toEqual({ ...(studies[1].kind === "sweep" ? studies[1].sweep : {}), loadCaseId: null });
+    expect(reopened.importNotices).toEqual([]);
+    // And stable: saving what was read writes the same file.
+    expect(await exportProject(reopened)).toBe(xml);
+  });
+
+  /// A study of a later version - a kind this build does not know - is kept
+  /// as it was read and written back unchanged.
+  it("trägt eine Studie unbekannter Art unverändert weiter", async () => {
+    const opened = await importProject(REFERENCE);
+    const xml = await exportProject({ ...opened, studies: [] });
+    const newer = xml.replace(
+      "</elamx>",
+      '    <webExtension schema="1"><![CDATA[{"schema":1,"studies":[{"id":"x","name":"Monte Carlo","kind":"monte_carlo"}]}]]></webExtension>\n</elamx>',
     );
-    expect(reopened.webExtensionCarry).toEqual(carry);
+    const reopened = await importProject(newer);
+    expect(reopened.studies).toEqual([
+      { id: "x", name: "Monte Carlo", kind: "unknown", raw: { id: "x", name: "Monte Carlo", kind: "monte_carlo" } },
+    ]);
+    expect(await exportProject(reopened)).toContain('"kind":"monte_carlo"');
+  });
+
+  it("meldet einen Lastfall einer Studie, den die Datei nicht mehr hat", async () => {
+    const opened = await importProject(REFERENCE);
+    const laminate = opened.laminates[0];
+    const written = await exportProject({
+      ...opened,
+      studies: [
+        {
+          id: "s",
+          name: "Studie",
+          kind: "sweep",
+          sweep: { ...defaultSweep(laminate.id), loadCaseId: laminate.loadCases[0].id },
+        },
+      ],
+    });
+    const renamed = written.replaceAll(`"load_case_name":"${laminate.loadCases[0].name}"`, '"load_case_name":"Weg"');
+    const reopened = await importProject(renamed);
+    expect(reopened.importNotices).toEqual([{ kind: "study_load_case_dropped", study: "Studie", loadCase: "Weg" }]);
+    const study = reopened.studies![0];
+    expect(study.kind === "sweep" && study.sweep.loadCaseId).toBeNull();
   });
 
   it("schreibt Report-Vorlagen in die Datei und liest sie zurück", async () => {

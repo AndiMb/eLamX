@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 /// Ply material properties, corresponding to the Java `DefaultMaterial` (the only
 /// concrete `Material` implementation in the original application).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
 pub struct Material {
     pub id: String,
@@ -49,6 +49,11 @@ pub struct Material {
     pub r_shear: f64,
 
     /// Extra named values used by specific failure criteria (e.g. Puck's p_par_ten).
+    ///
+    /// Written in key order: a hash map's order changes from one instance to
+    /// the next, and a material copied into a project file's snapshot would
+    /// otherwise make every save of an unchanged project a different file.
+    #[serde(serialize_with = "sorted_map")]
     pub additional_values: HashMap<String, f64>,
 
     /// Set when this material's basic properties are PREDICTED from a fibre
@@ -157,6 +162,12 @@ impl Material {
         copy.id = Uuid::new_v4().to_string();
         copy
     }
+}
+
+/// Serialises a map with its keys in order.
+fn sorted_map<S: serde::Serializer>(map: &HashMap<String, f64>, serializer: S) -> Result<S::Ok, S::Error> {
+    let sorted: std::collections::BTreeMap<&String, &f64> = map.iter().collect();
+    serde::Serialize::serialize(&sorted, serializer)
 }
 
 #[cfg(test)]

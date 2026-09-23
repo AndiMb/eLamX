@@ -37,6 +37,7 @@ import type { ImportNotice as CoreImportNotice } from "./generated/ImportNotice"
 import type { WebExtension } from "./generated/WebExtension";
 import type { RuleSettings } from "./generated/RuleSettings";
 import type { Variant } from "../store/comparisonAtoms";
+import { fromFileStudy, toFileStudy, type DroppedStudyRef, type StudyDef } from "./study/model";
 import {
   EMPTY_WEB_EXTENSION_CARRY,
   type ImportNotice,
@@ -197,6 +198,9 @@ export interface ProjectSnapshot {
   /** Report templates saved under a name (F3.2). Optional so that a snapshot
    *  written before they existed still reads. */
   reportTemplates?: ReportTemplate[];
+  /** Parameter studies (F4.1, F4.2): their definitions. Optional so that a
+   *  snapshot written before they existed still reads. */
+  studies?: StudyDef[];
   /** What could not be used when the file was read. Empty on the way out. */
   importNotices?: ImportNotice[];
 }
@@ -244,7 +248,7 @@ function toWebExtension(snapshot: ProjectSnapshot): WebExtension | null {
     schema: 1,
     // Written by the core from the layers themselves.
     layer_criteria: [],
-    studies: carry.studies,
+    studies: (snapshot.studies ?? []).map((s) => toFileStudy(s, snapshot.laminates)),
     snapshots: carry.snapshots,
     report_templates: (snapshot.reportTemplates ?? []).map(toFileTemplate),
     comparison: variants.length > 0 ? { variants } : null,
@@ -395,6 +399,10 @@ export async function importProject(
     }
   }
 
+  const dropped: DroppedStudyRef[] = [];
+  const studies = (extension?.studies ?? []).map((s) => fromFileStudy(s, laminates, dropped));
+  for (const d of dropped) importNotices.push({ kind: "study_load_case_dropped", study: d.study, loadCase: d.loadCase });
+
   return {
     materials: project.materials,
     fibres: project.fibres ?? [],
@@ -414,10 +422,10 @@ export async function importProject(
     comparison,
     webExtensionCarry: extension
       ? {
-          studies: extension.studies,
           snapshots: extension.snapshots,
         }
       : EMPTY_WEB_EXTENSION_CARRY,
+    studies,
     reportTemplates: (extension?.report_templates ?? []).map(fromFileTemplate),
     stackingRuleSettings: extension?.stacking_rule_settings ?? null,
     importNotices,

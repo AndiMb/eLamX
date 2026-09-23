@@ -3,6 +3,8 @@ import type { ComparisonState } from "./ComparisonState";
 import type { LayerCriteriaEntry } from "./LayerCriteriaEntry";
 import type { ReportTemplate } from "./ReportTemplate";
 import type { RuleSettings } from "./RuleSettings";
+import type { Snapshot } from "./Snapshot";
+import type { Study } from "./Study";
 
 /**
  * The web version's own part of a project.
@@ -22,15 +24,15 @@ schema: number,
  */
 layer_criteria: Array<LayerCriteriaEntry>, 
 /**
- * Parameter studies (matrix and sweep definitions). Their shape belongs to
- * the study feature and is carried opaquely until it exists.
+ * Parameter studies (F4.1, F4.2): their definitions only. Results are
+ * never stored - they are recomputed when the study is looked at, so a
+ * file cannot carry numbers that no longer follow from its inputs.
  */
-studies: Array<unknown>, 
+studies: Array<Study>, 
 /**
- * Frozen laminate variants for the comparison page. Opaque for the same
- * reason as `studies`.
+ * Frozen laminate variants for the comparison page (F4.3).
  */
-snapshots: Array<unknown>, 
+snapshots: Array<Snapshot>, 
 /**
  * Saved report configurations (F3.2), by name.
  */

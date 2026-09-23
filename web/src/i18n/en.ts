@@ -1278,4 +1278,9 @@ export const en = {
   "report.figure.reserveFactorLegend": "Colour by failure mode: red fibre failure, orange inter-fibre failure, violet general material failure, green undamaged; the marked ply number is the governing ply",
   "batch.cancel": "Cancel",
   "optimization.cancelled": "Search cancelled. An earlier result stays in place.",
+  "project.notice.studyLoadCaseDropped": "The study “{study}” names the load case “{loadCase}”, which the file no longer has; it goes on without it.",
+  "study.defaultName.matrix": "Matrix {nr}",
+  "study.defaultName.sweep": "Sweep {nr}",
+  "history.label.study": "Study “{name}”",
+  "history.label.studies": "Studies",
 } as const;

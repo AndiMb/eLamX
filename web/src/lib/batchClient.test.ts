@@ -66,7 +66,7 @@ describe("the batch client", () => {
     const worker = workers[0];
     const { jobId } = worker.posted[0];
     worker.send({ type: "progress", jobId, done: 0, total: 2 });
-    worker.send({ type: "point", jobId, index: 0, value: { ok: true, values: { minRf: 2 } } });
+    worker.send({ type: "point", jobId, index: 0, value: { ok: true, values: { min_rf: 2 } } });
     worker.send({ type: "point", jobId, index: 1, value: { ok: false, reason: "no" } });
     worker.send({ type: "progress", jobId, done: 2, total: 2 });
     worker.send({ type: "done", jobId });
@@ -150,7 +150,7 @@ describe("the in-thread fallback", () => {
   const laminate = laminateDtoOf(defaultLaminateConfig("lam", "L", material.id));
   const task = (nx: number): PointTask => {
     const loadCase = { ...defaultLoadCase("1"), dofValues: [nx, 0, 0, 0, 0, 0] };
-    return { outputs: ["minRf", "ex"], requests: { clt: JSON.stringify(buildCltRequest(laminate, materials, loadCase)) } };
+    return { outputs: ["min_rf", "ex"], requests: { clt: JSON.stringify(buildCltRequest(laminate, materials, loadCase)) } };
   };
 
   it("evaluates points with the real core, the same numbers the CLT gives", async () => {
@@ -162,7 +162,7 @@ describe("the in-thread fallback", () => {
     expect(results[0]).toEqual({
       ok: true,
       values: {
-        minRf: Math.min(
+        min_rf: Math.min(
           ...direct.layer_results.flatMap((l: { rr_lower: { minimal_reserve_factor: number }; rr_upper: { minimal_reserve_factor: number } }) => [
             l.rr_lower.minimal_reserve_factor,
             l.rr_upper.minimal_reserve_factor,
@@ -172,15 +172,15 @@ describe("the in-thread fallback", () => {
       },
     });
     // Twice the load, half the reserve.
-    const [a, b] = results as { ok: true; values: { minRf: number } }[];
-    expect(b.values.minRf).toBeCloseTo(a.values.minRf / 2, 10);
+    const [a, b] = results as { ok: true; values: { min_rf: number } }[];
+    expect(b.values.min_rf).toBeCloseTo(a.values.min_rf / 2, 10);
   });
 
   it("turns a request the core refuses into a gap with the core's reason", async () => {
     const client = new BatchClient({ createWorker: () => null });
     const results: PointResult[] = [];
     await client.run(
-      { kind: "points", points: [{ outputs: ["minRf"], requests: { clt: "{}" } }, { outputs: ["minRf"], invalid: "why", requests: {} }] },
+      { kind: "points", points: [{ outputs: ["min_rf"], requests: { clt: "{}" } }, { outputs: ["min_rf"], invalid: "why", requests: {} }] },
       { onPoint: (i, v) => (results[i] = v) },
     ).promise;
     expect(results[0].ok).toBe(false);

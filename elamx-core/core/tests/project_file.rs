@@ -10,8 +10,9 @@
 use elamx_core::clt::RadiusType;
 use elamx_core::plate::Stiffener;
 use elamx_core::project::{
-    read_elamx, write_elamx, ComparisonState, ComparisonVariant, ImportNotice, LayerCriteriaEntry, ReportTemplate,
-    Project, ReadError, StaleLayerCriteriaReason, WebExtension, WEB_EXTENSION_TAG,
+    read_elamx, write_elamx, ComparisonState, ComparisonVariant, ImportNotice, LayerCriteriaEntry, LoadCaseRef, MatrixSpec, ReportTemplate,
+    Project, ReadError, Snapshot, SnapshotLoadCase, StaleLayerCriteriaReason, Study, SweepSpec, Variation,
+    WebExtension, WEB_EXTENSION_TAG,
 };
 use elamx_core::cutout::CutoutInput;
 use elamx_core::optimization::Constraint;
@@ -867,8 +868,81 @@ fn full_extension() -> WebExtension {
     WebExtension {
         // Opaque today, so any JSON has to come back as it went in - including
         // strings that would end a CDATA section or look like eLamX's tags.
-        studies: vec![json!({"id": "s1", "name": "Studie ]]> <laminate>", "kind": "matrix"})],
-        snapshots: vec![json!({"id": "snap", "keyFigures": {"minRf": 1.25}})],
+        // Names and ids are free text, so they may end a CDATA section or look
+        // like one of eLamX's tags - and still have to come back as they went.
+        studies: vec![
+            Study {
+                id: "s1".into(),
+                name: "Studie ]]> <laminate>".into(),
+                kind: "matrix".into(),
+                matrix: Some(MatrixSpec {
+                    laminates: vec!["lam-1".into(), "lam-2".into()],
+                    columns: "criterion".into(),
+                    load_cases: vec![LoadCaseRef {
+                        laminate_uuid: "lam-1".into(),
+                        load_case_index: 0,
+                        load_case_name: "Zug".into(),
+                    }],
+                    criteria: vec!["puck".into(), "tsai_wu".into()],
+                    output: "lpf".into(),
+                    transpose: true,
+                }),
+                sweep: None,
+            },
+            Study {
+                id: "s2".into(),
+                name: "Winkel".into(),
+                kind: "sweep".into(),
+                matrix: None,
+                sweep: Some(SweepSpec {
+                    laminate_uuid: "lam-1".into(),
+                    load_case: Some(LoadCaseRef {
+                        laminate_uuid: "lam-1".into(),
+                        load_case_index: 1,
+                        load_case_name: "Druck".into(),
+                    }),
+                    x: Variation {
+                        kind: "angle".into(),
+                        layers: vec!["layer-a".into()],
+                        negated: vec!["layer-b".into()],
+                        from: -90.0,
+                        to: 90.0,
+                        steps: 37,
+                        ..Variation::default()
+                    },
+                    y: Some(Variation {
+                        kind: "plate".into(),
+                        dim: "a".into(),
+                        from: 100.0,
+                        to: 900.0,
+                        steps: 5,
+                        ..Variation::default()
+                    }),
+                    outputs: vec!["min_rf".into(), "buckling_factor".into()],
+                    plies: 24,
+                    fractions: [0.4, 0.4, 0.2],
+                }),
+            },
+        ],
+        snapshots: vec![Snapshot {
+            id: "snap".into(),
+            name: "Stand ]]> <layer>".into(),
+            at: "2026-09-24T10:00:00.000Z".into(),
+            laminate: read_elamx(&reference_xml()).unwrap().laminates[0].laminate.clone(),
+            // Typed-in materials: a micromechanic one's derived moduli carry
+            // seventeen digits, and serde_json (without `float_roundtrip`)
+            // may read those back one unit in the last place off - harmless
+            // for a snapshot, whose results are recomputed, but not equal.
+            materials: read_elamx(&reference_xml()).unwrap().materials.into_iter().filter(|m| m.micro.is_none()).collect(),
+            load_case: SnapshotLoadCase {
+                name: "Zug".into(),
+                dof_values: vec![1000.0, 0.0, 0.0, 0.0, 0.0, 1e-3],
+                use_strain: vec![false, false, false, false, false, true],
+                delta_t: -80.0,
+                delta_h: 0.0,
+            },
+            key_figures: [("min_rf".to_string(), 1.25), ("ex".to_string(), 51234.5)].into_iter().collect(),
+        }],
         report_templates: vec![ReportTemplate {
             name: "Prüfbericht ]]> <laminate>".into(),
             sections: vec!["abd".into(), "layerResults".into()],
@@ -880,11 +954,20 @@ fn full_extension() -> WebExtension {
             signature: true,
         }],
         comparison: Some(ComparisonState {
-            variants: vec![ComparisonVariant {
-                laminate_uuid: "lam-1".into(),
-                load_case_index: 1,
-                load_case_name: "Zug & Druck".into(),
-            }],
+            variants: vec![
+                ComparisonVariant {
+                    laminate_uuid: "lam-1".into(),
+                    load_case_index: 1,
+                    load_case_name: "Zug & Druck".into(),
+                    snapshot_id: None,
+                },
+                ComparisonVariant {
+                    laminate_uuid: String::new(),
+                    load_case_index: 0,
+                    load_case_name: String::new(),
+                    snapshot_id: Some("snap".into()),
+                },
+            ],
         }),
         stacking_rule_settings: Some(elamx_core::stacking_rules::RuleSettings { min_fraction: 0.125, max_consecutive: 3 }),
         ..WebExtension::new()
@@ -1052,7 +1135,7 @@ fn the_java_checked_fixture_is_the_reference_file_plus_an_extension() {
     );
     let with = Project { import_notices: Vec::new(), ..with };
     // The name that would end a CDATA section and looks like eLamX's tags.
-    assert_eq!(extension.studies[0]["name"], "<laminate><layer><material> ]]> & Co");
+    assert_eq!(extension.studies[0].name, "<laminate><layer><material> ]]> & Co");
     assert_eq!(
         serde_json::to_value(Project { web_extension: None, ..with }).unwrap(),
         serde_json::to_value(plain).unwrap()
@@ -1223,3 +1306,61 @@ fn report_template_reads_with_defaults_and_unknown_fields() {
     assert_eq!(template.paper, "a4");
     assert!(!template.signature);
 }
+
+/// A study written by a later version - a kind, an option or a field this
+/// build does not know - still reads, and the rest of the extension with it.
+/// The web version shows such a study as one it cannot interpret and writes
+/// it back as it was.
+#[test]
+fn studies_read_with_defaults_and_unknown_fields() {
+    let extension: WebExtension = serde_json::from_value(json!({
+        "schema": 1,
+        "studies": [
+            {"id": "a", "name": "Neu", "kind": "monte_carlo", "samples": 1000},
+            {"id": "b", "kind": "sweep", "sweep": {"laminate_uuid": "lam", "x": {"kind": "angle", "curvature": 2}}},
+            {"id": "c", "kind": "matrix", "matrix": {}}
+        ],
+        "comparison": {"variants": [{"snapshot_id": "snap"}]}
+    }))
+    .unwrap();
+    assert_eq!(extension.studies.len(), 3);
+    assert_eq!(extension.studies[0].kind, "monte_carlo");
+    assert_eq!(extension.studies[0].name, "Neu");
+    let sweep = extension.studies[1].sweep.as_ref().unwrap();
+    assert_eq!(sweep.x.kind, "angle");
+    assert_eq!(sweep.x.steps, 19);
+    assert_eq!(sweep.outputs, vec!["min_rf".to_string()]);
+    assert_eq!(sweep.plies, 16);
+    let matrix = extension.studies[2].matrix.as_ref().unwrap();
+    assert_eq!(matrix.columns, "load_case");
+    assert_eq!(matrix.output, "min_rf");
+    let variant = &extension.comparison.as_ref().unwrap().variants[0];
+    assert_eq!(variant.snapshot_id.as_deref(), Some("snap"));
+    assert_eq!(variant.laminate_uuid, "");
+}
+
+/// A comparison column written before snapshots existed has no
+/// `snapshot_id`, and writing one back without a snapshot adds none - files
+/// of the earlier builds stay byte-identical through this one.
+#[test]
+fn a_laminate_column_has_no_snapshot_id_in_the_file() {
+    let variant: ComparisonVariant =
+        serde_json::from_value(json!({"laminate_uuid": "l", "load_case_index": 2, "load_case_name": "LF"})).unwrap();
+    assert_eq!(variant.snapshot_id, None);
+    let written = serde_json::to_value(&variant).unwrap();
+    assert!(written.get("snapshot_id").is_none());
+}
+
+/// A snapshot survives a save by eLamX 3.x: a file with studies and a
+/// snapshot, saved again by the desktop's rules (the extension untouched),
+/// reads back to the same extension. Here the "desktop save" is the reader
+/// and writer of this crate, which the batch comparison ties to Java's.
+#[test]
+fn studies_and_snapshots_survive_a_second_round_trip() {
+    let xml = write_elamx(&project_with(Some(full_extension())));
+    let once = read_elamx(&xml).unwrap();
+    let twice = read_elamx(&write_elamx(&once)).unwrap();
+    assert_eq!(twice.web_extension, Some(full_extension()));
+    assert_eq!(twice.web_extension.unwrap().snapshots[0].laminate.layers.len(), once.laminates[0].laminate.layers.len());
+}
+

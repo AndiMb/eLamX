@@ -121,6 +121,13 @@ export function describeChange(before: ProjectSnapshotV2, after: ProjectSnapshot
       return { path: "comparison", label: t("history.label.comparison") };
     case "stackingRuleSettings":
       return { path: "stackingRuleSettings", label: t("history.label.ruleSettings") };
+    case "studies": {
+      // Coalesced per study, so typing a range is one step.
+      const study = singleChanged(before.studies ?? [], after.studies ?? []);
+      return study
+        ? { path: `study:${study.after.id}`, label: t("history.label.study", { name: study.after.name }) }
+        : { path: "studies", label: t("history.label.studies") };
+    }
     default:
       return { path: key, label: t("history.label.project") };
   }

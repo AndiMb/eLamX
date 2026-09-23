@@ -16,14 +16,14 @@ import type {
 
 /** What a study can report per point. */
 export const STUDY_OUTPUTS = [
-  "minRf",
+  "min_rf",
   "lpf",
-  "bucklingFactor",
+  "buckling_factor",
   "f1",
   "ex",
   "ey",
   "gxy",
-  "maxDeflection",
+  "max_deflection",
 ] as const;
 
 export type StudyOutput = (typeof STUDY_OUTPUTS)[number];
@@ -32,14 +32,14 @@ export type StudyOutput = (typeof STUDY_OUTPUTS)[number];
 export type PointCall = "clt" | "lpf" | "buckling" | "vibration" | "deformation";
 
 export const OUTPUT_CALL: Record<StudyOutput, PointCall> = {
-  minRf: "clt",
+  min_rf: "clt",
   ex: "clt",
   ey: "clt",
   gxy: "clt",
   lpf: "lpf",
-  bucklingFactor: "buckling",
+  buckling_factor: "buckling",
   f1: "vibration",
-  maxDeflection: "deformation",
+  max_deflection: "deformation",
 };
 
 /** One point: the requests the core is asked, as the JSON its entry points
@@ -91,7 +91,7 @@ function finite(value: number | null | undefined): number | null {
 
 function read(output: StudyOutput, response: unknown): number | null {
   switch (output) {
-    case "minRf":
+    case "min_rf":
       return minReserveFactorOf(response as CltResponse);
     case "ex":
       return finite((response as CltResponse).engineering_constants.ex_simple);
@@ -101,11 +101,11 @@ function read(output: StudyOutput, response: unknown): number | null {
       return finite((response as CltResponse).engineering_constants.g_simple);
     case "lpf":
       return finite((response as LastPlyFailureResponse).exceedance_factor?.reserve_factor);
-    case "bucklingFactor":
+    case "buckling_factor":
       return finite((response as BucklingResponse).critical_factor);
     case "f1":
       return finite((response as VibrationResponse).fundamental_frequency);
-    case "maxDeflection":
+    case "max_deflection":
       return finite((response as DeformationResponse).max_deflection);
   }
 }

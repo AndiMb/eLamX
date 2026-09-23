@@ -72,6 +72,10 @@ r_nor_com: number,
 r_shear: number, 
 /**
  * Extra named values used by specific failure criteria (e.g. Puck's p_par_ten).
+ *
+ * Written in key order: a hash map's order changes from one instance to
+ * the next, and a material copied into a project file's snapshot would
+ * otherwise make every save of an unchanged project a different file.
  */
 additional_values: { [key in string]: number }, 
 /**
