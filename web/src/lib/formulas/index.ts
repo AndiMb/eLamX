@@ -116,9 +116,13 @@ export function aMatrixFormula(
   contributions: readonly { a_contribution: number[][] }[],
   abd: number[][],
   { t, locale }: FormulaContext,
+  /** Beyond this many plies the sum is shortened to its first and last
+   *  terms - a page has no horizontal scrollbar. All of them by default. */
+  maxTerms = Number.POSITIVE_INFINITY,
 ): Formula {
   const fmt = texNumber(locale);
-  const terms = contributions.map((c) => fmt(c.a_contribution[0][0], 1)).join(" + ");
+  const all = contributions.map((c) => fmt(c.a_contribution[0][0], 1));
+  const terms = (all.length > maxTerms ? [...all.slice(0, maxTerms - 2), "\\dots", ...all.slice(-2)] : all).join(" + ");
   return {
     title: t("abdExplanation.aMatrix.title"),
     tex: "A_{11} = \\sum_k \\bar Q_{11,k} \\cdot t_k",

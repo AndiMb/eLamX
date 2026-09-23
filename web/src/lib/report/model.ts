@@ -9,6 +9,32 @@
 // width, which is the one thing a builder has an opinion about.
 
 import type { TableModel } from "../export/table";
+import type { FailureMetric } from "../failureMetric";
+import type { SheetPly } from "../throughThicknessSheet";
+import type { AngleSweepResponse, FailureType, LayerResultDto } from "../types";
+import type { LayerRow } from "../constants";
+
+/** What a figure shows, as the data of the view that draws it - every one a
+ *  pure view with its data as props (P3.3). */
+export type FigureRequest =
+  | {
+      kind: "stack";
+      layers: Pick<LayerRow, "id" | "angle" | "thickness" | "materialId">[];
+      symmetric: boolean;
+      withMiddleLayer: boolean;
+      materials: { id: string; name: string }[];
+    }
+  | { kind: "abdHeatmap"; abd: number[][] }
+  | { kind: "polar"; sweep: AngleSweepResponse; keys: string[] }
+  | { kind: "reserveFactor"; layers: LayerResultDto[]; metric: FailureMetric }
+  | { kind: "sheet"; plies: SheetPly[]; metric: FailureMetric; critical: number }
+  | {
+      kind: "sequence";
+      plies: { number: number; angle: number }[];
+      events: { step: number; layerNumber: number; rf: number; type: FailureType; failureName: string; criterion: string }[];
+      fpf: number;
+      lpf: number | null;
+    };
 
 /** A standalone SVG, as `chartToStandaloneSvg` returns it. */
 export interface SvgFigure {
@@ -33,7 +59,9 @@ export type Block =
   /** Numbers stay numbers in the canonical unit; the renderer formats them
    *  as the screen does, in the user's unit and language. */
   | { t: "table"; table: TableModel }
-  | { t: "figure"; svg?: SvgFigure; png?: PngFigure; caption: string; widthMm: number }
+  /** A drawing. A builder names what to draw (`request`); the figure host
+   *  draws it and fills in `svg` or `png` before the renderer sees it. */
+  | { t: "figure"; svg?: SvgFigure; png?: PngFigure; request?: FigureRequest; caption: string; widthMm: number }
   /** A set formula: the symbolic form and, where there are numbers to put in,
    *  the same with them. TeX, the same source the app shows with KaTeX. */
   | { t: "formula"; title: string; tex: string; substituted?: string; note?: string }

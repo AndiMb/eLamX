@@ -34,9 +34,32 @@ import {
   activeLoadCaseFamily,
   laminateConfigFamily,
   loadCasesOf,
+  type LaminateConfig,
   type LoadCase,
 } from "./laminateAtoms";
 import { materialsAtom } from "./materialsAtoms";
+
+/** A laminate as the core takes it - pure, for whoever needs a request
+ *  without the store (the report). */
+export function laminateDtoOf(config: LaminateConfig): LaminateDto {
+  return {
+    id: config.id,
+    name: config.name,
+    layers: config.layers.map((l) => ({
+      id: l.id,
+      name: l.name,
+      angle: l.angle,
+      thickness: l.thickness,
+      material_id: l.materialId,
+      criterion_id: l.criterionId,
+      extra_criteria: l.extraCriteria ?? [],
+    })),
+    symmetric: config.symmetric,
+    with_middle_layer: config.withMiddleLayer,
+    invert_z: config.invertZ,
+    offset: config.offset,
+  };
+}
 
 /** The laminate and its materials, without any load case.
  *
@@ -48,23 +71,7 @@ export const laminateRequestFamily = atomFamily((laminateId: string) =>
     const config = get(laminateConfigFamily(laminateId));
     const materials = get(materialsAtom);
 
-    const laminate: LaminateDto = {
-      id: config.id,
-      name: config.name,
-      layers: config.layers.map((l) => ({
-        id: l.id,
-        name: l.name,
-        angle: l.angle,
-        thickness: l.thickness,
-        material_id: l.materialId,
-        criterion_id: l.criterionId,
-        extra_criteria: l.extraCriteria ?? [],
-      })),
-      symmetric: config.symmetric,
-      with_middle_layer: config.withMiddleLayer,
-      invert_z: config.invertZ,
-      offset: config.offset,
-    };
+    const laminate = laminateDtoOf(config);
 
     return { laminate, materials: Object.fromEntries(materials.map((m) => [m.id, m])) };
   }),
