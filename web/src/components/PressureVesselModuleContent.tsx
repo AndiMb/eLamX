@@ -51,23 +51,29 @@ export function PressureVesselModuleContent({ laminateId }: { laminateId: string
 
   const columns = useMemo<ResponsiveTableColumn<LayerResultDto>[]>(
     () => [
-      { key: "nr", label: t("layers.column.nr"), render: (l) => l.layer_number },
+      { key: "nr", label: t("layers.column.nr"), render: (l) => l.layer_number, value: (l) => l.layer_number, decimals: 0 },
       {
         key: "s11",
         label: "σ∥",
         numeric: true,
         render: (l) => formatScientific(l.sss_lower.stress[0], 3, locale),
+        value: (l) => l.sss_lower.stress[0],
+        category: "stress",
       },
       {
         key: "s22",
         label: "σ⊥",
         numeric: true,
         render: (l) => formatScientific(l.sss_lower.stress[1], 3, locale),
+        value: (l) => l.sss_lower.stress[1],
+        category: "stress",
       },
       {
         key: "rf",
         label: t("layerDetail.rf"),
         numeric: true,
+        value: (l) => Math.min(l.rr_lower.minimal_reserve_factor, l.rr_upper.minimal_reserve_factor),
+        category: "reserveFactor",
         render: (l) => (
           <QuantityDisplay
             category="reserveFactor"
@@ -81,6 +87,13 @@ export function PressureVesselModuleContent({ laminateId }: { laminateId: string
       {
         key: "mode",
         label: t("layerResults.modeLower"),
+        value: (l) =>
+          failureModeLabel(
+            locale,
+            l.rr_lower.minimal_reserve_factor <= l.rr_upper.minimal_reserve_factor
+              ? l.rr_lower.failure_name
+              : l.rr_upper.failure_name,
+          ) || null,
         render: (l) =>
           failureModeLabel(
             locale,
@@ -249,6 +262,7 @@ export function PressureVesselModuleContent({ laminateId }: { laminateId: string
                   rows={layers}
                   rowKey={(l) => l.layer_number}
                   rowClassName={(l) => (l.failed ? "failed" : undefined)}
+                  actions={{ title: t("vessel.layers.title"), name: "druckbehaelter-lagen" }}
                 />
                 <p className="hint">{t("vessel.layers.hint")}</p>
               </MobileCollapse>

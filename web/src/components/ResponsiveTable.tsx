@@ -1,5 +1,9 @@
 import type { ComponentType, ReactNode } from "react";
 import { useIsMobile } from "../lib/useIsMobile";
+import type { Cell, TableModel } from "../lib/export/table";
+import { recordsTableModel } from "../lib/export/records";
+import type { QuantityCategory } from "../lib/units";
+import { TableActions } from "./TableActions";
 
 export interface ResponsiveTableColumn<T> {
   key: string;
@@ -16,7 +20,22 @@ export interface ResponsiveTableColumn<T> {
   /** Left out of the mobile cards - for a control that only makes sense in
    *  a table row, like a drag handle a card has in its summary instead. */
   hideInCards?: boolean;
+  /** The cell as data, for copy and CSV (F3.1): a number in the canonical
+   *  unit, a text, or null. A column without it is left out of the export -
+   *  a drag handle, a button. */
+  value?: (row: T) => Cell;
+  /** The quantity `value` returns, for the unit in the export's header. */
+  category?: QuantityCategory;
+  /** Decimals of an uncategorised number, for "as displayed". */
+  decimals?: number;
 }
+
+/** Where a table's copy and CSV actions get their data: a model the caller
+ *  builds, or the columns' own `value`s under a title. */
+export type TableExport =
+  | { table: () => TableModel | null; name: string }
+  | { title: string; name: string };
+
 
 /** What a row is rendered into: a table row, or a card - open/closable when
  *  the table has a card summary. */
@@ -48,7 +67,13 @@ type ResponsiveTableProps<T> =
   // Real matrices (ABD, A/B/D blocks) - row/column position IS the meaning,
   // so this only ever gets a sticky-header horizontal-scroll wrapper around
   // the caller's own <table>, never reflowed into cards.
-  | { variant: "matrix"; children: ReactNode; className?: string }
+  | {
+      variant: "matrix";
+      children: ReactNode;
+      className?: string;
+      /** Copy and CSV above the matrix. */
+      actions?: { table: () => TableModel | null; name: string };
+    }
   // Per-entry tables (layer results) - a normal table on wide screens,
   // stacked label:value cards on mobile, since scanning one entry at a time
   // beats a cramped horizontally-scrolled row there.
@@ -76,14 +101,47 @@ type ResponsiveTableProps<T> =
        *  ones. It must render the element `kind` names. */
       RowShell?: ComponentType<RowShellProps<T>>;
       className?: string;
+      /** Copy and CSV above the table (F3.1). */
+      actions?: TableExport;
     };
 
 export function ResponsiveTable<T>(props: ResponsiveTableProps<T>) {
-  const isMobile = useIsMobile();
-
   if (props.variant === "matrix") {
-    return <div className={`responsive-table-scroll matrix${props.className ? ` ${props.className}` : ""}`}>{props.children}</div>;
+    const matrix = (
+      <div className={`responsive-table-scroll matrix${props.className ? ` ${props.className}` : ""}`}>{props.children}</div>
+    );
+    return props.actions ? (
+      <>
+        <div className="table-toolbar">
+          <TableActions {...props.actions} />
+        </div>
+        {matrix}
+      </>
+    ) : (
+      matrix
+    );
   }
+
+  const { actions } = props;
+  const toolbar = actions ? (
+    <div className="table-toolbar">
+      {"table" in actions ? (
+        <TableActions table={actions.table} name={actions.name} />
+      ) : (
+        <TableActions table={() => recordsTableModel(actions.title, props.columns, props.rows)} name={actions.name} />
+      )}
+    </div>
+  ) : null;
+  return (
+    <>
+      {toolbar}
+      <RecordsTable {...props} />
+    </>
+  );
+}
+
+function RecordsTable<T>(props: Extract<ResponsiveTableProps<T>, { variant: "records" }>) {
+  const isMobile = useIsMobile();
 
   const { columns, rows, rowKey, rowClassName, onRowClick, cardSummary, className } = props;
   const Row = props.RowShell ?? DefaultRowShell;

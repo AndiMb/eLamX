@@ -13,6 +13,7 @@ import {
 } from "../lib/numberFormat";
 import type { EngineeringConstantsDto } from "../lib/types";
 import { useLocale, useT } from "../i18n";
+import { abdInverseTable, engineeringConstantsTable, expansionTable } from "../lib/tables";
 
 // The original's "Ingenieurskonstanten" window, which is where eLamX 3.x puts
 // everything about the laminate that is not a load case: the full engineering
@@ -102,7 +103,10 @@ export const LaminateInfoPanel = memo(function LaminateInfoPanel({
       <h3>{t("info.constants")}</h3>
       <p className="hint">{t("info.constants.hint")}</p>
       <p className="hint">{t("info.constants.poissonNote")}</p>
-      <ResponsiveTable variant="matrix">
+      <ResponsiveTable
+        variant="matrix"
+        actions={{ table: () => engineeringConstantsTable(ec, t), name: "ingenieurkonstanten" }}
+      >
         <table className="matrix info-constants">
           <thead>
             <tr>
@@ -141,7 +145,10 @@ export const LaminateInfoPanel = memo(function LaminateInfoPanel({
 
       <h3>{t("info.expansion")}</h3>
       <p className="hint">{t("info.expansion.hint")}</p>
-      <ResponsiveTable variant="matrix">
+      <ResponsiveTable
+        variant="matrix"
+        actions={{ table: () => expansionTable(info.alphaGlobal, info.betaGlobal, t), name: "ausdehnung" }}
+      >
         <table className="matrix">
           <thead>
             <tr>
@@ -205,7 +212,7 @@ export const LaminateInfoPanel = memo(function LaminateInfoPanel({
 
       <h3>{t("info.abdInv")}</h3>
       <p className="hint">{t("info.abdInv.hint")}</p>
-      <ResponsiveTable variant="matrix">
+      <ResponsiveTable variant="matrix" actions={{ table: () => abdInverseTable(info.abdInv, t), name: "abd-invers" }}>
         <table className="matrix">
           <thead>
             <tr>

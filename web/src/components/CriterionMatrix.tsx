@@ -9,6 +9,8 @@ import { formatFixed } from "../lib/numberFormat";
 import { QuantityDisplay } from "./QuantityDisplay";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { useLocale, useT } from "../i18n";
+import { criterionMatrixTable } from "../lib/tables";
+import { TableActions } from "./TableActions";
 
 // Every criterion's own reserve factor per ply (F2.3): the plies as rows, all
 // criteria any ply is checked against as columns, the one that governs the
@@ -60,6 +62,9 @@ export const CriterionMatrix = memo(function CriterionMatrix({ laminateId }: { l
   return (
     <details className="criterion-matrix">
       <summary>{t("criterionMatrix.title")}</summary>
+      <div className="table-toolbar">
+        <TableActions table={() => criterionMatrixTable(layerResults, { metric, t })} name="kriterienmatrix" />
+      </div>
       <div className="responsive-table-scroll">
         <table className="layer-results-table criterion-matrix-table">
           <caption className="visually-hidden">

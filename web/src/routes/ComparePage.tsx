@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { X } from "lucide-react";
 import {
@@ -23,6 +23,7 @@ import { DOF_NAMES } from "../lib/constants";
 import type { CltResponse } from "../lib/types";
 import { formatFixed, formatScientific, isFiniteResult, NO_VALUE } from "../lib/numberFormat";
 import { ResponsiveTable } from "../components/ResponsiveTable";
+import { domTableModel } from "../lib/export/domTable";
 import { QuantityDisplay } from "../components/QuantityDisplay";
 import { Sym } from "../components/Sym";
 import { useLocale, useT, type MessageKey } from "../i18n";
@@ -98,6 +99,7 @@ export function ComparePage() {
   const variants = useAtomValue(comparisonVariantsAtom);
   const removeVariant = useSetAtom(removeVariantAtom);
   const allRows = useMemo(() => buildRows(t, locale), [t, locale]);
+  const compareTable = useRef<HTMLTableElement>(null);
   const isMobile = useIsMobile();
   const [showAll, setShowAll] = useAtom(compareShowAllRowsAtom);
   const condensed = isMobile && !showAll;
@@ -122,8 +124,14 @@ export function ComparePage() {
         <p className="empty-note">{t("compare.empty")}</p>
       ) : (
         <section className="panel">
-          <ResponsiveTable variant="matrix">
-            <table className="matrix compare-table">
+          <ResponsiveTable
+            variant="matrix"
+            actions={{
+              table: () => (compareTable.current ? domTableModel(compareTable.current, t("compare.title")) : null),
+              name: "vergleich",
+            }}
+          >
+            <table className="matrix compare-table" ref={compareTable}>
               <thead>
                 <tr>
                   <th />

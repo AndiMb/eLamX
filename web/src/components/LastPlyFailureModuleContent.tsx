@@ -21,6 +21,7 @@ import { MobileCollapse } from "./MobileCollapse";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { formatSignificant, NO_VALUE } from "../lib/numberFormat";
 import { failureModeLabel, useLocale, useT, type MessageKey } from "../i18n";
+import { lpfPathTable } from "../lib/tables";
 
 const FAILURE_TYPE_KEYS: Record<FailureType, MessageKey> = {
   FiberFailure: "lpf.type.ff",
@@ -256,6 +257,7 @@ export function LastPlyFailureModuleContent({ laminateId }: { laminateId: string
               columns={columns}
               rows={path}
               rowKey={(r) => r.index}
+              actions={{ table: () => lpfPathTable(path, t, locale), name: "lpf-pfad" }}
             />
             <p className="hint">{t("lpf.path.hint")}</p>
           </MobileCollapse>

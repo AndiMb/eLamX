@@ -4,6 +4,7 @@ import { abdMatrixFamily } from "../store/derivedAtoms";
 import { ResponsiveTable } from "./ResponsiveTable";
 import { formatMatrixEntry, matrixScale } from "../lib/numberFormat";
 import { useLocale, useT } from "../i18n";
+import { abdTable } from "../lib/tables";
 
 // Matches the heatmap's AXIS_LABELS convention (A/D block indices 1,2,6).
 const AXIS_LABELS = ["1", "2", "6", "1", "2", "6"];
@@ -39,7 +40,7 @@ export const AbdMatrixPanel = memo(function AbdMatrixPanel({ laminateId }: { lam
   return (
     <>
       <h3>{t("abd.title")}</h3>
-      <ResponsiveTable variant="matrix">
+      <ResponsiveTable variant="matrix" actions={{ table: () => abdTable(abd, t), name: "abd-matrix" }}>
         <table className="matrix">
           <thead>
             <tr>

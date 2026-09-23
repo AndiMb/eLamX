@@ -29,6 +29,8 @@ import { StiffenerPanel } from "./StiffenerPanel";
 import { hasBlockingCheck, plateChecks } from "../lib/plateChecks";
 import { formatFixed, formatSignificant, isFiniteResult } from "../lib/numberFormat";
 import { useLocale, useT } from "../i18n";
+import { bucklingModesTable } from "../lib/tables";
+import { TableActions } from "./TableActions";
 
 // The content behind the "buckling" entry in MODULE_REGISTRY: stability of a
 // rectangular plate cut from this laminate, under in-plane load flows.
@@ -262,7 +264,13 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
             <BucklingShapeView laminateId={laminateId} />
             {modes && modes.length > 1 && (
               <div className="chart">
-                <p className="chart-title">{t("buckling.modes.list")}</p>
+                <div className="chart-title-row">
+                  <p className="chart-title">{t("buckling.modes.list")}</p>
+                  <TableActions
+                    table={() => bucklingModesTable(modes.map((m) => m.eigenvalue), t)}
+                    name="beuleigenwerte"
+                  />
+                </div>
                 {/* Rows double as a mode picker, so the table and the 3D
                     view's dropdown drive the same selection. */}
                 <table className="chart-table selectable-rows">

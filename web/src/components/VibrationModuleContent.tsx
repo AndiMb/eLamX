@@ -229,18 +229,22 @@ export function VibrationModuleContent({ laminateId }: { laminateId: string }) {
                     key: "nr",
                     label: t("vibration.modes.nr"),
                     render: (row) => row.nr,
+                    value: (row) => row.nr,
+                    decimals: 0,
                   },
                   {
                     key: "frequency",
                     label: t("vibration.modes.frequency"),
                     numeric: true,
                     render: (row) => formatSignificant(row.frequency, 5, locale),
+                    value: (row) => row.frequency,
                   },
                   {
                     key: "ratio",
                     label: t("vibration.modes.ratio"),
                     numeric: true,
                     render: (row) => formatSignificant(row.ratio, 3, locale),
+                    value: (row) => row.ratio,
                   },
                 ]}
                 rows={modes.map((mode, index) => ({
@@ -249,6 +253,7 @@ export function VibrationModuleContent({ laminateId }: { laminateId: string }) {
                   ratio: mode.frequency / modes[0].frequency,
                 }))}
                 rowKey={(row) => row.nr}
+                actions={{ title: t("vibration.modes.title"), name: "eigenfrequenzen" }}
               />
               <p className="hint">{t("vibration.modes.hint")}</p>
             </section>

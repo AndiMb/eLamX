@@ -4354,3 +4354,59 @@ table.matrix td.block-d {
   flex-wrap: wrap;
   gap: 4px 12px;
 }
+
+/* --- Tabellen: Kopieren und CSV (F3.1) ---
+   Klein und rechts ueber der Tabelle, wie die Kamera unter einem Diagramm:
+   eine Aktion, die man sucht, wenn man sie braucht, und sonst nicht sieht. */
+.table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 var(--s-1);
+}
+
+.table-actions {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.table-actions .icon-button {
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  opacity: 0.7;
+}
+
+.table-actions .icon-button:hover,
+.table-actions .icon-button:focus-visible {
+  opacity: 1;
+  color: var(--text);
+}
+
+.chart-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+@media (max-width: 640px) {
+  .table-actions .icon-button {
+    width: var(--touch-min);
+    min-width: var(--touch-min);
+    min-height: var(--touch-min);
+  }
+}
+
+.format-export-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3) var(--s-5);
+}
+
+.format-export-settings label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}

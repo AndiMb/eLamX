@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useAtomValue } from "jotai";
 import { TriangleAlert, X } from "lucide-react";
 import { layerContributionsFamily, layerResultsFamily } from "../store/derivedAtoms";
@@ -9,6 +10,8 @@ import { formatScientific } from "../lib/numberFormat";
 import { FailureBody3D, type StressMarker } from "./charts/FailureBody3D";
 import { QuantityDisplay } from "./QuantityDisplay";
 import { failureModeLabel, useLocale, useT } from "../i18n";
+import { TableActions } from "./TableActions";
+import { domTableModel } from "../lib/export/domTable";
 
 // What the Java original showed when you opened a ply's failure view: the
 // criterion's failure body, and the ply's own stress state sitting inside or
@@ -26,6 +29,7 @@ export function LayerDetailPanel({
 }) {
   const t = useT();
   const locale = useLocale();
+  const stressTable = useRef<HTMLTableElement>(null);
   const results = useAtomValue(layerResultsFamily(laminateId));
   const contributions = useAtomValue(layerContributionsFamily(laminateId));
   const materials = useAtomValue(materialsAtom);
@@ -114,7 +118,13 @@ export function LayerDetailPanel({
         </div>
 
         <div>
-          <table className="chart-table">
+          <div className="table-toolbar">
+            <TableActions
+              table={() => (stressTable.current ? domTableModel(stressTable.current, t("layerDetail.title", { nr: result.layer_number })) : null)}
+              name={`lage-${result.layer_number}`}
+            />
+          </div>
+          <table className="chart-table" ref={stressTable}>
             <thead>
               <tr>
                 <th />

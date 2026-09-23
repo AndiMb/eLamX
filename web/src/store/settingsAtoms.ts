@@ -20,3 +20,18 @@ export const failureMetricAtom = atomWithStorage<FailureMetric>("elamx.failureMe
 // The ply table with one value per ply (its governing surface) instead of
 // both surfaces side by side.
 export const layerResultsMinOnlyAtom = atomWithStorage<boolean>("elamx.layerResults.minOnly", false);
+
+// How a table leaves the app - copied, or saved as CSV (F3.1). Full precision
+// by default, so a value read back is the value computed; "as displayed" for
+// a reviewer who wants the numbers of the report (O5). Separator and decimal
+// mark follow the language unless set here.
+export interface TableExportSettings {
+  precision: "full" | "display";
+  separator: "auto" | ";" | "," | "tab";
+  decimal: "auto" | "," | ".";
+}
+export const tableExportSettingsAtom = atomWithStorage<TableExportSettings>("elamx.tableExport", {
+  precision: "full",
+  separator: "auto",
+  decimal: "auto",
+});

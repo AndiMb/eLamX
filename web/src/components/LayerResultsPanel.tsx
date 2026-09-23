@@ -16,6 +16,8 @@ import { ResponsiveTable, type ResponsiveTableColumn } from "./ResponsiveTable";
 import { LayerDetailPanel } from "./LayerDetailPanel";
 import { MetricToggle } from "./MetricToggle";
 import { CriterionMatrix } from "./CriterionMatrix";
+import { TableActions } from "./TableActions";
+import { layerResultsTable } from "../lib/tables";
 import { failureModeLabel, useLocale, useT } from "../i18n";
 
 type Row = LayerResultDto & { index: number };
@@ -140,6 +142,10 @@ export const LayerResultsPanel = memo(function LayerResultsPanel({ laminateId }:
             {t("layerResults.minOnly")}
           </label>
           <MetricToggle />
+          <TableActions
+            table={() => layerResultsTable(layerResults, { metric, minOnly, t, locale })}
+            name="lagenergebnisse"
+          />
         </div>
       </div>
       <ResponsiveTable

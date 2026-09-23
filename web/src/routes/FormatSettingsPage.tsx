@@ -1,8 +1,10 @@
 import { useAtom } from "jotai";
+import { delimitedDefaults } from "../lib/export/table";
+import { tableExportSettingsAtom, type TableExportSettings } from "../store/settingsAtoms";
 import { Ruler } from "lucide-react";
 import { CATEGORY_DEFINITIONS, unitLabel, type QuantityCategory } from "../lib/units";
 import { formatConfigFamily } from "../store/formatAtoms";
-import { useT } from "../i18n";
+import { useLocale, useT } from "../i18n";
 
 const DECIMALS_OPTIONS = [0, 1, 2, 3, 4, 5, 6];
 
@@ -75,6 +77,51 @@ export function FormatSettingsPage() {
           ))}
         </tbody>
       </table>
+      <TableExportSettingsPanel />
     </section>
+  );
+}
+
+/** How copied and saved tables are written (F3.1, O5). */
+function TableExportSettingsPanel() {
+  const t = useT();
+  const locale = useLocale();
+  const [settings, setSettings] = useAtom(tableExportSettingsAtom);
+  const defaults = delimitedDefaults(locale);
+  const set = <K extends keyof TableExportSettings>(key: K, value: TableExportSettings[K]) =>
+    setSettings((s) => ({ ...s, [key]: value }));
+  const auto = (value: string) => t("format.export.auto", { value });
+
+  return (
+    <>
+      <h3>{t("format.export.title")}</h3>
+      <p className="hint">{t("format.export.hint")}</p>
+      <div className="format-export-settings">
+        <label>
+          <span>{t("format.export.precision")}</span>
+          <select value={settings.precision} onChange={(e) => set("precision", e.target.value as TableExportSettings["precision"])}>
+            <option value="full">{t("format.export.precision.full")}</option>
+            <option value="display">{t("format.export.precision.display")}</option>
+          </select>
+        </label>
+        <label>
+          <span>{t("format.export.separator")}</span>
+          <select value={settings.separator} onChange={(e) => set("separator", e.target.value as TableExportSettings["separator"])}>
+            <option value="auto">{auto(defaults.sep)}</option>
+            <option value=";">;</option>
+            <option value=",">,</option>
+            <option value="tab">{t("format.export.tab")}</option>
+          </select>
+        </label>
+        <label>
+          <span>{t("format.export.decimal")}</span>
+          <select value={settings.decimal} onChange={(e) => set("decimal", e.target.value as TableExportSettings["decimal"])}>
+            <option value="auto">{auto(defaults.decimal)}</option>
+            <option value=",">,</option>
+            <option value=".">.</option>
+          </select>
+        </label>
+      </div>
+    </>
   );
 }

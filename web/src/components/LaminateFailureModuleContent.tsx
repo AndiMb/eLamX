@@ -208,22 +208,26 @@ export function LaminateFailureModuleContent({ laminateId }: { laminateId: strin
                 key: "flow",
                 label: t("laminateFailure.axes.flow"),
                 render: (row) => <Sym base="n" sub={row.sub} />,
+                value: (row) => `n${row.sub}`,
               },
               {
                 key: "positive",
                 label: t("laminateFailure.axes.positive"),
                 numeric: true,
                 render: (row) => formatSignificant(row.positive, 5, locale),
+                value: (row) => row.positive,
               },
               {
                 key: "negative",
                 label: t("laminateFailure.axes.negative"),
                 numeric: true,
                 render: (row) => formatSignificant(row.negative, 5, locale),
+                value: (row) => row.negative,
               },
             ]}
             rows={axisRows}
             rowKey={(row) => row.key}
+            actions={{ title: t("laminateFailure.axes.title"), name: "laminatversagen-achsen" }}
           />
           <p className="hint">{t("laminateFailure.axes.hint")}</p>
         </section>
