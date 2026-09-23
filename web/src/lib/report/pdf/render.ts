@@ -276,7 +276,9 @@ async function formula(w: Writer, block: Extract<Block, { t: "formula" }>, env: 
   w.y += 1;
   const draw = async (part: { math: { svg: string }; width: number; height: number }) => {
     w.ensure(part.height + 2);
-    await svg2pdf(env.parseSvg(part.math.svg), w.doc, { x: MARGIN.left + 6, y: w.y, width: part.width, height: part.height });
+    // A character outside MathJax's font comes out as <text>; it gets ours.
+    w.doc.setFont(FONT, "normal");
+    await svg2pdf(env.parseSvg(normaliseSvgFonts(part.math.svg)), w.doc, { x: MARGIN.left + 6, y: w.y, width: part.width, height: part.height });
     w.y += part.height + 2;
   };
   await draw(symbolic);
