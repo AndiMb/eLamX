@@ -9,6 +9,13 @@ import { defineConfig } from "vitest/config";
 // `setup.ts` supplies the one browser API the store does need: localStorage,
 // which every persisted atom reads at module load.
 export default defineConfig({
+  resolve: {
+    alias: {
+      // The package's `main` is a UMD build that expects `window.jsPDF`; the
+      // app gets the ES build through `module`, and so do the tests.
+      "svg2pdf.js": "svg2pdf.js/dist/svg2pdf.es.min.js",
+    },
+  },
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],

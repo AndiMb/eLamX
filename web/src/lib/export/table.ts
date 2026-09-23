@@ -10,6 +10,7 @@
 // without grouping, which a spreadsheet would read as a decimal separator.
 
 import { createQuantityFormatter } from "../quantityFormat";
+import { formatFixed, formatSignificant, NO_VALUE } from "../numberFormat";
 import type { QuantityCategory } from "../units";
 import type { FormatConfig } from "../../store/formatAtoms";
 import type { Locale } from "../../i18n";
@@ -27,6 +28,10 @@ export interface Column {
    *  its numbers are converted into that unit; without one they are written
    *  as they are. */
   category?: QuantityCategory;
+  /** Decimals a column without a category is shown with - a ply number has
+   *  none, an angle one. Without it the screen shows four significant
+   *  digits. Only the display uses it; a file gets every digit. */
+  decimals?: number;
 }
 
 /** A number in the core's canonical unit, a text, or nothing. */
@@ -68,6 +73,9 @@ function prepare(table: TableModel, options: SerializeOptions): PreparedColumn[]
         : null;
     const convert = formatter ? formatter.convert : (v: number) => v;
     const round = (v: number): string => {
+      if (options.precision === "display" && !config && column.decimals !== undefined) {
+        return v.toFixed(column.decimals);
+      }
       if (options.precision === "full" || !config) {
         // The shortest text that reads back as the same double - 17
         // significant digits where it needs them, and not "0.1000000000000000055".
@@ -149,4 +157,52 @@ export function toHtmlTable(table: TableModel, options: Omit<SerializeOptions, "
     `<table><caption>${escapeHtml(table.title)}</caption>` +
     `<thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`
   );
+}
+
+/** A table as the screen would show it: every cell a finished text. */
+export interface DisplayTable {
+  headers: string[];
+  rows: string[][];
+  /** Per column, whether it holds numbers - they are right-aligned. */
+  numeric: boolean[];
+}
+
+/**
+ * The table formatted for reading rather than for computing with - the
+ * report's version of it. Numbers are converted into the user's unit and
+ * rounded and grouped as the screen does, in the report's language; a
+ * missing value is the dash the screen shows.
+ */
+export function toDisplayTable(
+  table: TableModel,
+  options: Pick<SerializeOptions, "locale" | "formats">,
+): DisplayTable {
+  const formatters = table.columns.map((column) => {
+    const config = column.category && options.formats?.(column.category);
+    if (column.category && config) {
+      const formatter = createQuantityFormatter(column.category, config, options.locale);
+      return {
+        header: formatter.unit ? `${column.label} [${formatter.unit}]` : column.label,
+        number: formatter.text,
+      };
+    }
+    return {
+      header: column.label,
+      number: (v: number) =>
+        column.decimals !== undefined
+          ? formatFixed(v, column.decimals, options.locale)
+          : formatSignificant(v, 4, options.locale),
+    };
+  });
+  return {
+    headers: formatters.map((f) => f.header),
+    rows: table.rows.map((row) =>
+      formatters.map((f, i) => {
+        const cell = row[i] ?? null;
+        if (cell === null) return NO_VALUE;
+        return typeof cell === "number" ? f.number(cell) : cell;
+      }),
+    ),
+    numeric: table.columns.map((_, i) => table.rows.some((row) => typeof row[i] === "number")),
+  };
 }

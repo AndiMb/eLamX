@@ -607,7 +607,7 @@ export const en = {
   "deformation.load.remove": "Remove this load",
   "deformation.load.point.hint": "A point load's x and y are measured from the CENTRE of the plate, as in eLamX.",
   "deformation.allowable": "Allowable deflection",
-  "deformation.allowable.hint": "A limit, not a load â the deformation analysis does not read it. It is there for the optimiser: allowable over actual is the reserve factor the search works against. Zero means no limit was set.",
+  "deformation.allowable.hint": "A limit, not a load — the deformation analysis does not read it. It is there for the optimiser: allowable over actual is the reserve factor the search works against. Zero means no limit was set.",
   "deformation.error": "Deflection could not be computed: {message}",
   "deformation.result.title": "Deflection",
   "deformation.maxAt": "Maximum at x / y",
@@ -1104,7 +1104,7 @@ export const en = {
   "catalog.column.rho": "ρ in g/cm³",
   "catalog.pick.aria": "select {name}",
   "catalog.adopt": "Adopt {count}",
-  "catalog.nameWithPhi": "{name} (Ï {phi}Â %)",
+  "catalog.nameWithPhi": "{name} (φ {phi} %)",
   "catalog.empty": "Nothing matches that search.",
   "catalog.hint": "Some names appear more than once — the same fibre and matrix, but from different sources or at a different fibre volume fraction. The φ and E∥ columns tell them apart. The values are taken from eLamX unchanged; the database carries no transverse shear modulus, so that one stays zero.",
 
