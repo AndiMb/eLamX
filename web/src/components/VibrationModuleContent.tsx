@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { vibrationFormula, howProps } from "../lib/formulas";
 import { useAtom, useAtomValue } from "jotai";
 import { TriangleAlert } from "lucide-react";
 import {
@@ -201,11 +202,7 @@ export function VibrationModuleContent({ laminateId }: { laminateId: string }) {
               </div>
 
               <HowWasThisComputed
-                title={t("vibration.how.title")}
-                formula={
-                  "\\left(\\mathbf{K} - \\omega^2\\,\\mathbf{M}\\right)\\mathbf{a} = \\mathbf{0}"
-                }
-                substituted={`f_1 = ${formatSignificant(summary.fundamentalFrequency, 6, locale)}\\ \\mathrm{Hz}`}
+                {...howProps(vibrationFormula(summary.fundamentalFrequency, { m: input.m, n: input.n }, { t, locale }))}
               >
                 <p className="hint">{t("vibration.how.hint", { m: input.m, n: input.n })}</p>
               </HowWasThisComputed>

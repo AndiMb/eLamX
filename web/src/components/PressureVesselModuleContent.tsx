@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { pressureVesselFormula, howProps } from "../lib/formulas";
 import { useAtom, useAtomValue } from "jotai";
 import { TriangleAlert } from "lucide-react";
 import {
@@ -240,9 +241,7 @@ export function PressureVesselModuleContent({ laminateId }: { laminateId: string
               </div>
 
               <HowWasThisComputed
-                title={t("vessel.how.title")}
-                formula={"n_x = \\dfrac{p\\,r}{2}, \\quad n_u = p\\,r, \\quad \\kappa = 0"}
-                substituted={`r = ${formatScientific(summary.meanRadius, 4, locale)}`}
+                {...howProps(pressureVesselFormula(summary.meanRadius, { t, locale }))}
               >
                 <p className="hint">{t("vessel.how.hint")}</p>
               </HowWasThisComputed>

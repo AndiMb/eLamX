@@ -7,9 +7,6 @@
 // drift risk the architecture plan warns about (re-deriving core math in
 // TypeScript) small and easy to eyeball against the Rust source if ever in
 // doubt.
-import { useCallback } from "react";
-import { useLocale } from "../i18n";
-import { isFiniteResult, NO_VALUE } from "./numberFormat";
 
 export interface LocalQ {
   q11: number;
@@ -29,43 +26,5 @@ export function localQMatrix(material: { e_par: number; e_nor: number; nue12: nu
   };
 }
 
-// Returns a locale-bound fmt() with the call-site-friendly (value, decimals)
-// signature the worked-example builders use dozens of times. A hook rather
-// than a module-level function reading some ambient "current locale": these
-// numbers are baked into KaTeX source strings during render, so the value
-// must be correct in the SAME render that the language changes in - an
-// effect-synced module variable would be one render stale and then never
-// recompute.
-// Both formatters here emit KaTeX SOURCE, not display text - everything they
-// produce is spliced into a math string. That is why the not-a-number case
-// comes back wrapped in \text{}: a bare en dash in math mode is an unknown
-// character to KaTeX and would throw rather than render.
-export function useFmt(): (value: number, decimals?: number) => string {
-  const locale = useLocale();
-  return useCallback(
-    (value: number, decimals = 2) =>
-      isFiniteResult(value)
-        ? value.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
-        : `\\text{${NO_VALUE}}`,
-    [locale],
-  );
-}
-
-// abd_inv entries span many orders of magnitude (compliance terms), so they
-// get scientific notation rather than a fixed decimal count. Both of these
-// end up inside KaTeX source, so the not-a-number case has to be valid TeX
-// too - \text{} keeps the dash from being typeset as a minus sign.
-//
-// The mantissa takes the locale's decimal separator, like every other number
-// the user reads: `useFmt` above already does, and a formula that wrote
-// `1.234 x 10^-5` beside a table cell reading `0,40` would put the point in
-// two different meanings on one screen.
-export function fmtExp(value: number, locale: string, decimals = 3): string {
-  if (!isFiniteResult(value)) return `\\text{${NO_VALUE}}`;
-  const [mantissa, exponent] = value.toExponential(decimals).split("e");
-  const localizedMantissa = Number(mantissa).toLocaleString(locale, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-  return `${localizedMantissa}\\times 10^{${Number(exponent)}}`;
-}
+// The TeX number formatters that used to live here are `texNumber` and
+// `texExp` in lib/formulas, beside the formulas that use them.

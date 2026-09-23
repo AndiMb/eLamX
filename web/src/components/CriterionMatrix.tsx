@@ -1,11 +1,11 @@
 import { memo } from "react";
+import { criterionMatrixFormula, howProps } from "../lib/formulas";
 import { useAtomValue } from "jotai";
 import { CircleDot } from "lucide-react";
 import { layerResultsFamily } from "../store/derivedAtoms";
 import { failureMetricAtom } from "../store/settingsAtoms";
 import { criterionName, type LayerResultDto } from "../lib/types";
 import { isFailing, METRIC_LABEL_KEYS, toMetric } from "../lib/failureMetric";
-import { formatFixed } from "../lib/numberFormat";
 import { QuantityDisplay } from "./QuantityDisplay";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { useLocale, useT } from "../i18n";
@@ -52,12 +52,7 @@ export const CriterionMatrix = memo(function CriterionMatrix({ laminateId }: { l
   }
 
   // The worked example for "how": the ply with the most criteria.
-  const example = layerResults.reduce((a, b) => (b.by_criterion.length > a.by_criterion.length ? b : a));
-  const values = example.by_criterion.map((b) => {
-    const value = Math.min(b.rr_lower.minimal_reserve_factor, b.rr_upper.minimal_reserve_factor);
-    return Number.isFinite(value) ? formatFixed(value, 3, locale) : "\\infty";
-  });
-  const governing = Math.min(example.rr_lower.minimal_reserve_factor, example.rr_upper.minimal_reserve_factor);
+  const how = criterionMatrixFormula(layerResults, { t, locale })!;
 
   return (
     <details className="criterion-matrix">
@@ -126,11 +121,7 @@ export const CriterionMatrix = memo(function CriterionMatrix({ laminateId }: { l
         <CircleDot size={11} aria-hidden="true" /> {t("criterionMatrix.hint")}
       </p>
       <HowWasThisComputed
-        title={t("criterionMatrix.howTitle")}
-        formula={`RF_{\\text{${t("criterionMatrix.word.layer")}}} = \\min_{k\\,\\in\\,\\text{${t("criterionMatrix.word.criteria")}}} \\min\\left(RF_k^{\\text{${t("criterionMatrix.word.bottom")}}},\\; RF_k^{\\text{${t("criterionMatrix.word.top")}}}\\right)`}
-        substituted={`RF_{${example.layer_number}} = \\min\\left(${values.join(",\\; ")}\\right) = ${
-          Number.isFinite(governing) ? formatFixed(governing, 3, locale) : "\\infty"
-        }`}
+        {...howProps(how)}
       >
         <p className="hint">{t("criterionMatrix.howHint")}</p>
       </HowWasThisComputed>

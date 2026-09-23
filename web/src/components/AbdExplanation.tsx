@@ -2,9 +2,9 @@ import { useAtomValue } from "jotai";
 import { abdMatrixFamily, layerContributionsFamily } from "../store/derivedAtoms";
 import { laminateConfigFamily } from "../store/laminateAtoms";
 import { materialsAtom } from "../store/materialsAtoms";
-import { localQMatrix, useFmt } from "../lib/cltFormulas";
+import { aMatrixFormula, localQFormula, qBarFormula, howProps } from "../lib/formulas";
 import { HowWasThisComputed } from "./HowWasThisComputed";
-import { useT } from "../i18n";
+import { useLocale, useT } from "../i18n";
 
 // A worked example for the FIRST layer only (rather than every layer, which
 // would be overwhelming) - explains local Q -> global Q-bar -> A11. Kept as
@@ -15,7 +15,7 @@ import { useT } from "../i18n";
 // live numeric result that needs the same re-render discipline.
 export function AbdExplanation({ laminateId }: { laminateId: string }) {
   const t = useT();
-  const fmt = useFmt();
+  const locale = useLocale();
   const abd = useAtomValue(abdMatrixFamily(laminateId));
   const contributions = useAtomValue(layerContributionsFamily(laminateId));
   const config = useAtomValue(laminateConfigFamily(laminateId));
@@ -28,61 +28,25 @@ export function AbdExplanation({ laminateId }: { laminateId: string }) {
   const material = materials.find((m) => m.id === firstLayerConfig?.materialId);
   if (!material) return null;
 
-  const localQ = localQMatrix(material);
-  const nue21 = (material.nue12 * material.e_nor) / material.e_par;
-  const angleRad = (firstLayer.angle_deg * Math.PI) / 180;
-  const c = Math.cos(angleRad);
-  const s = Math.sin(angleRad);
-  const c2s2 = c * c * s * s;
-
-  const localQFormula =
-    "\\nu_{21} = \\nu_{12}\\dfrac{E_\\perp}{E_\\parallel},\\quad " +
-    "Q_{11} = \\dfrac{E_\\parallel}{1-\\nu_{12}\\nu_{21}},\\quad " +
-    "Q_{12} = \\nu_{21}Q_{11},\\quad " +
-    "Q_{22} = \\dfrac{E_\\perp}{1-\\nu_{12}\\nu_{21}},\\quad " +
-    "Q_{66} = G";
-
-  const localQSubstituted = `\\begin{aligned}
-\\nu_{21} &= ${fmt(material.nue12, 3)} \\cdot \\dfrac{${fmt(material.e_nor, 0)}}{${fmt(material.e_par, 0)}} = ${fmt(nue21, 4)} \\\\
-Q_{11} &= \\dfrac{${fmt(material.e_par, 0)}}{1 - ${fmt(material.nue12, 3)} \\cdot ${fmt(nue21, 4)}} = ${fmt(localQ.q11, 1)}\\ \\text{MPa} \\\\
-Q_{12} &= ${fmt(nue21, 4)} \\cdot ${fmt(localQ.q11, 1)} = ${fmt(localQ.q12, 1)}\\ \\text{MPa} \\\\
-Q_{22} &= \\dfrac{${fmt(material.e_nor, 0)}}{1 - ${fmt(material.nue12, 3)} \\cdot ${fmt(nue21, 4)}} = ${fmt(localQ.q22, 1)}\\ \\text{MPa} \\\\
-Q_{66} &= G = ${fmt(localQ.q66, 1)}\\ \\text{MPa}
-\\end{aligned}`;
-
-  const qBarFormula =
-    "\\bar Q_{11} = c^4 Q_{11} + 2c^2s^2 Q_{12} + s^4 Q_{22} + 4c^2s^2 Q_{66}, \\quad c=\\cos\\theta,\\ s=\\sin\\theta";
-
-  const qBarSubstituted = `\\begin{aligned}
-\\theta &= ${fmt(firstLayer.angle_deg, 1)}^\\circ, \\quad c = ${fmt(c, 3)}, \\quad s = ${fmt(s, 3)} \\\\
-\\bar Q_{11} &= ${fmt(c ** 4, 3)}\\cdot ${fmt(localQ.q11, 1)} + 2\\cdot ${fmt(c2s2, 3)}\\cdot ${fmt(localQ.q12, 1)} + ${fmt(s ** 4, 3)}\\cdot ${fmt(localQ.q22, 1)} + 4\\cdot ${fmt(c2s2, 3)}\\cdot ${fmt(localQ.q66, 1)} \\\\
-&= ${fmt(firstLayer.q_global[0][0], 1)}\\ \\text{MPa} \\quad (\\text{${t("abdExplanation.qBar.actualValue")}})
-\\end{aligned}`;
-
-  const abdFormula = "A_{11} = \\sum_k \\bar Q_{11,k} \\cdot t_k";
-  const terms = contributions.map((c) => fmt(c.a_contribution[0][0], 1)).join(" + ");
-  const abdSubstituted = `A_{11} = ${terms} = ${fmt(abd[0][0], 1)}\\ \\text{N/mm}`;
+  const ctx = { t, locale };
+  const localQ = localQFormula(material, ctx);
+  const qBar = qBarFormula(firstLayer, material, ctx);
+  const aMatrix = aMatrixFormula(contributions, abd, ctx);
 
   return (
     <>
       <HowWasThisComputed
-        title={t("abdExplanation.localQ.title")}
-        formula={localQFormula}
-        substituted={localQSubstituted}
+        {...howProps(localQ)}
       >
         <p className="hint">{t("abdExplanation.localQ.hint", { material: material.name })}</p>
       </HowWasThisComputed>
       <HowWasThisComputed
-        title={t("abdExplanation.qBar.title")}
-        formula={qBarFormula}
-        substituted={qBarSubstituted}
+        {...howProps(qBar)}
       >
         <p className="hint">{t("abdExplanation.qBar.hint")}</p>
       </HowWasThisComputed>
       <HowWasThisComputed
-        title={t("abdExplanation.aMatrix.title")}
-        formula={abdFormula}
-        substituted={abdSubstituted}
+        {...howProps(aMatrix)}
       >
         <p className="hint">{t("abdExplanation.aMatrix.hint")}</p>
       </HowWasThisComputed>

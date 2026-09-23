@@ -1,4 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { deformationFormula, howProps } from "../lib/formulas";
 import { useCallback, useMemo } from "react";
 import { Plus, TriangleAlert, X } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -414,9 +415,7 @@ export function DeformationModuleContent({ laminateId }: { laminateId: string })
               </div>
 
               <HowWasThisComputed
-                title={t("deformation.how.title")}
-                formula={"\\mathbf{K}\\,\\mathbf{a} = \\mathbf{f}"}
-                substituted={`w_{max} = ${formatScientific(summary.maxDeflection, 4, locale)}`}
+                {...howProps(deformationFormula(summary.maxDeflection, { m: input.m, n: input.n }, { t, locale }))}
               >
                 <p className="hint">{t("deformation.how.hint", { m: input.m, n: input.n })}</p>
               </HowWasThisComputed>

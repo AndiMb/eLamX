@@ -1,4 +1,5 @@
 import { useAtom, useAtomValue } from "jotai";
+import { cutoutFormula, howProps } from "../lib/formulas";
 import { cutoutErrorFamily, cutoutInputFamily, loadableCutoutFamily } from "../store/cutoutAtoms";
 import {
   CUTOUT_SHAPES,
@@ -203,11 +204,7 @@ export function CutoutModuleContent({ laminateId }: { laminateId: string }) {
                 <p className="hint">{t("cutout.chart.hint")}</p>
 
                 <HowWasThisComputed
-                  title={t("cutout.how.title")}
-                  formula={
-                    "n_{\\vartheta} = n_x \\sin^2\\alpha + n_y \\cos^2\\alpha - 2 n_{xy} \\sin\\alpha \\cos\\alpha"
-                  }
-                  substituted={`n_{\\vartheta,\\max} = ${formatSignificant(result.peak_n_theta, 6, locale)}\\ \\mathrm{N/mm}`}
+                  {...howProps(cutoutFormula(result.peak_n_theta, { t, locale }))}
                 >
                   <p className="hint">{t("cutout.how.hint")}</p>
                 </HowWasThisComputed>

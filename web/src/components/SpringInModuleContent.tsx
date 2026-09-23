@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { springInFormula, howProps } from "../lib/formulas";
 import { useAtom, useAtomValue } from "jotai";
 import { TriangleAlert } from "lucide-react";
 import {
@@ -247,11 +248,7 @@ export function SpringInModuleContent({ laminateId }: { laminateId: string }) {
                 )}
 
                 <HowWasThisComputed
-                  title={t("springIn.how.title")}
-                  formula={
-                    "\\frac{\\Delta\\varphi}{\\varphi} = \\frac{\\left(\\alpha_{u} - \\alpha_{d}\\right)\\Delta T}{1 + \\alpha_{d}\\,\\Delta T}"
-                  }
-                  substituted={`\\Delta\\varphi = ${formatSignificant(result.delta_angle, 6, locale)}^\\circ`}
+                  {...howProps(springInFormula(result, { t, locale }))}
                 >
                   <p className="hint">
                     {t("springIn.how.hint", {

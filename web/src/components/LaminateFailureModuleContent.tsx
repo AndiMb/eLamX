@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { envelopeRayFormula, howProps } from "../lib/formulas";
 import { useAtomValue } from "jotai";
 import {
   ENVELOPE_RESOLUTIONS,
@@ -255,9 +256,6 @@ function RayNote({
     );
   }
   if (!ray) return null;
-  const fmt = (v: number) => formatSignificant(v, 4, locale);
-  const [nx, ny, nxy] = rayCase.load;
-  const [fx, fy, fxy] = ray.failure_load;
   return (
     <div className="ray-note">
       <p>
@@ -270,10 +268,7 @@ function RayNote({
       </p>
       {rayCase.hygrothermal && <p className="hint">{t("laminateFailure.ray.hygrothermal")}</p>}
       <HowWasThisComputed
-        title={t("laminateFailure.ray.howTitle")}
-        formula={`\\vec n_{\\text{${t("laminateFailure.ray.surfaceWord")}}} = RF \\cdot \\vec n, \\qquad \\vec n = (n_x;\\, n_y;\\, n_{xy})`}
-        // Semicolons between the components: a German number has a comma.
-        substituted={`(${fmt(fx)};\\; ${fmt(fy)};\\; ${fmt(fxy)}) = ${fmt(ray.rf)} \\cdot (${fmt(nx)};\\; ${fmt(ny)};\\; ${fmt(nxy)})`}
+        {...howProps(envelopeRayFormula(ray, rayCase.load, { t, locale }))}
       >
         <p className="hint">{t("laminateFailure.ray.howHint")}</p>
       </HowWasThisComputed>

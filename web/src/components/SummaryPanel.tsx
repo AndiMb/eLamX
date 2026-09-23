@@ -3,7 +3,7 @@ import { useAtomValue } from "jotai";
 import { summaryFamily } from "../store/derivedAtoms";
 import { QuantityDisplay } from "./QuantityDisplay";
 import { HowWasThisComputed } from "./HowWasThisComputed";
-import { useFmt, fmtExp } from "../lib/cltFormulas";
+import { exFormula, nuxyFormula } from "../lib/formulas";
 import { formatScientific } from "../lib/numberFormat";
 import { Sym } from "./Sym";
 import type { QuantityCategory } from "../lib/units";
@@ -24,18 +24,14 @@ function StatTile({ label, category, value }: { label: ReactNode; category: Quan
 export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminateId: string }) {
   const t = useT();
   const locale = useLocale();
-  const fmt = useFmt();
   const summary = useAtomValue(summaryFamily(laminateId));
 
   if (!summary) return null;
   const ec = summary.engineeringConstants;
   const abdInv = summary.abdInv;
 
-  const exFormula = "E_x = \\dfrac{1}{(ABD^{-1})_{11}\\cdot t_{ges}}";
-  const exSubstituted = `E_x = \\dfrac{1}{${fmtExp(abdInv[0][0], locale)} \\cdot ${fmt(summary.tges, 2)}} = ${fmt(ec.ex_simple, 1)}\\ \\text{MPa}`;
-
-  const nuxyFormula = "\\nu_{xy} = -\\dfrac{(ABD^{-1})_{12}}{(ABD^{-1})_{11}}";
-  const nuxySubstituted = `\\nu_{xy} = -\\dfrac{${fmtExp(abdInv[0][1], locale)}}{${fmtExp(abdInv[0][0], locale)}} = ${fmt(ec.nuxy_simple, 4)}`;
+  const ex = exFormula(abdInv, summary.tges, ec, { t, locale });
+  const nuxy = nuxyFormula(abdInv, ec, { t, locale });
 
   return (
     <>
@@ -62,10 +58,10 @@ export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminat
           </span>
         </div>
       </div>
-      <HowWasThisComputed title={t("summary.ex.title")} formula={exFormula} substituted={exSubstituted}>
+      <HowWasThisComputed title={ex.title} formula={ex.tex} substituted={ex.substituted}>
         <p className="hint">{t("summary.ex.hint")}</p>
       </HowWasThisComputed>
-      <HowWasThisComputed title={t("summary.nuxy.title")} formula={nuxyFormula} substituted={nuxySubstituted} />
+      <HowWasThisComputed title={nuxy.title} formula={nuxy.tex} substituted={nuxy.substituted} />
     </>
   );
 });

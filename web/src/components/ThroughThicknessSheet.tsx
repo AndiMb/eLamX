@@ -1,4 +1,5 @@
 import { memo, useMemo, useRef, type KeyboardEvent, type PointerEvent, type ReactNode, type Ref } from "react";
+import { sheetFormula, howProps } from "../lib/formulas";
 import { useAtom, useAtomValue } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import {
@@ -402,7 +403,6 @@ export const ThroughThicknessSheet = memo(function ThroughThicknessSheet({ lamin
   const example = hoverPly ?? plies[Math.max(critical, 0)];
   const zExample = hoverPly && hoverZ !== null ? hoverZ : example.zUpper;
   const epsX = example.strain.global.lower[0] + ((zExample - example.zLower) / (example.zUpper - example.zLower || 1)) * (example.strain.global.upper[0] - example.strain.global.lower[0]);
-  const sig = (v: number) => formatSignificant(v, 4, locale);
 
   const setOption = <K extends keyof SheetOptions>(key: K, value: SheetOptions[K]) =>
     setOptions((o) => ({ ...o, [key]: value }));
@@ -526,9 +526,7 @@ export const ThroughThicknessSheet = memo(function ThroughThicknessSheet({ lamin
 
       {strains && (
         <HowWasThisComputed
-          title={t("sheet.howTitle")}
-          formula={"\\varepsilon(z) = \\varepsilon^0 + z\\,\\kappa, \\qquad \\sigma(z) = \\bar{Q}\\,\\varepsilon(z)"}
-          substituted={`\\varepsilon_x(${sig(zExample)}) = ${sig(strains.epsilon_x)} + (${sig(zExample)}) \\cdot (${sig(strains.kappa_x)}) = ${sig(epsX)}`}
+          {...howProps(sheetFormula({ number: example.number, zExample, epsilonX0: strains.epsilon_x, kappaX: strains.kappa_x, epsilonX: epsX }, { t, locale }))}
         >
           <p className="hint">{t("sheet.howHint", { nr: example.number })}</p>
         </HowWasThisComputed>

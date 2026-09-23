@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { lastPlyFailureFormula, howProps } from "../lib/formulas";
 import { useAtom, useAtomValue } from "jotai";
 import { Info, TriangleAlert } from "lucide-react";
 import {
@@ -19,7 +20,7 @@ import { Sym } from "./Sym";
 import { ResponsiveTable, type ResponsiveTableColumn } from "./ResponsiveTable";
 import { MobileCollapse } from "./MobileCollapse";
 import { HowWasThisComputed } from "./HowWasThisComputed";
-import { formatSignificant, NO_VALUE } from "../lib/numberFormat";
+import { NO_VALUE } from "../lib/numberFormat";
 import { failureModeLabel, useLocale, useT, type MessageKey } from "../i18n";
 import { lpfPathTable } from "../lib/tables";
 
@@ -227,9 +228,7 @@ export function LastPlyFailureModuleContent({ laminateId }: { laminateId: string
           )}
 
           <HowWasThisComputed
-            title={t("lpf.how.title")}
-            formula={"E_{\\perp} \\leftarrow \\eta\\,E_{\\perp}, \\quad G_{\\perp\\parallel} \\leftarrow \\eta\\,G_{\\perp\\parallel}"}
-            substituted={`\\eta = ${formatSignificant(input.degradation_factor, 6, locale)}`}
+            {...howProps(lastPlyFailureFormula(input.degradation_factor, summary.steps, { t, locale }))}
           >
             <p className="hint">{t("lpf.how.hint", { steps: summary.steps })}</p>
           </HowWasThisComputed>

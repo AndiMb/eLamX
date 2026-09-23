@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { bucklingFormula, howProps } from "../lib/formulas";
 import { useAtom, useAtomValue } from "jotai";
 import { TriangleAlert } from "lucide-react";
 import {
@@ -246,9 +247,7 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
               </div>
 
               <HowWasThisComputed
-                title={t("buckling.how.title")}
-                formula={"\\left(\\mathbf{K} + \\lambda\\,\\mathbf{K}_g\\right)\\mathbf{a} = \\mathbf{0}"}
-                substituted={`\\lambda_{crit} = ${formatSignificant(summary.criticalFactor, 6, locale)}`}
+                {...howProps(bucklingFormula(summary.criticalFactor, { m: input.m, n: input.n }, { t, locale }))}
               >
                 <p className="hint">{t("buckling.how.hint", { m: input.m, n: input.n })}</p>
               </HowWasThisComputed>
