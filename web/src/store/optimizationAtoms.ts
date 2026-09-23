@@ -16,7 +16,7 @@ import type {
   OptimizationResponse,
   OptimizerKindId,
 } from "../lib/types";
-import { elamx } from "../lib/wasm";
+import { BatchCancelled, batchClient, type BatchHandle } from "../lib/batchClient";
 import { materialsAtom } from "./materialsAtoms";
 
 /**
@@ -128,7 +128,8 @@ export const optimizationMetaAtom = atomWithStorage<{ name: string; angleType: n
 
 /** What the last run produced, or the reason it did not. */
 export interface OptimizationState {
-  status: "idle" | "running" | "done" | "failed";
+  /** `cancelled`: stopped by the user; the previous result, if any, stays. */
+  status: "idle" | "running" | "done" | "failed" | "cancelled";
   result?: OptimizationResponse;
   error?: string;
   /** Wall-clock milliseconds of the last run - the honest cost. */
@@ -153,16 +154,26 @@ export const resolvedOptimizationInputAtom = atom((get) => {
   return { ...input, material_id: materials[0]?.id ?? "" };
 });
 
-/** Runs the search. Nothing else in the app triggers it. */
+/** The search in flight, for the cancel button. Module state rather than an
+ *  atom: a handle is not something to render or to undo. */
+let runningSearch: BatchHandle | null = null;
+
+/** Runs the search - on the batch worker, so that a search of minutes blocks
+ *  no live recomputation and can be stopped. Nothing else in the app
+ *  triggers it. */
 export const runOptimizationAtom = atom(null, async (get, set) => {
   const input = get(resolvedOptimizationInputAtom);
   const materials: MaterialDto[] = get(materialsAtom);
   const optimizer = get(optimizerAtom);
+  const previous = get(optimizationStateAtom).result;
 
-  set(optimizationStateAtom, { status: "running" });
+  runningSearch?.cancel();
+  set(optimizationStateAtom, { status: "running", result: previous });
   const started = performance.now();
-  try {
-    const json = await elamx.optimize(
+  const handle = batchClient.run({
+    kind: "call",
+    fn: "optimize",
+    args: [
       JSON.stringify({
         materials: Object.fromEntries(materials.map((m) => [m.id, m])),
         input,
@@ -170,19 +181,35 @@ export const runOptimizationAtom = atom(null, async (get, set) => {
         genetic: get(geneticParametersAtom),
         budget: DEFAULT_BUDGET,
       }),
-    );
+    ],
+  });
+  runningSearch = handle;
+  try {
+    const json = await handle.promise;
     set(optimizationStateAtom, {
       status: "done",
-      result: JSON.parse(json) as OptimizationResponse,
+      result: JSON.parse(json ?? "null") as OptimizationResponse,
       took: performance.now() - started,
     });
   } catch (error) {
+    if (error instanceof BatchCancelled) {
+      // A newer run cancelled this one and has set its own state already.
+      if (runningSearch === handle) set(optimizationStateAtom, { status: "cancelled", result: previous });
+      return;
+    }
     set(optimizationStateAtom, {
       status: "failed",
       error: String(error),
       took: performance.now() - started,
     });
+  } finally {
+    if (runningSearch === handle) runningSearch = null;
   }
+});
+
+/** Stops the running search, if there is one. */
+export const cancelOptimizationAtom = atom(null, () => {
+  runningSearch?.cancel();
 });
 
 /** A constraint of the given kind, at its own defaults. */

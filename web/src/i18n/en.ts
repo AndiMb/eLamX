@@ -1276,4 +1276,6 @@ export const en = {
   "report.dialog.stage.pdf": "Setting the PDF",
   "report.dialog.error": "The report could not be created: {message}",
   "report.figure.reserveFactorLegend": "Colour by failure mode: red fibre failure, orange inter-fibre failure, violet general material failure, green undamaged; the marked ply number is the governing ply",
+  "batch.cancel": "Cancel",
+  "optimization.cancelled": "Search cancelled. An earlier result stays in place.",
 } as const;

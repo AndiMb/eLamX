@@ -4,7 +4,7 @@ import { ListChecks } from "lucide-react";
 import { CriteriaPopover } from "./CriteriaPopover";
 import { criterionName } from "../lib/types";
 import { useNavigate } from "react-router-dom";
-import { Play, Trash2, Wand2 } from "lucide-react";
+import { Play, Square, Trash2, Wand2 } from "lucide-react";
 import {
   defaultConstraint,
   geneticParametersAtom,
@@ -13,6 +13,7 @@ import {
   optimizerAtom,
   resolvedOptimizationInputAtom,
   runOptimizationAtom,
+  cancelOptimizationAtom,
 } from "../store/optimizationAtoms";
 import { materialsAtom } from "../store/materialsAtoms";
 import { addLaminateAtom, laminateConfigFamily } from "../store/laminateAtoms";
@@ -66,6 +67,7 @@ export function OptimizationModuleContent() {
   const [genetic, setGenetic] = useAtom(geneticParametersAtom);
   const state = useAtomValue(optimizationStateAtom);
   const run = useSetAtom(runOptimizationAtom);
+  const cancel = useSetAtom(cancelOptimizationAtom);
   const materials = useAtomValue(materialsAtom);
   const addLaminate = useSetAtom(addLaminateAtom);
   const store = useStore();
@@ -347,6 +349,11 @@ export function OptimizationModuleContent() {
               <Play size={16} />{" "}
               {state.status === "running" ? t("optimization.running") : t("optimization.run")}
             </button>
+            {state.status === "running" && (
+              <button type="button" onClick={() => cancel()}>
+                <Square size={16} /> {t("batch.cancel")}
+              </button>
+            )}
           </div>
           <p className="hint">{t("optimization.run.hint")}</p>
         </section>
@@ -355,7 +362,16 @@ export function OptimizationModuleContent() {
           {state.status === "failed" && (
             <p className="error">{t("optimization.error", { message: state.error ?? "" })}</p>
           )}
-          {state.status === "running" && <p className="hint">{t("optimization.running")}</p>}
+          {state.status === "running" && (
+            // The search reports no progress of its own, so the bar says only
+            // that it is working; it runs in its own worker and every other
+            // view keeps computing meanwhile.
+            <div className="report-progress" role="status">
+              <span>{t("optimization.running")}</span>
+              <progress aria-label={t("optimization.running")} />
+            </div>
+          )}
+          {state.status === "cancelled" && <p className="hint">{t("optimization.cancelled")}</p>}
 
           {result && (
             <section className="panel">
