@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useStore } from "jotai";
 import { useParams } from "react-router-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, Copy, Layers, Plus, RotateCw, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ClipboardCopy, ClipboardPaste, Copy, Layers, Plus, RotateCw, Trash2 } from "lucide-react";
 import { laminateConfigFamily, laminateExistsFamily } from "../store/laminateAtoms";
 import { materialsAtom } from "../store/materialsAtoms";
 import { Quantity } from "../components/Quantity";
@@ -14,10 +14,28 @@ import { normalizeLayerAngle, parseAngleStack } from "../lib/angleStack";
 import { QuantityDisplay } from "../components/QuantityDisplay";
 import { DEFAULT_CRITERION_ID, type LayerRow } from "../lib/constants";
 import { layerSelectionFamily } from "../store/uiAtoms";
-import { clickSelection, dropPlacement, moveBlock, shiftBlock } from "../lib/layerOps";
+import {
+  clickSelection,
+  dropPlacement,
+  duplicateBlock,
+  inOrder,
+  insertAt,
+  moveBlock,
+  pasteIndex,
+  shiftBlock,
+} from "../lib/layerOps";
+import {
+  layupClipboardData,
+  parseClipboard,
+  pasteDefaults,
+  type ParsedLayup,
+} from "../lib/layupClipboard";
+import { isTextField } from "../lib/commands";
+import { formatConfigFamily } from "../store/formatAtoms";
+import { PasteLayupDialog, type PasteResult } from "../components/PasteLayupDialog";
 import { historyStep } from "../lib/history";
 import { registerCommand } from "../lib/commands";
-import { t as translate } from "../i18n";
+import { t as translate, useLocale } from "../i18n";
 import { DragHandle, SortableLayers, SortableRowShell } from "../components/SortableLayers";
 import { LayerTableContext, type LayerTableState } from "../components/layerTableContext";
 import { CRITERIA, type CriterionId, type MaterialDto } from "../lib/types";
@@ -40,7 +58,12 @@ export function LaminatePage() {
 function LaminateEditor({ id }: { id: string }) {
   const t = useT();
   const [config, setConfig] = useAtom(laminateConfigFamily(id));
-  const materials = useAtomValue(materialsAtom);
+  const [materials, setMaterials] = useAtom(materialsAtom);
+  const locale = useLocale();
+  const store = useStore();
+  // The paste dialog: closed (null), or open with what the clipboard held -
+  // `parsed: null` when it was opened to type or paste into.
+  const [pasteDraft, setPasteDraft] = useState<{ parsed: ParsedLayup | null } | null>(null);
   const [angleStackText, setAngleStackText] = useState("");
   const [rotateDelta, setRotateDelta] = useState(0);
   const [selectedIds, setSelectedIds] = useAtom(layerSelectionFamily(id));
@@ -278,6 +301,191 @@ function LaminateEditor({ id }: { id: string }) {
       layers: c.layers.map((l) => (selectedIds.has(l.id) ? { ...l, thickness } : l)),
     }));
   };
+
+  // --- clipboard, duplicate, delete on the selection (F1.3, F1.4) ---
+
+  const selectedLayers = inOrder(config.layers, selectedIds);
+
+  const clipboardData = () =>
+    layupClipboardData(selectedLayers, materials, {
+      locale,
+      formats: (category) => store.get(formatConfigFamily(category)),
+    });
+
+  const deleteSelected = (label: string) => {
+    if (selectedLayers.length === 0) return;
+    const doomed = new Set(selectedLayers.map((l) => l.id));
+    historyStep(label, () => setConfig((c) => ({ ...c, layers: c.layers.filter((l) => !doomed.has(l.id)) })));
+    setSelectedIds(new Set());
+  };
+
+  const duplicateSelected = () => {
+    if (selectedLayers.length === 0) return;
+    let copies: LayerRow[] = [];
+    historyStep(t("history.label.duplicated"), () =>
+      setConfig((c) => {
+        const result = duplicateBlock(c.layers, selectedIds, (l) => ({
+          ...l,
+          id: crypto.randomUUID(),
+          name: t("default.copy", { name: l.name }),
+        }));
+        copies = result.copies;
+        return { ...c, layers: result.items };
+      }),
+    );
+    setSelectedIds(new Set(copies.map((l) => l.id)));
+  };
+
+  const applyPaste = (result: PasteResult) => {
+    historyStep(t("history.label.pasted"), () => {
+      if (result.newMaterials.length > 0) setMaterials((m) => [...m, ...result.newMaterials]);
+      setConfig((c) => ({
+        ...c,
+        layers: insertAt(c.layers, result.layers, pasteIndex(c.layers, selectedIds)),
+        ...(result.symmetry ?? {}),
+      }));
+    });
+    setSelectedIds(new Set(result.layers.map((l) => l.id)));
+    setPasteDraft(null);
+  };
+
+  // The clipboard keys arrive as the page's own copy, cut and paste events -
+  // in the browser from Ctrl+C/X/V, in the desktop shell from its menu - and
+  // those carry the data, where the async clipboard API would ask for a
+  // permission first. They are the table's only while no text field has the
+  // focus and no text on the page is selected: then they are the text's.
+  const clipboardIsOurs = () => {
+    if (pasteDraft) return false;
+    if (isTextField(document.activeElement as HTMLElement | null)) return false;
+    const selection = window.getSelection();
+    return !selection || selection.isCollapsed;
+  };
+  const clipboardHandlers = useRef({ copy: (_e: ClipboardEvent) => {}, cut: (_e: ClipboardEvent) => {}, paste: (_e: ClipboardEvent) => {} });
+  useEffect(() => {
+    clipboardHandlers.current = {
+      copy: (e) => {
+        if (!clipboardIsOurs() || selectedLayers.length === 0 || !e.clipboardData) return;
+        const { text, html } = clipboardData();
+        e.clipboardData.setData("text/plain", text);
+        e.clipboardData.setData("text/html", html);
+        e.preventDefault();
+      },
+      cut: (e) => {
+        if (!clipboardIsOurs() || selectedLayers.length === 0 || !e.clipboardData) return;
+        const { text, html } = clipboardData();
+        e.clipboardData.setData("text/plain", text);
+        e.clipboardData.setData("text/html", html);
+        e.preventDefault();
+        deleteSelected(t("history.label.cut"));
+      },
+      paste: (e) => {
+        if (!clipboardIsOurs() || !e.clipboardData) return;
+        const parsed = parseClipboard({
+          html: e.clipboardData.getData("text/html"),
+          text: e.clipboardData.getData("text/plain"),
+        });
+        if (!parsed) return;
+        e.preventDefault();
+        setPasteDraft({ parsed });
+      },
+    };
+  });
+  useEffect(() => {
+    const on = (kind: "copy" | "cut" | "paste") => (e: ClipboardEvent) => clipboardHandlers.current[kind](e);
+    const handlers = { copy: on("copy"), cut: on("cut"), paste: on("paste") };
+    for (const kind of ["copy", "cut", "paste"] as const) document.addEventListener(kind, handlers[kind]);
+    return () => {
+      for (const kind of ["copy", "cut", "paste"] as const) document.removeEventListener(kind, handlers[kind]);
+    };
+  }, []);
+
+  // The same actions by name, for the palette and the keys the browser does
+  // not turn into events. The palette's copy and paste go through the async
+  // clipboard API; where that is refused, paste falls back to the dialog's
+  // own text field.
+  const actions = useRef({
+    hasSelection: false,
+    copy: () => {},
+    cut: () => {},
+    paste: () => {},
+    duplicate: () => {},
+    remove: () => {},
+    selectAll: () => {},
+  });
+  useEffect(() => {
+    const writeClipboard = async () => {
+      const { text, html } = clipboardData();
+      if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/plain": new Blob([text], { type: "text/plain" }),
+            "text/html": new Blob([html], { type: "text/html" }),
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+    };
+    actions.current = {
+      hasSelection: selectedLayers.length > 0,
+      copy: () => void writeClipboard().catch(() => {}),
+      cut: () =>
+        void writeClipboard()
+          .then(() => deleteSelected(t("history.label.cut")))
+          .catch(() => {}),
+      paste: () => {
+        const read = async (): Promise<ParsedLayup | null> => {
+          const items = await navigator.clipboard.read();
+          let html = "";
+          let text = "";
+          for (const item of items) {
+            if (item.types.includes("text/html")) html = await (await item.getType("text/html")).text();
+            if (item.types.includes("text/plain")) text = await (await item.getType("text/plain")).text();
+          }
+          return parseClipboard({ html, text });
+        };
+        read()
+          .then((parsed) => setPasteDraft({ parsed }))
+          .catch(() => setPasteDraft({ parsed: null }));
+      },
+      duplicate: duplicateSelected,
+      remove: () => deleteSelected(t("history.label.deleted")),
+      selectAll: () => setSelectedIds(new Set(config.layers.map((l) => l.id))),
+    };
+  });
+  useEffect(() => {
+    const hasSelection = () => actions.current.hasSelection;
+    const stops = [
+      registerCommand({ id: "layers.copy", label: "command.layers.copy", when: hasSelection, run: () => actions.current.copy() }),
+      registerCommand({ id: "layers.cut", label: "command.layers.cut", when: hasSelection, run: () => actions.current.cut() }),
+      registerCommand({ id: "layers.paste", label: "command.layers.paste", run: () => actions.current.paste() }),
+      registerCommand({
+        id: "layers.duplicate",
+        label: "command.layers.duplicate",
+        // Ctrl+D would otherwise bookmark the page.
+        shortcut: "Mod+D",
+        when: hasSelection,
+        run: () => actions.current.duplicate(),
+      }),
+      registerCommand({
+        id: "layers.delete",
+        label: "command.layers.delete",
+        shortcut: "Delete",
+        // Delete in a text field deletes text, typed into or not.
+        fieldOwnsKey: true,
+        when: hasSelection,
+        run: () => actions.current.remove(),
+      }),
+      registerCommand({
+        id: "layers.selectAll",
+        label: "command.layers.selectAll",
+        shortcut: "Mod+A",
+        fieldOwnsKey: true,
+        run: () => actions.current.selectAll(),
+      }),
+    ];
+    return () => stops.forEach((stop) => stop());
+  }, []);
 
   const bulkDelete = () => {
     historyStep(t("history.label.deleted"), () =>
@@ -547,6 +755,15 @@ function LaminateEditor({ id }: { id: string }) {
                       </select>
                       <button
                         type="button"
+                        className="icon-button"
+                        onClick={() => actions.current.copy()}
+                        aria-label={t("layers.copy")}
+                        title={t("layers.copy")}
+                      >
+                        <ClipboardCopy size={16} />
+                      </button>
+                      <button
+                        type="button"
                         className="icon-button danger"
                         onClick={bulkDelete}
                         aria-label={t("layers.bulk.delete")}
@@ -634,6 +851,9 @@ function LaminateEditor({ id }: { id: string }) {
             >
               <Plus size={16} /> {t("layers.add.button")}
             </button>
+            <button type="button" onClick={() => setPasteDraft({ parsed: null })}>
+              <ClipboardPaste size={16} /> {t("paste.open")}
+            </button>
             <p className="hint">{t("layers.add.hint")}</p>
           </div>
 
@@ -712,6 +932,16 @@ function LaminateEditor({ id }: { id: string }) {
           </div>
         </aside>
       </div>
+      {pasteDraft && (
+        <PasteLayupDialog
+          initial={pasteDraft.parsed}
+          materials={materials}
+          defaults={pasteDefaults(config.layers, selectedIds, materials)}
+          laminateEmpty={config.layers.length === 0}
+          onApply={applyPaste}
+          onClose={() => setPasteDraft(null)}
+        />
+      )}
     </>
   );
 }

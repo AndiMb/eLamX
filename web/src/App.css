@@ -3579,3 +3579,148 @@ table.matrix td.block-d {
 .project-notice strong {
   color: inherit;
 }
+
+/* --- Dialoge (natives <dialog>, modal) --- */
+
+.app-dialog {
+  width: min(640px, calc(100vw - 24px));
+  max-height: calc(100svh - 48px);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card, 12px);
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+}
+
+.app-dialog::backdrop {
+  background: rgb(10 14 20 / 45%);
+}
+
+.app-dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.app-dialog h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.paste-source {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.paste-source textarea {
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 13px;
+  resize: vertical;
+  padding: 6px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  color: var(--text);
+}
+
+.paste-summary {
+  margin: 0;
+  font-size: 13px;
+}
+
+.paste-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.paste-warnings {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--warning, var(--text-muted));
+}
+
+.paste-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.paste-mapping {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font-size: 13px;
+}
+
+.paste-mapping legend {
+  padding: 0 4px;
+  color: var(--text-muted);
+}
+
+.paste-mapping label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.paste-mapping-name {
+  min-width: 10ch;
+  font-weight: 600;
+}
+
+.paste-preview {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+
+.paste-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.paste-preview th,
+.paste-preview td {
+  padding: 3px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.paste-preview th {
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.paste-preview .num {
+  text-align: right;
+}
