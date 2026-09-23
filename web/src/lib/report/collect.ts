@@ -23,6 +23,10 @@ import type { ProjectSnapshot } from "../projectFile";
 import { loadCasesOf, type LaminateConfig, type LoadCase } from "../../store/laminateAtoms";
 import { buildCltRequest, laminateDtoOf } from "../../store/derivedAtoms";
 import type { ReportTemplate } from "./model";
+import type { StudyDef } from "../study/model";
+import type { StudyPlan } from "../study/plan";
+import type { PointResult } from "../study/evaluate";
+import type { CollectedStudy } from "./sections/studies";
 
 /** The part of the core the report calls - `elamx` in the app, the same in
  *  a test. */
@@ -69,12 +73,23 @@ export interface CollectedResults {
   materials: MaterialDto[];
   laminates: LaminateResults[];
   comparison: ComparisonColumn[];
+  /** The project's studies, with their results. Empty unless the template
+   *  asks for them. */
+  studies: CollectedStudy[];
+}
+
+/** How the report gets a study's results: its plan against the project, and
+ *  the points computed - on the batch worker in the app, or taken from the
+ *  study page when that holds a finished run of these very inputs. */
+export interface StudyRunner {
+  plan(study: StudyDef): StudyPlan;
+  run(study: StudyDef, plan: StudyPlan): Promise<(PointResult | undefined)[]>;
 }
 
 /** What a report needs of the project: the file's view of it. */
 export type ReportProject = Pick<
   ProjectSnapshot,
-  "materials" | "laminates" | "bucklings" | "vibrations" | "deformations" | "lastPlyFailures" | "comparison"
+  "materials" | "laminates" | "bucklings" | "vibrations" | "deformations" | "lastPlyFailures" | "comparison" | "studies"
 >;
 
 function message(error: unknown): string {
@@ -112,6 +127,7 @@ export async function collectResults(
   compute: ReportCompute,
   activeLoadCase: (laminateId: string) => string | undefined,
   onProgress?: (done: number, total: number) => void,
+  studyRunner?: StudyRunner,
 ): Promise<CollectedResults> {
   const materials = Object.fromEntries(project.materials.map((m) => [m.id, m]));
   const wants = (kind: ReportTemplate["sections"][number]) => template.sections.includes(kind);
@@ -180,7 +196,19 @@ export async function collectResults(
     }
   }
 
+  const studies: CollectedStudy[] = [];
+  if (wants("studies") && studyRunner) {
+    for (const study of project.studies ?? []) {
+      const plan = studyRunner.plan(study);
+      try {
+        studies.push({ study, plan, points: plan.layout ? await studyRunner.run(study, plan) : [] });
+      } catch (error) {
+        studies.push({ study, plan, points: [], error: message(error) });
+      }
+    }
+  }
+
   // Only the materials the covered laminates use.
   const used = new Set(configs.flatMap((c) => c.layers.map((l) => l.materialId)));
-  return { materials: project.materials.filter((m) => used.has(m.id)), laminates, comparison };
+  return { materials: project.materials.filter((m) => used.has(m.id)), laminates, comparison, studies };
 }

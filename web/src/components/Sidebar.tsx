@@ -7,6 +7,8 @@ import {
   Copy,
   Diamond,
   Droplet,
+  Grid3x3,
+  ChartSpline,
   Layers,
   Library,
   Plus,
@@ -29,6 +31,8 @@ import {
   matricesAtom,
 } from "../store/micromechanicsAtoms";
 import { expandedLaminateIdsAtom } from "../store/uiAtoms";
+import { addStudyAtom, studiesAtom } from "../store/studyAtoms";
+import { historyStep } from "../lib/history";
 import { defaultFibre, defaultMaterial, defaultMatrix } from "../lib/constants";
 import { modulePath, modulesOfScope } from "../lib/moduleRegistry";
 import { useT } from "../i18n";
@@ -474,10 +478,12 @@ export function Sidebar() {
       />
 
       {/* The comparison surface belongs to the project, not to one laminate -
-          it is the one place that looks at several at once. */}
+          it is the one place that looks at several at once. Studies sit here
+          for the same reason. */}
       <section className="tree-section">
         <div className="tree-section-header">
           <h3>{t("nav.project")}</h3>
+          <NewStudyButtons />
         </div>
         <ul className="tree-list">
           {modulesOfScope("project").map((mod) => {
@@ -496,6 +502,7 @@ export function Sidebar() {
               </li>
             );
           })}
+          <StudyTreeItems />
         </ul>
       </section>
 
@@ -515,5 +522,46 @@ export function Sidebar() {
         </ul>
       </section>
     </nav>
+  );
+}
+
+/** "New matrix" and "new sweep", beside the project heading. */
+export function NewStudyButtons() {
+  const t = useT();
+  const navigate = useNavigate();
+  const addStudy = useSetAtom(addStudyAtom);
+  const laminateIds = useAtomValue(laminateIdsAtom);
+  const add = (kind: "matrix" | "sweep") => {
+    const id = historyStep(t("history.label.studies"), () => addStudy({ kind, laminateId: laminateIds[0] ?? "" }));
+    navigate(`/studies/${id}`);
+  };
+  return (
+    <>
+      <button type="button" className="icon-button" onClick={() => add("matrix")} aria-label={t("study.newMatrix")} title={t("study.newMatrix")}>
+        <Grid3x3 size={16} />
+      </button>
+      <button type="button" className="icon-button" onClick={() => add("sweep")} aria-label={t("study.newSweep")} title={t("study.newSweep")}>
+        <ChartSpline size={16} />
+      </button>
+    </>
+  );
+}
+
+/** The project's studies, as tree entries. */
+export function StudyTreeItems() {
+  const studies = useAtomValue(studiesAtom);
+  return (
+    <>
+      {studies.map((study) => (
+        <li key={study.id}>
+          <div className="tree-node-row">
+            <NavLink to={`/studies/${study.id}`} className={({ isActive }) => `tree-node${isActive ? " active" : ""}`}>
+              {study.kind === "sweep" ? <ChartSpline size={16} strokeWidth={1.75} /> : <Grid3x3 size={16} strokeWidth={1.75} />}
+              <span className="tree-node-label">{study.name}</span>
+            </NavLink>
+          </div>
+        </li>
+      ))}
+    </>
   );
 }

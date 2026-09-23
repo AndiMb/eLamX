@@ -12,6 +12,10 @@ import { collectResults } from "./collect";
 import { buildReport } from "./build";
 import { defaultFormats, type ReportContext } from "./context";
 import { SECTION_KINDS, type Block, type ReportDoc, type ReportTemplate } from "./model";
+import { BatchClient } from "../batchClient";
+import { planStudy } from "../study/plan";
+import { defaultMatrix, defaultSweep, defaultVariation, type StudyDef } from "../study/model";
+import type { PointResult } from "../study/evaluate";
 
 const REFERENCE = readFileSync(
   fileURLToPath(new URL("../../../../elamx-core/core/tests/golden/reference.elamx", import.meta.url)),
@@ -114,5 +118,46 @@ describe("the reference project's report", () => {
       "Ply results, load case GM-Krit-Biegung",
       "Ply results, load case GM-Krit-Kombiniert",
     ]);
+  }, 120000);
+
+  test("contains the studies: a matrix as a table, a sweep as a table and a chart per output", async () => {
+    const project = await importProject(REFERENCE);
+    const [first, second] = project.laminates;
+    const studies: StudyDef[] = [
+      { id: "m", name: "Matrix", kind: "matrix", matrix: { ...defaultMatrix(), laminates: [first.id, second.id] } },
+      {
+        id: "s",
+        name: "Winkel",
+        kind: "sweep",
+        sweep: { ...defaultSweep(first.id), x: { ...defaultVariation("angle"), steps: 7 }, outputs: ["min_rf", "ex"] },
+      },
+    ];
+    const ctx: ReportContext = { t: (k, p) => translate("de", k, p), locale: "de", formats: defaultFormats, metric: "rf", detail: "results" };
+    const client = new BatchClient({ createWorker: () => null });
+    const template = { ...FULL, sections: ["studies" as const] };
+    const collected = await collectResults(template, { ...project, studies }, elamx, () => undefined, undefined, {
+      plan: (study) => planStudy(study, project, { lpfNeedsLoads: "", fractionsExceedOne: "", fractionsUndetermined: "", noLayers: "" }),
+      run: async (_study, plan) => {
+        const points: (PointResult | undefined)[] = [];
+        await client.run({ kind: "points", points: plan.points }, { onPoint: (i, v) => (points[i] = v) }).promise;
+        return points;
+      },
+    });
+    const doc = buildReport(template, collected, ctx, { projectName: "r", author: "", date: new Date(0), version: "t" });
+    const [section] = outline(doc);
+    expect(section.id).toBe("studies");
+    expect(section.blocks).toEqual([
+      "h2 Matrix",
+      "paragraph",
+      expect.stringMatching(/^table Matrix \(RF\) \(\d+x2\)$/),
+      "h2 Winkel",
+      "paragraph",
+      "table Winkel (4x7)",
+      expect.stringMatching(/^figure sweep: Winkel: /),
+      expect.stringMatching(/^figure sweep: Winkel: Ex/),
+    ]);
+    // Every matrix cell computed.
+    const matrix = doc.sections[0].blocks[2] as Extract<Block, { t: "table" }>;
+    expect(matrix.table.rows.flat().every((c) => c !== null)).toBe(true);
   }, 120000);
 });

@@ -4552,3 +4552,230 @@ table.matrix td.block-d {
 .report-progress progress {
   width: 100%;
 }
+
+/* --- Studien (P4) --- */
+
+.study-name {
+  font-size: var(--fs-xl, 1.35rem);
+  font-weight: 700;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  padding: 2px 6px;
+  margin-left: -7px;
+  border-radius: var(--radius-control);
+  width: min(100%, 36rem);
+}
+
+.study-name:hover,
+.study-name:focus {
+  border-color: var(--border-strong);
+  background: var(--card);
+}
+
+.study-editor fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: var(--s-2) var(--s-3) var(--s-3);
+  margin: 0 0 var(--s-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.study-editor legend {
+  padding: 0 4px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.study-inline-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  max-width: 24rem;
+}
+
+.study-run .study-cost {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0 0 var(--s-2);
+}
+
+.study-stale,
+.study-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warn);
+  font-weight: 600;
+  margin: 0 0 var(--s-2);
+}
+
+.matrix-view-scroll {
+  overflow: auto;
+  max-height: min(70vh, 720px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+
+.matrix-view {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.matrix-view th,
+.matrix-view td {
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+/* Both headers stay in view: the column heads at the top, the row heads at
+   the left, the corner above both. */
+.matrix-view thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--inset);
+  padding: 6px 10px;
+  text-align: right;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.matrix-view tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--card);
+  padding: 0 10px;
+  text-align: left;
+  font-weight: 600;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.matrix-view thead th.matrix-corner {
+  left: 0;
+  z-index: 3;
+  text-align: left;
+}
+
+.matrix-cell {
+  padding: 0;
+}
+
+.matrix-cell-button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  width: 100%;
+  min-height: 33px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.matrix-cell-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Tint AND icon: the colour is never the only signal (N7). */
+.matrix-cell.pass {
+  background: color-mix(in srgb, var(--ok) 9%, transparent);
+}
+
+.matrix-cell.pass svg {
+  color: var(--ok);
+}
+
+.matrix-cell.fail {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.matrix-cell.gap,
+.matrix-cell.pending {
+  color: var(--text-muted);
+}
+
+.sweep-chart {
+  position: relative;
+}
+
+.sweep-chart svg:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sweep-tip {
+  transform: translate(10px, -50%);
+}
+
+.sweep-tip.left {
+  transform: translate(calc(-100% - 10px), -50%);
+}
+
+.sweep-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr));
+  gap: var(--s-4);
+}
+
+.sweep-charts h3 {
+  margin: 0 0 var(--s-1);
+  font-size: var(--fs-md);
+}
+
+.study-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
+}
+
+.study-result-head h2 {
+  margin: 0;
+}
+
+.study-second {
+  margin: 0 0 var(--s-3);
+}
+
+.study-layer-role {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  font-size: var(--fs-md);
+}
+
+.study-confirm-box {
+  margin-top: var(--s-3);
+  padding: var(--s-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--inset);
+}
+
+.study-confirm-box p {
+  margin: 0 0 var(--s-2);
+}

@@ -14,6 +14,7 @@ import { abdSection, laminateCriteria, laminateNotation, laminateSection, loadCa
 import { failureSequenceSection, layerResultsSection } from "./sections/results";
 import { bucklingSection, deformationSection, vibrationSection } from "./sections/plate";
 import { comparisonSection, materialsSection } from "./sections/project";
+import { studiesSection } from "./sections/studies";
 
 export interface ReportInfo {
   projectName: string;
@@ -77,6 +78,10 @@ export function buildReport(
   if (wants("comparison")) {
     const blocks = comparisonSection(collected, ctx);
     if (blocks.length > 0) sections.push({ id: "comparison", title: t("compare.title"), blocks });
+  }
+  if (wants("studies")) {
+    const blocks = studiesSection(collected.studies ?? [], ctx);
+    if (blocks.length > 0) sections.push({ id: "studies", title: t("report.section.studies"), blocks });
   }
 
   // The header block (F3.2): what the report is about, at a glance.

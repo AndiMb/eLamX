@@ -13,6 +13,8 @@ import type { FailureMetric } from "../failureMetric";
 import type { SheetPly } from "../throughThicknessSheet";
 import type { AngleSweepResponse, FailureType, LayerResultDto } from "../types";
 import type { LayerRow } from "../constants";
+import type { SweepLayout } from "../study/sweep";
+import type { PointResult, StudyOutput } from "../study/evaluate";
 
 /** What a figure shows, as the data of the view that draws it - every one a
  *  pure view with its data as props (P3.3). */
@@ -34,6 +36,13 @@ export type FigureRequest =
       events: { step: number; layerNumber: number; rf: number; type: FailureType; failureName: string; criterion: string }[];
       fpf: number;
       lpf: number | null;
+    }
+  | {
+      kind: "sweep";
+      layout: SweepLayout;
+      points: (PointResult | undefined)[];
+      output: StudyOutput;
+      metric: FailureMetric;
     };
 
 /** A standalone SVG, as `chartToStandaloneSvg` returns it. */
@@ -140,6 +149,7 @@ export const SECTION_KINDS = [
   "vibration",
   "deformation",
   "comparison",
+  "studies",
 ] as const;
 
 export type SectionKind = (typeof SECTION_KINDS)[number];
@@ -147,7 +157,9 @@ export type SectionKind = (typeof SECTION_KINDS)[number];
 export function defaultReportTemplate(): ReportTemplate {
   return {
     name: "",
-    sections: SECTION_KINDS.filter((k) => k !== "comparison"),
+    // The project-wide parts are chosen, not assumed: a comparison or a
+    // study is set up for a question, and not every report asks it.
+    sections: SECTION_KINDS.filter((k) => k !== "comparison" && k !== "studies"),
     laminates: [],
     loadCases: "active",
     detail: "results",

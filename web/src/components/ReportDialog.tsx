@@ -5,6 +5,7 @@ import { SECTION_KINDS, type ReportTemplate, type SectionKind } from "../lib/rep
 import { reportDraftAtom, reportTemplatesAtom } from "../store/reportAtoms";
 import { projectNameAtom, projectSnapshotAtom } from "../store/projectAtoms";
 import { activeLoadCaseFamily } from "../store/laminateAtoms";
+import { studyResultsFamily } from "../store/studyAtoms";
 import { formatConfigFamily } from "../store/formatAtoms";
 import { failureMetricAtom } from "../store/settingsAtoms";
 import { saveFile } from "../lib/saveFile";
@@ -31,6 +32,7 @@ const SECTION_KEYS: Record<SectionKind, MessageKey> = {
   vibration: "report.section.vibration",
   deformation: "report.section.deformation",
   comparison: "compare.title",
+  studies: "report.section.studies",
 };
 
 const STAGE_KEYS: Record<ReportStage, MessageKey> = {
@@ -94,6 +96,10 @@ export function ReportDialog({ onClose }: { onClose: () => void }) {
         template,
         project,
         activeLoadCase: (id) => store.get(activeLoadCaseFamily(id)).id,
+        cachedStudy: (id, hash) => {
+          const run = store.get(studyResultsFamily(id));
+          return run && run.status === "done" && run.hash === hash ? run.points : null;
+        },
         ctx: {
           t,
           locale,

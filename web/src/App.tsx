@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { useIsMobile } from "./lib/useIsMobile";
 import { useApplyTheme } from "./lib/useApplyTheme";
@@ -20,6 +21,10 @@ import { FibrePage, MatrixPage } from "./routes/ConstituentPage";
 import { FormatSettingsPage } from "./routes/FormatSettingsPage";
 import "./App.css";
 
+// Its own chunk: studies are an occasional tool, and the page with its
+// editors and charts need not be in the bundle every start pays for.
+const StudyPage = lazy(() => import("./routes/StudyPage"));
+
 function AppRoutes() {
   return (
     <Routes>
@@ -34,6 +39,14 @@ function AppRoutes() {
       <Route path="/fibres/:fibreId" element={<FibrePage />} />
       <Route path="/matrices/:matrixId" element={<MatrixPage />} />
       <Route path="/settings/format" element={<FormatSettingsPage />} />
+      <Route
+        path="/studies/:studyId"
+        element={
+          <Suspense fallback={null}>
+            <StudyPage />
+          </Suspense>
+        }
+      />
     </Routes>
   );
 }

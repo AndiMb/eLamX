@@ -8,12 +8,17 @@
 // The times were measured on the release core (per call, one laminate):
 // the CLT 0.13 ms at 4 plies to 0.6 ms at 64; last ply failure, which is up
 // to 2n CLT solves, 0.35 ms at 4 plies to 24 ms at 64 - quadratic in the
-// plies; buckling 3 ms at 10x10 terms and 6.6 ms at 12x12, the eigenvalue
-// problem growing with (m n)^3; vibration a little below buckling;
-// deformation about 1 ms. A browser tab is slower than that bench, and a
-// phone slower still, hence the margin.
+// plies; buckling of a stack of only 0 and 90 degree plies 2.5 ms at 10x10
+// terms and 6.5 ms at 12x12, but of any other stack - whose bend-twist
+// coupling D16, D26 fills the whole eigenvalue problem - 26 ms and 96 ms,
+// growing with about (m n)^3.7; vibration and deformation do not make that
+// difference, about 2.3 and 0.6 ms at 10 terms. A browser tab is slower than
+// that bench (measured: a 400-point buckling sweep of angled plies at 10
+// terms, 19 s in headless Chromium, 47 ms a point), and a phone slower
+// still, hence the margin.
 
 import type { PointCall } from "./evaluate";
+import { formatSignificant } from "../numberFormat";
 
 /** Warn from this estimate on. */
 export const WARN_MS = 10_000;
@@ -31,6 +36,14 @@ export interface CallSize {
   plies: number;
   /** Ritz terms m and n of a plate solve. */
   terms?: [number, number];
+  /** Only 0 and 90 degree plies: no bend-twist coupling, and a buckling
+   *  problem that splits into small ones. */
+  orthotropic?: boolean;
+}
+
+/** Whether every ply of the stack lies at 0 or 90 degrees. */
+export function isCrossPly(angles: readonly number[]): boolean {
+  return angles.every((a) => Math.abs(a % 90) < 1e-9);
 }
 
 /** Estimated milliseconds of one core call. */
@@ -47,7 +60,7 @@ export function callCostMs(call: PointCall, size: CallSize): number {
       ms = 0.2 + 0.006 * plies * plies;
       break;
     case "buckling":
-      ms = 0.8 + 3e-6 * unknowns ** 3;
+      ms = size.orthotropic ? 0.8 + 3e-6 * unknowns ** 3 : 0.5 + 26 * (unknowns / 100) ** 3.7;
       break;
     case "vibration":
       ms = 0.6 + 2.2e-6 * unknowns ** 3;
@@ -93,4 +106,11 @@ export function fingerprint(text: string): string {
     h2 = Math.imul(h2 ^ c, 0x5bd1e995) >>> 0;
   }
   return `${h1.toString(36)}-${(h2 & 0x1fffff).toString(36)}-${text.length.toString(36)}`;
+}
+
+/** A duration as people say it: "0.4 s", "12 s", "3 min". */
+export function formatDuration(ms: number, locale: string): string {
+  if (ms < 1000) return "< 1 s";
+  if (ms < 60_000) return `${formatSignificant(ms / 1000, 2, locale)} s`;
+  return `${formatSignificant(ms / 60_000, 2, locale)} min`;
 }

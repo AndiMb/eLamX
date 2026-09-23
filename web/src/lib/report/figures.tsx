@@ -16,6 +16,8 @@ import { ReserveFactorChartView } from "../../components/charts/ReserveFactorCha
 import { FailureSequenceChartView } from "../../components/charts/FailureSequenceChart";
 import { ThroughThicknessSheetView } from "../../components/ThroughThicknessSheet";
 import { StackVizView } from "../../components/StackViz";
+import { SweepChartView } from "../../components/charts/SweepChart";
+import { outputLabel, variationLabel } from "../study/outputs";
 import { LIGHT_CHART_COLORS, LightChartColors } from "../chartColors";
 import { standaloneSvgOf } from "../chartSnapshot";
 import { METRIC_LABEL_KEYS } from "../failureMetric";
@@ -32,6 +34,7 @@ const HOST_WIDTH: Record<FigureRequest["kind"], number> = {
   reserveFactor: 640,
   sheet: 1000,
   sequence: 640,
+  sweep: 640,
 };
 
 const TYPE_KEYS: Record<FailureType, MessageKey> = {
@@ -106,6 +109,27 @@ function view(request: FigureRequest, t: Translate, locale: Locale): ReactNode {
           }}
         />
       );
+    case "sweep": {
+      const { layout, output, metric } = request;
+      const y = outputLabel(output, metric, t);
+      return (
+        <SweepChartView
+          layout={layout}
+          points={request.points}
+          output={output}
+          metric={metric}
+          locale={locale}
+          colors={LIGHT_CHART_COLORS}
+          labels={{
+            aria: y,
+            x: variationLabel(layout.x.variation, t),
+            y,
+            series: (v) => (layout.y ? `${variationLabel(layout.y.variation, t).split(" [")[0]} = ${v}` : v),
+            gap: t("study.gap"),
+          }}
+        />
+      );
+    }
   }
 }
 
