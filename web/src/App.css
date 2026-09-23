@@ -4487,3 +4487,68 @@ table.matrix td.block-d {
 .chart-export-menu button:focus-visible {
   background: var(--accent-bg);
 }
+
+/* --- Report-Dialog (F3.2) --- */
+.report-dialog fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0;
+  padding: var(--s-2) var(--s-3) var(--s-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+
+.report-dialog legend {
+  padding: 0 4px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.report-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 4px var(--s-3);
+  font-size: var(--fs-md);
+}
+
+.report-options {
+  flex-direction: row !important;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--s-3) !important;
+}
+
+.report-options label:not(.inline-check),
+.report-templates label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.report-templates,
+.report-save-template {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-2);
+}
+
+.report-save-template input {
+  flex: 1;
+  min-width: 0;
+}
+
+.report-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.report-progress progress {
+  width: 100%;
+}

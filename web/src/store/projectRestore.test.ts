@@ -14,6 +14,8 @@ import { defaultVibrationInput, vibrationInputFamily, vibrationStorageKey } from
 import { defaultLaminateConfig, laminateConfigFamily, laminateIdsAtom } from "./laminateAtoms";
 import { materialsAtom } from "./materialsAtoms";
 import { comparisonVariantsAtom } from "./comparisonAtoms";
+import { reportTemplatesAtom } from "./reportAtoms";
+import { defaultReportTemplate } from "../lib/report/model";
 import { OPTIMIZATION_STORAGE_KEY, optimizationInputAtom, defaultOptimizationInput } from "./optimizationAtoms";
 import { defaultMaterial } from "../lib/constants";
 import { EMPTY_WEB_EXTENSION_CARRY } from "../lib/webExtension";
@@ -70,6 +72,16 @@ describe("ProjectSnapshotV2 und restoreProjectAtom", () => {
     expect(snapshot.modules["lam-a"].vibration).toBeNull();
     expect(snapshot.optimization.input).toBeNull();
     expect(snapshot.comparison).toEqual([{ laminateId: "lam-a", loadCaseId: "x" }]);
+  });
+
+  it("nimmt Report-Vorlagen in den Stand auf und bringt sie zurück", () => {
+    const store = opened();
+    const before = store.get(projectSnapshotV2Atom);
+    expect(before.reportTemplates).toEqual([]);
+    store.set(reportTemplatesAtom, [{ ...defaultReportTemplate(), name: "Prüfbericht" }]);
+    expect(store.get(projectSnapshotV2Atom).reportTemplates?.[0].name).toBe("Prüfbericht");
+    store.set(restoreProjectAtom, before);
+    expect(store.get(reportTemplatesAtom)).toEqual([]);
   });
 
   it("bringt den Stand zurück, auch „nicht eingerichtet“ und gelöschte Laminate", () => {

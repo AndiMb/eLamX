@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { FilePlus, FolderOpen, Save } from "lucide-react";
+import { FilePlus, FileText, FolderOpen, Save } from "lucide-react";
 import { downloadProject, exportProject, importProject } from "../lib/projectFile";
 import type { ProjectFormat } from "../lib/projectFile";
 import { desktop, type DesktopProject } from "../lib/desktop";
@@ -271,6 +271,16 @@ export function ProjectActions() {
           aria-label={t("topbar.save")}
         >
           <Save size={18} strokeWidth={1.75} />
+        </button>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => runCommand("report.create")}
+          disabled={busy}
+          title={t("command.report")}
+          aria-label={t("command.report")}
+        >
+          <FileText size={18} strokeWidth={1.75} />
         </button>
       </div>
       {notices.length > 0 && !error && (

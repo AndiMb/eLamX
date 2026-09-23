@@ -166,6 +166,7 @@ export const MENU_COMMANDS: Record<string, string> = {
   saveAs: "file.saveAs",
   undo: "edit.undo",
   redo: "edit.redo",
+  report: "report.create",
 };
 
 /**

@@ -8,6 +8,7 @@ import { useProjectHistory } from "./lib/history";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { CommandPalette } from "./components/CommandPalette";
+import { ReportLauncher } from "./components/ReportLauncher";
 import { BottomTabs } from "./components/BottomTabs";
 import { IndexPage } from "./routes/IndexPage";
 import { LaminatePage } from "./routes/LaminatePage";
@@ -59,6 +60,7 @@ function Shell() {
           </div>
         </div>
         <BottomTabs />
+        <ReportLauncher />
       </div>
     );
   }
@@ -67,6 +69,7 @@ function Shell() {
     <div className="app">
       <TopBar />
       <CommandPalette />
+      <ReportLauncher />
       <div className="app-body">
         <Sidebar />
         <div className="content">

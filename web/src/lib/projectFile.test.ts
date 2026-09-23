@@ -146,12 +146,29 @@ describe("die Web-Erweiterung der Projektdatei", () => {
     const carry = {
       studies: [{ id: "s1", kind: "matrix" }],
       snapshots: [{ id: "snap" }],
-      reportTemplates: [{ name: "Standard" }],
     };
     const reopened = await importProject(
       await exportProject({ ...opened, webExtensionCarry: carry }),
     );
     expect(reopened.webExtensionCarry).toEqual(carry);
+  });
+
+  it("schreibt Report-Vorlagen in die Datei und liest sie zurück", async () => {
+    const opened = await importProject(REFERENCE);
+    const template = {
+      name: "Prüfbericht",
+      sections: ["materials", "layerResults"] as ("materials" | "layerResults")[],
+      laminates: [opened.laminates[0].id],
+      loadCases: "all" as const,
+      detail: "derivation" as const,
+      paper: "letter" as const,
+      author: "A. Prüfer",
+      signature: true,
+    };
+    const xml = await exportProject({ ...opened, reportTemplates: [template] });
+    expect(xml).toContain('"load_cases":"all"');
+    const reopened = await importProject(xml);
+    expect(reopened.reportTemplates).toEqual([template]);
   });
 
   it("reicht den Hinweis des Kerns auf ein unbekanntes Schema durch", async () => {

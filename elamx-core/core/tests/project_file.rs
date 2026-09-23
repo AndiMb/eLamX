@@ -10,7 +10,7 @@
 use elamx_core::clt::RadiusType;
 use elamx_core::plate::Stiffener;
 use elamx_core::project::{
-    read_elamx, write_elamx, ComparisonState, ComparisonVariant, ImportNotice, LayerCriteriaEntry,
+    read_elamx, write_elamx, ComparisonState, ComparisonVariant, ImportNotice, LayerCriteriaEntry, ReportTemplate,
     Project, ReadError, StaleLayerCriteriaReason, WebExtension, WEB_EXTENSION_TAG,
 };
 use elamx_core::cutout::CutoutInput;
@@ -869,7 +869,16 @@ fn full_extension() -> WebExtension {
         // strings that would end a CDATA section or look like eLamX's tags.
         studies: vec![json!({"id": "s1", "name": "Studie ]]> <laminate>", "kind": "matrix"})],
         snapshots: vec![json!({"id": "snap", "keyFigures": {"minRf": 1.25}})],
-        report_templates: vec![json!({"name": "Standard", "sections": ["abd", "layerResults"]})],
+        report_templates: vec![ReportTemplate {
+            name: "Prüfbericht ]]> <laminate>".into(),
+            sections: vec!["abd".into(), "layerResults".into()],
+            laminates: vec!["lam-1".into()],
+            load_cases: "all".into(),
+            detail: "derivation".into(),
+            paper: "letter".into(),
+            author: "A. Prüfer".into(),
+            signature: true,
+        }],
         comparison: Some(ComparisonState {
             variants: vec![ComparisonVariant {
                 laminate_uuid: "lam-1".into(),
@@ -1198,4 +1207,19 @@ fn an_unknown_extra_criterion_is_dropped_and_reported() {
             criterion: "larc05".into(),
         }]
     );
+}
+
+/// A template of a later version - a field this build does not know, a
+/// missing one - still reads: unknown fields are dropped, missing ones take
+/// their defaults, and the rest of the extension is not lost over it.
+#[test]
+fn report_template_reads_with_defaults_and_unknown_fields() {
+    let template: ReportTemplate =
+        serde_json::from_value(json!({"name": "Kurz", "sections": ["materials"], "logo": "firma.png"})).unwrap();
+    assert_eq!(template.name, "Kurz");
+    assert_eq!(template.sections, vec!["materials".to_string()]);
+    assert_eq!(template.load_cases, "active");
+    assert_eq!(template.detail, "results");
+    assert_eq!(template.paper, "a4");
+    assert!(!template.signature);
 }

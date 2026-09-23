@@ -18,7 +18,7 @@ export interface DesktopProject {
   name: string;
 }
 
-export type DesktopCommand = "new" | "open" | "save" | "saveAs" | "undo" | "redo";
+export type DesktopCommand = "new" | "open" | "save" | "saveAs" | "undo" | "redo" | "report";
 
 export interface DesktopBridge {
   platform: string;

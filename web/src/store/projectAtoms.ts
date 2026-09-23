@@ -26,6 +26,8 @@ import {
 } from "../lib/webExtension";
 import { comparisonVariantsAtom } from "./comparisonAtoms";
 import { stackingRuleSettingsAtom } from "./stackingRuleAtoms";
+import { reportTemplatesAtom } from "./reportAtoms";
+import type { ReportTemplate } from "../lib/report/model";
 import type { RuleSettings } from "../lib/generated/RuleSettings";
 import { bucklingInputFamily, bucklingStorageKey } from "./bucklingAtoms";
 import { fibresAtom, matricesAtom } from "./micromechanicsAtoms";
@@ -171,6 +173,7 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
     comparison: get(comparisonVariantsAtom),
     webExtensionCarry: get(webExtensionCarryAtom),
     stackingRuleSettings: get(stackingRuleSettingsAtom),
+    reportTemplates: get(reportTemplatesAtom),
   };
 });
 
@@ -216,6 +219,8 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
   set(webExtensionCarryAtom, project.webExtensionCarry ?? EMPTY_WEB_EXTENSION_CARRY);
   // The file's thresholds, or the defaults: rule settings are the project's.
   set(stackingRuleSettingsAtom, project.stackingRuleSettings ?? null);
+  // The file's templates, or none: they name laminates of that project.
+  set(reportTemplatesAtom, project.reportTemplates ?? []);
   set(importNoticesAtom, project.importNotices ?? []);
   if (project.optimization) {
     set(optimizationInputAtom, project.optimization.input);
@@ -385,6 +390,9 @@ export interface ProjectSnapshotV2 {
   /** The stacking-rule thresholds, null for the defaults. Optional so that a
    *  snapshot from before the rules existed restores the defaults. */
   stackingRuleSettings?: RuleSettings | null;
+  /** The saved report templates. Optional so that a snapshot from before
+   *  they existed restores none. */
+  reportTemplates?: ReportTemplate[];
 }
 
 function readModules(get: Getter, id: string): ModuleInputs {
@@ -424,6 +432,8 @@ export const projectSnapshotV2Atom = atom<ProjectSnapshotV2>((get) => {
     comparison: get(comparisonVariantsAtom),
     webExtensionCarry: get(webExtensionCarryAtom),
     stackingRuleSettings: get(stackingRuleSettingsAtom),
+    // Read unconditionally, like everything else here.
+    reportTemplates: get(reportTemplatesAtom),
   };
 });
 
@@ -464,6 +474,7 @@ export const restoreProjectAtom = atom(null, (get, set, snapshot: ProjectSnapsho
   setIfChanged(get, set, comparisonVariantsAtom, snapshot.comparison);
   setIfChanged(get, set, webExtensionCarryAtom, snapshot.webExtensionCarry);
   setIfChanged(get, set, stackingRuleSettingsAtom, snapshot.stackingRuleSettings ?? null);
+  setIfChanged(get, set, reportTemplatesAtom, snapshot.reportTemplates ?? []);
 
   const optimization = snapshot.optimization;
   const searchStored = hasStoredInput(OPTIMIZATION_STORAGE_KEY);

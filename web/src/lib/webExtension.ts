@@ -16,13 +16,11 @@ import type { ImportNotice as CoreImportNotice } from "./generated/ImportNotice"
 export interface WebExtensionCarry {
   studies: unknown[];
   snapshots: unknown[];
-  reportTemplates: unknown[];
 }
 
 export const EMPTY_WEB_EXTENSION_CARRY: WebExtensionCarry = {
   studies: [],
   snapshots: [],
-  reportTemplates: [],
 };
 
 /** Something about an opened file worth telling the user: the core's notices

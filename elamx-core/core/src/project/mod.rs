@@ -29,7 +29,7 @@ mod write;
 pub use read::{read_elamx, ReadError};
 pub use reduced::read_elamxb;
 pub use web_extension::{
-    ComparisonState, ComparisonVariant, ImportNotice, LayerCriteriaEntry,
+    ComparisonState, ComparisonVariant, ReportTemplate, ImportNotice, LayerCriteriaEntry,
     StaleLayerCriteriaReason, WebExtension,
     WEB_EXTENSION_SCHEMA, WEB_EXTENSION_TAG,
 };

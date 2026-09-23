@@ -12,6 +12,8 @@
 // answers to. Load cases are not among them - every <calculation> in the file
 // becomes a real load case. See `CarryOver` in store/laminateAtoms.ts.
 
+import type { ReportTemplate } from "./report/model";
+import { fromFileTemplate, toFileTemplate } from "../store/reportAtoms";
 import { elamx } from "./wasm";
 import { DEFAULT_CRITERION_ID, LOAD_FIELDS, STRAIN_FIELDS, type LayerRow } from "./constants";
 import {
@@ -192,6 +194,9 @@ export interface ProjectSnapshot {
    *  Optional so that a snapshot written before the check existed still
    *  reads. */
   stackingRuleSettings?: RuleSettings | null;
+  /** Report templates saved under a name (F3.2). Optional so that a snapshot
+   *  written before they existed still reads. */
+  reportTemplates?: ReportTemplate[];
   /** What could not be used when the file was read. Empty on the way out. */
   importNotices?: ImportNotice[];
 }
@@ -241,7 +246,7 @@ function toWebExtension(snapshot: ProjectSnapshot): WebExtension | null {
     layer_criteria: [],
     studies: carry.studies,
     snapshots: carry.snapshots,
-    report_templates: carry.reportTemplates,
+    report_templates: (snapshot.reportTemplates ?? []).map(toFileTemplate),
     comparison: variants.length > 0 ? { variants } : null,
     stacking_rule_settings: snapshot.stackingRuleSettings ?? null,
   };
@@ -411,9 +416,9 @@ export async function importProject(
       ? {
           studies: extension.studies,
           snapshots: extension.snapshots,
-          reportTemplates: extension.report_templates,
         }
       : EMPTY_WEB_EXTENSION_CARRY,
+    reportTemplates: (extension?.report_templates ?? []).map(fromFileTemplate),
     stackingRuleSettings: extension?.stacking_rule_settings ?? null,
     importNotices,
   };

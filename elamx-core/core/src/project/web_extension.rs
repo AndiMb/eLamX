@@ -53,10 +53,9 @@ pub struct WebExtension {
     #[serde(default)]
     #[cfg_attr(feature = "ts", ts(type = "Array<unknown>"))]
     pub snapshots: Vec<serde_json::Value>,
-    /// Saved report configurations. Opaque for the same reason.
+    /// Saved report configurations (F3.2), by name.
     #[serde(default)]
-    #[cfg_attr(feature = "ts", ts(type = "Array<unknown>"))]
-    pub report_templates: Vec<serde_json::Value>,
+    pub report_templates: Vec<ReportTemplate>,
     /// What the comparison page shows.
     #[serde(default)]
     pub comparison: Option<ComparisonState>,
@@ -104,6 +103,53 @@ pub struct LayerCriteriaEntry {
     pub primary: String,
     /// Criteria 2..n, in the order the user put them.
     pub extra: Vec<String>,
+}
+
+/// A report configuration the user saved under a name: what a report of this
+/// project contains and how it is set.
+///
+/// Every field has a default and the choices are plain strings, so a template
+/// written by a later version - a section kind this build does not know, a
+/// paper size it cannot set - still reads; the web ignores what it does not
+/// know rather than losing the whole extension over it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+#[serde(default)]
+pub struct ReportTemplate {
+    pub name: String,
+    /// Section kinds in report order: `materials`, `laminate`, `abd`,
+    /// `loadCases`, `layerResults`, `failureSequence`, `buckling`,
+    /// `vibration`, `deformation`, `comparison`.
+    pub sections: Vec<String>,
+    /// Laminate uuids; empty for every laminate.
+    pub laminates: Vec<String>,
+    /// `active` (each laminate's active load case) or `all`.
+    #[cfg_attr(feature = "ts", ts(type = "\"active\" | \"all\""))]
+    pub load_cases: String,
+    /// `results` or `derivation`.
+    #[cfg_attr(feature = "ts", ts(type = "\"results\" | \"derivation\""))]
+    pub detail: String,
+    /// `a4` or `letter`.
+    #[cfg_attr(feature = "ts", ts(type = "\"a4\" | \"letter\""))]
+    pub paper: String,
+    pub author: String,
+    /// Lines for the author's and a reviewer's signature on the cover (O8).
+    pub signature: bool,
+}
+
+impl Default for ReportTemplate {
+    fn default() -> Self {
+        ReportTemplate {
+            name: String::new(),
+            sections: Vec::new(),
+            laminates: Vec::new(),
+            load_cases: "active".into(),
+            detail: "results".into(),
+            paper: "a4".into(),
+            author: String::new(),
+            signature: false,
+        }
+    }
 }
 
 /// The comparison page's columns.

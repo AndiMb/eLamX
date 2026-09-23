@@ -328,6 +328,7 @@ const LABELS = {
     copy: "Kopieren",
     paste: "Einfügen",
     selectAll: "Alles auswählen",
+    report: "Report erstellen …",
   },
   en: {
     file: "File",
@@ -352,6 +353,7 @@ const LABELS = {
     copy: "Copy",
     paste: "Paste",
     selectAll: "Select all",
+    report: "Create report …",
   },
 };
 
@@ -378,6 +380,8 @@ function buildMenu(locale) {
           { label: text("open"), accelerator: "CmdOrCtrl+O", click: command("open") },
           { label: text("save"), accelerator: "CmdOrCtrl+S", click: command("save") },
           { label: text("saveAs"), accelerator: "CmdOrCtrl+Shift+S", click: command("saveAs") },
+          { type: "separator" },
+          { label: text("report"), click: command("report") },
           { type: "separator" },
           { label: text("quit"), role: "quit" },
         ],
