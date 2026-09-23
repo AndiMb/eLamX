@@ -72,6 +72,12 @@ function loadInThread() {
   return fallback;
 }
 
+/** The core in this thread - for the batch client's fallback where no worker
+ *  can be made. */
+export function loadCoreInThread() {
+  return loadInThread();
+}
+
 // Reached through `globalThis` and behind variable specifiers, so that the
 // app's tsconfig - which has no Node types on purpose, this being browser
 // code - does not have to grow them for three lines that never run in a
