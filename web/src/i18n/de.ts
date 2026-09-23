@@ -96,6 +96,16 @@ export const de: Messages = {
     "Die Dehnung ist linear in z (Mittelebenendehnung plus z mal Krümmung), die Spannung folgt über die Steifigkeit der Lage. Die Zahlen gelten für Lage {nr} an der gezeigten Stelle.",
   "sheet.readout.none": "Zeiger auf das Blatt führen – oder das Blatt fokussieren und die Pfeiltasten nutzen –, um die Werte an einer Stelle zu lesen.",
   "sheet.readout.ply": "Lage {nr} ({angle}°)",
+  "lpf.path.column.criterion": "Kriterium",
+  "lpf.sequence.title": "Versagensreihenfolge",
+  "lpf.sequence.aria": "Versagensreihenfolge: Lastfaktor je Degradationsschritt und Lage",
+  "lpf.sequence.xAxis": "Lastfaktor (RF des Schritts)",
+  "lpf.sequence.ply": "{nr} ({angle}°)",
+  "lpf.sequence.fpf": "FPF",
+  "lpf.sequence.lpf": "LPF",
+  "lpf.sequence.step": "Schritt {nr}",
+  "lpf.sequence.hint":
+    "Eine Zeile je Lage, eine Marke je Degradationsschritt mit seiner Nummer; die Form zeigt die Versagensart. FPF: erstes Lagenversagen, LPF: größter Lastfaktor des Pfads (EF_LPF). Zwischenfaserbrüche sind mit j_A multipliziert, wie in der Tabelle.",
   "rules.title": "Regeln für den Lagenaufbau",
   "rules.intro":
     "Übliche Konstruktionsregeln, geprüft am vollständigen Aufbau einschließlich gespiegelter Lagen. Sie sind Hinweise: Gerechnet wird jeder Aufbau.",

@@ -9,7 +9,8 @@ import {
   loadableLastPlyFailureFamily,
 } from "../store/lastPlyFailureAtoms";
 import { DOF_NAMES, LOAD_FIELDS } from "../lib/constants";
-import type { FailureType, LastPlyFailureInputDto } from "../lib/types";
+import { criterionName, type FailureType, type LastPlyFailureInputDto } from "../lib/types";
+import { FailureSequenceChart } from "./charts/FailureSequenceChart";
 import { Quantity } from "./Quantity";
 import { QuantityDisplay } from "./QuantityDisplay";
 import { SafeNumberInput } from "./SafeNumberInput";
@@ -35,6 +36,7 @@ interface PathRow {
   reserveFactor: number;
   failureName: string;
   failureType: FailureType;
+  criterionId: string;
   matrixFailedCount: number;
   fibreFailedCount: number;
   plyCount: number;
@@ -79,6 +81,11 @@ export function LastPlyFailureModuleContent({ laminateId }: { laminateId: string
             {t(FAILURE_TYPE_KEYS[r.failureType])}
           </span>
         ),
+      },
+      {
+        key: "criterion",
+        label: t("lpf.path.column.criterion"),
+        render: (r) => criterionName(r.criterionId, t),
       },
       {
         key: "mode",
@@ -225,6 +232,14 @@ export function LastPlyFailureModuleContent({ laminateId }: { laminateId: string
           >
             <p className="hint">{t("lpf.how.hint", { steps: summary.steps })}</p>
           </HowWasThisComputed>
+        </section>
+      )}
+
+      {path && path.length > 0 && (
+        <section className="panel">
+          <MobileCollapse title={t("lpf.sequence.title")}>
+            <FailureSequenceChart laminateId={laminateId} />
+          </MobileCollapse>
         </section>
       )}
 

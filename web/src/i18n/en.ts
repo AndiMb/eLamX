@@ -101,6 +101,16 @@ export const en = {
     "The strain is linear in z (mid-plane strain plus z times curvature); the stress follows through the ply's stiffness. The numbers are for ply {nr} at the point shown.",
   "sheet.readout.none": "Point at the sheet - or focus it and use the arrow keys - to read the values at one place.",
   "sheet.readout.ply": "Ply {nr} ({angle}°)",
+  "lpf.path.column.criterion": "Criterion",
+  "lpf.sequence.title": "Failure sequence",
+  "lpf.sequence.aria": "Failure sequence: load factor per degradation step and ply",
+  "lpf.sequence.xAxis": "Load factor (RF of the step)",
+  "lpf.sequence.ply": "{nr} ({angle}°)",
+  "lpf.sequence.fpf": "FPF",
+  "lpf.sequence.lpf": "LPF",
+  "lpf.sequence.step": "Step {nr}",
+  "lpf.sequence.hint":
+    "One row per ply, one mark per degradation step with its number; the shape is the failure type. FPF: first-ply failure, LPF: the largest load factor along the path (EF_LPF). Inter-fibre failures are multiplied by j_A, as in the table.",
   "rules.title": "Stacking rules",
   "rules.intro":
     "Common design rules, checked on the full stack including mirrored plies. They are advice: every stack is computed.",

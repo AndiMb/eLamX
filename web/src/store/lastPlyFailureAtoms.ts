@@ -96,6 +96,8 @@ export const lastPlyFailurePathFamily = atomFamily((laminateId: string) =>
       reserveFactor: iteration.reserve_factor,
       failureName: iteration.failure_name,
       failureType: iteration.failure_type,
+      /** The criterion that governed the step (F2.1). */
+      criterionId: iteration.criterion_id,
       /** How many plies have lost their matrix / their fibres by this step. */
       matrixFailedCount: iteration.matrix_failed.filter(Boolean).length,
       fibreFailedCount: iteration.fibre_failed.filter(Boolean).length,
