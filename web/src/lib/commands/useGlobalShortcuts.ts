@@ -2,11 +2,11 @@
 // presses into commands (see shortcuts.ts for the rules).
 import { useEffect } from "react";
 import { desktop } from "../desktop";
-import { handleKeydown } from "./shortcuts";
+import { handleKeydown, isMacPlatform } from "./shortcuts";
 
 export function useGlobalShortcuts() {
   useEffect(() => {
-    const isMac = /Mac|iPhone|iPad/.test(navigator.userAgent);
+    const isMac = isMacPlatform();
     const inDesktop = desktop() !== null;
     // Which field has been typed into since it got the focus. Tracked here
     // rather than asked of each input component, so the rule holds for every

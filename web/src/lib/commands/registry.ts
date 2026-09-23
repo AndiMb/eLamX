@@ -16,8 +16,13 @@ export interface Command {
   /** Stable id, e.g. `file.save`. The desktop menu refers to commands by it. */
   id: string;
   label: MessageKey;
-  /** `Mod+S`, `Mod+Shift+S`, `Alt+ArrowUp` - see `matchesShortcut`. */
-  shortcut?: string;
+  /** `Mod+S`, `Mod+Shift+S`, `Alt+ArrowUp` - see `matchesShortcut`. Several
+   *  when a platform convention has two, like Ctrl+Y and Ctrl+Shift+Z for
+   *  redo; the first is the one shown. */
+  shortcut?: string | string[];
+  /** Whether a text field with the focus keeps this key even when it has not
+   *  been typed into - Delete and the arrow keys mean something in any field. */
+  fieldOwnsKey?: boolean;
   /** Whether the shortcut belongs to the desktop shell's native menu.
    *
    *  The menu has its own accelerator for it and sends the command itself. A
@@ -43,6 +48,12 @@ export function registerCommand(command: Command): () => void {
 
 export function getCommand(id: string): Command | undefined {
   return commands.get(id);
+}
+
+/** A command's shortcuts as a list, the one shown first. */
+export function shortcutsOf(command: Pick<Command, "shortcut">): string[] {
+  const { shortcut } = command;
+  return shortcut === undefined ? [] : Array.isArray(shortcut) ? shortcut : [shortcut];
 }
 
 /** Every registered command, in registration order. */

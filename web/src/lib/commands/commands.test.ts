@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   commandForKey,
+  formatShortcut,
   handleKeydown,
   isTextField,
   keyStaysWithField,
@@ -146,5 +147,32 @@ describe("die Registry", () => {
     register({ id: "x", label: "topbar.open", run: () => {} });
     first();
     expect(listCommands().map((c) => c.label)).toEqual(["topbar.open"]);
+  });
+});
+
+describe("mehrere Tasten und Felder, die ihre Taste behalten", () => {
+  it("führt ein Kommando über jede seiner Tasten aus", () => {
+    const redo = vi.fn();
+    register({ id: "edit.redo", label: "command.redo", shortcut: ["Mod+Y", "Mod+Shift+Z"], run: redo });
+    expect(handleKeydown(key("y", { ctrlKey: true }), env())).toBe(true);
+    expect(handleKeydown(key("Z", { ctrlKey: true, shiftKey: true }), env())).toBe(true);
+    expect(redo).toHaveBeenCalledTimes(2);
+  });
+
+  /// Delete in a field one has only tabbed into still deletes text there,
+  /// never the selected layers.
+  it("lässt Entf immer beim Textfeld, auch unbearbeitet", () => {
+    const remove = vi.fn();
+    register({ id: "layers.delete", label: "layers.delete", shortcut: "Delete", fieldOwnsKey: true, run: remove });
+    expect(handleKeydown(key("Delete"), env({ focused: TEXT }))).toBe(false);
+    expect(handleKeydown(key("Delete"), env({ focused: CHECKBOX }))).toBe(true);
+    expect(remove).toHaveBeenCalledOnce();
+  });
+
+  it("schreibt Tasten so, wie die Tastatur sie beschriftet", () => {
+    expect(formatShortcut("Mod+Shift+Z", false, "de")).toBe("Strg+Umschalt+Z");
+    expect(formatShortcut("Mod+Y", false, "en")).toBe("Ctrl+Y");
+    expect(formatShortcut("Mod+Shift+Z", true, "en")).toBe("⌘⇧Z");
+    expect(formatShortcut("Alt+ArrowUp", false, "de")).toBe("Alt+↑");
   });
 });

@@ -4,7 +4,7 @@
 // Kept free of the DOM's classes (it reads the few properties it needs), so
 // the rule can be tested without a browser.
 
-import { listCommands, runCommand, type Command, type CommandContext } from "./registry";
+import { listCommands, runCommand, shortcutsOf, type Command, type CommandContext } from "./registry";
 
 /** The parts of a KeyboardEvent the matching reads. */
 export interface KeyLike {
@@ -107,9 +107,10 @@ export function commandForKey(
   commands: Command[] = listCommands(),
 ): Command | null {
   for (const command of commands) {
-    if (!command.shortcut || !matchesShortcut(event, command.shortcut, env.isMac)) continue;
+    if (!shortcutsOf(command).some((s) => matchesShortcut(event, s, env.isMac))) continue;
     if (env.inDesktop && command.nativeInDesktop) return null;
     if (keyStaysWithField(command.id, env.focused, env.fieldEdited)) return null;
+    if (command.fieldOwnsKey && isTextField(env.focused)) return null;
     return command;
   }
   return null;
@@ -128,4 +129,31 @@ export function handleKeydown(event: KeyLike, env: KeydownEnvironment): boolean 
   if (!command) return false;
   runCommand(command.id, env.ctx);
   return true;
+}
+
+const KEY_NAMES: Record<string, { de: string; en: string; mac?: string }> = {
+  mod: { de: "Strg", en: "Ctrl", mac: "⌘" },
+  shift: { de: "Umschalt", en: "Shift", mac: "⇧" },
+  alt: { de: "Alt", en: "Alt", mac: "⌥" },
+  arrowup: { de: "↑", en: "↑" },
+  arrowdown: { de: "↓", en: "↓" },
+  delete: { de: "Entf", en: "Del" },
+  escape: { de: "Esc", en: "Esc" },
+  enter: { de: "Eingabe", en: "Enter" },
+};
+
+/** A shortcut as the keyboard labels it: `Strg+Umschalt+Z`, or `⇧⌘Z` on a
+ *  Mac, where the symbols are the convention and go without separators. */
+export function formatShortcut(shortcut: string, isMac: boolean, locale: "de" | "en"): string {
+  const parts = shortcut.split("+").map((part) => {
+    const name = KEY_NAMES[part.toLowerCase()];
+    if (!name) return part.length === 1 ? part.toUpperCase() : part;
+    return isMac && name.mac ? name.mac : name[locale];
+  });
+  return isMac ? parts.join("") : parts.join("+");
+}
+
+/** Whether this is a Mac, where Mod is Cmd. */
+export function isMacPlatform(): boolean {
+  return typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
 }

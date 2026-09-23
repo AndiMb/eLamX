@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { FolderOpen, Save } from "lucide-react";
+import { FilePlus, FolderOpen, Save } from "lucide-react";
 import { downloadProject, exportProject, importProject } from "../lib/projectFile";
 import type { ProjectFormat } from "../lib/projectFile";
 import { desktop, type DesktopProject } from "../lib/desktop";
@@ -9,6 +9,7 @@ import type { ImportNotice } from "../lib/webExtension";
 import {
   importNoticesAtom,
   loadProjectAtom,
+  newProjectAtom,
   projectFilePathAtom,
   projectNameAtom,
   projectSnapshotAtom,
@@ -64,6 +65,7 @@ export function ProjectActions() {
   const announced = useRef(false);
   const snapshot = useAtomValue(projectSnapshotAtom);
   const loadProject = useSetAtom(loadProjectAtom);
+  const newProject = useSetAtom(newProjectAtom);
   const [projectName, setProjectName] = useAtom(projectNameAtom);
   const [filePath, setFilePath] = useAtom(projectFilePathAtom);
   const [error, setError] = useState<string | null>(null);
@@ -138,11 +140,27 @@ export function ProjectActions() {
     [shell, snapshot, projectName, filePath, setFilePath, setProjectName],
   );
 
+  const startNew = useCallback(() => {
+    // Asked, because it is the one change undo cannot take back: a new
+    // project starts a new history.
+    if (!window.confirm(t("command.newProject.confirm"))) return;
+    setError(null);
+    newProject();
+  }, [newProject, t]);
+
   // The file actions as commands, so a shortcut, the native menu and the
   // buttons all run the same code. In the shell the menu has the accelerators
   // for these keys and sends the command itself; see `nativeInDesktop`.
   useEffect(() => {
     const unregister = [
+      registerCommand({
+        id: "file.new",
+        label: "command.newProject",
+        // No key: Ctrl+N opens a browser window, and a page cannot have it.
+        // The desktop menu gives it one.
+        when: () => !busy,
+        run: startNew,
+      }),
       registerCommand({
         id: "file.open",
         label: "topbar.open",
@@ -169,7 +187,7 @@ export function ProjectActions() {
       }),
     ];
     return () => unregister.forEach((stop) => stop());
-  }, [open, save, busy]);
+  }, [open, save, startNew, busy]);
 
   // The native menu does not act on its own: it asks for the same commands
   // the buttons and the shortcuts run, so there is one implementation of each.
@@ -213,6 +231,16 @@ export function ProjectActions() {
             if (file) void openFromBrowser(file);
           }}
         />
+        <button
+          type="button"
+          className="icon-button topbar-new"
+          onClick={() => runCommand("file.new")}
+          disabled={busy}
+          title={t("command.newProject")}
+          aria-label={t("command.newProject")}
+        >
+          <FilePlus size={18} strokeWidth={1.75} />
+        </button>
         <button
           type="button"
           className="icon-button"

@@ -3,6 +3,7 @@ import { GraduationCap, Languages, Moon, Sun } from "lucide-react";
 import { studentModeAtom, themeAtom } from "../store/settingsAtoms";
 import { LOCALES, useLocale, useSetLocale, useT, type Locale } from "../i18n";
 import { ProjectActions } from "./ProjectActions";
+import { HistoryButtons } from "./HistoryButtons";
 
 // Stylized layer stack as the logo mark - inline SVG, no asset. Staggered
 // parallelograms (not equal full-width bars, which would read as a hamburger
@@ -65,10 +66,12 @@ export function TopBar({ title }: { title?: string }) {
     <header className="topbar">
       <span className="topbar-brand">
         <LogoMark />
-        eLamX
+        <span className="topbar-brand-text">eLamX</span>
       </span>
       {title && <span className="topbar-title">{title}</span>}
       <div className="topbar-actions">
+        <HistoryButtons />
+        <span className="topbar-sep" aria-hidden="true" />
         <ProjectActions />
         <span className="topbar-sep" aria-hidden="true" />
         <button

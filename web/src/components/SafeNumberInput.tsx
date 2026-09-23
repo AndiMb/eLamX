@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEditBuffer } from "./useEditBuffer";
 import { parseLocaleNumber } from "../lib/numberFormat";
 
 // For numeric fields that don't cleanly map onto any QuantityCategory (line
@@ -20,8 +20,7 @@ export function SafeNumberInput({
    *  at all for a screen reader. */
   "aria-label"?: string;
 }) {
-  const [buffer, setBuffer] = useState<string | null>(null);
-  const displayText = buffer ?? String(value);
+  const buffer = useEditBuffer(value, String);
 
   return (
     <input
@@ -29,16 +28,16 @@ export function SafeNumberInput({
       inputMode="decimal"
       className={className}
       aria-label={ariaLabel}
-      value={displayText}
-      onFocus={() => setBuffer(String(value))}
+      value={buffer.text}
+      onFocus={buffer.onFocus}
       onChange={(e) => {
-        setBuffer(e.target.value);
         const parsed = parseLocaleNumber(e.target.value);
+        buffer.onText(e.target.value, parsed);
         if (parsed !== null) {
           onChange(parsed);
         }
       }}
-      onBlur={() => setBuffer(null)}
+      onBlur={buffer.onBlur}
     />
   );
 }

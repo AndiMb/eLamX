@@ -120,6 +120,13 @@
   gap: 4px;
 }
 
+/* Undo und Redo als eigene Gruppe vor den Datei-Aktionen. */
+.topbar-history {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* Opening a file can fail for a reason worth reading (the core names the
    offending element), so the message gets a persistent banner under the top
    bar rather than a toast that disappears before it is understood. */
@@ -216,6 +223,28 @@
 
   .student-pill {
     padding: 0 10px;
+  }
+
+  /* Undo und Redo kamen als fuenfte und sechste Taste in die Leiste. Das
+     Logo allein reicht als Marke, "Neues Projekt" ist selten und bleibt dem
+     Desktop, und die Trennlinien weichen dem Platz. */
+  .topbar {
+    gap: var(--s-2);
+    padding: 0 var(--s-2);
+  }
+
+  .topbar-brand {
+    padding-right: 0;
+  }
+
+  .topbar-brand-text,
+  .topbar-new,
+  .topbar-sep {
+    display: none;
+  }
+
+  .topbar-actions {
+    gap: 2px;
   }
 }
 

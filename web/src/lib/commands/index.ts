@@ -3,11 +3,14 @@ export {
   listCommands,
   registerCommand,
   runCommand,
+  shortcutsOf,
   type Command,
   type CommandContext,
 } from "./registry";
 export {
   commandForKey,
+  formatShortcut,
+  isMacPlatform,
   handleKeydown,
   isTextField,
   keyStaysWithField,

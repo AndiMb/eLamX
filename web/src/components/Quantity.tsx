@@ -1,9 +1,9 @@
-import { useState } from "react";
 import { useAtomValue } from "jotai";
 import { formatConfigFamily } from "../store/formatAtoms";
 import { CATEGORY_DEFINITIONS, unitLabel, type QuantityCategory } from "../lib/units";
 import { formatNumber, parseLocaleNumber } from "../lib/numberFormat";
 import { useLocale, useT } from "../i18n";
+import { useEditBuffer } from "./useEditBuffer";
 
 interface QuantityProps {
   category: QuantityCategory;
@@ -32,11 +32,9 @@ export function Quantity({ category, value, onChange, className, "aria-label": a
   const toDisplay = (canonical: number) => (unit ? unit.fromCanonical(canonical) : canonical);
   const toCanonical = (display: number) => (unit ? unit.toCanonical(display) : display);
 
-  // Non-null while the field is focused/being edited; null means "derive the
-  // displayed text fresh from the (formatted) canonical value".
-  const [buffer, setBuffer] = useState<string | null>(null);
-
-  const displayText = buffer ?? formatNumber(toDisplay(value), format, locale);
+  // The text while the field has the focus; see useEditBuffer for why it is
+  // not simply derived from the value.
+  const buffer = useEditBuffer(value, (v) => formatNumber(toDisplay(v), format, locale));
 
   return (
     <span className="quantity">
@@ -45,16 +43,15 @@ export function Quantity({ category, value, onChange, className, "aria-label": a
         inputMode="decimal"
         className={className}
         aria-label={ariaLabel}
-        value={displayText}
-        onFocus={() => setBuffer(formatNumber(toDisplay(value), format, locale))}
+        value={buffer.text}
+        onFocus={buffer.onFocus}
         onChange={(e) => {
-          setBuffer(e.target.value);
           const parsed = parseLocaleNumber(e.target.value);
-          if (parsed !== null) {
-            onChange(toCanonical(parsed));
-          }
+          const canonical = parsed === null ? null : toCanonical(parsed);
+          buffer.onText(e.target.value, canonical);
+          if (canonical !== null) onChange(canonical);
         }}
-        onBlur={() => setBuffer(null)}
+        onBlur={buffer.onBlur}
       />
       {unit && <span className="quantity-unit">{unitLabel(unit, t)}</span>}
     </span>
