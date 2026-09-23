@@ -1766,10 +1766,15 @@ table td.num,
 
 /* 130px comfortably fits the select's own 128px min-width (see below). */
 .layer-table th:nth-child(7),
-.layer-table td:nth-child(7),
+.layer-table td:nth-child(7) {
+  width: 130px;
+}
+
+/* The criterion column holds the select plus the "+n" button for the
+   extra criteria (F2.1). */
 .layer-table th:nth-child(8),
 .layer-table td:nth-child(8) {
-  width: 130px;
+  width: 170px;
 }
 
 .layer-table th:last-child,
@@ -3802,4 +3807,128 @@ table.matrix td.block-d {
 .palette-empty {
   color: var(--text-muted);
   cursor: default;
+}
+
+/* --- Kriterienliste je Lage (F2.1) --- */
+
+.criterion-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.criterion-cell select {
+  flex: 1 1 auto;
+}
+
+.criteria-count {
+  flex: none;
+  min-width: 30px;
+  height: var(--control-h);
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-chip);
+  background: var(--card);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.criteria-count.has-extra {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.criteria-dialog {
+  width: min(460px, calc(100vw - 24px));
+}
+
+.criteria-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.criteria-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--inset);
+}
+
+.criteria-rank {
+  flex: none;
+  width: 18px;
+  text-align: right;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.criteria-name {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.criteria-badge {
+  font-size: var(--fs-xs);
+  padding: 1px 6px;
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  letter-spacing: var(--ls-caps);
+}
+
+.criteria-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+}
+
+.criteria-add select {
+  flex: 1 1 auto;
+}
+
+.criteria-java-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.criteria-java-hint svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.criteria-actions {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
+.criteria-actions .icon-button {
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+@media (max-width: 640px) {
+  .criteria-actions .icon-button {
+    width: var(--touch-min);
+    min-width: var(--touch-min);
+    min-height: var(--touch-min);
+  }
 }

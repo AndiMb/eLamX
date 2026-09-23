@@ -60,6 +60,16 @@ describe("Kopieren", () => {
     ]);
     expect(parsed.materials.map((m) => m.id).sort()).toEqual(["m-cfk", "m-gfk"]);
   });
+
+  it("nimmt die Zusatzkriterien im HTML mit, nicht aber in die Tabelle", () => {
+    const listed = [{ ...layer("1", 0), extraCriteria: ["hashin" as const, "tsai_wu" as const] }, layer("2", 90)];
+    const { html, text } = layupClipboardData(listed, [CFK], { locale: "en" });
+    expect(text.split("\r\n")[1]).toBe("0\t0.125\tCFK T300\tPuck\tLage 1");
+    const parsed = parseClipboard({ html, text })!;
+    const layers = resolvePaste(parsed, options()).layers;
+    expect(layers[0].extraCriteria).toEqual(["hashin", "tsai_wu"]);
+    expect("extraCriteria" in layers[1]).toBe(false);
+  });
 });
 
 describe("Einfügen", () => {

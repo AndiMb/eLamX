@@ -33,6 +33,8 @@ interface PayloadPly {
   thickness: number;
   materialId: string;
   criterionId: CriterionId;
+  /** Absent in a payload written before extra criteria existed. */
+  extraCriteria?: CriterionId[];
 }
 
 interface LayupPayload {
@@ -51,6 +53,8 @@ export interface ClipboardPly {
   /** The material's id in the project it was copied from. */
   materialId?: string;
   criterion?: CriterionId;
+  /** Only an eLamX payload carries these. */
+  extraCriteria?: CriterionId[];
   name?: string;
 }
 
@@ -142,6 +146,7 @@ export function layupClipboardData(
       thickness: l.thickness,
       materialId: l.materialId,
       criterionId: l.criterionId,
+      ...(l.extraCriteria?.length ? { extraCriteria: l.extraCriteria } : {}),
     })),
     materials: materials.filter((m) => used.has(m.id)),
   };
@@ -171,6 +176,9 @@ function fromPayload(html: string): ParsedLayup | null {
         materialId: p.materialId,
         material: materials.find((m) => m.id === p.materialId)?.name,
         criterion: p.criterionId,
+        ...(Array.isArray(p.extraCriteria) && p.extraCriteria.length > 0
+          ? { extraCriteria: p.extraCriteria }
+          : {}),
         name: p.name,
       })),
       symmetric: false,
@@ -447,6 +455,7 @@ export function resolvePaste(
     thickness: ply.thickness ?? defaults.thickness,
     materialId: materialFor(ply),
     criterionId: ply.criterion ?? defaults.criterionId,
+    ...(ply.criterion && ply.extraCriteria ? { extraCriteria: ply.extraCriteria } : {}),
   }));
   return { layers, newMaterials };
 }

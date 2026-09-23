@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { useAtom, useAtomValue, useStore } from "jotai";
 import { useParams } from "react-router-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, ClipboardCopy, ClipboardPaste, Copy, Layers, Plus, RotateCw, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ClipboardCopy, ClipboardPaste, Copy, Layers, ListChecks, Plus, RotateCw, Trash2 } from "lucide-react";
 import { laminateConfigFamily, laminateExistsFamily } from "../store/laminateAtoms";
 import { materialsAtom } from "../store/materialsAtoms";
 import { Quantity } from "../components/Quantity";
@@ -38,7 +38,9 @@ import { registerCommand } from "../lib/commands";
 import { t as translate, useLocale } from "../i18n";
 import { DragHandle, SortableLayers, SortableRowShell } from "../components/SortableLayers";
 import { LayerTableContext, type LayerTableState } from "../components/layerTableContext";
-import { CRITERIA, type CriterionId, type MaterialDto } from "../lib/types";
+import { CRITERIA, criterionName, type CriterionId, type MaterialDto } from "../lib/types";
+import { CriteriaPopover } from "../components/CriteriaPopover";
+import { criteriaOf, withCriteria, withPrimary } from "../lib/criteriaList";
 import { useT } from "../i18n";
 
 export function LaminatePage() {
@@ -75,6 +77,8 @@ function LaminateEditor({ id }: { id: string }) {
   const [bulkCriterionChoice, setBulkCriterionChoice] = useState("");
   const [bulkAngle, setBulkAngle] = useState(0);
   const [bulkThickness, setBulkThickness] = useState(0);
+  // The criteria list being edited: for one ply or for the selection.
+  const [criteriaEdit, setCriteriaEdit] = useState<{ layerIds: string[]; title: string } | null>(null);
 
   const updateLayerField = <K extends keyof LayerRow>(layerId: string, key: K, value: LayerRow[K]) => {
     // Ply angles are conventionally reduced to [-90, 90] (see normalizeLayerAngle).
@@ -97,6 +101,7 @@ function LaminateEditor({ id }: { id: string }) {
       const thickness = template?.thickness ?? 0.2;
       const materialId = template?.materialId ?? materials[0]?.id ?? "";
       const criterionId = template?.criterionId ?? DEFAULT_CRITERION_ID;
+      const extra = template?.extraCriteria ? { extraCriteria: template.extraCriteria } : {};
       const startNr = c.layers.length + 1;
       return {
         ...c,
@@ -109,6 +114,7 @@ function LaminateEditor({ id }: { id: string }) {
             thickness,
             materialId,
             criterionId,
+            ...extra,
           })),
         ],
       };
@@ -276,9 +282,23 @@ function LaminateEditor({ id }: { id: string }) {
   const bulkSetCriterion = (criterionId: CriterionId) => {
     setConfig((c) => ({
       ...c,
-      layers: c.layers.map((l) => (selectedIds.has(l.id) ? { ...l, criterionId } : l)),
+      layers: c.layers.map((l) => (selectedIds.has(l.id) ? withPrimary(l, criterionId) : l)),
     }));
   };
+
+  // The whole list, for one ply or for every selected one: one undo step.
+  const applyCriteria = (layerIds: readonly string[], list: CriterionId[]) => {
+    const targets = new Set(layerIds);
+    historyStep(t("history.label.criteria"), () =>
+      setConfig((c) => ({
+        ...c,
+        layers: c.layers.map((l) => (targets.has(l.id) ? withCriteria(l, list) : l)),
+      })),
+    );
+    setCriteriaEdit(null);
+  };
+  const plyCriteriaEdit = (l: LayerRow & { index: number }) =>
+    setCriteriaEdit({ layerIds: [l.id], title: t("criteria.titlePly", { nr: l.index + 1, name: l.name }) });
 
   // Angle/thickness apply directly on every keystroke, same as a single
   // layer's own field - no separate "Anwenden" step. There's no stale-value
@@ -495,6 +515,7 @@ function LaminateEditor({ id }: { id: string }) {
   };
 
   const tableState: LayerTableState = { selected: selectedIds, dragging, onRowClick };
+  const withExtraCount = config.layers.filter((l) => (l.extraCriteria ?? []).length > 0).length;
 
   // Editor info line (Java "Informationen" panel): totals across the
   // EXPANDED stack, mirroring the core's symmetric/middle-layer expansion.
@@ -590,19 +611,41 @@ function LaminateEditor({ id }: { id: string }) {
     {
       key: "criterion",
       label: t("layers.column.criterion"),
-      render: (l) => (
-        <select
-          value={l.criterionId}
-          aria-label={fieldLabel(t("layers.column.criterion"), l.index)}
-          onChange={(e) => updateLayerField(l.id, "criterionId", e.target.value as CriterionId)}
-        >
-          {CRITERIA.map((c) => (
-            <option key={c.id} value={c.id}>
-              {t(c.labelKey)}
-            </option>
-          ))}
-        </select>
-      ),
+      render: (l) => {
+        const extra = l.extraCriteria ?? [];
+        const names = criteriaOf(l).map((id) => criterionName(id, t)).join(", ");
+        return (
+          <span className="criterion-cell">
+            <select
+              value={l.criterionId}
+              aria-label={fieldLabel(t("layers.column.criterion"), l.index)}
+              onChange={(e) =>
+                setConfig((c) => ({
+                  ...c,
+                  layers: c.layers.map((row) =>
+                    row.id === l.id ? withPrimary(row, e.target.value as CriterionId) : row,
+                  ),
+                }))
+              }
+            >
+              {CRITERIA.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {t(c.labelKey)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className={extra.length > 0 ? "criteria-count has-extra" : "criteria-count"}
+              onClick={() => plyCriteriaEdit(l)}
+              aria-label={t("criteria.open", { nr: l.index + 1, list: names })}
+              title={extra.length > 0 ? names : t("criteria.addTitle")}
+            >
+              {extra.length > 0 ? `+${extra.length}` : <ListChecks size={14} aria-hidden="true" />}
+            </button>
+          </span>
+        );
+      },
     },
     {
       key: "actions",
@@ -756,6 +799,22 @@ function LaminateEditor({ id }: { id: string }) {
                       <button
                         type="button"
                         className="icon-button"
+                        // Starts from the first selected ply's list; applying
+                        // gives every selected ply that same list.
+                        onClick={() =>
+                          setCriteriaEdit({
+                            layerIds: selectedLayerIds,
+                            title: t("criteria.titleSelection", { count: selectedCount }),
+                          })
+                        }
+                        aria-label={t("layers.bulk.criteria")}
+                        title={t("layers.bulk.criteria")}
+                      >
+                        <ListChecks size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-button"
                         onClick={() => actions.current.copy()}
                         aria-label={t("layers.copy")}
                         title={t("layers.copy")}
@@ -817,6 +876,14 @@ function LaminateEditor({ id }: { id: string }) {
                   </SortableLayers>
                 </LayerTableContext.Provider>
                 {config.symmetric && <p className="hint layer-symmetric-hint">{t("layers.symmetricHint")}</p>}
+                {withExtraCount > 0 && (
+                  <p className="hint criteria-java-hint">
+                    <ListChecks size={14} aria-hidden="true" />
+                    {t(withExtraCount === 1 ? "criteria.javaHint.one" : "criteria.javaHint.other", {
+                      count: withExtraCount,
+                    })}
+                  </p>
+                )}
               </>
             )}
           </section>
@@ -932,6 +999,18 @@ function LaminateEditor({ id }: { id: string }) {
           </div>
         </aside>
       </div>
+      {criteriaEdit && (
+        <CriteriaPopover
+          title={criteriaEdit.title}
+          initial={criteriaOf(
+            config.layers.find((l) => l.id === criteriaEdit.layerIds[0]) ?? {
+              criterionId: DEFAULT_CRITERION_ID,
+            },
+          )}
+          onApply={(list) => applyCriteria(criteriaEdit.layerIds, list)}
+          onClose={() => setCriteriaEdit(null)}
+        />
+      )}
       {pasteDraft && (
         <PasteLayupDialog
           initial={pasteDraft.parsed}
