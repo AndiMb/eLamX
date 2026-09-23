@@ -39,6 +39,18 @@
 //! 3. **The reference-plane offset is dropped.** The temporary laminate is
 //!    constructed with a default offset of 0, so an offset laminate is
 //!    analysed about its own mid-plane.
+//!
+//! ## Several criteria per ply
+//!
+//! A ply may carry extra criteria beside its primary one (see
+//! `model::Layer::extra_criteria`); the original knows only one. The ply's
+//! reserve factor is then the minimum over its list, and the degradation
+//! follows the `failure_type` of the criterion that produced that minimum -
+//! the GOVERNING one of the step. Nothing else changes: the "same mode again
+//! ends the analysis" rule is still per ply, and the three faithfulnesses
+//! above apply to every criterion in the list. A list of one is the original
+//! analysis bit for bit, since a later criterion has to be strictly smaller
+//! to take over.
 
 use super::calculator::{determine_values, get_layer_results, LayerResult, LayerResultError};
 use super::laminate::CltLaminate;
@@ -113,6 +125,9 @@ pub struct LastPlyFailureIteration {
     pub reserve_factor: f64,
     pub failure_name: String,
     pub failure_type: FailureType,
+    /// Id of the criterion that governed this step (the degraded ply's own
+    /// minimum over its criteria).
+    pub criterion_id: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -196,10 +211,11 @@ pub fn calculate(
         determine_values(&clt, &mut loads, &mut strains, &[false; 6]);
         let layer_results = get_layer_results(&clt, &loads, &strains, &working_materials, criteria)?;
 
-        let (governing, index) = governing_reserve_factor(&layer_results);
+        let (governing, index, criterion_id) = governing_reserve_factor(&layer_results);
         let failure_type = governing.failure_type;
         let failure_name = governing.failure_name.clone();
         let minimal = governing.minimal_reserve_factor;
+        let criterion_id = criterion_id.to_string();
 
         // The reserve factor of an inter-fibre failure is reported knocked
         // down by j_a; every other failure type is reported as computed.
@@ -302,6 +318,7 @@ pub fn calculate(
             reserve_factor: reported,
             failure_name,
             failure_type,
+            criterion_id,
         });
     }
 
@@ -365,6 +382,7 @@ fn expand(
 
         let mut layer = Layer::new("", "", id, ply.angle, ply.thickness);
         layer.criterion_id = ply.criterion_id.map(str::to_string);
+        layer.extra_criteria = ply.extra_criteria.to_vec();
         working.layers.push(layer);
     }
 
@@ -376,26 +394,34 @@ fn expand(
 /// surface wins over the upper one at equal value - both follow from the
 /// original's strictly-greater comparisons, and both matter because the choice
 /// decides which ply gets degraded next.
-fn governing_reserve_factor(results: &[LayerResult]) -> (&crate::failure::ReserveFactor, usize) {
+///
+/// Also returns the id of the criterion behind that reserve factor - with
+/// several criteria per ply, the surface's own governing one.
+fn governing_reserve_factor(
+    results: &[LayerResult],
+) -> (&crate::failure::ReserveFactor, usize, &str) {
     let mut governing = &results[0].rr_lower;
+    let mut criterion = results[0].governing_lower.as_str();
     let mut index = 0;
     for (i, result) in results.iter().enumerate() {
         if governing.minimal_reserve_factor > result.rr_lower.minimal_reserve_factor {
             governing = &result.rr_lower;
+            criterion = &result.governing_lower;
             index = i;
         }
         if governing.minimal_reserve_factor > result.rr_upper.minimal_reserve_factor {
             governing = &result.rr_upper;
+            criterion = &result.governing_upper;
             index = i;
         }
     }
-    (governing, index)
+    (governing, index, criterion)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::failure::{default_criterion_registry, MAX_STRESS_ID};
+    use crate::failure::{default_criterion_registry, MAX_STRESS_ID, TSAI_WU_ID};
 
     fn material() -> Material {
         let mut m = Material::new("mat", "UD", 140000.0, 10000.0, 0.3, 5000.0, 1.6e-9);
@@ -673,5 +699,214 @@ mod tests {
             cold_run.exceedance_factor, hot_run.exceedance_factor,
             "the ply copies carry no expansion coefficients"
         );
+    }
+
+    // ----- several criteria per ply -------------------------------------
+
+    /// One ply at `angle`, 1 mm thick, checked by `criteria` (primary first).
+    fn single_ply(angle: f64, criteria: &[&str]) -> Laminate {
+        let mut laminate = Laminate::new("lam", "single ply");
+        let mut layer = Layer::new("l0", "", "mat", angle, 1.0);
+        layer.criterion_id = Some(criteria[0].to_string());
+        layer.extra_criteria = criteria[1..].iter().map(|c| c.to_string()).collect();
+        laminate.layers.push(layer);
+        laminate
+    }
+
+    /// The two-criterion example, worked by hand.
+    ///
+    /// One 10 deg ply, t = 1 mm, under N_x = 100 N/mm. A single ply under a
+    /// pure membrane load carries it as a uniform stress whatever its
+    /// stiffness, so sigma_x = N_x / t = 100 MPa, sigma_y = tau_xy = 0, and
+    /// in the ply axes (c = cos 10 deg, s = sin 10 deg):
+    ///
+    ///   sigma_1 = 100 c^2  = 96.985,  sigma_2 = 100 s^2 = 3.015,
+    ///   |tau_12| = 100 s c = 17.101   (MPa)
+    ///
+    /// Max stress (strengths 2000/1200/50/150/70):
+    ///   fibre 2000 / 96.985 = 20.62, transverse 50 / 3.015 = 16.58,
+    ///   shear 70 / 17.101 = 4.093   -> RF 4.093, MatrixFailure (shear)
+    ///
+    /// Tsai-Wu (F12* = -0.5, the LPF default - see faithfulness 1):
+    ///   F1 = 1/2000 - 1/1200, F2 = 1/50 - 1/150, F11 = 1/(2000*1200),
+    ///   F22 = 1/(50*150), F12 = -0.5 sqrt(F11 F22), F66 = 1/70^2
+    ///   q = F11 s1^2 + 2 F12 s1 s2 + F22 s2^2 + F66 t^2 = 0.06263
+    ///   l = F1 s1 + F2 s2 = 0.007877
+    ///   RF = (sqrt(l^2 + 4 q) - l) / (2 q) = 3.933, reported as FiberFailure
+    ///
+    /// So with [max_stress, tsai_wu] the extra criterion governs (3.933 <
+    /// 4.093) and the ply is degraded as a FIBRE failure: fibre and (with
+    /// degrade_all_on_fibre_failure) matrix flags set, j_a not applied. The
+    /// next step sees the same stresses, Tsai-Wu again says fibre, the ply
+    /// already failed that way, and the analysis ends after one iteration.
+    /// With max stress alone the same ply is a MATRIX failure at 4.093 with
+    /// j_a applied - the path the original would take.
+    #[test]
+    fn two_criteria_by_hand_the_governing_one_decides_the_degradation() {
+        let (s, c) = 10.0f64.to_radians().sin_cos();
+        let (s1, s2, t12) = (100.0 * c * c, 100.0 * s * s, 100.0 * s * c);
+
+        let rf_max_stress = (2000.0 / s1).min(50.0 / s2).min(70.0 / t12);
+        let f1 = 1.0 / 2000.0 - 1.0 / 1200.0;
+        let f2 = 1.0 / 50.0 - 1.0 / 150.0;
+        let f11: f64 = 1.0 / (2000.0 * 1200.0);
+        let f22 = 1.0 / (50.0 * 150.0);
+        let f12 = -0.5 * (f11 * f22).sqrt();
+        let f66 = 1.0 / (70.0 * 70.0);
+        let q = f11 * s1 * s1 + 2.0 * f12 * s1 * s2 + f22 * s2 * s2 + f66 * t12 * t12;
+        let l = f1 * s1 + f2 * s2;
+        let rf_tsai_wu = ((l * l + 4.0 * q).sqrt() - l) / (2.0 * q);
+
+        // The hand numbers quoted in the doc comment.
+        assert!((rf_max_stress - 4.0933).abs() < 1e-4, "{rf_max_stress}");
+        assert!((rf_tsai_wu - 3.9334).abs() < 1e-4, "{rf_tsai_wu}");
+
+        let mut input = tension(100.0);
+        input.j_a = 0.8;
+        let close = |a: f64, b: f64| (a - b).abs() < 1e-10 * b.abs();
+
+        // Max stress alone: a shear matrix failure, knocked down by j_a.
+        let alone = run(&single_ply(10.0, &[MAX_STRESS_ID]), &input);
+        assert_eq!(alone.iterations.len(), 1);
+        let step = &alone.iterations[0];
+        assert_eq!(step.failure_type, FailureType::MatrixFailure);
+        assert_eq!(step.failure_name, "MatrixFailureShear");
+        assert_eq!(step.criterion_id, MAX_STRESS_ID);
+        assert!(close(step.reserve_factor, 0.8 * rf_max_stress), "{}", step.reserve_factor);
+        assert_eq!((step.matrix_failed[0], step.fibre_failed[0]), (true, false));
+        assert!(alone.first_fibre_failure.is_none());
+
+        // With Tsai-Wu as extra criterion: Tsai-Wu governs, fibre failure.
+        let listed = run(&single_ply(10.0, &[MAX_STRESS_ID, TSAI_WU_ID]), &input);
+        assert_eq!(listed.iterations.len(), 1);
+        let step = &listed.iterations[0];
+        assert_eq!(step.failure_type, FailureType::FiberFailure);
+        assert_eq!(step.criterion_id, TSAI_WU_ID);
+        assert!(close(step.reserve_factor, rf_tsai_wu), "{}", step.reserve_factor);
+        assert_eq!((step.matrix_failed[0], step.fibre_failed[0]), (true, true));
+        assert!(listed.first_matrix_failure.is_none());
+        let first_fibre = listed.first_fibre_failure.expect("fibre failure at step 0");
+        assert!(close(first_fibre.reserve_factor, rf_tsai_wu));
+        assert!(listed.fibre_before_matrix_failure);
+        assert!(close(listed.exceedance_factor.unwrap().reserve_factor, rf_tsai_wu));
+
+        // The layer results of the step carry both criteria, primary first.
+        let by = &step.layer_results[0].by_criterion;
+        let ids: Vec<&str> = by.iter().map(|b| b.id.as_str()).collect();
+        assert_eq!(ids, [MAX_STRESS_ID, TSAI_WU_ID]);
+        assert!(close(by[0].rr_lower.minimal_reserve_factor, rf_max_stress));
+        assert!(close(by[1].rr_lower.minimal_reserve_factor, rf_tsai_wu));
+    }
+
+    /// Listing the primary criterion once more reproduces the one-criterion
+    /// analysis exactly - the repeat is dropped, not evaluated again.
+    #[test]
+    fn repeating_the_primary_criterion_is_the_original_analysis() {
+        let laminate = cross_ply(&[0.0, 90.0, 90.0, 0.0]);
+        let single = run(&laminate, &tension(200.0));
+
+        let mut repeated = laminate.clone();
+        for layer in &mut repeated.layers {
+            layer.extra_criteria = vec![MAX_STRESS_ID.to_string()];
+        }
+        let repeated = run(&repeated, &tension(200.0));
+        assert_eq!(single.iterations.len(), repeated.iterations.len());
+        for (a, b) in single.iterations.iter().zip(&repeated.iterations) {
+            assert_eq!(a.reserve_factor.to_bits(), b.reserve_factor.to_bits());
+            assert_eq!(a.layer_number, b.layer_number);
+            assert_eq!(a.failure_type, b.failure_type);
+            assert_eq!(a.layer_results, b.layer_results);
+        }
+        assert_eq!(single.exceedance_factor, repeated.exceedance_factor);
+        assert_eq!(single.first_matrix_failure, repeated.first_matrix_failure);
+        assert_eq!(single.first_fibre_failure, repeated.first_fibre_failure);
+    }
+
+    /// Property check over a spread of stacks, loads and criterion pairs:
+    /// every step's reserve factor is the minimum over all plies, surfaces
+    /// and criteria at that step - so never above any single criterion - the
+    /// degradation follows that minimum's failure type, and the loop ends
+    /// within its bound of two failures per ply.
+    #[test]
+    fn with_several_criteria_every_step_takes_the_minimum_and_the_loop_ends() {
+        use crate::failure::{HASHIN_ID, MAX_STRAIN_ID, PUCK_ID, TSAI_HILL_ID};
+        let pairs: [[&str; 2]; 5] = [
+            [MAX_STRESS_ID, TSAI_WU_ID],
+            [TSAI_WU_ID, MAX_STRESS_ID],
+            [PUCK_ID, HASHIN_ID],
+            [HASHIN_ID, TSAI_HILL_ID],
+            [MAX_STRAIN_ID, PUCK_ID],
+        ];
+        let stacks: [&[f64]; 4] = [
+            &[0.0, 90.0, 90.0, 0.0],
+            &[0.0, 45.0, -45.0, 90.0, 90.0, -45.0, 45.0, 0.0],
+            &[30.0, -30.0, -30.0, 30.0],
+            &[0.0, 15.0, 90.0],
+        ];
+        let loads = [
+            Loads { n_x: 200.0, ..Default::default() },
+            Loads { n_x: -150.0, n_y: 60.0, ..Default::default() },
+            Loads { n_xy: 80.0, n_y: -40.0, ..Default::default() },
+            Loads { n_x: 120.0, m_x: 5.0, ..Default::default() },
+        ];
+        let mut checked = 0;
+        for criteria in pairs {
+            for angles in stacks {
+                for load in loads {
+                    let mut laminate = cross_ply(angles);
+                    for layer in &mut laminate.layers {
+                        layer.criterion_id = Some(criteria[0].to_string());
+                        layer.extra_criteria = vec![criteria[1].to_string()];
+                    }
+                    let input = LastPlyFailureInput { loads: load, j_a: 0.7, ..Default::default() };
+                    let result = run(&laminate, &input);
+                    let plies = laminate.layers.len();
+                    assert!(result.iterations.len() <= 2 * plies);
+
+                    for step in &result.iterations {
+                        let mut minimum = f64::INFINITY;
+                        for ply in &step.layer_results {
+                            assert_eq!(ply.by_criterion.len(), 2);
+                            for rf in &ply.by_criterion {
+                                for surface in [&rf.rr_lower, &rf.rr_upper] {
+                                    minimum = minimum.min(surface.minimal_reserve_factor);
+                                }
+                            }
+                            // Each surface's governing value is its smaller one.
+                            let lower_min = ply
+                                .by_criterion
+                                .iter()
+                                .map(|b| b.rr_lower.minimal_reserve_factor)
+                                .fold(f64::INFINITY, f64::min);
+                            assert_eq!(ply.rr_lower.minimal_reserve_factor.to_bits(), lower_min.to_bits());
+                        }
+                        let raw = if step.failure_type == FailureType::MatrixFailure {
+                            step.reserve_factor / 0.7
+                        } else {
+                            step.reserve_factor
+                        };
+                        assert!(
+                            (raw - minimum).abs() <= 1e-12 * minimum.abs(),
+                            "{criteria:?} {angles:?}: step RF {raw} vs minimum {minimum}"
+                        );
+                        // The degraded mode is the one of a criterion that
+                        // reaches the minimum on the degraded ply.
+                        let degraded = &step.layer_results[step.layer_number - 1];
+                        let reaches = degraded
+                            .by_criterion
+                            .iter()
+                            .flat_map(|b| [(&b.id, &b.rr_lower), (&b.id, &b.rr_upper)])
+                            .any(|(id, r)| {
+                                r.minimal_reserve_factor == minimum
+                                    && r.failure_type == step.failure_type
+                                    && *id == step.criterion_id
+                            });
+                        assert!(reaches, "{criteria:?} {angles:?}: {:?} by {}", step.failure_type, step.criterion_id);
+                        checked += 1;
+                    }
+                }
+            }
+        }
+        assert!(checked > 40, "only {checked} steps checked");
     }
 }

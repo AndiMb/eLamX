@@ -30,4 +30,9 @@ layer_number: number,
  * The governing reserve factor, already multiplied by `j_a` if this
  * iteration's failure was an inter-fibre one.
  */
-reserve_factor: number, failure_name: string, failure_type: FailureType, };
+reserve_factor: number, failure_name: string, failure_type: FailureType, 
+/**
+ * Id of the criterion that governed this step (the degraded ply's own
+ * minimum over its criteria).
+ */
+criterion_id: string, };
