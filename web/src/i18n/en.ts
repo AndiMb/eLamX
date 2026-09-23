@@ -80,6 +80,27 @@ export const en = {
   "laminateFailure.ray.howTitle": "Load point on the failure surface",
   "laminateFailure.ray.howHint":
     "The load case's load is scaled at a fixed direction until the laminate fails by the chosen failure definition - the same search that gives every point of the surface.",
+  "sheet.title": "Through-thickness sheet",
+  "sheet.component": "Component",
+  "sheet.system": "Coordinate system",
+  "sheet.system.local": "Material (1, 2)",
+  "sheet.system.global": "Laminate (x, y)",
+  "sheet.axis": "Vertical axis",
+  "sheet.axis.z": "z in mm",
+  "sheet.axis.ply": "Ply number",
+  "sheet.column.stack": "Stack",
+  "sheet.column.strain": "Strain",
+  "sheet.column.stress": "Stress",
+  "sheet.zLabel": "z [mm]",
+  "sheet.plyLabel": "Ply",
+  "sheet.aria": "Through-thickness sheet",
+  "sheet.hint":
+    "Marks at the top and bottom of each ply; the shape is the failure mode, hollow: outside the plot. The crosshair follows the pointer; with the sheet focused, the arrow keys step from ply to ply.",
+  "sheet.howTitle": "Strain and stress through the thickness",
+  "sheet.howHint":
+    "The strain is linear in z (mid-plane strain plus z times curvature); the stress follows through the ply's stiffness. The numbers are for ply {nr} at the point shown.",
+  "sheet.readout.none": "Point at the sheet - or focus it and use the arrow keys - to read the values at one place.",
+  "sheet.readout.ply": "Ply {nr} ({angle}°)",
   "rules.title": "Stacking rules",
   "rules.intro":
     "Common design rules, checked on the full stack including mirrored plies. They are advice: every stack is computed.",

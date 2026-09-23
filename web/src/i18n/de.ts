@@ -75,6 +75,27 @@ export const de: Messages = {
   "laminateFailure.ray.howTitle": "Lastpunkt auf dem Versagenskörper",
   "laminateFailure.ray.howHint":
     "Die Last des Lastfalls wird bei fester Richtung so lange skaliert, bis das Laminat nach der gewählten Versagensdefinition versagt – dieselbe Suche, die jeden Punkt der Fläche liefert.",
+  "sheet.title": "Arbeitsblatt durch die Dicke",
+  "sheet.component": "Komponente",
+  "sheet.system": "Koordinatensystem",
+  "sheet.system.local": "Material (1, 2)",
+  "sheet.system.global": "Laminat (x, y)",
+  "sheet.axis": "Senkrechte Achse",
+  "sheet.axis.z": "z in mm",
+  "sheet.axis.ply": "Lagennummer",
+  "sheet.column.stack": "Aufbau",
+  "sheet.column.strain": "Dehnung",
+  "sheet.column.stress": "Spannung",
+  "sheet.zLabel": "z [mm]",
+  "sheet.plyLabel": "Lage",
+  "sheet.aria": "Arbeitsblatt durch die Dicke",
+  "sheet.hint":
+    "Marken je Lage oben und unten; die Form zeigt den Versagensmodus, hohl: außerhalb des Diagramms. Das Fadenkreuz folgt der Maus; mit Fokus auf dem Blatt wandern die Pfeiltasten von Lage zu Lage.",
+  "sheet.howTitle": "Dehnung und Spannung über die Dicke",
+  "sheet.howHint":
+    "Die Dehnung ist linear in z (Mittelebenendehnung plus z mal Krümmung), die Spannung folgt über die Steifigkeit der Lage. Die Zahlen gelten für Lage {nr} an der gezeigten Stelle.",
+  "sheet.readout.none": "Zeiger auf das Blatt führen – oder das Blatt fokussieren und die Pfeiltasten nutzen –, um die Werte an einer Stelle zu lesen.",
+  "sheet.readout.ply": "Lage {nr} ({angle}°)",
   "rules.title": "Regeln für den Lagenaufbau",
   "rules.intro":
     "Übliche Konstruktionsregeln, geprüft am vollständigen Aufbau einschließlich gespiegelter Lagen. Sie sind Hinweise: Gerechnet wird jeder Aufbau.",

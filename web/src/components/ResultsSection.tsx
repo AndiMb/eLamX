@@ -8,10 +8,9 @@ import { LaminateInfoPanel } from "./LaminateInfoPanel";
 import { AbdExplanation } from "./AbdExplanation";
 import { AngleSweepChart } from "./charts/AngleSweepChart";
 import { AbdHeatmap } from "./charts/AbdHeatmap";
-import { ThroughThicknessChart } from "./charts/ThroughThicknessChart";
+import { ThroughThicknessSheet } from "./ThroughThicknessSheet";
 import { StrainShapeView } from "./charts/StrainShapeView";
 import { solvedStrainsFamily } from "../store/derivedAtoms";
-import { ReserveFactorChart } from "./charts/ReserveFactorChart";
 import { useT } from "../i18n";
 
 // Grouped into separate cards by topic (Kennzahlen / ABD-Visualisierung /
@@ -79,11 +78,11 @@ export function ResultsSection({ laminateId }: { laminateId: string }) {
             <MobileCollapse title={t("layerResults.title")}>
               <LayerResultsPanel laminateId={laminateId} />
             </MobileCollapse>
-            <MobileCollapse title={t("results.plyCharts")}>
-              <div className="grid">
-                <ReserveFactorChart laminateId={laminateId} />
-                <ThroughThicknessChart laminateId={laminateId} />
-              </div>
+            {/* The sheet replaces the through-thickness chart and the ply bar
+                chart that stood here (O4): both showed one column of it, on
+                axes of their own. They remain as components. */}
+            <MobileCollapse title={t("sheet.title")}>
+              <ThroughThicknessSheet laminateId={laminateId} />
             </MobileCollapse>
           </section>
         </>

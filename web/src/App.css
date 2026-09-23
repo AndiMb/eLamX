@@ -4141,3 +4141,140 @@ table.matrix td.block-d {
 .ray-note p {
   margin: 4px 0;
 }
+
+/* --- Arbeitsblatt durch die Dicke (F2.6) --- */
+
+.tt-sheet {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.65fr) repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  outline-offset: 2px;
+}
+
+.tt-sheet:has(.tt-col:nth-child(3):last-child) {
+  grid-template-columns: minmax(110px, 0.65fr) repeat(2, minmax(0, 1fr));
+}
+
+.tt-sheet:has(.tt-col:nth-child(2):last-child) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tt-sheet:has(.tt-col:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tt-svg {
+  touch-action: pan-y;
+}
+
+.tt-svg text {
+  font-size: 10px;
+  fill: var(--viz-text-secondary);
+}
+
+.tt-svg .tt-col-title {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--viz-text-primary);
+}
+
+.tt-svg .tt-axis-title {
+  font-size: 9px;
+}
+
+.tt-line {
+  stroke: var(--viz-series-1);
+  stroke-width: 2;
+}
+
+.tt-metric-line {
+  stroke: var(--viz-text-muted);
+  stroke-width: 1;
+}
+
+.tt-limit {
+  stroke: var(--danger);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.tt-crosshair {
+  stroke: var(--viz-text-primary);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  pointer-events: none;
+}
+
+.tt-hover-dot {
+  fill: var(--viz-text-primary);
+}
+
+.tt-midplane {
+  stroke: var(--viz-text-muted);
+  stroke-dasharray: 5 4;
+}
+
+.tt-critical circle,
+.tt-critical line {
+  stroke: var(--warn);
+  stroke-width: 1.5;
+}
+
+.tt-controls {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tt-column-toggles {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: var(--fs-sm);
+}
+
+.tt-readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  min-height: 1.5em;
+  margin: 6px 0;
+}
+
+.tt-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+}
+
+.tt-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tt-legend-mark {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+
+/* Where four columns stop fitting (the "narrow" breakpoint) they stack,
+   each with its own z-axis. */
+@media (max-width: 900px) {
+  .tt-sheet,
+  .tt-sheet:has(.tt-col:nth-child(3):last-child),
+  .tt-sheet:has(.tt-col:nth-child(2):last-child) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Keeps each card to about half a screen: the drawings scale with width. */
+  .tt-col {
+    max-width: 320px;
+  }
+
+  .tt-col-stack {
+    max-width: 220px;
+  }
+}

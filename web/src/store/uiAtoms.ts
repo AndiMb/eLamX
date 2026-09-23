@@ -32,3 +32,8 @@ export const stackVizOptionsAtom = atomWithStorage<StackVizOptions>(
  *  no longer exist (after an undo, say); readers intersect it with the
  *  current plies. */
 export const layerSelectionFamily = atomFamily((_laminateId: string) => atom<ReadonlySet<string>>(new Set<string>()));
+
+/** The z-coordinate under the pointer in a laminate's through-thickness
+ *  sheet, shared by all its columns so the crosshair runs through every one.
+ *  View state: not saved, not undone. */
+export const hoverZFamily = atomFamily((_laminateId: string) => atom<number | null>(null));
