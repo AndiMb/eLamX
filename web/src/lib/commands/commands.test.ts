@@ -7,6 +7,7 @@ import {
   keyStaysWithField,
   listCommands,
   matchesShortcut,
+  menuCommandTarget,
   registerCommand,
   runCommand,
   type KeyLike,
@@ -174,5 +175,18 @@ describe("mehrere Tasten und Felder, die ihre Taste behalten", () => {
     expect(formatShortcut("Mod+Y", false, "en")).toBe("Ctrl+Y");
     expect(formatShortcut("Mod+Shift+Z", true, "en")).toBe("⌘⇧Z");
     expect(formatShortcut("Alt+ArrowUp", false, "de")).toBe("Alt+↑");
+  });
+});
+
+describe("das Desktop-Menü", () => {
+  /// In the shell Ctrl+Z is the menu's accelerator, so the menu command
+  /// must make the same decision the key would.
+  it("gibt Undo dem Feld, in dem getippt wurde, sonst dem Projekt", () => {
+    expect(menuCommandTarget("undo", TEXT, true)).toEqual({ kind: "field" });
+    expect(menuCommandTarget("undo", TEXT, false)).toEqual({ kind: "command", id: "edit.undo" });
+    expect(menuCommandTarget("redo", null, false)).toEqual({ kind: "command", id: "edit.redo" });
+    expect(menuCommandTarget("save", TEXT, true)).toEqual({ kind: "command", id: "file.save" });
+    expect(menuCommandTarget("new", null, false)).toEqual({ kind: "command", id: "file.new" });
+    expect(menuCommandTarget("bogus", null, false)).toBeNull();
   });
 });

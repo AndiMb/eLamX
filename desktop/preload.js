@@ -47,14 +47,19 @@ contextBridge.exposeInMainWorld("elamxDesktop", {
   ready: () => ipcRenderer.send("desktop:ready"),
 
   /**
-   * Menu commands: "open", "save", "saveAs". The menu deliberately does not
-   * act on its own - it asks the app to run the same code its buttons do.
+   * Menu commands: "new", "open", "save", "saveAs", "undo", "redo". The menu
+   * deliberately does not act on its own - it asks the app to run the same
+   * code its buttons do.
    */
   onCommand: (handler) => {
     const listener = (_event, name) => handler(name);
     ipcRenderer.on("desktop:command", listener);
     return () => ipcRenderer.off("desktop:command", listener);
   },
+
+  /** Runs the focused text field's own undo or redo, for a menu command the
+   *  app decided belongs to the field. */
+  nativeEdit: (action) => ipcRenderer.send("desktop:nativeEdit", action),
 
   /** A project the shell handed us, from a double-click or the command line. */
   onProjectOpened: (handler) => {

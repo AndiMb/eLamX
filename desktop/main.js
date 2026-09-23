@@ -266,6 +266,13 @@ ipcMain.handle("image:save", (_event, { data, suggestedName }) =>
 // rebuilt when that changes. One language setting, not two.
 ipcMain.on("desktop:locale", (_event, locale) => buildMenu(locale === "en" ? "en" : "de"));
 
+// Undo or redo that belongs to a text field rather than to the project: the
+// renderer decided so, and only the shell can run the field's own editing.
+ipcMain.on("desktop:nativeEdit", (event, action) => {
+  if (action === "undo") event.sender.undo();
+  else if (action === "redo") event.sender.redo();
+});
+
 ipcMain.on("desktop:ready", () => {
   if (pendingOpen) void deliverProject(pendingOpen);
   pendingOpen = null;
@@ -300,6 +307,7 @@ async function deliverProject(filePath) {
 const LABELS = {
   de: {
     file: "Datei",
+    newProject: "Neues Projekt",
     open: "Öffnen …",
     save: "Speichern",
     saveAs: "Speichern unter …",
@@ -323,6 +331,7 @@ const LABELS = {
   },
   en: {
     file: "File",
+    newProject: "New project",
     open: "Open …",
     save: "Save",
     saveAs: "Save as …",
@@ -365,6 +374,7 @@ function buildMenu(locale) {
       {
         label: text("file"),
         submenu: [
+          { label: text("newProject"), accelerator: "CmdOrCtrl+N", click: command("new") },
           { label: text("open"), accelerator: "CmdOrCtrl+O", click: command("open") },
           { label: text("save"), accelerator: "CmdOrCtrl+S", click: command("save") },
           { label: text("saveAs"), accelerator: "CmdOrCtrl+Shift+S", click: command("saveAs") },
@@ -375,9 +385,30 @@ function buildMenu(locale) {
       {
         label: text("edit"),
         submenu: [
-          { label: text("undo"), role: "undo" },
-          { label: text("redo"), role: "redo" },
+          // Not the native roles: those undo the text in a field and nothing
+          // else. The app decides - text in a field that was typed into, the
+          // project otherwise - and hands the field's case back through
+          // "desktop:nativeEdit" below.
+          { label: text("undo"), accelerator: "CmdOrCtrl+Z", click: command("undo") },
+          {
+            label: text("redo"),
+            accelerator: process.platform === "darwin" ? "Cmd+Shift+Z" : "Ctrl+Y",
+            click: command("redo"),
+          },
+          // The other platform's redo key, which people bring with them.
+          {
+            label: text("redo"),
+            accelerator: process.platform === "darwin" ? "Cmd+Y" : "Ctrl+Shift+Z",
+            click: command("redo"),
+            visible: false,
+            acceleratorWorksWhenHidden: true,
+          },
           { type: "separator" },
+          // Cut, copy and paste keep their roles: they make the page fire its
+          // own clipboard events, which a text field answers natively and the
+          // layer table answers for its selected rows - the same split the
+          // app makes for undo, made by the page itself.
+
           { label: text("cut"), role: "cut" },
           { label: text("copy"), role: "copy" },
           { label: text("paste"), role: "paste" },

@@ -18,7 +18,7 @@ export interface DesktopProject {
   name: string;
 }
 
-export type DesktopCommand = "open" | "save" | "saveAs";
+export type DesktopCommand = "new" | "open" | "save" | "saveAs" | "undo" | "redo";
 
 export interface DesktopBridge {
   platform: string;
@@ -36,6 +36,9 @@ export interface DesktopBridge {
     suggestedName: string,
     kinds: ("png" | "svg" | "csv" | "pdf")[],
   ): Promise<string | null>;
+  /** The focused text field's own undo or redo. Absent in shells built
+   *  before the menu asked the app about undo. */
+  nativeEdit?(action: "undo" | "redo"): void;
   setLocale(locale: string): void;
   ready(): void;
   onCommand(handler: (command: DesktopCommand) => void): () => void;

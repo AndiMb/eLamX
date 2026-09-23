@@ -157,3 +157,29 @@ export function formatShortcut(shortcut: string, isMac: boolean, locale: "de" | 
 export function isMacPlatform(): boolean {
   return typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
 }
+
+/** The desktop menu's command names and the commands they run. */
+export const MENU_COMMANDS: Record<string, string> = {
+  new: "file.new",
+  open: "file.open",
+  save: "file.save",
+  saveAs: "file.saveAs",
+  undo: "edit.undo",
+  redo: "edit.redo",
+};
+
+/**
+ * What a desktop menu entry should do: run a command, or - for an editing
+ * entry while a text field has been typed into - let the field do its own
+ * editing. The same focus rule as for a key, because the menu's accelerator
+ * IS the key in the shell: Ctrl+Z reaches the app as this menu command.
+ */
+export function menuCommandTarget(
+  name: string,
+  focused: FocusLike | null | undefined,
+  fieldEdited: boolean,
+): { kind: "field" } | { kind: "command"; id: string } | null {
+  const id = MENU_COMMANDS[name];
+  if (!id) return null;
+  return keyStaysWithField(id, focused, fieldEdited) ? { kind: "field" } : { kind: "command", id };
+}

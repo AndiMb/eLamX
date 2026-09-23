@@ -15,6 +15,7 @@ export {
   isTextField,
   keyStaysWithField,
   matchesShortcut,
+  menuCommandTarget,
   type FocusLike,
   type KeyLike,
 } from "./shortcuts";

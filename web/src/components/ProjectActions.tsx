@@ -189,13 +189,10 @@ export function ProjectActions() {
     return () => unregister.forEach((stop) => stop());
   }, [open, save, startNew, busy]);
 
-  // The native menu does not act on its own: it asks for the same commands
-  // the buttons and the shortcuts run, so there is one implementation of each.
+  // The menu's commands are routed by useGlobalShortcuts, with the rest of
+  // the keys; what stays here is the file the shell hands over.
   useEffect(() => {
     if (!shell) return;
-    const stopCommands = shell.onCommand((command) => {
-      runCommand(command === "open" ? "file.open" : command === "saveAs" ? "file.saveAs" : "file.save");
-    });
     const stopOpened = shell.onProjectOpened((project) => void load(project));
     // Only now can a double-clicked file be delivered - before this there was
     // nobody to deliver it to.
@@ -203,11 +200,8 @@ export function ProjectActions() {
       announced.current = true;
       shell.ready();
     }
-    return () => {
-      stopCommands();
-      stopOpened();
-    };
-  }, [shell, open, save, load]);
+    return stopOpened;
+  }, [shell, load]);
 
   // One language setting, not two: the menu is built in the main process,
   // which has none of the app's catalogs.
