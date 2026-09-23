@@ -4,7 +4,9 @@
 // what keeps a session alive across a reload. This module is about the other
 // half: moving a project in and out as an `.elamx` file, so work can leave the
 // browser and be opened in eLamX on the desktop.
-import { atom } from "jotai";
+import { atom, type Getter, type Setter, type WritableAtom } from "jotai";
+import { RESET } from "jotai/utils";
+import equal from "fast-deep-equal";
 import type {
   BucklingInputDto,
   DeformationInputDto,
@@ -14,7 +16,9 @@ import type {
   SpringInInputDto,
   CutoutInputDto,
 } from "../lib/types";
+import type { OptimizationInputDto, OptimizerKindId } from "../lib/types";
 import type { ProjectSnapshot } from "../lib/projectFile";
+import type { Variant } from "./comparisonAtoms";
 import {
   EMPTY_WEB_EXTENSION_CARRY,
   type ImportNotice,
@@ -239,3 +243,195 @@ function forgetStored(key: string) {
     // Blocked site data: nothing stored, nothing to clean up.
   }
 }
+
+// ---------------------------------------------------------------------------
+// The whole project as one value, and putting one back: what undo works with.
+// ---------------------------------------------------------------------------
+
+/** One laminate's analysis inputs, by module. `null` is "not configured": the
+ *  laminate never had that analysis, which is a state of its own - the input
+ *  atom would answer with its default either way (see `hasStoredInput`). */
+export interface ModuleInputs {
+  buckling: BucklingInputDto | null;
+  lastPlyFailure: LastPlyFailureInputDto | null;
+  pressureVessel: PressureVesselInputDto | null;
+  deformation: DeformationInputDto | null;
+  vibration: VibrationInputDto | null;
+  springIn: SpringInInputDto | null;
+  cutout: CutoutInputDto | null;
+}
+
+type ModuleKey = keyof ModuleInputs;
+
+// A family's atom, typed loosely enough to share one table: every module's
+// input atom is an atomWithStorage that takes a value or RESET.
+type InputAtom = WritableAtom<unknown, [unknown], void>;
+
+interface ModuleStore {
+  family: (id: string) => InputAtom;
+  remove: (id: string) => void;
+  key: (id: string) => string;
+}
+
+function moduleStore<T>(
+  family: ((id: string) => WritableAtom<T, never[], void>) & { remove: (id: string) => void },
+  key: (id: string) => string,
+): ModuleStore {
+  return {
+    family: family as unknown as (id: string) => InputAtom,
+    remove: (id) => family.remove(id),
+    key,
+  };
+}
+
+const MODULES: Record<ModuleKey, ModuleStore> = {
+  buckling: moduleStore(bucklingInputFamily, bucklingStorageKey),
+  lastPlyFailure: moduleStore(lastPlyFailureInputFamily, lastPlyFailureStorageKey),
+  pressureVessel: moduleStore(pressureVesselInputFamily, pressureVesselStorageKey),
+  deformation: moduleStore(deformationInputFamily, deformationStorageKey),
+  vibration: moduleStore(vibrationInputFamily, vibrationStorageKey),
+  springIn: moduleStore(springInInputFamily, springInStorageKey),
+  cutout: moduleStore(cutoutInputFamily, cutoutStorageKey),
+};
+
+const MODULE_KEYS = Object.keys(MODULES) as ModuleKey[];
+
+/**
+ * The project as the user edits it, in one value.
+ *
+ * Unlike `ProjectSnapshot`, which is shaped for writing a file, this is shaped
+ * for putting back: every module input of every laminate with "not
+ * configured" as its own value, the optimisation as stored rather than as
+ * resolved, and the web-only parts of the project beside them. What it leaves
+ * out on purpose is everything about the session rather than the project -
+ * the file path, the project name, what is selected and shown.
+ */
+export interface ProjectSnapshotV2 {
+  materials: ProjectSnapshot["materials"];
+  fibres: ProjectSnapshot["fibres"];
+  matrices: ProjectSnapshot["matrices"];
+  laminates: LaminateConfig[];
+  /** By laminate id. */
+  modules: Record<string, ModuleInputs>;
+  optimization: {
+    /** `null` when no search was ever set up - see `hasStoredInput`. */
+    input: OptimizationInputDto | null;
+    optimizer: OptimizerKindId;
+    meta: { name: string; angleType: number };
+  };
+  extraOptimizations: unknown[];
+  unsupportedSections: unknown[];
+  version: string;
+  comparison: Variant[];
+  /** Placeholders for layer criteria, studies, snapshots, report templates
+   *  and rule settings until their features exist. */
+  webExtensionCarry: WebExtensionCarry;
+}
+
+function readModules(get: Getter, id: string): ModuleInputs {
+  const inputs: Partial<Record<ModuleKey, unknown>> = {};
+  for (const module of MODULE_KEYS) {
+    const { family, key } = MODULES[module];
+    inputs[module] = hasStoredInput(key(id)) ? get(family(id)) : null;
+  }
+  return inputs as ModuleInputs;
+}
+
+export const projectSnapshotV2Atom = atom<ProjectSnapshotV2>((get) => {
+  const ids = get(laminateIdsAtom);
+  const modules: Record<string, ModuleInputs> = {};
+  for (const id of ids) modules[id] = readModules(get, id);
+  return {
+    materials: get(materialsAtom),
+    fibres: get(fibresAtom),
+    matrices: get(matricesAtom),
+    laminates: ids.map((id) => get(laminateConfigFamily(id))),
+    modules,
+    optimization: {
+      input: hasStoredInput(OPTIMIZATION_STORAGE_KEY) ? get(optimizationInputAtom) : null,
+      optimizer: get(optimizerAtom),
+      meta: get(optimizationMetaAtom),
+    },
+    extraOptimizations: get(extraOptimizationsAtom),
+    unsupportedSections: get(projectSectionsAtom),
+    version: get(projectVersionAtom),
+    comparison: get(comparisonVariantsAtom),
+    webExtensionCarry: get(webExtensionCarryAtom),
+  };
+});
+
+/** Sets an atom only if the value differs, by content. */
+function setIfChanged<T>(get: Getter, set: Setter, target: WritableAtom<T, [T], void>, value: T) {
+  if (!equal(get(target), value)) set(target, value);
+}
+
+/** Puts one module input back: a value, or "not configured". */
+function restoreInput(get: Getter, set: Setter, module: ModuleKey, id: string, value: unknown) {
+  const { family, key } = MODULES[module];
+  const stored = hasStoredInput(key(id));
+  if (value === null) {
+    // RESET removes the storage key, which is what "not configured" is.
+    if (stored) set(family(id), RESET);
+  } else if (!stored || !equal(get(family(id)), value)) {
+    set(family(id), value);
+  }
+}
+
+/**
+ * Puts a `ProjectSnapshotV2` back - the undo counterpart of `loadProjectAtom`.
+ *
+ * Two differences from opening a file. It sets only what differs, compared by
+ * content: every atom set is a recomputation downstream, and an undo that
+ * touched every laminate would re-run every open module, buckling included.
+ * And it leaves the session alone - file path, project name, what is shown,
+ * the import notices - because an undo changes the project, not where it
+ * came from.
+ */
+export const restoreProjectAtom = atom(null, (get, set, snapshot: ProjectSnapshotV2) => {
+  setIfChanged(get, set, materialsAtom, snapshot.materials);
+  setIfChanged(get, set, fibresAtom, snapshot.fibres);
+  setIfChanged(get, set, matricesAtom, snapshot.matrices);
+  setIfChanged(get, set, projectVersionAtom, snapshot.version);
+  setIfChanged(get, set, projectSectionsAtom, snapshot.unsupportedSections);
+  setIfChanged(get, set, extraOptimizationsAtom, snapshot.extraOptimizations);
+  setIfChanged(get, set, comparisonVariantsAtom, snapshot.comparison);
+  setIfChanged(get, set, webExtensionCarryAtom, snapshot.webExtensionCarry);
+
+  const optimization = snapshot.optimization;
+  const searchStored = hasStoredInput(OPTIMIZATION_STORAGE_KEY);
+  if (optimization.input === null) {
+    if (searchStored) set(optimizationInputAtom, RESET);
+  } else if (!searchStored || !equal(get(optimizationInputAtom), optimization.input)) {
+    set(optimizationInputAtom, optimization.input);
+  }
+  setIfChanged(get, set, optimizerAtom, optimization.optimizer);
+  setIfChanged(get, set, optimizationMetaAtom, optimization.meta);
+
+  // Laminates the snapshot does not have go the way a deleted one goes.
+  const keep = new Set(snapshot.laminates.map((l) => l.id));
+  for (const id of get(laminateIdsAtom)) {
+    if (keep.has(id)) continue;
+    laminateConfigFamily.remove(id);
+    forgetStoredLaminate(id);
+    for (const module of MODULE_KEYS) {
+      MODULES[module].remove(id);
+      forgetStored(MODULES[module].key(id));
+    }
+  }
+
+  // Before the id list, so a laminate brought back has its data by the time
+  // anything lists it.
+  for (const config of snapshot.laminates) {
+    setIfChanged(get, set, laminateConfigFamily(config.id), config);
+    const modules = snapshot.modules[config.id];
+    for (const module of MODULE_KEYS) {
+      restoreInput(get, set, module, config.id, modules?.[module] ?? null);
+    }
+  }
+  setIfChanged(
+    get,
+    set,
+    laminateIdsAtom,
+    snapshot.laminates.map((l) => l.id),
+  );
+});
