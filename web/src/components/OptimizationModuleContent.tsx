@@ -1,4 +1,8 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useState } from "react";
+import { ListChecks } from "lucide-react";
+import { CriteriaPopover } from "./CriteriaPopover";
+import { criterionName } from "../lib/types";
 import { useNavigate } from "react-router-dom";
 import { Play, Trash2, Wand2 } from "lucide-react";
 import {
@@ -57,6 +61,7 @@ export function OptimizationModuleContent() {
   const locale = useLocale();
   const navigate = useNavigate();
   const [input, setInput] = useAtom(optimizationInputAtom);
+  const [editingCriteria, setEditingCriteria] = useState(false);
   const [optimizer, setOptimizer] = useAtom(optimizerAtom);
   const [genetic, setGenetic] = useAtom(geneticParametersAtom);
   const state = useAtomValue(optimizationStateAtom);
@@ -104,6 +109,9 @@ export function OptimizationModuleContent() {
         thickness: input.thickness,
         materialId,
         criterionId: input.criterion_id as CriterionId,
+        ...((input.extra_criteria ?? []).length > 0
+          ? { extraCriteria: input.extra_criteria as CriterionId[] }
+          : {}),
       })),
     });
     navigate(`/laminates/${id}`);
@@ -133,19 +141,58 @@ export function OptimizationModuleContent() {
                 ))}
               </select>
             </label>
-            <label className="wide">
-              <span className="field-label">{t("layers.column.criterion")}</span>
-              <select
-                value={input.criterion_id}
-                onChange={(e) => update("criterion_id", e.target.value as CriterionId)}
-              >
-                {CRITERIA.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {t(c.labelKey)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="wide">
+              <label htmlFor="optimization-criterion" className="field-label">
+                {t("layers.column.criterion")}
+              </label>
+              {/* The primary criterion, and - as for a ply - further ones
+                  every candidate is checked against (F2.1). */}
+              <span className="criterion-cell">
+                <select
+                  id="optimization-criterion"
+                  value={input.criterion_id}
+                  onChange={(e) =>
+                    setInput((c) => ({
+                      ...c,
+                      criterion_id: e.target.value as CriterionId,
+                      extra_criteria: (c.extra_criteria ?? []).filter((x) => x !== e.target.value),
+                    }))
+                  }
+                >
+                  {CRITERIA.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {t(c.labelKey)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className={(input.extra_criteria ?? []).length > 0 ? "criteria-count has-extra" : "criteria-count"}
+                  onClick={() => setEditingCriteria(true)}
+                  aria-label={t("optimization.criteria.open", {
+                    list: [input.criterion_id, ...(input.extra_criteria ?? [])].map((id) => criterionName(id, t)).join(", "),
+                  })}
+                  title={[input.criterion_id, ...(input.extra_criteria ?? [])].map((id) => criterionName(id, t)).join(", ")}
+                >
+                  {(input.extra_criteria ?? []).length > 0 ? (
+                    `+${(input.extra_criteria ?? []).length}`
+                  ) : (
+                    <ListChecks size={14} aria-hidden="true" />
+                  )}
+                </button>
+              </span>
+              {editingCriteria && (
+                <CriteriaPopover
+                  title={t("optimization.criteria.title")}
+                  initial={[input.criterion_id, ...(input.extra_criteria ?? [])] as CriterionId[]}
+                  onApply={(list) => {
+                    setInput((c) => ({ ...c, criterion_id: list[0], extra_criteria: list.slice(1) }));
+                    setEditingCriteria(false);
+                  }}
+                  onClose={() => setEditingCriteria(false)}
+                />
+              )}
+            </div>
             <label>
               <span className="field-label">
                 <Sym base="t" />

@@ -106,6 +106,8 @@ export const de: Messages = {
   "lpf.sequence.step": "Schritt {nr}",
   "lpf.sequence.hint":
     "Eine Zeile je Lage, eine Marke je Degradationsschritt mit seiner Nummer; die Form zeigt die Versagensart. FPF: erstes Lagenversagen, LPF: größter Lastfaktor des Pfads (EF_LPF). Zwischenfaserbrüche sind mit j_A multipliziert, wie in der Tabelle.",
+  "optimization.criteria.title": "Kriterien der Optimierung",
+  "optimization.criteria.open": "Kriterien der Optimierung bearbeiten: {list}",
   "rules.title": "Regeln für den Lagenaufbau",
   "rules.intro":
     "Übliche Konstruktionsregeln, geprüft am vollständigen Aufbau einschließlich gespiegelter Lagen. Sie sind Hinweise: Gerechnet wird jeder Aufbau.",

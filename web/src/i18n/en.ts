@@ -111,6 +111,8 @@ export const en = {
   "lpf.sequence.step": "Step {nr}",
   "lpf.sequence.hint":
     "One row per ply, one mark per degradation step with its number; the shape is the failure type. FPF: first-ply failure, LPF: the largest load factor along the path (EF_LPF). Inter-fibre failures are multiplied by j_A, as in the table.",
+  "optimization.criteria.title": "Criteria of the optimisation",
+  "optimization.criteria.open": "Edit the optimisation's criteria: {list}",
   "rules.title": "Stacking rules",
   "rules.intro":
     "Common design rules, checked on the full stack including mirrored plies. They are advice: every stack is computed.",
