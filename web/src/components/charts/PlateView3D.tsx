@@ -9,27 +9,22 @@ import {
 } from "react";
 import { createPlateScene, type PlateScene } from "../../lib/plateScene/scene";
 import { buildPlateBody } from "../../lib/plateScene/body";
-import { buildColormap, rgbaOf, type ColormapKind } from "../../lib/plateScene/colormap";
+import { buildColormap, type ColormapKind } from "../../lib/plateScene/colormap";
 import { plateImageBlob } from "../../lib/plateScene/exportImage";
 import { saveFile } from "../../lib/saveFile";
 import type { PlateLegendModel } from "./PlateLegend";
-import { EMPTY_MESH } from "../../lib/plateScene/annotation";
-import { supportEdges, supportMesh } from "../../lib/plateScene/supports";
-import { stiffenerMesh, stiffenerRibbons } from "../../lib/plateScene/stiffeners";
+import { heightSampler, type HeightAt } from "../../lib/plateScene/loads";
+import { autoBounds } from "../../lib/plateScene/scale";
 import {
-  edgeFlowArrows,
-  heightSampler,
-  type HeightAt,
-  loadMesh,
-  NO_LOADS,
-  transverseLoadArrows,
-} from "../../lib/plateScene/loads";
-import {
-  autoBounds,
-  autoDeflectionScale,
-  autoThicknessScale,
-  peakOf,
-} from "../../lib/plateScene/scale";
+  normalisedSurface,
+  parseCssColor,
+  plateAnnotation,
+  plateImageLegend,
+  plateLoadArrows,
+  plateScales,
+  plateSceneStyle,
+  type PlateViewLoad,
+} from "../../lib/plateScene/assemble";
 import {
   DEFAULT_ORBIT,
   ORBIT_GESTURES,
@@ -51,7 +46,7 @@ import {
   type PlateViewLayers,
   type PlateViewMarker,
 } from "./PlateViewOverlay";
-import type { BoundaryConditionId, NamedLoadDto, StiffenerDto } from "../../lib/types";
+import type { BoundaryConditionId, StiffenerDto } from "../../lib/types";
 import { useLocale, useT } from "../../i18n";
 
 // The plate as a solid body: real laminate thickness, visible ply interfaces,
@@ -65,10 +60,7 @@ import { useLocale, useT } from "../../i18n";
 // the case where sorting quads by depth is still correct, so what it can draw,
 // it draws right - which now means the body alone.
 
-/** What is pushing on the plate: the two modules load it differently. */
-export type PlateViewLoad =
-  | { kind: "transverse"; loads: readonly NamedLoadDto[] }
-  | { kind: "inPlane"; nx: number; ny: number; nxy: number };
+export type { PlateViewLoad };
 
 export interface PlateView3DProps {
   /** Deflection field, rows along y, columns along x. */
@@ -199,13 +191,10 @@ export const PlateView3D = memo(function PlateView3D({
     [values, surface],
   );
 
-  const scales = useMemo(() => {
-    const peak = peakOf(surface);
-    return {
-      deflection: autoDeflectionScale(peak, length, width, deflectionFraction),
-      thickness: autoThicknessScale(thickness, length, width),
-    };
-  }, [surface, length, width, thickness, deflectionFraction]);
+  const scales = useMemo(
+    () => plateScales(surface, length, width, thickness, deflectionFraction),
+    [surface, length, width, thickness, deflectionFraction],
+  );
 
   const body = useMemo(
     () =>
@@ -234,23 +223,10 @@ export const PlateView3D = memo(function PlateView3D({
 
   // The arrows are kept as arrows rather than only as triangles, because the
   // captions have to be anchored to the same points the heads sit on.
-  const loadArrows = useMemo(() => {
-    if (!load) return NO_LOADS;
-    if (load.kind === "inPlane") {
-      return edgeFlowArrows(load.nx, load.ny, load.nxy, body.frame);
-    }
-    return transverseLoadArrows(load.loads, body.frame, sampler);
-  }, [load, body, sampler]);
+  const loadArrows = useMemo(() => plateLoadArrows(load, body.frame, sampler), [load, body, sampler]);
 
   const annotation = useMemo(
-    () => ({
-      supports:
-        bcX && bcY ? supportMesh(supportEdges(bcX, bcY, body.frame), body.frame) : EMPTY_MESH,
-      loads: loadMesh(loadArrows),
-      stiffeners: stiffeners?.length
-        ? stiffenerMesh(stiffenerRibbons(stiffeners, body.frame, sampler))
-        : EMPTY_MESH,
-    }),
+    () => plateAnnotation(body.frame, sampler, loadArrows, bcX, bcY, stiffeners),
     [bcX, bcY, body, loadArrows, stiffeners, sampler],
   );
 
@@ -320,15 +296,7 @@ export const PlateView3D = memo(function PlateView3D({
     // what "ink" means in either theme. The annotation is the exception: it
     // must not be readable as a value on the colour scale, so it takes two
     // roles of its own.
-    const ink = parseCssColor(getComputedStyle(canvas).color);
-    scene.setStyle({
-      plyLines: [ink[0], ink[1], ink[2], 0.5],
-      outline: [ink[0], ink[1], ink[2], 0.35],
-      supports: rgbaOf(colors.annotation.support),
-      loads: rgbaOf(colors.annotation.load),
-      stiffeners: rgbaOf(colors.annotation.stiffener),
-      hole: [ink[0], ink[1], ink[2], 1],
-    });
+    scene.setStyle(plateSceneStyle(colors, parseCssColor(getComputedStyle(canvas).color)));
     requestRender();
   }, [colors, scale, generation, requestRender]);
 
@@ -489,15 +457,7 @@ export const PlateView3D = memo(function PlateView3D({
         canvas,
         scene,
         scale: factor,
-        legend: legend
-          ? {
-              title: legend.unit ? `${legend.title} [${legend.unit}]` : legend.title,
-              ticks: legend.ticks,
-              table: buildColormap(colors, legend.kind),
-              anchor: legend.anchor,
-              range: legend.range,
-            }
-          : null,
+        legend: legend ? plateImageLegend(legend, colors) : null,
         captions: [captionLine, t("plate3d.export.size", { length, width })],
         style: {
           background: styles.backgroundColor,
@@ -544,7 +504,7 @@ export const PlateView3D = memo(function PlateView3D({
     return (
       <>
         <BucklingPlate3D
-          surface={normalised(surface)}
+          surface={normalisedSurface(surface)}
           length={length}
           width={width}
           zScale={deflectionFraction}
@@ -596,18 +556,4 @@ function sampleGrid(grid: (number | null)[][], u: number, v: number): number | n
   const col = Math.round(Math.min(1, Math.max(0, u)) * (cols - 1));
   const value = grid[row][col];
   return value !== null && Number.isFinite(value) ? value : null;
-}
-
-/** `rgb(r, g, b)` or `rgba(...)` to three 0..1 channels. */
-function parseCssColor(value: string): [number, number, number] {
-  const parts = value.match(/-?[\d.]+/g);
-  if (!parts || parts.length < 3) return [0.5, 0.5, 0.5];
-  return [Number(parts[0]) / 255, Number(parts[1]) / 255, Number(parts[2]) / 255];
-}
-
-/** Peak-normalised copy, which is what the 2D fallback expects. */
-function normalised(surface: number[][]): number[][] {
-  const peak = peakOf(surface);
-  if (peak === 0) return surface;
-  return surface.map((row) => row.map((value) => value / peak));
 }

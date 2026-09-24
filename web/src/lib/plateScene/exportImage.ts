@@ -37,8 +37,12 @@ export interface PlateImageStyle {
 export interface PlateImageRequest {
   canvas: HTMLCanvasElement;
   scene: PlateScene;
-  /** 1 for the size on screen, 2 for twice it. */
-  scale: 1 | 2;
+  /** 1 for the size on screen, 2 for twice it - or whatever a report's
+   *  fixed pixel width asks for. */
+  scale: number;
+  /** The view's size in CSS pixels; omitted, the size the canvas is shown at.
+   *  Given for a canvas that is not on a page at all (the report's). */
+  size?: { width: number; height: number };
   legend: PlateImageLegend | null;
   /** Lines written into the bottom-left corner of the picture. */
   captions: string[];
@@ -57,14 +61,31 @@ const PADDING = 12;
  * half the picture in it.
  */
 export async function plateImageBlob(request: PlateImageRequest): Promise<Blob | null> {
-  const { canvas, scene, scale, legend, captions, style } = request;
-  const width = Math.max(1, Math.round(canvas.clientWidth * scale));
-  const height = Math.max(1, Math.round(canvas.clientHeight * scale));
+  const { canvas, scene, scale, size } = request;
+  const width = Math.max(1, Math.round((size?.width ?? canvas.clientWidth) * scale));
+  const height = Math.max(1, Math.round((size?.height ?? canvas.clientHeight) * scale));
 
   scene.renderAt(width, height);
+  const sheet = composePlateImage(canvas, width, height, request);
+  // The scene's own next frame puts the drawing buffer back to the size the
+  // element is shown at, so nothing has to be restored here.
+  return sheet ? canvasBlob(sheet) : null;
+}
 
+/**
+ * A drawn view of `width` x `height` device pixels, on the background, with
+ * its captions and its legend beside it - whichever canvas drew it, the GL
+ * scene or the 2D fallback. Null when the browser will not give a 2D context.
+ */
+export function composePlateImage(
+  source: CanvasImageSource,
+  width: number,
+  height: number,
+  request: Pick<PlateImageRequest, "scale" | "legend" | "captions" | "style">,
+): HTMLCanvasElement | null {
+  const { scale, legend, captions, style } = request;
   const sheet = document.createElement("canvas");
-  sheet.width = width + (legend ? LEGEND_WIDTH * scale : 0);
+  sheet.width = width + (legend ? Math.round(LEGEND_WIDTH * scale) : 0);
   sheet.height = height;
   const context = sheet.getContext("2d");
   if (!context) return null;
@@ -73,7 +94,7 @@ export async function plateImageBlob(request: PlateImageRequest): Promise<Blob |
   context.fillRect(0, 0, sheet.width, sheet.height);
   // The GL canvas is composited over CSS on screen, so its own background is
   // transparent; the fill above is what stands in for that here.
-  context.drawImage(canvas, 0, 0, width, height);
+  context.drawImage(source, 0, 0, width, height);
 
   for (const [index, line] of captions.entries()) {
     context.fillStyle = style.muted;
@@ -83,10 +104,11 @@ export async function plateImageBlob(request: PlateImageRequest): Promise<Blob |
   }
 
   if (legend) drawLegend(context, legend, width, height, scale, style);
+  return sheet;
+}
 
-  // The scene's own next frame puts the drawing buffer back to the size the
-  // element is shown at, so nothing has to be restored here.
-  return new Promise((resolve) => sheet.toBlob((blob) => resolve(blob), "image/png"));
+export function canvasBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
+  return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), "image/png"));
 }
 
 function drawLegend(
