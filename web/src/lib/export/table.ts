@@ -99,7 +99,24 @@ function prepare(table: TableModel, options: SerializeOptions): PreparedColumn[]
 
 function cellText(cell: Cell, column: PreparedColumn): string {
   if (cell === null) return "";
-  return typeof cell === "number" ? column.number(cell) : cell;
+  return typeof cell === "number" ? column.number(cell) : defuse(cell);
+}
+
+/**
+ * Keeps a text cell from being read as a formula.
+ *
+ * Text cells carry names out of the project - of plies, materials, load
+ * cases - and a project is a file someone may have sent. A spreadsheet
+ * evaluates a field that starts with `=`, `+`, `-` or `@` (and some with a
+ * tab or a carriage return), so a material named `=HYPERLINK(...)` would
+ * arrive as a live formula. The usual defence is a leading apostrophe, which
+ * makes the field text. Number cells are formatted by us and never get one,
+ * and neither does a text that is only a signed number, such as "-45".
+ */
+export function defuse(text: string): string {
+  if (!/^[=+\-@\t\r]/.test(text)) return text;
+  if (/^[+-]?[\d.,\s]+$/.test(text)) return text;
+  return `'${text}`;
 }
 
 /** Quotes a field that would otherwise be split or run into the next one. */

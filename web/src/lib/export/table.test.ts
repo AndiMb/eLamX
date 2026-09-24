@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  defuse,
   delimitedDefaults,
   toDelimited,
   toHtmlTable,
@@ -86,6 +87,25 @@ describe("TableModel als CSV/TSV", () => {
       rows: [["zwei\nZeilen"]],
     };
     expect(toDelimited(table, options("en"))).toBe('"Name ""kurz"""\r\n"zwei\nZeilen"\r\n');
+  });
+});
+
+describe("Text, der wie eine Formel aussieht", () => {
+  // A name comes out of a project file, and a spreadsheet runs a field that
+  // starts with "=" - a material called =HYPERLINK(...) must stay text.
+  it("wird mit einem Apostroph zu Text", () => {
+    for (const name of ['=HYPERLINK("x")', "+cmd", "-2+3", "@SUM(A1)", "\t=1", "\r=1"]) {
+      expect(defuse(name)).toBe(`'${name}`);
+    }
+    const table: TableModel = { title: "T", columns: [{ key: "name", label: "Name" }], rows: [["=1+1"]] };
+    expect(toDelimited(table, options("en")).split("\r\n")[1]).toBe("'=1+1");
+    expect(toHtmlTable(table, options("en"))).toContain("<td>'=1+1</td>");
+  });
+
+  it("lässt gewöhnliche Namen und vorzeichenbehaftete Zahlen in Ruhe", () => {
+    for (const name of ["Lage 1", "-45", "+0,5", "−45°", "UD-CFK", "[0/±45/90]s"]) {
+      expect(defuse(name)).toBe(name);
+    }
   });
 });
 

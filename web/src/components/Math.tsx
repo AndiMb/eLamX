@@ -17,9 +17,19 @@ function useKatexHtml(math: string, displayMode: boolean): string {
     try {
       return katex.renderToString(math, { displayMode, throwOnError: false });
     } catch (error) {
-      return `<span class="katex-error">${String(error)}</span>`;
+      // KaTeX's messages quote the formula, so they are escaped like any text
+      // - the one piece of this HTML that KaTeX did not write itself.
+      return `<span class="katex-error">${escapeHtml(String(error))}</span>`;
     }
   }, [math, displayMode]);
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 export function BlockMath({ math }: { math: string }) {
