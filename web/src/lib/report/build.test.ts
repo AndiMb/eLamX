@@ -16,6 +16,7 @@ import { BatchClient } from "../batchClient";
 import { planStudy } from "../study/plan";
 import { defaultMatrix, defaultSweep, defaultVariation, type StudyDef } from "../study/model";
 import type { PointResult } from "../study/evaluate";
+import { defaultVibrationInput } from "../../store/vibrationAtoms";
 
 const REFERENCE = readFileSync(
   fileURLToPath(new URL("../../../../elamx-core/core/tests/golden/reference.elamx", import.meta.url)),
@@ -118,6 +119,43 @@ describe("the reference project's report", () => {
       "Ply results, load case GM-Krit-Biegung",
       "Ply results, load case GM-Krit-Kombiniert",
     ]);
+  }, 120000);
+
+  test("hands the canvas figures their data: mode shape, deflection and failure body", async () => {
+    const project = await importProject(REFERENCE);
+    // The reference has no vibration on a laminate that can vibrate; one with
+    // the module's defaults stands in.
+    const symmetric = FULL.laminates[1];
+    const withVibration = {
+      ...project,
+      vibrations: { ...project.vibrations, [symmetric]: { ...defaultVibrationInput() } },
+    };
+    const template = { ...FULL, laminates: [symmetric], detail: "results" as const };
+    const ctx: ReportContext = { t: (k, p) => translate("en", k, p), locale: "en", formats: defaultFormats, metric: "rf", detail: "results" };
+    const collected = await collectResults(template, withVibration, elamx, () => undefined);
+    const doc = buildReport(template, collected, ctx, { projectName: "r", author: "", date: new Date(0), version: "t" });
+    const requests = doc.sections
+      .flatMap((s) => s.blocks)
+      .flatMap((b) => (b.t === "figure" && b.request ? [b.request] : []));
+    const plates = requests.flatMap((r) => (r.kind === "plate" ? [r] : []));
+    // Buckling and vibration on the modules' 41-point grid, the deflection on 81.
+    expect(plates.map((p) => [p.plate.surface.length, p.plate.surface[0].length])).toEqual([
+      [41, 41],
+      [41, 41],
+      [81, 81],
+    ]);
+    for (const p of plates) {
+      expect(p.plate.thickness).toBeGreaterThan(0);
+      expect(p.plate.plyBoundaries.length).toBeGreaterThan(2);
+    }
+    expect(plates[0].plate.load).toEqual({ kind: "inPlane", nx: expect.any(Number), ny: expect.any(Number), nxy: expect.any(Number) });
+    expect(plates[2].plate.load?.kind).toBe("transverse");
+    // The deflection's scale is anchored at zero and reaches the extreme.
+    expect(plates[2].legend.anchor).toBeCloseTo(0.5);
+    const bodies = requests.flatMap((r) => (r.kind === "failureBody" ? [r] : []));
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0].bodies[0].points?.length).toBeGreaterThan(10);
+    expect(bodies[0].markers.map((m) => m.label)).toEqual(["top", "bottom"]);
   }, 120000);
 
   test("contains the studies: a matrix as a table, a sweep as a table and a chart per output", async () => {

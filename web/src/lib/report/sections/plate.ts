@@ -8,6 +8,12 @@ import { derivation, quantity, type ReportContext } from "../context";
 import type { LaminateResults } from "../collect";
 import type { Block } from "../model";
 import type { MessageKey } from "../../../i18n";
+import type { BoundaryConditionId, StiffenerDto } from "../../types";
+import { plyGeometryOf } from "../../plateScene/plyGeometry";
+import { scaleBounds } from "../../plateScene/scale";
+import { anchorFraction, legendTicks } from "../../plateScene/legend";
+import type { PlateLegendSpec, PlateViewLoad } from "../../plateScene/assemble";
+import { createQuantityFormatter } from "../../quantityFormat";
 
 interface PlateInput {
   length: number;
@@ -26,6 +32,59 @@ function plateRows(input: PlateInput, ctx: ReportContext): [string, string][] {
     [t("buckling.bcY"), t(`buckling.bc.${input.bc_y}` as MessageKey)],
     [t("report.plate.terms"), `${input.m} × ${input.n}`],
   ];
+}
+
+/** A mode shape's colour bar: a shape without a size, normalised to a peak
+ *  of one - which the title and the caption say, since the picture looks
+ *  exactly like a deflection in millimetres. No range line under the bar: on
+ *  screen it is a sentence, and the caption carries it here. */
+function modeLegend(title: string): PlateLegendSpec {
+  return {
+    title,
+    unit: null,
+    ticks: [
+      { t: 0, text: "-1" },
+      { t: 0.5, text: "0" },
+      { t: 1, text: "+1" },
+    ],
+    anchor: 0.5,
+    range: "",
+    kind: "diverging",
+  };
+}
+
+/** The plate as the module draws it, as a figure. The exaggeration is the
+ *  module's default, and so is the camera. */
+function plateFigure(
+  results: LaminateResults,
+  input: { length: number; width: number; bc_x: BoundaryConditionId; bc_y: BoundaryConditionId; stiffeners?: StiffenerDto[] },
+  surface: number[][],
+  options: { deflectionFraction: number; load?: PlateViewLoad; bounds?: [number, number]; legend: PlateLegendSpec; caption: string },
+): Block {
+  const plies = plyGeometryOf(results.base?.layer_contributions ?? null);
+  return {
+    t: "figure",
+    caption: options.caption,
+    widthMm: 165,
+    request: {
+      kind: "plate",
+      plate: {
+        surface,
+        length: input.length,
+        width: input.width,
+        thickness: plies.thickness,
+        plyBoundaries: plies.boundaries,
+        plyAngles: plies.angles,
+        deflectionFraction: options.deflectionFraction,
+        bounds: options.bounds,
+        bcX: input.bc_x,
+        bcY: input.bc_y,
+        load: options.load,
+        stiffeners: input.stiffeners,
+      },
+      legend: options.legend,
+    },
+  };
 }
 
 export function bucklingSection(results: LaminateResults, ctx: ReportContext): Block[] {
@@ -54,6 +113,17 @@ export function bucklingSection(results: LaminateResults, ctx: ReportContext): B
     .filter((v) => v >= 0 && Number.isFinite(v))
     .slice(0, 10);
   if (eigenvalues.length > 0) blocks.push({ t: "table", table: bucklingModesTable(eigenvalues, t) });
+  const shape = results.shapes?.buckling;
+  if (shape && eigenvalues.length > 0) {
+    blocks.push(
+      plateFigure(results, input, shape, {
+        deflectionFraction: 0.12,
+        load: { kind: "inPlane", nx: input.n_x, ny: input.n_y, nxy: input.n_xy },
+        legend: modeLegend(t("buckling.legend.title")),
+        caption: t("report.figure.bucklingMode", { factor: formatSignificant(eigenvalues[0], 5, locale) }),
+      }),
+    );
+  }
   if (result.critical_factor !== null) {
     blocks.push(...derivation(ctx, bucklingFormula(result.critical_factor, { m: input.m, n: input.n }, ctx)));
   }
@@ -72,6 +142,16 @@ export function vibrationSection(results: LaminateResults, ctx: ReportContext): 
   blocks.push({ t: "keyValue", rows });
   const frequencies = result.modes.map((m) => m.frequency).slice(0, 10);
   if (frequencies.length > 1) blocks.push({ t: "table", table: vibrationModesTable(frequencies, t) });
+  const shape = results.shapes?.vibration;
+  if (shape && frequencies.length > 0) {
+    blocks.push(
+      plateFigure(results, input, shape, {
+        deflectionFraction: 0.12,
+        legend: modeLegend(t("vibration.legend.title")),
+        caption: t("report.figure.vibrationMode", { frequency: formatSignificant(frequencies[0], 5, locale) }),
+      }),
+    );
+  }
   blocks.push(...derivation(ctx, vibrationFormula(result.fundamental_frequency, { m: input.m, n: input.n }, ctx)));
   return blocks;
 }
@@ -97,6 +177,30 @@ export function deformationSection(results: LaminateResults, ctx: ReportContext)
   }
   blocks.push({ t: "keyValue", rows });
   if (result.symmetry_warning) blocks.push({ t: "paragraph", text: t("buckling.symmetryWarning") });
+  const field = results.shapes?.deflection;
+  if (field) {
+    // The deflection cannot carry holes - only a failure criterion refuses
+    // to answer - so a null would be a bug in the core, drawn as flat.
+    const surface = field.values.map((row) => row.map((v) => v ?? 0));
+    const bounds = scaleBounds("diverging", field.min, field.max);
+    const format = createQuantityFormatter("thickness", ctx.formats("thickness"), locale);
+    blocks.push(
+      plateFigure(results, input, surface, {
+        deflectionFraction: 0.15,
+        load: { kind: "transverse", loads: input.loads },
+        bounds,
+        legend: {
+          title: t("plateField.deflection"),
+          unit: format.unit || null,
+          ticks: legendTicks(bounds).map(({ t: at, value }) => ({ t: at, text: format.compact(value) })),
+          anchor: anchorFraction("diverging", bounds),
+          range: `${format.compact(field.min)} … ${format.compact(field.max)}`,
+          kind: "diverging",
+        },
+        caption: t("report.figure.deflection"),
+      }),
+    );
+  }
   blocks.push(...derivation(ctx, deformationFormula(result.max_deflection, { m: input.m, n: input.n }, ctx)));
   return blocks;
 }

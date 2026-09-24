@@ -13,9 +13,11 @@ import type {
   CltResponse,
   DeformationInputDto,
   DeformationResponse,
+  FailureEnvelopeResponse,
   LastPlyFailureInputDto,
   LastPlyFailureResponse,
   MaterialDto,
+  PlateFieldResponse,
   VibrationInputDto,
   VibrationResponse,
 } from "../types";
@@ -28,6 +30,10 @@ import type { StudyDef } from "../study/model";
 import type { StudyPlan } from "../study/plan";
 import type { PointResult } from "../study/evaluate";
 import type { CollectedStudy } from "./sections/studies";
+import { criticalLayerIndex, governingSurface } from "../failureMetric";
+import { SURFACE_SAMPLES } from "../../store/bucklingAtoms";
+import { PLATE_SAMPLES } from "../../store/plateViewAtoms";
+import { ENVELOPE_QUALITY } from "../../store/failureBodyAtoms";
 
 /** The part of the core the report calls - `elamx` in the app, the same in
  *  a test. */
@@ -38,6 +44,10 @@ export interface ReportCompute {
   compute_vibration(request: string): Promise<string>;
   compute_deformation(request: string): Promise<string>;
   compute_last_ply_failure(request: string): Promise<string>;
+  compute_buckling_surface(request: string): Promise<string>;
+  compute_vibration_surface(request: string): Promise<string>;
+  compute_deformation_field(request: string): Promise<string>;
+  compute_failure_envelope(request: string): Promise<string>;
 }
 
 /** A module's input and its result - or why there is none. */
@@ -49,6 +59,25 @@ export interface LoadCaseResults {
   active: boolean;
   clt: CltResponse | null;
   error?: string;
+  /** The failure body of the governing ply under this load case, for its
+   *  figure; null when there is none or it could not be computed. */
+  failureBody?: CriticalFailureBody | null;
+}
+
+export interface CriticalFailureBody {
+  /** Index of the governing ply in the expanded stack. */
+  index: number;
+  criterion: string;
+  materialName: string;
+  envelope: FailureEnvelopeResponse;
+}
+
+/** What the plate figures draw, sampled on the grids the modules sample on:
+ *  the first buckling mode, the first natural mode and the deflection. */
+export interface PlateShapes {
+  buckling: number[][] | null;
+  vibration: number[][] | null;
+  deflection: PlateFieldResponse | null;
 }
 
 export interface LaminateResults {
@@ -62,6 +91,7 @@ export interface LaminateResults {
   buckling?: ModuleOutcome<BucklingInputDto, BucklingResponse>;
   vibration?: ModuleOutcome<VibrationInputDto, VibrationResponse>;
   deformation?: ModuleOutcome<DeformationInputDto, DeformationResponse>;
+  shapes?: PlateShapes;
 }
 
 export interface ComparisonColumn {
@@ -110,6 +140,81 @@ async function run<I, R>(
   }
 }
 
+/** A second call for a picture's data. A picture that cannot be had is left
+ *  out; it does not take the numbers it would illustrate with it. */
+async function optional<T>(call: () => Promise<string>): Promise<T | null> {
+  try {
+    return JSON.parse(await call()) as T;
+  } catch {
+    return null;
+  }
+}
+
+/** The first mode of each plate analysis - the lowest positive load factor,
+ *  as the buckling module lists its modes - and the deflection, for the
+ *  figures. */
+async function plateShapes(
+  plate: { laminate: unknown; materials: unknown },
+  buckling: ModuleOutcome<BucklingInputDto, BucklingResponse> | undefined,
+  vibration: ModuleOutcome<VibrationInputDto, VibrationResponse> | undefined,
+  deformation: ModuleOutcome<DeformationInputDto, DeformationResponse> | undefined,
+  compute: ReportCompute,
+): Promise<PlateShapes> {
+  const shapes: PlateShapes = { buckling: null, vibration: null, deflection: null };
+  if (buckling && "result" in buckling) {
+    const mode = buckling.result.modes.find((m) => m.eigenvalue >= 0 && Number.isFinite(m.eigenvalue));
+    if (mode) {
+      const request = { input: buckling.input, shape: mode.shape, samples: SURFACE_SAMPLES };
+      shapes.buckling = await optional(() => compute.compute_buckling_surface(JSON.stringify(request)));
+    }
+  }
+  if (vibration && "result" in vibration) {
+    const mode = vibration.result.modes[0];
+    if (mode) {
+      const request = { input: vibration.input, shape: mode.shape, samples: SURFACE_SAMPLES };
+      shapes.vibration = await optional(() => compute.compute_vibration_surface(JSON.stringify(request)));
+    }
+  }
+  if (deformation && "result" in deformation) {
+    const request = {
+      ...plate,
+      input: deformation.input,
+      coefficients: deformation.result.coefficients,
+      field: "Deflection",
+      layer: 0,
+      position: "Upper",
+      samples: PLATE_SAMPLES,
+    };
+    shapes.deflection = await optional(() => compute.compute_deformation_field(JSON.stringify(request)));
+  }
+  return shapes;
+}
+
+/** The governing ply's failure body under one load case, for the criterion
+ *  that governs it - which need not be the ply's first. Bodies depend only on
+ *  material and criterion, so load cases share them through `envelopes`. */
+async function criticalBody(
+  clt: CltResponse,
+  materials: Record<string, MaterialDto>,
+  compute: ReportCompute,
+  envelopes: Map<string, Promise<FailureEnvelopeResponse | null>>,
+): Promise<CriticalFailureBody | null> {
+  const index = criticalLayerIndex(clt.layer_results);
+  const ply = clt.layer_contributions[index];
+  const material = ply ? materials[ply.material_id] : undefined;
+  if (!material) return null;
+  const criterion = governingSurface(clt.layer_results[index]).criterion;
+  const key = `${material.id}|${criterion}`;
+  let envelope = envelopes.get(key);
+  if (!envelope) {
+    const request = { material, criterion_id: criterion, quality: ENVELOPE_QUALITY };
+    envelope = optional<FailureEnvelopeResponse>(() => compute.compute_failure_envelope(JSON.stringify(request)));
+    envelopes.set(key, envelope);
+  }
+  const body = await envelope;
+  return body ? { index, criterion, materialName: material.name, envelope: body } : null;
+}
+
 /** The laminates a template covers, in the project's order. */
 export function laminatesOf(template: ReportTemplate, project: ReportProject): LaminateConfig[] {
   return template.laminates.length === 0
@@ -141,10 +246,13 @@ export async function collectResults(
     const activeId = activeLoadCase(config.id) ?? all[0].id;
     const chosen = template.loadCases === "all" ? all : all.filter((c) => c.id === activeId).slice(0, 1);
     const cases: LoadCaseResults[] = [];
+    const envelopes = new Map<string, Promise<FailureEnvelopeResponse | null>>();
     for (const loadCase of chosen.length > 0 ? chosen : all.slice(0, 1)) {
       try {
         const json = await compute.compute_clt(JSON.stringify(buildCltRequest(laminate, materials, loadCase)));
-        cases.push({ loadCase, active: loadCase.id === activeId, clt: JSON.parse(json) as CltResponse });
+        const clt = JSON.parse(json) as CltResponse;
+        const failureBody = wants("layerResults") ? await criticalBody(clt, materials, compute, envelopes) : undefined;
+        cases.push({ loadCase, active: loadCase.id === activeId, clt, failureBody });
       } catch (error) {
         cases.push({ loadCase, active: loadCase.id === activeId, clt: null, error: message(error) });
       }
@@ -160,6 +268,19 @@ export async function collectResults(
       }
     }
     const plate = { laminate, materials };
+    const buckling = wants("buckling")
+      ? await run<BucklingInputDto, BucklingResponse>(project.bucklings[config.id], compute.compute_buckling, plate)
+      : undefined;
+    const vibration = wants("vibration")
+      ? await run<VibrationInputDto, VibrationResponse>(project.vibrations[config.id], compute.compute_vibration, plate)
+      : undefined;
+    const deformation = wants("deformation")
+      ? await run<DeformationInputDto, DeformationResponse>(
+          project.deformations[config.id],
+          compute.compute_deformation,
+          plate,
+        )
+      : undefined;
     laminates.push({
       config,
       base: cases.find((c) => c.clt)?.clt ?? null,
@@ -168,13 +289,10 @@ export async function collectResults(
       lastPlyFailure: wants("failureSequence")
         ? await run(project.lastPlyFailures[config.id], compute.compute_last_ply_failure, plate)
         : undefined,
-      buckling: wants("buckling") ? await run(project.bucklings[config.id], compute.compute_buckling, plate) : undefined,
-      vibration: wants("vibration")
-        ? await run(project.vibrations[config.id], compute.compute_vibration, plate)
-        : undefined,
-      deformation: wants("deformation")
-        ? await run(project.deformations[config.id], compute.compute_deformation, plate)
-        : undefined,
+      buckling,
+      vibration,
+      deformation,
+      shapes: await plateShapes(plate, buckling, vibration, deformation, compute),
     });
     onProgress?.(index + 1, configs.length);
   }

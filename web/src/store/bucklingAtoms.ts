@@ -16,7 +16,7 @@ import { elamx } from "../lib/wasm";
 import { laminateRequestFamily } from "./derivedAtoms";
 
 /** Grid resolution of the sampled mode-shape surface. */
-const SURFACE_SAMPLES = 41;
+export const SURFACE_SAMPLES = 41;
 
 /**
  * How many buckling modes to offer for display. All m*n eigenvalues are

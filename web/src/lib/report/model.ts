@@ -15,9 +15,13 @@ import type { AngleSweepResponse, FailureType, LayerResultDto } from "../types";
 import type { LayerRow } from "../constants";
 import type { SweepLayout } from "../study/sweep";
 import type { PointResult, StudyOutput } from "../study/evaluate";
+import type { PlateImageSpec } from "../plateScene/offscreen";
+import type { PlateLegendSpec } from "../plateScene/assemble";
+import type { FailureBodySurface, StressMarker } from "../canvas3d/failureBody";
 
 /** What a figure shows, as the data of the view that draws it - every one a
- *  pure view with its data as props (P3.3). */
+ *  pure view with its data as props (P3.3). `plate` and `failureBody` are
+ *  canvas views and come back as PNG; the rest are SVG. */
 export type FigureRequest =
   | {
       kind: "stack";
@@ -43,7 +47,9 @@ export type FigureRequest =
       points: (PointResult | undefined)[];
       output: StudyOutput;
       metric: FailureMetric;
-    };
+    }
+  | { kind: "plate"; plate: PlateImageSpec; legend: PlateLegendSpec }
+  | { kind: "failureBody"; bodies: FailureBodySurface[]; markers: StressMarker[] };
 
 /** A standalone SVG, as `chartToStandaloneSvg` returns it. */
 export interface SvgFigure {

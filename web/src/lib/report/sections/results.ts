@@ -61,6 +61,38 @@ function caseResults(lc: LoadCaseResults, ctx: ReportContext): Block[] {
     widthMm: 170,
     request: { kind: "sheet", plies, metric: ctx.metric, critical },
   });
+  // The governing ply in its failure body: which way it left the body, and
+  // how far - what the reserve factor alone does not say.
+  const body = lc.failureBody;
+  const governingPly = body ? layers[body.index] : undefined;
+  if (body && governingPly) {
+    blocks.push({
+      t: "figure",
+      caption: t("report.figure.failureBody", {
+        nr: governingPly.layer_number,
+        criterion: criterionName(body.criterion, t),
+        material: body.materialName,
+        loadCase: lc.loadCase.name,
+      }),
+      widthMm: 130,
+      request: {
+        kind: "failureBody",
+        bodies: [{ key: body.criterion, points: body.envelope.points }],
+        markers: [
+          {
+            stress: governingPly.sss_upper.stress,
+            reserveFactor: governingPly.rr_upper.minimal_reserve_factor,
+            label: t("common.top"),
+          },
+          {
+            stress: governingPly.sss_lower.stress,
+            reserveFactor: governingPly.rr_lower.minimal_reserve_factor,
+            label: t("common.bottom"),
+          },
+        ],
+      },
+    });
+  }
   const example = plies[Math.max(critical, 0)];
   blocks.push(
     ...derivation(

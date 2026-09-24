@@ -5,7 +5,8 @@
 // theme's tokens, since paper is always light (N9) - taken out as standalone
 // SVG through the same function the export menu uses, and unmounted again. So
 // the report's charts are the screen's charts, drawn for a laminate or a load
-// case nobody needs to have open.
+// case nobody needs to have open. The canvas views - the plate and the
+// failure body - are drawn to PNG instead, by bitmaps.ts.
 
 import type { ReactNode } from "react";
 import { flushSync } from "react-dom";
@@ -24,10 +25,13 @@ import { METRIC_LABEL_KEYS } from "../failureMetric";
 import { criterionName, type FailureType } from "../types";
 import { failureModeLabel, type Locale, type MessageKey } from "../../i18n";
 import type { Translate } from "../tables";
-import type { FigureRequest, ReportDoc, SvgFigure } from "./model";
+import type { Block, FigureRequest, ReportDoc, SvgFigure } from "./model";
+import { drawBitmap, isBitmapRequest } from "./bitmaps";
+
+type SvgRequest = Exclude<FigureRequest, { kind: "plate" | "failureBody" }>;
 
 /** Width the host lays a view out at, in CSS pixels. */
-const HOST_WIDTH: Record<FigureRequest["kind"], number> = {
+const HOST_WIDTH: Record<SvgRequest["kind"], number> = {
   stack: 260,
   abdHeatmap: 320,
   polar: 460,
@@ -44,7 +48,7 @@ const TYPE_KEYS: Record<FailureType, MessageKey> = {
   Undamaged: "failureType.Undamaged",
 };
 
-function view(request: FigureRequest, t: Translate, locale: Locale): ReactNode {
+function view(request: SvgRequest, t: Translate, locale: Locale): ReactNode {
   const none = () => {};
   switch (request.kind) {
     case "stack":
@@ -135,7 +139,7 @@ function view(request: FigureRequest, t: Translate, locale: Locale): ReactNode {
 
 /** Draws one request and returns it as standalone SVG, or null when the view
  *  drew nothing. */
-export function drawFigure(request: FigureRequest, t: Translate, locale: Locale): SvgFigure | null {
+export function drawFigure(request: SvgRequest, t: Translate, locale: Locale): SvgFigure | null {
   const host = document.createElement("div");
   host.className = "report-figure-host export-light viz";
   host.style.cssText = `position:absolute;left:-10000px;top:0;width:${HOST_WIDTH[request.kind]}px;background:#fff`;
@@ -156,6 +160,27 @@ export function drawFigure(request: FigureRequest, t: Translate, locale: Locale)
   }
 }
 
+/** A figure block with its drawing filled in - or, when nothing could draw
+ *  it, a line saying which figure is missing rather than a silent gap. */
+async function resolveFigure(
+  block: Extract<Block, { t: "figure" }>,
+  request: FigureRequest,
+  t: Translate,
+  locale: Locale,
+): Promise<Block | null> {
+  if (isBitmapRequest(request)) {
+    const drawn = await drawBitmap(request, t, locale);
+    if (!drawn) return { t: "paragraph", muted: true, text: t("report.figure.missing", { caption: block.caption }) };
+    return {
+      ...block,
+      png: drawn.png,
+      caption: drawn.flat ? `${block.caption}. ${t("report.figure.flat")}` : block.caption,
+    };
+  }
+  const svg = drawFigure(request, t, locale);
+  return svg ? { ...block, svg } : null;
+}
+
 /**
  * Fills in every figure of the report that names a request. Yields to the
  * page between figures, so a progress bar can move.
@@ -166,18 +191,18 @@ export async function resolveFigures(
   locale: Locale,
   onProgress?: (done: number, total: number) => void,
 ): Promise<ReportDoc> {
-  const pending = doc.sections.flatMap((s) => s.blocks).filter((b) => b.t === "figure" && b.request && !b.svg);
+  const pending = doc.sections.flatMap((s) => s.blocks).filter((b) => b.t === "figure" && b.request && !b.svg && !b.png);
   let done = 0;
   const sections = [];
   for (const section of doc.sections) {
     const blocks = [];
     for (const block of section.blocks) {
-      if (block.t === "figure" && block.request && !block.svg) {
-        const svg = drawFigure(block.request, t, locale);
+      if (block.t === "figure" && block.request && !block.svg && !block.png) {
+        const resolved = await resolveFigure(block, block.request, t, locale);
         done += 1;
         onProgress?.(done, pending.length);
         await new Promise((resolve) => setTimeout(resolve, 0));
-        if (svg) blocks.push({ ...block, svg });
+        if (resolved) blocks.push(resolved);
       } else {
         blocks.push(block);
       }
