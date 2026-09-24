@@ -10,7 +10,7 @@ import type { MessageKey, MessageParams } from "../../i18n";
 import type { PointResult } from "./evaluate";
 import type { MatrixAxis, MatrixLayout } from "./plan";
 import type { SweepLayout } from "./sweep";
-import { OUTPUT_INFO, outputLabel, outputValue, variationLabel, variationValue } from "./outputs";
+import { OUTPUT_INFO, outputLabel, outputValue, variationDecimals, variationLabel, variationValue } from "./outputs";
 
 type Translate = (key: MessageKey, params?: MessageParams) => string;
 
@@ -75,6 +75,8 @@ export function sweepTable(
   const nx = layout.x.values.length;
   const ys = layout.y ? layout.y.values : [null];
   const rows: TableModel["rows"] = [];
+  // The reason column only where there is a gap to give a reason for.
+  const anyGap = points.some((p) => p && !p.ok);
   ys.forEach((y, j) => {
     layout.x.values.forEach((x, i) => {
       const point = points[j * nx + i];
@@ -82,15 +84,15 @@ export function sweepTable(
         variationValue(layout.x.variation, x),
         ...(layout.y && y !== null ? [variationValue(layout.y.variation, y)] : []),
         ...layout.outputs.map((o) => outputValue(point, o, metric)),
-        point && !point.ok ? point.reason : null,
+        ...(anyGap ? [point && !point.ok ? point.reason : null] : []),
       ]);
     });
   });
   return {
     title,
     columns: [
-      { key: "x", label: variationLabel(layout.x.variation, t), decimals: 3 },
-      ...(layout.y ? [{ key: "y", label: variationLabel(layout.y.variation, t), decimals: 3 }] : []),
+      { key: "x", label: variationLabel(layout.x.variation, t), decimals: variationDecimals(layout.x.variation) },
+      ...(layout.y ? [{ key: "y", label: variationLabel(layout.y.variation, t), decimals: variationDecimals(layout.y.variation) }] : []),
       ...layout.outputs.map((o) => {
         const info = OUTPUT_INFO[o];
         return {
@@ -99,7 +101,7 @@ export function sweepTable(
           ...(info.category ? { category: info.category } : { decimals: info.decimals }),
         };
       }),
-      { key: "reason", label: t("study.gapReason") },
+      ...(anyGap ? [{ key: "reason", label: t("study.gapReason") }] : []),
     ],
     rows,
   };

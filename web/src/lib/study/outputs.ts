@@ -78,3 +78,9 @@ export function variationLabel(v: VariationDef, t: Translate): string {
 export function variationValue(v: VariationDef, value: number): number {
   return v.kind === "fraction" ? value * 100 : value;
 }
+
+/** Decimals a varied input is shown with: a ply thickness needs three, the
+ *  rest one. */
+export function variationDecimals(v: VariationDef): number {
+  return v.kind === "thickness" ? 3 : v.kind === "load" && v.component === "factor" ? 2 : 1;
+}

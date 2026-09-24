@@ -19,7 +19,7 @@ import type { SweepLayout } from "../../lib/study/sweep";
 
 const WIDTH = 640;
 const HEIGHT = 300;
-const MARGIN = { top: 14, right: 70, bottom: 40, left: 64 };
+const MARGIN = { top: 14, right: 104, bottom: 40, left: 64 };
 const PLOT_W = WIDTH - MARGIN.left - MARGIN.right;
 const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 

@@ -152,7 +152,7 @@ describe("the reference project's report", () => {
       expect.stringMatching(/^table Matrix \(RF\) \(\d+x2\)$/),
       "h2 Winkel",
       "paragraph",
-      "table Winkel (4x7)",
+      "table Winkel (3x7)",
       expect.stringMatching(/^figure sweep: Winkel: /),
       expect.stringMatching(/^figure sweep: Winkel: Ex/),
     ]);
