@@ -15,7 +15,7 @@
 // guarantees editing laminate A never recomputes laminate B - each family
 // member is an independent atom graph that merely happens to also read the
 // shared materialsAtom.
-import { atom } from "jotai";
+import { atom, type Getter } from "jotai";
 import { atomFamily } from "jotai-family";
 import { selectAtom } from "jotai/utils";
 import equal from "fast-deep-equal";
@@ -63,19 +63,62 @@ export function laminateDtoOf(config: LaminateConfig): LaminateDto {
   };
 }
 
-/** The laminate and its materials, without any load case.
+/**
+ * A derived atom that keeps its previous value while the new one is deep-equal.
  *
- *  Split out because the plate modules need exactly this and nothing else:
- *  reading the full CLT request there would make a buckling analysis recompute
- *  whenever a load case is edited, which has no bearing on it. */
-export const laminateRequestFamily = atomFamily((laminateId: string) =>
+ * Jotai tells dependents about a change by reference, and a request built
+ * afresh is a new object even when not one number in it moved - so without
+ * this, whatever reads it recomputes anyway. For a request that sits in front
+ * of a buckling solve (0.8 s at twenty terms) and every other open module,
+ * that is the difference between typing a name and waiting on it.
+ */
+function stableAtom<T>(read: (get: Getter) => T) {
+  let last: T | undefined;
+  return atom((get) => {
+    const next = read(get);
+    if (last !== undefined && equal(last, next)) return last;
+    last = next;
+    return next;
+  });
+}
+
+/** The laminate and every material, names and all - for what writes them out
+ *  (the solver deck) rather than computes with them. */
+export const namedLaminateRequestFamily = atomFamily((laminateId: string) =>
   atom((get) => {
     const config = get(laminateConfigFamily(laminateId));
     const materials = get(materialsAtom);
+    return {
+      laminate: laminateDtoOf(config),
+      materials: Object.fromEntries(materials.map((m) => [m.id, m])),
+    };
+  }),
+);
 
-    const laminate = laminateDtoOf(config);
-
-    return { laminate, materials: Object.fromEntries(materials.map((m) => [m.id, m])) };
+/** The laminate and its materials, without any load case - as far as a
+ *  calculation reads them.
+ *
+ *  Split out because the plate modules need exactly this and nothing else:
+ *  reading the full CLT request there would make a buckling analysis recompute
+ *  whenever a load case is edited, which has no bearing on it. For the same
+ *  reason the names are left out - no result depends on what a ply, the
+ *  laminate or a material is called, and each keystroke in a name field would
+ *  otherwise re-run every open module - and so are the materials no ply uses.
+ *  The ids stay: they are what the core resolves and reports errors by. */
+export const laminateRequestFamily = atomFamily((laminateId: string) =>
+  stableAtom((get) => {
+    const config = get(laminateConfigFamily(laminateId));
+    const used = new Set(config.layers.map((l) => l.materialId));
+    const named = laminateDtoOf(config);
+    const laminate: LaminateDto = {
+      ...named,
+      name: "",
+      layers: named.layers.map((layer) => ({ ...layer, name: "" })),
+    };
+    const materials = get(materialsAtom)
+      .filter((m) => used.has(m.id))
+      .map((m) => [m.id, { ...m, name: "" }] as const);
+    return { laminate, materials: Object.fromEntries(materials) };
   }),
 );
 
@@ -111,8 +154,9 @@ export function buildCltRequest(
   };
 }
 
+// Stable as well: a load case carries its name, which the request does not.
 export const cltRequestFamily = atomFamily((laminateId: string) =>
-  atom<CltRequest>((get) => {
+  stableAtom<CltRequest>((get) => {
     const { laminate, materials } = get(laminateRequestFamily(laminateId));
     return buildCltRequest(laminate, materials, get(activeLoadCaseFamily(laminateId)));
   }),

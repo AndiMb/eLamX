@@ -11,7 +11,7 @@ import { atomWithStorage, createJSONStorage, selectAtom } from "jotai/utils";
 import { loadableWithLastValue } from "../lib/loadable";
 import type { ExportOptionsDto, ExportTargetDto, SolverId } from "../lib/types";
 import { elamx } from "../lib/wasm";
-import { laminateRequestFamily } from "./derivedAtoms";
+import { namedLaminateRequestFamily } from "./derivedAtoms";
 
 /** eLamX's own starting point: the middle plane, no expansion, no strengths. */
 export function defaultExportOptions(): ExportOptionsDto {
@@ -97,7 +97,7 @@ export const EXPORT_EXTENSION: Record<SolverId, string> = {
 
 export const deckFamily = atomFamily((laminateId: string) =>
   atom<Promise<string>>(async (get) => {
-    const { laminate, materials } = get(laminateRequestFamily(laminateId));
+    const { laminate, materials } = get(namedLaminateRequestFamily(laminateId));
     const target = get(exportTargetAtom);
     const options = get(exportOptionsAtom);
     return await elamx.export_solver_deck(
