@@ -34,7 +34,7 @@ export interface DesktopBridge {
   saveFile?(
     bytes: Uint8Array,
     suggestedName: string,
-    kinds: ("png" | "svg" | "csv" | "pdf")[],
+    kinds: ("png" | "svg" | "csv" | "pdf" | "json")[],
   ): Promise<string | null>;
   /** The focused text field's own undo or redo. Absent in shells built
    *  before the menu asked the app about undo. */

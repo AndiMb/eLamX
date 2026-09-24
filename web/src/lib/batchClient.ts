@@ -205,6 +205,9 @@ export class BatchClient {
           this.settle(entry, { value: message.value });
           break;
         case "error":
+          // A trapped module is not handed the next job: the next one gets a
+          // fresh worker, exactly as after a cancel.
+          if (message.fatal) this.kill();
           this.settle(entry, { error: message.message });
           break;
       }

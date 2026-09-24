@@ -22,4 +22,5 @@ export type BatchResponse =
   /** `value` is the answer of a `call` job; a `points` job has streamed its
    *  answers already. */
   | { type: "done"; jobId: number; value?: string }
-  | { type: "error"; jobId: number; message: string };
+  /** `fatal`: the module trapped, and the worker must not run another job. */
+  | { type: "error"; jobId: number; message: string; fatal?: boolean };

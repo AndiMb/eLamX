@@ -35,7 +35,7 @@ contextBridge.exposeInMainWorld("elamxDesktop", {
     ipcRenderer.invoke("image:save", { data: bytes, suggestedName }),
 
   /**
-   * Saves any file the app has produced. `kinds` ("png", "svg", "csv", "pdf")
+   * Saves any file the app has produced. `kinds` ("png", "svg", "csv", "pdf", "json")
    * are the filters the dialog offers; the main process owns what they mean.
    */
   saveFile: (bytes, suggestedName, kinds) =>

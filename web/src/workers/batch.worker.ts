@@ -49,6 +49,13 @@ scope.onmessage = async (event: MessageEvent<BatchRequest>) => {
     }
     post({ type: "done", jobId });
   } catch (error) {
-    post({ type: "error", jobId, message: error instanceof Error ? error.message : String(error) });
+    const fatal = error instanceof WebAssembly.RuntimeError;
+    const message = error instanceof Error ? error.message : String(error);
+    post({
+      type: "error",
+      jobId,
+      message: fatal ? `the calculation core failed internally (${message})` : message,
+      fatal,
+    });
   }
 };

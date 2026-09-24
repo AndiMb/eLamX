@@ -319,6 +319,7 @@ const FILE_KINDS = {
   svg: { name: "SVG", extensions: ["svg"] },
   csv: { name: "CSV", extensions: ["csv"] },
   pdf: { name: "PDF", extensions: ["pdf"] },
+  json: { name: "JSON", extensions: ["json"] },
 };
 
 async function saveFile(data, suggestedName, kinds) {

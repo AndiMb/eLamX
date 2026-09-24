@@ -105,6 +105,25 @@ describe("the batch client", () => {
     await expect(waiting.promise).resolves.toBeUndefined();
   });
 
+  it("replaces a worker whose module trapped, and keeps one that merely refused", async () => {
+    const { client, workers } = fakeClient();
+    const refused = client.run(job);
+    const trapped = client.run(job);
+    const next = client.run(job);
+
+    workers[0].send({ type: "error", jobId: workers[0].posted[0].jobId, message: "no" });
+    await expect(refused.promise).rejects.toBe("no");
+    expect(workers[0].terminated).toBe(false);
+
+    workers[0].send({ type: "error", jobId: workers[0].posted[1].jobId, message: "unreachable", fatal: true });
+    await expect(trapped.promise).rejects.toBe("unreachable");
+    expect(workers[0].terminated).toBe(true);
+    expect(workers).toHaveLength(2);
+    expect(workers[1].posted).toHaveLength(1);
+    workers[1].send({ type: "done", jobId: workers[1].posted[0].jobId });
+    await expect(next.promise).resolves.toBeUndefined();
+  });
+
   it("cancels a waiting job without touching the running one", async () => {
     const { client, workers } = fakeClient();
     const running = client.run(job);

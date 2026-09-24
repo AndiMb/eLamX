@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useIsMobile } from "./lib/useIsMobile";
 import { useApplyTheme } from "./lib/useApplyTheme";
 import { useApplyLocale } from "./i18n/useApplyLocale";
@@ -11,6 +11,7 @@ import { TopBar } from "./components/TopBar";
 import { CommandPalette } from "./components/CommandPalette";
 import { ReportLauncher } from "./components/ReportLauncher";
 import { BottomTabs } from "./components/BottomTabs";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { IndexPage } from "./routes/IndexPage";
 import { LaminatePage } from "./routes/LaminatePage";
 import { ModulePage, MaterialModulePage, ProjectModulePage } from "./routes/ModulePage";
@@ -51,6 +52,17 @@ function AppRoutes() {
   );
 }
 
+// A page that throws takes only itself down: the sidebar and the top bar stay,
+// and going to another page - a new key - starts the boundary afresh.
+function Pages() {
+  const location = useLocation();
+  return (
+    <ErrorBoundary key={location.pathname} scope="page">
+      <AppRoutes />
+    </ErrorBoundary>
+  );
+}
+
 // useIsMobile() branch at the shell (this component), not scattered checks:
 // desktop keeps the split-view (sidebar tree + content); mobile swaps the
 // tree for a fixed bottom tab bar and lets each route's own page double as a
@@ -69,7 +81,7 @@ function Shell() {
         <TopBar />
         <div className="app-body">
           <div className="content mobile-content">
-            <AppRoutes />
+            <Pages />
           </div>
         </div>
         <BottomTabs />
@@ -86,7 +98,7 @@ function Shell() {
       <div className="app-body">
         <Sidebar />
         <div className="content">
-          <AppRoutes />
+          <Pages />
         </div>
       </div>
     </div>
@@ -98,8 +110,10 @@ function Shell() {
 // a deep-link fallback for nested routes - hash-based routing needs none.
 export default function App() {
   return (
-    <HashRouter>
-      <Shell />
-    </HashRouter>
+    <ErrorBoundary scope="app">
+      <HashRouter>
+        <Shell />
+      </HashRouter>
+    </ErrorBoundary>
   );
 }

@@ -5016,3 +5016,58 @@ table.matrix td.block-d {
 .rule-compact.unmet svg {
   color: var(--warn);
 }
+
+/* --- Fehlergrenze -----------------------------------------------------
+   Was statt eines leeren Fensters erscheint, wenn eine Seite beim Rendern
+   wirft. Innerhalb der Shell (scope "page") nur im Inhaltsbereich, sonst
+   fuer die ganze Anwendung. */
+.error-fallback {
+  max-width: var(--measure);
+  margin: var(--s-6) auto;
+  padding: var(--s-5);
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--border));
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  color: var(--text);
+}
+
+.error-fallback-app {
+  margin: 10vh auto;
+}
+
+.error-fallback h2 {
+  margin: 0 0 var(--s-2);
+  font-size: var(--fs-xl);
+}
+
+.error-fallback-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--radius-control);
+  background: var(--inset);
+  color: var(--danger);
+  font-size: var(--fs-sm);
+}
+
+.error-fallback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}
+
+.error-fallback-reset {
+  margin-top: var(--s-4);
+  color: var(--text-muted);
+}
+
+.error-fallback-reset summary {
+  cursor: pointer;
+}
+
+.error-fallback .btn-danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 50%, var(--border));
+}

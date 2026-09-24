@@ -154,3 +154,19 @@ describe("the matrix", () => {
     expect(transposed.rows[1][1]).toBeCloseTo(-0.5);
   });
 });
+
+describe("a point the core cannot answer", () => {
+  const failing = (error: unknown) =>
+    ({ compute_clt: () => { throw error; } }) as unknown as Parameters<typeof evaluatePoint>[0];
+  const task = { outputs: ["min_rf" as const], requests: { clt: "{}" } };
+
+  it("is a gap when the core refuses it", () => {
+    expect(evaluatePoint(failing("no plies"), task)).toEqual({ ok: false, reason: "no plies" });
+  });
+
+  it("ends the job when the module trapped, so no later point runs on the broken instance", () => {
+    expect(() => evaluatePoint(failing(new WebAssembly.RuntimeError("unreachable")), task)).toThrow(
+      WebAssembly.RuntimeError,
+    );
+  });
+});

@@ -123,6 +123,10 @@ function startWorker(): Worker | null {
           else entry.reject(event.data.error);
         }
       }
+      if (!event.data.ok && event.data.trapped) {
+        replaceTrapped(created);
+        return;
+      }
       pump(created);
     };
     // A worker that dies takes every call with it, the queued ones as much as
@@ -143,6 +147,30 @@ function startWorker(): Worker | null {
     return created;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Swaps a worker whose module trapped for a fresh one.
+ *
+ * A trap is not the core saying no: it is a panic or an access out of bounds,
+ * after which the instance's memory holds whatever the unwinding left
+ * behind, and every later answer from it would be suspect. Only the call that
+ * trapped fails; the ones still waiting go to the new worker. Should no
+ * worker start, they fail as they do when a worker dies.
+ */
+function replaceTrapped(trapped: Worker) {
+  trapped.terminate();
+  worker = startWorker();
+  inFlight = false;
+  if (worker !== null) {
+    pump(worker);
+    return;
+  }
+  const stranded = queue.map((entry) => entry.waiting);
+  queue.length = 0;
+  for (const group of stranded) {
+    for (const entry of group) entry.reject("calculation worker stopped");
   }
 }
 

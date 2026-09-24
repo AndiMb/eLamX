@@ -9,9 +9,9 @@ import { desktop } from "./desktop";
 /** The kinds of file the shell will offer to save. A fixed list rather than
  *  filters handed over from the page: the main process decides what its save
  *  dialog offers, the renderer only picks from it. */
-export type SaveFileKind = "png" | "svg" | "csv" | "pdf";
+export type SaveFileKind = "png" | "svg" | "csv" | "pdf" | "json";
 
-const KINDS: readonly SaveFileKind[] = ["png", "svg", "csv", "pdf"];
+const KINDS: readonly SaveFileKind[] = ["png", "svg", "csv", "pdf", "json"];
 
 /** The kind a file name implies, from its extension, or null for none of them. */
 export function kindOf(filename: string): SaveFileKind | null {

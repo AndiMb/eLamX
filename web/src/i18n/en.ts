@@ -1415,4 +1415,13 @@ export const en = {
   "optimization.candidates.rules": "Rules",
   "optimization.candidates.sequential": "The sequential decision yields exactly one stack by construction: it fixes one ply after the other and drops every other choice at once. The other three searches give a ranking.",
   "optimization.candidates.stack": "Stack",
+  "errorBoundary.title": "Something went wrong",
+  "errorBoundary.app": "eLamX could not be displayed. Your project is still stored in this browser, unchanged.",
+  "errorBoundary.page": "This page could not be displayed. The rest of the app still works, and your project is stored unchanged.",
+  "errorBoundary.reload": "Reload",
+  "errorBoundary.home": "Go to the start page",
+  "errorBoundary.persists": "It happens again after reloading?",
+  "errorBoundary.resetHint": "Then it most likely comes from something stored. Keep a copy of everything eLamX has stored in this browser first; resetting removes the project and starts with an empty one. Language and theme are kept.",
+  "errorBoundary.download": "Download a copy of the stored data",
+  "errorBoundary.reset": "Reset and start again",
 } as const;

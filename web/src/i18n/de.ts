@@ -1394,4 +1394,13 @@ export const de: Messages = {
   "optimization.candidates.rules": "Regeln",
   "optimization.candidates.sequential": "Die sequentielle Entscheidung liefert per Konstruktion genau einen Aufbau: Sie legt Lage für Lage fest und verwirft jede andere Wahl sofort. Eine Rangliste liefern die anderen drei Verfahren.",
   "optimization.candidates.stack": "Aufbau",
+  "errorBoundary.title": "Etwas ist schiefgegangen",
+  "errorBoundary.app": "eLamX konnte nicht angezeigt werden. Das Projekt ist unverändert in diesem Browser gespeichert.",
+  "errorBoundary.page": "Diese Seite konnte nicht angezeigt werden. Der Rest der Anwendung funktioniert weiter, und das Projekt ist unverändert gespeichert.",
+  "errorBoundary.reload": "Neu laden",
+  "errorBoundary.home": "Zur Startseite",
+  "errorBoundary.persists": "Der Fehler kommt nach dem Neuladen wieder?",
+  "errorBoundary.resetHint": "Dann liegt er sehr wahrscheinlich an etwas Gespeichertem. Sichere zuerst eine Kopie von allem, was eLamX in diesem Browser gespeichert hat; das Zurücksetzen entfernt das Projekt und beginnt mit einem leeren. Sprache und Farbschema bleiben erhalten.",
+  "errorBoundary.download": "Kopie der gespeicherten Daten herunterladen",
+  "errorBoundary.reset": "Zurücksetzen und neu beginnen",
 };

@@ -48,7 +48,11 @@ export interface WasmRequest {
 
 export type WasmResponse =
   | { id: number; ok: true; value: string }
-  | { id: number; ok: false; error: string };
+  /** `trapped`: the module itself failed - a Rust panic or an out-of-bounds
+   *  access - rather than the core refusing the input. The instance's memory
+   *  is in whatever state the trap left it, so the client replaces the
+   *  worker instead of sending it anything more. */
+  | { id: number; ok: false; error: string; trapped: boolean };
 
 const ready = init().then(() => elamx);
 
@@ -67,10 +71,13 @@ scope.onmessage = async (event: MessageEvent<WasmRequest>) => {
     // The core rejects with a plain string (`JsValue::from_str`), and the
     // error atoms show it verbatim - so flatten to a string here rather than
     // letting structured cloning decide what an Error survives as.
+    const trapped = error instanceof WebAssembly.RuntimeError;
+    const message = error instanceof Error ? error.message : String(error);
     scope.postMessage({
       id,
       ok: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: trapped ? `the calculation core failed internally (${message})` : message,
+      trapped,
     } satisfies WasmResponse);
   }
 };

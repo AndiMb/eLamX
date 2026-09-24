@@ -132,6 +132,10 @@ export function evaluatePoint(core: PointCore, task: PointTask): PointResult {
       values[output] = read(output, answers.get(call));
     }
   } catch (error) {
+    // A trap is the module failing, not the point: the instance is not to be
+    // trusted with the next point, so the job ends here and the batch client
+    // replaces the worker.
+    if (error instanceof WebAssembly.RuntimeError) throw error;
     return { ok: false, reason: message(error) };
   }
   return { ok: true, values };
