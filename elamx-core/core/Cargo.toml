@@ -1,6 +1,6 @@
 [package]
 name = "elamx-core"
-version = "0.3.2"
+version = "0.4.0"
 edition = "2021"
 description = "Classical laminate theory calculation core for eLamX (Rust rewrite of the Java calculation engine)"
 license = "GPL-3.0-only"

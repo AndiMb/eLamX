@@ -233,7 +233,7 @@ jobs:
 
           | Platform | File |
           | --- | --- |
-          | Windows | `eLamX Setup <version>.exe` (installer) or `eLamX-<version>-portable.exe` |
+          | Windows | `eLamX.Setup.<version>.exe` (installer) or `eLamX-<version>-portable.exe` |
           | Linux | `.AppImage` (mark executable and run) or `.deb` |
           | macOS | `.dmg` - `arm64` for Apple silicon, `x64` for Intel |
 
