@@ -4779,3 +4779,57 @@ table.matrix td.block-d {
 .study-confirm-box p {
   margin: 0 0 var(--s-2);
 }
+
+/* --- Vergleich: Snapshots und Richtung (P4.6) --- */
+
+.compare-table td .compare-mark {
+  margin-right: 3px;
+  vertical-align: -1px;
+}
+
+.compare-table td.compare-better {
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+
+.compare-table td.compare-better .compare-mark {
+  color: var(--ok);
+}
+
+.compare-table td.compare-worse {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.compare-table td.compare-worse .compare-mark {
+  color: var(--danger);
+}
+
+.compare-then {
+  font-style: italic;
+  color: var(--text-2);
+}
+
+.compare-picker .segmented {
+  margin-bottom: var(--s-3);
+}
+
+.snapshot-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.snapshot-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.snapshot-list input {
+  min-width: 14rem;
+  flex: 1 1 14rem;
+  max-width: 28rem;
+}

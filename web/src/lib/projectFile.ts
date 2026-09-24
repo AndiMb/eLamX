@@ -38,11 +38,8 @@ import type { WebExtension } from "./generated/WebExtension";
 import type { RuleSettings } from "./generated/RuleSettings";
 import type { Variant } from "../store/comparisonAtoms";
 import { fromFileStudy, toFileStudy, type DroppedStudyRef, type StudyDef } from "./study/model";
-import {
-  EMPTY_WEB_EXTENSION_CARRY,
-  type ImportNotice,
-  type WebExtensionCarry,
-} from "./webExtension";
+import type { ImportNotice } from "./webExtension";
+import type { Snapshot } from "./generated/Snapshot";
 import {
   defaultLaminateConfig,
   defaultLoadCase,
@@ -187,10 +184,9 @@ export interface ProjectSnapshot {
   /** The comparison page's columns. In the file since `<webExtension>`
    *  gave them a place; before that they lived in browser storage only. */
   comparison: Variant[];
-  /** The rest of `<webExtension>`, carried until the features that fill it
-   *  exist, so that a round trip through this build does not lose what a
-   *  newer one wrote. */
-  webExtensionCarry: WebExtensionCarry;
+  /** Pinned laminate states (F4.3). Optional so that a snapshot of the
+   *  session written before they existed still reads. */
+  snapshots?: Snapshot[];
   /** The thresholds of the stacking-rule check, or null for the defaults.
    *  Optional so that a snapshot written before the check existed still
    *  reads. */
@@ -212,7 +208,15 @@ export interface ProjectSnapshot {
  *  and name. The position is tried first; if the name there differs, the
  *  file was edited in eLamX 3.x and the name is searched instead, as long as
  *  it is unambiguous. */
-function resolveVariant(variant: ComparisonVariant, laminates: LaminateConfig[]): Variant | null {
+function resolveVariant(
+  variant: ComparisonVariant,
+  laminates: LaminateConfig[],
+  snapshots: Snapshot[],
+): Variant | null {
+  if (variant.snapshot_id) {
+    const id = variant.snapshot_id;
+    return snapshots.some((s) => s.id === id) ? { laminateId: "", loadCaseId: "", snapshotId: id } : null;
+  }
   const laminate = laminates.find((l) => l.id === variant.laminate_uuid);
   if (!laminate) return null;
   const atIndex = laminate.loadCases[variant.load_case_index];
@@ -225,7 +229,13 @@ function resolveVariant(variant: ComparisonVariant, laminates: LaminateConfig[])
 
 /** The reverse: a column of this session as the file names it, or null when
  *  it points at something that no longer exists. */
-function toFileVariant(variant: Variant, laminates: LaminateConfig[]): ComparisonVariant | null {
+function toFileVariant(variant: Variant, laminates: LaminateConfig[], snapshots: Snapshot[]): ComparisonVariant | null {
+  if (variant.snapshotId) {
+    const id = variant.snapshotId;
+    return snapshots.some((s) => s.id === id)
+      ? { laminate_uuid: "", load_case_index: 0, load_case_name: "", snapshot_id: id }
+      : null;
+  }
   const laminate = laminates.find((l) => l.id === variant.laminateId);
   const index = laminate?.loadCases.findIndex((c) => c.id === variant.loadCaseId) ?? -1;
   if (!laminate || index < 0) return null;
@@ -240,16 +250,16 @@ function toFileVariant(variant: Variant, laminates: LaminateConfig[]): Compariso
  *  writes no element then, so a project using no web-only feature stays
  *  exactly what the desktop would write. */
 function toWebExtension(snapshot: ProjectSnapshot): WebExtension | null {
-  const carry = snapshot.webExtensionCarry ?? EMPTY_WEB_EXTENSION_CARRY;
+  const snapshots = snapshot.snapshots ?? [];
   const variants = (snapshot.comparison ?? [])
-    .map((v) => toFileVariant(v, snapshot.laminates))
+    .map((v) => toFileVariant(v, snapshot.laminates, snapshots))
     .filter((v): v is ComparisonVariant => v !== null);
   const extension: WebExtension = {
     schema: 1,
     // Written by the core from the layers themselves.
     layer_criteria: [],
     studies: (snapshot.studies ?? []).map((s) => toFileStudy(s, snapshot.laminates)),
-    snapshots: carry.snapshots,
+    snapshots,
     report_templates: (snapshot.reportTemplates ?? []).map(toFileTemplate),
     comparison: variants.length > 0 ? { variants } : null,
     stacking_rule_settings: snapshot.stackingRuleSettings ?? null,
@@ -385,15 +395,18 @@ export async function importProject(
   const extension = project.web_extension ?? null;
   const importNotices: ImportNotice[] = [...(project.import_notices ?? [])];
   const comparison: Variant[] = [];
+  const snapshots = extension?.snapshots ?? [];
   for (const variant of extension?.comparison?.variants ?? []) {
-    const resolved = resolveVariant(variant, laminates);
+    const resolved = resolveVariant(variant, laminates, snapshots);
     if (resolved) {
       comparison.push(resolved);
     } else {
       importNotices.push({
         kind: "comparison_variant_dropped",
         laminate:
-          laminates.find((l) => l.id === variant.laminate_uuid)?.name ?? variant.laminate_uuid,
+          variant.snapshot_id ??
+          laminates.find((l) => l.id === variant.laminate_uuid)?.name ??
+          variant.laminate_uuid,
         loadCase: variant.load_case_name,
       });
     }
@@ -420,11 +433,7 @@ export async function importProject(
     version: project.version,
     unsupportedSections: project.unsupported_sections ?? [],
     comparison,
-    webExtensionCarry: extension
-      ? {
-          snapshots: extension.snapshots,
-        }
-      : EMPTY_WEB_EXTENSION_CARRY,
+    snapshots,
     studies,
     reportTemplates: (extension?.report_templates ?? []).map(fromFileTemplate),
     stackingRuleSettings: extension?.stacking_rule_settings ?? null,

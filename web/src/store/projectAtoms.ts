@@ -19,12 +19,9 @@ import type {
 import type { OptimizationInputDto, OptimizerKindId } from "../lib/types";
 import type { ProjectSnapshot } from "../lib/projectFile";
 import type { Variant } from "./comparisonAtoms";
-import {
-  EMPTY_WEB_EXTENSION_CARRY,
-  type ImportNotice,
-  type WebExtensionCarry,
-} from "../lib/webExtension";
-import { comparisonVariantsAtom } from "./comparisonAtoms";
+import type { ImportNotice } from "../lib/webExtension";
+import type { Snapshot } from "../lib/compare/snapshot";
+import { comparisonVariantsAtom, snapshotsAtom } from "./comparisonAtoms";
 import { stackingRuleSettingsAtom } from "./stackingRuleAtoms";
 import { reportTemplatesAtom } from "./reportAtoms";
 import { studiesAtom } from "./studyAtoms";
@@ -84,11 +81,6 @@ export const projectSectionsAtom = atom<unknown[]>([]);
 /** Optimisations past the first, which the module does not show. Carried for
  *  the same reason, and session state for the same reason. */
 export const extraOptimizationsAtom = atom<unknown[]>([]);
-
-/** The parts of the file's `<webExtension>` that no feature of this build
- *  edits yet. Carried for the same reason as the sections above, and session
- *  state for the same reason. */
-export const webExtensionCarryAtom = atom<WebExtensionCarry>(EMPTY_WEB_EXTENSION_CARRY);
 
 /** What could not be used when the open project was read, for the user to be
  *  told about. Replaced by every open; dismissing empties it. */
@@ -173,7 +165,7 @@ export const projectSnapshotAtom = atom<ProjectSnapshot>((get) => {
     version: get(projectVersionAtom),
     unsupportedSections: get(projectSectionsAtom),
     comparison: get(comparisonVariantsAtom),
-    webExtensionCarry: get(webExtensionCarryAtom),
+    snapshots: get(snapshotsAtom),
     stackingRuleSettings: get(stackingRuleSettingsAtom),
     reportTemplates: get(reportTemplatesAtom),
     studies: get(studiesAtom),
@@ -219,7 +211,8 @@ export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) =
   // The file's comparison, or none: the columns of the project that was open
   // before point at laminates this one does not have.
   set(comparisonVariantsAtom, project.comparison ?? []);
-  set(webExtensionCarryAtom, project.webExtensionCarry ?? EMPTY_WEB_EXTENSION_CARRY);
+  // The file's snapshots, or none: they are that project's pinned states.
+  set(snapshotsAtom, project.snapshots ?? []);
   // The file's thresholds, or the defaults: rule settings are the project's.
   set(stackingRuleSettingsAtom, project.stackingRuleSettings ?? null);
   // The file's templates, or none: they name laminates of that project.
@@ -285,7 +278,7 @@ export function emptyProject(): ProjectSnapshot {
     version: "1",
     unsupportedSections: [],
     comparison: [],
-    webExtensionCarry: EMPTY_WEB_EXTENSION_CARRY,
+    snapshots: [],
   };
 }
 
@@ -389,9 +382,9 @@ export interface ProjectSnapshotV2 {
   unsupportedSections: unknown[];
   version: string;
   comparison: Variant[];
-  /** Placeholders for studies, snapshots and report templates until their
-   *  features exist. */
-  webExtensionCarry: WebExtensionCarry;
+  /** The pinned states. Optional so that a snapshot from before they
+   *  existed restores none. */
+  snapshots?: Snapshot[];
   /** The stacking-rule thresholds, null for the defaults. Optional so that a
    *  snapshot from before the rules existed restores the defaults. */
   stackingRuleSettings?: RuleSettings | null;
@@ -438,7 +431,7 @@ export const projectSnapshotV2Atom = atom<ProjectSnapshotV2>((get) => {
     unsupportedSections: get(projectSectionsAtom),
     version: get(projectVersionAtom),
     comparison: get(comparisonVariantsAtom),
-    webExtensionCarry: get(webExtensionCarryAtom),
+    snapshots: get(snapshotsAtom),
     stackingRuleSettings: get(stackingRuleSettingsAtom),
     // Read unconditionally, like everything else here.
     reportTemplates: get(reportTemplatesAtom),
@@ -481,7 +474,7 @@ export const restoreProjectAtom = atom(null, (get, set, snapshot: ProjectSnapsho
   setIfChanged(get, set, projectSectionsAtom, snapshot.unsupportedSections);
   setIfChanged(get, set, extraOptimizationsAtom, snapshot.extraOptimizations);
   setIfChanged(get, set, comparisonVariantsAtom, snapshot.comparison);
-  setIfChanged(get, set, webExtensionCarryAtom, snapshot.webExtensionCarry);
+  setIfChanged(get, set, snapshotsAtom, snapshot.snapshots ?? []);
   setIfChanged(get, set, stackingRuleSettingsAtom, snapshot.stackingRuleSettings ?? null);
   setIfChanged(get, set, reportTemplatesAtom, snapshot.reportTemplates ?? []);
   setIfChanged(get, set, studiesAtom, snapshot.studies ?? []);

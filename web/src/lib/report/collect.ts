@@ -23,6 +23,7 @@ import type { ProjectSnapshot } from "../projectFile";
 import { loadCasesOf, type LaminateConfig, type LoadCase } from "../../store/laminateAtoms";
 import { buildCltRequest, laminateDtoOf } from "../../store/derivedAtoms";
 import type { ReportTemplate } from "./model";
+import { snapshotCltRequest } from "../compare/snapshot";
 import type { StudyDef } from "../study/model";
 import type { StudyPlan } from "../study/plan";
 import type { PointResult } from "../study/evaluate";
@@ -89,7 +90,7 @@ export interface StudyRunner {
 /** What a report needs of the project: the file's view of it. */
 export type ReportProject = Pick<
   ProjectSnapshot,
-  "materials" | "laminates" | "bucklings" | "vibrations" | "deformations" | "lastPlyFailures" | "comparison" | "studies"
+  "materials" | "laminates" | "bucklings" | "vibrations" | "deformations" | "lastPlyFailures" | "comparison" | "studies" | "snapshots"
 >;
 
 function message(error: unknown): string {
@@ -181,6 +182,18 @@ export async function collectResults(
   const comparison: ComparisonColumn[] = [];
   if (wants("comparison")) {
     for (const variant of project.comparison ?? []) {
+      if (variant.snapshotId) {
+        const snapshot = (project.snapshots ?? []).find((s) => s.id === variant.snapshotId);
+        if (!snapshot) continue;
+        let clt: CltResponse | null = null;
+        try {
+          clt = JSON.parse(await compute.compute_clt(JSON.stringify(snapshotCltRequest(snapshot)))) as CltResponse;
+        } catch {
+          clt = null;
+        }
+        comparison.push({ laminateName: snapshot.name, loadCaseName: snapshot.load_case.name, clt });
+        continue;
+      }
       const config = project.laminates.find((l) => l.id === variant.laminateId);
       const loadCase = config && loadCasesOf(config).find((c) => c.id === variant.loadCaseId);
       if (!config || !loadCase) continue;

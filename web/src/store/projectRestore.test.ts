@@ -20,7 +20,6 @@ import { describeChange } from "../lib/history";
 import { defaultReportTemplate } from "../lib/report/model";
 import { OPTIMIZATION_STORAGE_KEY, optimizationInputAtom, defaultOptimizationInput } from "./optimizationAtoms";
 import { defaultMaterial } from "../lib/constants";
-import { EMPTY_WEB_EXTENSION_CARRY } from "../lib/webExtension";
 import type { ProjectSnapshot } from "../lib/projectFile";
 
 // Undo puts back a whole-project snapshot. Two things decide whether that is
@@ -50,7 +49,6 @@ function project(): ProjectSnapshot {
     version: "1",
     unsupportedSections: [],
     comparison: [{ laminateId: "lam-a", loadCaseId: "x" }],
-    webExtensionCarry: EMPTY_WEB_EXTENSION_CARRY,
   };
 }
 

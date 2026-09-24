@@ -12,10 +12,26 @@
 // set up for a project travels with it.
 import { atom } from "jotai";
 import { atomWithStorage, createJSONStorage } from "jotai/utils";
+import type { Snapshot } from "../lib/compare/snapshot";
 
 export interface Variant {
   laminateId: string;
   loadCaseId: string;
+  /** Set when the column is a snapshot rather than a laminate of the project
+   *  (F4.3, O6); the two ids above are empty then - as in the file. */
+  snapshotId?: string;
+}
+
+/** A column that is a snapshot. */
+export function snapshotVariant(snapshotId: string): Variant {
+  return { laminateId: "", loadCaseId: "", snapshotId };
+}
+
+/** Two columns showing the same thing. */
+export function sameVariant(a: Variant, b: Variant): boolean {
+  return a.snapshotId || b.snapshotId
+    ? a.snapshotId === b.snapshotId
+    : a.laminateId === b.laminateId && a.loadCaseId === b.loadCaseId;
 }
 
 /** Beyond this the columns get too narrow to read on any screen, and the
@@ -40,9 +56,7 @@ export const compareShowAllRowsAtom = atom(false);
 export const addVariantAtom = atom(null, (get, set, variant: Variant) => {
   const current = get(comparisonVariantsAtom);
   if (current.length >= MAX_VARIANTS) return;
-  const already = current.some(
-    (v) => v.laminateId === variant.laminateId && v.loadCaseId === variant.loadCaseId,
-  );
+  const already = current.some((v) => sameVariant(v, variant));
   if (already) return;
   set(comparisonVariantsAtom, [...current, variant]);
 });
@@ -51,5 +65,43 @@ export const removeVariantAtom = atom(null, (get, set, index: number) => {
   set(
     comparisonVariantsAtom,
     get(comparisonVariantsAtom).filter((_, i) => i !== index),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Snapshots (F4.3): pinned states, a second source of comparison columns.
+// ---------------------------------------------------------------------------
+
+export const SNAPSHOTS_STORAGE_KEY = "elamx.snapshots";
+
+export const snapshotsAtom = atomWithStorage<Snapshot[]>(
+  SNAPSHOTS_STORAGE_KEY,
+  [],
+  createJSONStorage<Snapshot[]>(() => localStorage),
+  { getOnInit: true },
+);
+
+/** Keeps a snapshot, and shows it as a column where there is room. */
+export const addSnapshotAtom = atom(null, (get, set, snapshot: Snapshot) => {
+  set(snapshotsAtom, [...get(snapshotsAtom), snapshot]);
+  set(addVariantAtom, snapshotVariant(snapshot.id));
+});
+
+export const renameSnapshotAtom = atom(null, (get, set, { id, name }: { id: string; name: string }) => {
+  set(
+    snapshotsAtom,
+    get(snapshotsAtom).map((s) => (s.id === id ? { ...s, name } : s)),
+  );
+});
+
+/** Deletes a snapshot and every column showing it. */
+export const removeSnapshotAtom = atom(null, (get, set, id: string) => {
+  set(
+    snapshotsAtom,
+    get(snapshotsAtom).filter((s) => s.id !== id),
+  );
+  set(
+    comparisonVariantsAtom,
+    get(comparisonVariantsAtom).filter((v) => v.snapshotId !== id),
   );
 });

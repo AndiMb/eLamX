@@ -119,6 +119,8 @@ export function describeChange(before: ProjectSnapshotV2, after: ProjectSnapshot
       return { path: "optimization", label: t("history.label.optimization") };
     case "comparison":
       return { path: "comparison", label: t("history.label.comparison") };
+    case "snapshots":
+      return { path: "snapshots", label: t("history.label.snapshots") };
     case "stackingRuleSettings":
       return { path: "stackingRuleSettings", label: t("history.label.ruleSettings") };
     case "studies": {

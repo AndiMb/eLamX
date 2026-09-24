@@ -1,3 +1,4 @@
+import type { Snapshot } from "../lib/compare/snapshot";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createStore } from "jotai";
 import { importNoticesAtom, loadProjectAtom, projectSnapshotAtom } from "./projectAtoms";
@@ -10,7 +11,6 @@ import {
 } from "./optimizationAtoms";
 import { defaultMaterial } from "../lib/constants";
 import type { ProjectSnapshot } from "../lib/projectFile";
-import { EMPTY_WEB_EXTENSION_CARRY } from "../lib/webExtension";
 
 // The optimisation is the only module that hangs off the project rather than
 // off a laminate, so it is the only one whose state does not travel with a
@@ -36,7 +36,6 @@ function emptySnapshot(): ProjectSnapshot {
     version: "1",
     unsupportedSections: [],
     comparison: [],
-    webExtensionCarry: EMPTY_WEB_EXTENSION_CARRY,
   };
 }
 
@@ -122,15 +121,15 @@ describe("das Projekt und seine Web-Erweiterung", () => {
     localStorage.clear();
   });
 
-  it("übernimmt Vergleich, Mitgeführtes und Hinweise der Datei beim Öffnen", () => {
+  it("übernimmt Vergleich, Snapshots und Hinweise der Datei beim Öffnen", () => {
     const store = createStore();
     // A comparison left over from the project open before.
     store.set(comparisonVariantsAtom, [{ laminateId: "alt", loadCaseId: "alt" }]);
-    const carry = { ...EMPTY_WEB_EXTENSION_CARRY, studies: [{ id: "s1" }] };
+    const snapshots = [{ id: "snap" }] as unknown as Snapshot[];
     store.set(loadProjectAtom, {
       ...emptySnapshot(),
       comparison: [{ laminateId: "l1", loadCaseId: "c1" }],
-      webExtensionCarry: carry,
+      snapshots,
       importNotices: [{ kind: "unknown_web_extension_schema", schema: "2" }],
     });
 
@@ -138,7 +137,7 @@ describe("das Projekt und seine Web-Erweiterung", () => {
     expect(store.get(importNoticesAtom)).toHaveLength(1);
     const saved = store.get(projectSnapshotAtom);
     expect(saved.comparison).toEqual([{ laminateId: "l1", loadCaseId: "c1" }]);
-    expect(saved.webExtensionCarry).toEqual(carry);
+    expect(saved.snapshots).toEqual(snapshots);
 
     // A file without a comparison clears the old one: its columns point at
     // laminates the new project does not have.

@@ -1,14 +1,26 @@
 import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { X } from "lucide-react";
+import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
+import { ArrowDown, ArrowUp, Camera, Pin, Trash2, X } from "lucide-react";
 import {
+  addSnapshotAtom,
   addVariantAtom,
   comparisonVariantsAtom,
   compareShowAllRowsAtom,
   MAX_VARIANTS,
+  removeSnapshotAtom,
   removeVariantAtom,
+  renameSnapshotAtom,
+  snapshotsAtom,
+  snapshotVariant,
   type Variant,
 } from "../store/comparisonAtoms";
+import { MODULE_FIGURES } from "../store/moduleFigureAtoms";
+import { buildCltRequest } from "../store/derivedAtoms";
+import { materialsAtom } from "../store/materialsAtoms";
+import { historyStep } from "../lib/history";
+import { elamx } from "../lib/wasm";
+import { keyFiguresOf, takeSnapshot, type Snapshot } from "../lib/compare/snapshot";
+import { comparable, compareValues, directionOf, type Verdict } from "../lib/compare/direction";
 import { useIsMobile } from "../lib/useIsMobile";
 import {
   figureKey,
@@ -16,7 +28,7 @@ import {
   visibleModuleFiguresAtom,
   type ModuleFigureId,
 } from "../store/moduleFigureAtoms";
-import { loadableVariantFamily, variantKey } from "../store/derivedAtoms";
+import { columnKey, laminateDtoOf, loadableVariantFamily } from "../store/derivedAtoms";
 import { laminateConfigFamily, laminateIdsAtom, loadCasesOf } from "../store/laminateAtoms";
 import { expandedStack, shortStackNotation } from "../lib/angleStack";
 import { DOF_NAMES } from "../lib/constants";
@@ -69,6 +81,9 @@ interface Row {
   render: (result: CltResponse | null, facts: VariantFacts) => ReactNode;
   /** The same cell as a string, so two columns can be told apart exactly. */
   compare: (result: CltResponse | null, facts: VariantFacts) => string;
+  /** The cell as a number, where a row has a better and a worse - see
+   *  lib/compare/direction. */
+  value?: (result: CltResponse | null, facts: VariantFacts) => number | null;
 }
 
 /** A row fed by one of the other modules rather than by the CLT result.
@@ -119,6 +134,7 @@ export function ComparePage() {
       </header>
 
       <VariantPicker />
+      <SnapshotList />
 
       {variants.length === 0 ? (
         <p className="empty-note">{t("compare.empty")}</p>
@@ -136,7 +152,7 @@ export function ComparePage() {
                 <tr>
                   <th />
                   {variants.map((variant, i) => (
-                    <th key={variantKey(variant.laminateId, variant.loadCaseId)}>
+                    <th key={columnKey(variant)}>
                       <ColumnHeader variant={variant} onRemove={() => removeVariant(i)} />
                     </th>
                   ))}
@@ -156,7 +172,7 @@ export function ComparePage() {
                       <th scope="row">{row.label}</th>
                       {variants.map((variant, i) => (
                         <Cell
-                          key={variantKey(variant.laminateId, variant.loadCaseId)}
+                          key={columnKey(variant)}
                           variant={variant}
                           reference={i === 0 ? null : variants[0]}
                           row={row}
@@ -178,7 +194,7 @@ export function ComparePage() {
                       <th scope="row">{t(row.labelKey)}</th>
                       {variants.map((variant, column) => (
                         <ModuleCell
-                          key={variantKey(variant.laminateId, variant.loadCaseId)}
+                          key={columnKey(variant)}
                           variant={variant}
                           reference={column === 0 ? null : variants[0]}
                           row={row}
@@ -202,9 +218,35 @@ export function ComparePage() {
   );
 }
 
-/** A column's own facts, read from the store. */
+/** A column's own facts, read from the store - or from the snapshot, whose
+ *  laminate and load case are its own copies. */
 function useFacts(variant: Variant): VariantFacts {
   const config = useAtomValue(laminateConfigFamily(variant.laminateId));
+  const snapshots = useAtomValue(snapshotsAtom);
+  const snapshot = variant.snapshotId ? snapshots.find((s) => s.id === variant.snapshotId) : undefined;
+  if (snapshot) {
+    const lam = snapshot.laminate;
+    const { plies, thickness } = expandedStack(
+      lam.layers.map((l) => l.thickness),
+      lam.symmetric,
+      lam.with_middle_layer,
+    );
+    return {
+      laminateName: snapshot.name,
+      loadCaseName: snapshot.load_case.name,
+      notation: shortStackNotation(
+        lam.layers.map((l) => l.angle),
+        lam.symmetric,
+        lam.with_middle_layer,
+      ),
+      plies,
+      thickness,
+      dofValues: snapshot.load_case.dof_values,
+      useStrain: snapshot.load_case.use_strain,
+      deltaT: snapshot.load_case.delta_t,
+      deltaH: snapshot.load_case.delta_h,
+    };
+  }
   const cases = loadCasesOf(config);
   const loadCase = cases.find((c) => c.id === variant.loadCaseId) ?? cases[0];
   const { plies, thickness } = expandedStack(
@@ -230,19 +272,66 @@ function useFacts(variant: Variant): VariantFacts {
 }
 
 function useResult(variant: Variant): CltResponse | null {
-  const state = useAtomValue(
-    loadableVariantFamily(variantKey(variant.laminateId, variant.loadCaseId)),
-  );
+  const state = useAtomValue(loadableVariantFamily(columnKey(variant)));
   return state.state === "hasData" ? state.data : null;
+}
+
+/** Pins a laminate under a load case as a snapshot (F4.3): its figures now,
+ *  computed here, and the module figures the laminate has. */
+function usePin() {
+  const store = useStore();
+  const t = useT();
+  const locale = useLocale();
+  return async (laminateId: string, loadCaseId: string) => {
+    const config = store.get(laminateConfigFamily(laminateId));
+    const loadCase = loadCasesOf(config).find((c) => c.id === loadCaseId) ?? loadCasesOf(config)[0];
+    const materials = store.get(materialsAtom);
+    let clt: CltResponse | null = null;
+    try {
+      clt = JSON.parse(
+        await elamx.compute_clt(
+          JSON.stringify(buildCltRequest(laminateDtoOf(config), Object.fromEntries(materials.map((m) => [m.id, m])), loadCase)),
+        ),
+      ) as CltResponse;
+    } catch {
+      clt = null;
+    }
+    const modules: Record<string, number | null> = {};
+    for (const { id } of MODULE_FIGURES) modules[id] = store.get(moduleFigureFamily(figureKey(id, laminateId)));
+    const at = new Date();
+    const name = t("compare.snapshot.defaultName", {
+      laminate: config.name,
+      loadCase: loadCase.name,
+      date: at.toLocaleString(locale === "de" ? "de-DE" : "en-GB", { dateStyle: "short", timeStyle: "short" }),
+    });
+    const snapshot = takeSnapshot(name, config, loadCase, materials, keyFiguresOf(clt, modules), at);
+    historyStep(t("compare.snapshot.pin"), () => store.set(addSnapshotAtom, snapshot));
+  };
 }
 
 function ColumnHeader({ variant, onRemove }: { variant: Variant; onRemove: () => void }) {
   const t = useT();
   const facts = useFacts(variant);
+  const pin = usePin();
   return (
     <>
-      <span className="compare-column-title">{facts.laminateName}</span>
-      <span className="compare-column-sub">{facts.loadCaseName}</span>
+      <span className="compare-column-title">
+        {variant.snapshotId && <Camera size={12} aria-label={t("compare.snapshot")} />} {facts.laminateName}
+      </span>
+      <span className="compare-column-sub">
+        {variant.snapshotId ? t("compare.snapshot.column", { loadCase: facts.loadCaseName }) : facts.loadCaseName}
+      </span>
+      {!variant.snapshotId && (
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => void pin(variant.laminateId, variant.loadCaseId)}
+          title={t("compare.snapshot.pin")}
+          aria-label={t("compare.snapshot.pin")}
+        >
+          <Pin size={12} />
+        </button>
+      )}
       <button
         type="button"
         className="icon-button"
@@ -254,6 +343,22 @@ function ColumnHeader({ variant, onRemove }: { variant: Variant; onRemove: () =>
       </button>
     </>
   );
+}
+
+/** Better or worse than the first column, said with an arrow as well as a
+ *  colour (N7). */
+function DiffMark({ verdict }: { verdict: Verdict }) {
+  const t = useT();
+  if (verdict === "better") return <ArrowUp size={12} className="compare-mark" aria-label={t("compare.better")} />;
+  if (verdict === "worse") return <ArrowDown size={12} className="compare-mark" aria-label={t("compare.worse")} />;
+  return null;
+}
+
+function diffClass(differs: boolean, verdict: Verdict): string | undefined {
+  if (!differs) return undefined;
+  if (verdict === "better") return "compare-differs compare-better";
+  if (verdict === "worse") return "compare-differs compare-worse";
+  return "compare-differs";
 }
 
 function Cell({
@@ -277,8 +382,28 @@ function Cell({
   const differs =
     reference !== null &&
     row.compare(result, facts) !== row.compare(referenceResult, referenceFacts);
+  const verdict: Verdict =
+    differs && row.value
+      ? compareValues(directionOf(row.key), row.value(result, facts), row.value(referenceResult, referenceFacts))
+      : "neutral";
 
-  return <td className={differs ? "compare-differs" : undefined}>{row.render(result, facts)}</td>;
+  return (
+    <td className={diffClass(differs, verdict)}>
+      <DiffMark verdict={verdict} />
+      {row.render(result, facts)}
+    </td>
+  );
+}
+
+/** A module figure of a column: computed for a laminate, and for a snapshot
+ *  the figure it recorded then - a snapshot keeps no module inputs, so there
+ *  is nothing to compute it again from. */
+function useModuleFigure(variant: Variant, row: ModuleRow): { value: number | null; then: boolean } {
+  const live = useAtomValue(moduleFigureFamily(figureKey(row.key, variant.laminateId)));
+  const snapshots = useAtomValue(snapshotsAtom);
+  if (!variant.snapshotId) return { value: live, then: false };
+  const recorded = snapshots.find((s) => s.id === variant.snapshotId)?.key_figures[row.key];
+  return { value: recorded ?? null, then: true };
 }
 
 function ModuleCell({
@@ -292,22 +417,26 @@ function ModuleCell({
 }) {
   const t = useT();
   const locale = useLocale();
-  const value = useAtomValue(moduleFigureFamily(figureKey(row.key, variant.laminateId)));
-  const referenceValue = useAtomValue(
-    moduleFigureFamily(figureKey(row.key, (reference ?? variant).laminateId)),
-  );
+  const { value, then } = useModuleFigure(variant, row);
+  const { value: referenceValue } = useModuleFigure(reference ?? variant, row);
 
   const asText = (v: number | null) => (isFiniteResult(v) ? v.toFixed(6) : "-");
   const differs = reference !== null && asText(value) !== asText(referenceValue);
+  const verdict = differs
+    ? compareValues(directionOf(row.key), comparable(row.key, value), comparable(row.key, referenceValue))
+    : "neutral";
 
   return (
-    <td className={differs ? "compare-differs" : undefined}>
+    <td className={diffClass(differs, verdict)}>
+      <DiffMark verdict={verdict} />
       {value === null ? (
         <span className="hint" title={t("compare.notConfigured")}>
           {NO_VALUE}
         </span>
       ) : isFiniteResult(value) ? (
-        formatFixed(value, row.digits, locale)
+        <span className={then ? "compare-then" : undefined} title={then ? t("compare.snapshot.then") : undefined}>
+          {formatFixed(value, row.digits, locale)}
+        </span>
       ) : (
         NO_VALUE
       )}
@@ -319,58 +448,149 @@ function VariantPicker() {
   const t = useT();
   const ids = useAtomValue(laminateIdsAtom);
   const variants = useAtomValue(comparisonVariantsAtom);
+  const snapshots = useAtomValue(snapshotsAtom);
   const addVariant = useSetAtom(addVariantAtom);
+  const pin = usePin();
+  const [source, setSource] = useState<"laminate" | "snapshot">("laminate");
   const [laminateId, setLaminateId] = useState<string>(ids[0] ?? "");
   const [loadCaseId, setLoadCaseId] = useState<string>("");
+  const [snapshotId, setSnapshotId] = useState<string>("");
 
   const chosenLaminate = ids.includes(laminateId) ? laminateId : (ids[0] ?? "");
   const config = useAtomValue(laminateConfigFamily(chosenLaminate));
   const cases = loadCasesOf(config);
   const chosenCase = cases.find((c) => c.id === loadCaseId) ?? cases[0];
+  const chosenSnapshot = snapshots.find((s) => s.id === snapshotId) ?? snapshots[0];
   const full = variants.length >= MAX_VARIANTS;
 
   return (
     <section className="panel compare-picker">
       <h2>{t("compare.add")}</h2>
-      <div className="field-grid">
-        <label>
-          <span className="field-label">{t("compare.laminate")}</span>
-          <select
-            value={chosenLaminate}
-            onChange={(e) => {
-              setLaminateId(e.target.value);
-              setLoadCaseId("");
-            }}
+      <div className="segmented" role="radiogroup" aria-label={t("compare.source")}>
+        {(["laminate", "snapshot"] as const).map((s) => (
+          <button
+            key={s}
+            type="button"
+            role="radio"
+            aria-checked={source === s}
+            className={source === s ? "active" : undefined}
+            onClick={() => setSource(s)}
+            disabled={s === "snapshot" && snapshots.length === 0}
           >
-            {ids.map((id) => (
-              <LaminateOption key={id} id={id} />
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="field-label">{t("compare.loadCase")}</span>
-          <select value={chosenCase?.id ?? ""} onChange={(e) => setLoadCaseId(e.target.value)}>
-            {cases.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {/* The one action of this card, and the only place on the page where
-            something is created. */}
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={full || !chosenCase}
-          onClick={() =>
-            chosenCase && addVariant({ laminateId: chosenLaminate, loadCaseId: chosenCase.id })
-          }
-        >
-          {t("compare.addButton")}
-        </button>
+            {t(s === "laminate" ? "compare.source.laminate" : "compare.source.snapshot")}
+          </button>
+        ))}
       </div>
+      {source === "laminate" || snapshots.length === 0 ? (
+        <div className="field-grid">
+          <label>
+            <span className="field-label">{t("compare.laminate")}</span>
+            <select
+              value={chosenLaminate}
+              onChange={(e) => {
+                setLaminateId(e.target.value);
+                setLoadCaseId("");
+              }}
+            >
+              {ids.map((id) => (
+                <LaminateOption key={id} id={id} />
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="field-label">{t("compare.loadCase")}</span>
+            <select value={chosenCase?.id ?? ""} onChange={(e) => setLoadCaseId(e.target.value)}>
+              {cases.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {/* The one action of this card, and the only place on the page where
+              something is created. */}
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={full || !chosenCase}
+            onClick={() =>
+              chosenCase && addVariant({ laminateId: chosenLaminate, loadCaseId: chosenCase.id })
+            }
+          >
+            {t("compare.addButton")}
+          </button>
+          <button type="button" disabled={!chosenCase} onClick={() => chosenCase && void pin(chosenLaminate, chosenCase.id)}>
+            <Pin size={14} /> {t("compare.snapshot.pin")}
+          </button>
+        </div>
+      ) : (
+        <div className="field-grid">
+          <label className="wide">
+            <span className="field-label">{t("compare.snapshot")}</span>
+            <select value={chosenSnapshot?.id ?? ""} onChange={(e) => setSnapshotId(e.target.value)}>
+              {snapshots.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={full || !chosenSnapshot}
+            onClick={() => chosenSnapshot && addVariant(snapshotVariant(chosenSnapshot.id))}
+          >
+            {t("compare.addButton")}
+          </button>
+        </div>
+      )}
       {full && <p className="hint">{t("compare.full", { max: MAX_VARIANTS })}</p>}
+      <p className="hint">{t("compare.snapshot.hint")}</p>
+    </section>
+  );
+}
+
+/** The project's snapshots: named, dated, renamed and deleted here. */
+function SnapshotList() {
+  const t = useT();
+  const locale = useLocale();
+  const snapshots = useAtomValue(snapshotsAtom);
+  const rename = useSetAtom(renameSnapshotAtom);
+  const remove = useSetAtom(removeSnapshotAtom);
+  if (snapshots.length === 0) return null;
+  const date = (s: Snapshot) =>
+    new Date(s.at).toLocaleString(locale === "de" ? "de-DE" : "en-GB", { dateStyle: "short", timeStyle: "short" });
+  return (
+    <section className="panel compare-snapshots">
+      <h2>
+        <Camera size={16} aria-hidden="true" /> {t("compare.snapshots")}
+      </h2>
+      <ul className="snapshot-list">
+        {snapshots.map((s) => (
+          <li key={s.id}>
+            <input
+              type="text"
+              value={s.name}
+              aria-label={t("compare.snapshot.name")}
+              onChange={(e) => rename({ id: s.id, name: e.target.value })}
+            />
+            <span className="hint">
+              {date(s)} · <code>{shortStackNotation(s.laminate.layers.map((l) => l.angle), s.laminate.symmetric, s.laminate.with_middle_layer)}</code> ·{" "}
+              {s.load_case.name}
+            </span>
+            <button
+              type="button"
+              className="icon-button danger"
+              title={t("compare.snapshot.delete")}
+              aria-label={t("compare.snapshot.delete")}
+              onClick={() => historyStep(t("history.label.snapshots"), () => remove(s.id))}
+            >
+              <Trash2 size={14} />
+            </button>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -414,6 +634,7 @@ function buildRows(
       label: t("compare.row.areaWeight"),
       render: (r) => (r ? formatScientific(r.area_weight, 3, locale) : NO_VALUE),
       compare: (r) => (r ? r.area_weight.toExponential(6) : "-"),
+      value: (r) => (r ? r.area_weight : null),
     },
   ];
 
@@ -436,6 +657,7 @@ function buildRows(
           ? formatFixed(r.engineering_constants[field], digits, locale)
           : NO_VALUE,
       compare: (r) => (r ? r.engineering_constants[field].toFixed(6) : "-"),
+      value: (r) => (r ? r.engineering_constants[field] : null),
     });
   }
 
@@ -483,6 +705,7 @@ function buildRows(
         const min = minReserveFactor(r);
         return min === null ? "-" : min.toFixed(6);
       },
+      value: (r) => minReserveFactor(r),
     },
     {
       key: "verdict",
@@ -502,6 +725,10 @@ function buildRows(
         const min = minReserveFactor(r);
         return min === null ? "-" : min < 1 ? "fail" : "ok";
       },
+      value: (r) => {
+        const min = minReserveFactor(r);
+        return min === null ? null : min < 1 ? 0 : 1;
+      },
     },
     {
       key: "failedPlies",
@@ -510,6 +737,7 @@ function buildRows(
       render: (r) =>
         r ? `${r.layer_results.filter((l) => l.failed).length} / ${r.layer_results.length}` : NO_VALUE,
       compare: (r) => (r ? String(r.layer_results.filter((l) => l.failed).length) : "-"),
+      value: (r) => (r ? r.layer_results.filter((l) => l.failed).length : null),
     },
   );
 

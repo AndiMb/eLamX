@@ -24,6 +24,7 @@ import {
 } from "../lib/constants";
 import { DEFAULT_MATERIAL_ID } from "./materialsAtoms";
 import { t } from "../i18n";
+import { comparisonVariantsAtom } from "./comparisonAtoms";
 
 /** Module data an imported `.elamx` carried but this app does not model yet:
  *  further buckling / last-ply-failure analyses beyond the first, and modules
@@ -292,8 +293,17 @@ export const addLaminateAtom = atom(null, (get, set, materialId: string) => {
   return id;
 });
 
-export const removeLaminateAtom = atom(null, (_get, set, id: string) => {
+export const removeLaminateAtom = atom(null, (get, set, id: string) => {
   set(laminateIdsAtom, (ids) => ids.filter((existing) => existing !== id));
+  // Its comparison columns go with it; a snapshot of it stays - that is what
+  // a snapshot is for.
+  const columns = get(comparisonVariantsAtom);
+  if (columns.some((v) => v.laminateId === id)) {
+    set(
+      comparisonVariantsAtom,
+      columns.filter((v) => v.laminateId !== id),
+    );
+  }
   laminateConfigFamily.remove(id);
   // atomFamily.remove only drops the in-memory atom; the stored value would
   // otherwise outlive the laminate and reappear if the same id came back.

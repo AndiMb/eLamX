@@ -38,6 +38,8 @@ import {
   type LoadCase,
 } from "./laminateAtoms";
 import { materialsAtom } from "./materialsAtoms";
+import { snapshotsAtom } from "./comparisonAtoms";
+import { snapshotCltRequest } from "../lib/compare/snapshot";
 
 /** A laminate as the core takes it - pure, for whoever needs a request
  *  without the store (the report). */
@@ -120,6 +122,13 @@ export const cltRequestFamily = atomFamily((laminateId: string) =>
 export const variantKey = (laminateId: string, loadCaseId: string) =>
   `${laminateId}|${loadCaseId}`;
 
+/** The first half of a snapshot column's key: `snapshot|${id}`. */
+const SNAPSHOT_KEY = "snapshot";
+
+/** The key of any comparison column, a laminate's or a snapshot's. */
+export const columnKey = (variant: { laminateId: string; loadCaseId: string; snapshotId?: string }) =>
+  variant.snapshotId ? `${SNAPSHOT_KEY}|${variant.snapshotId}` : variantKey(variant.laminateId, variant.loadCaseId);
+
 /** A CLT result for ANY of a laminate's load cases, not just the active one.
  *
  *  Separate from `cltResponseFamily` on purpose: the module pages follow the
@@ -129,6 +138,14 @@ export const variantKey = (laminateId: string, loadCaseId: string) =>
 export const variantResponseFamily = atomFamily((key: string) =>
   atom<Promise<CltResponse | null>>(async (get) => {
     const [laminateId, loadCaseId] = key.split("|");
+    if (laminateId === SNAPSHOT_KEY) {
+      // A snapshot's column: computed from the snapshot's own copies, so it
+      // answers the same after the laminate is changed or deleted.
+      const snapshot = get(snapshotsAtom).find((s) => s.id === loadCaseId);
+      if (!snapshot) return null;
+      const json = await elamx.compute_clt(JSON.stringify(snapshotCltRequest(snapshot)), key);
+      return JSON.parse(json) as CltResponse;
+    }
     const config = get(laminateConfigFamily(laminateId));
     const loadCase = loadCasesOf(config).find((c) => c.id === loadCaseId);
     if (!loadCase) return null;
