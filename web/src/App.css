@@ -340,6 +340,7 @@ button:disabled {
 /* --- Inputs / Selects / Checkboxes --- */
 
 input[type="text"],
+input[type="search"],
 select {
   font-family: var(--sans);
   font-size: var(--fs-md);
@@ -354,6 +355,7 @@ select {
 }
 
 input[type="text"]:hover:not(:disabled),
+input[type="search"]:hover:not(:disabled),
 select:hover:not(:disabled) {
   border-color: var(--text-muted);
 }
@@ -540,7 +542,7 @@ input[type="checkbox"] {
 .content {
   flex: 1;
   min-width: 0;
-  max-width: 1320px;
+  max-width: 1440px;
   padding: var(--s-5);
   box-sizing: border-box;
 }
@@ -773,6 +775,17 @@ input[type="checkbox"] {
 
 .shape-and-list > .chart {
   margin-top: 0;
+}
+
+/* Die Zusatzparameter der Kriterien in zwei Spalten: vierzehn eingeklappte
+   Zeilen ueber die volle Breite waren eine lange, fast leere Liste. */
+.criterion-params-list {
+  columns: 2 380px;
+  column-gap: var(--s-5);
+}
+
+.criterion-params-list > details {
+  break-inside: avoid;
 }
 
 /* Diagrammkarten: die Grafik steht mittig in ihrer Spalte, die Erklaerung
@@ -1044,14 +1057,20 @@ table.compare-table thead th {
 /* Laminat- und Lastfallnamen sind laenger als eine Zahl, und der Knopf ist
    so breit wie sein Wort - vorher streckte er sich ueber ein Drittel der
    Seite, weil er eine Rasterspalte fuellte. */
+/* Auswahl und Knoepfe in einer Zeile, die Knoepfe direkt hinter dem, was
+   sie hinzufuegen - als Rasterspalten standen sie 280 px auseinander. */
 .compare-picker .field-grid {
-  align-items: end;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 280px));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
 }
 
-.compare-picker .field-grid > button {
-  justify-self: start;
-  align-self: end;
+.compare-picker .field-grid > label {
+  width: 240px;
+}
+
+.compare-picker .field-grid > label.wide {
+  width: 400px;
 }
 
 /* --- Urteil und mobile Dichte --- */
@@ -1364,6 +1383,11 @@ table.compare-table thead th {
   align-self: end;
   gap: var(--s-2);
   min-height: var(--control-h);
+}
+
+.field-grid label.checkbox input {
+  flex: 0 0 auto;
+  width: auto;
 }
 
 /* Innerhalb eines Feldrasters darf ein Select seine Spalte fuellen - die
@@ -2002,15 +2026,16 @@ table td.num,
 .layer-table td:nth-child(3) {
   width: 24px;
   padding-left: 12px;
-  padding-right: 14px;
+  padding-right: 10px;
 }
 
-/* 100 statt 54: unter table-layout:fixed sind diese Werte Verhaeltnisse, und
+/* 76 statt 54: unter table-layout:fixed sind diese Werte Verhaeltnisse, und
    mit dem alten Anteil war das Namensfeld ab Lage 10 zu schmal - die Tabelle
-   zeigte in jeder zweistelligen Zeile "Lage 1". */
+   zeigte in jeder zweistelligen Zeile "Lage 1". Mehr als 76 passt nicht, ohne
+   dass die Zeilenaktionen rechts aus der Karte geschoben werden. */
 .layer-table th:nth-child(4),
 .layer-table td:nth-child(4) {
-  width: 100px;
+  width: 76px;
 }
 
 /* Explicit widths on the cells themselves (not just the .quantity child) so
@@ -2020,25 +2045,28 @@ table td.num,
 .layer-table td:nth-child(5),
 .layer-table th:nth-child(6),
 .layer-table td:nth-child(6) {
-  width: 125px;
+  width: 112px;
 }
 
-/* 130px comfortably fits the select's own 128px min-width (see below). */
+/* 122px fits the select's own 120px min-width (see below). */
 .layer-table th:nth-child(7),
 .layer-table td:nth-child(7) {
-  width: 130px;
+  width: 122px;
 }
 
 /* The criterion column holds the select plus the "+n" button for the
    extra criteria (F2.1). */
 .layer-table th:nth-child(8),
 .layer-table td:nth-child(8) {
-  width: 170px;
+  width: 168px;
 }
 
+/* Die Summe der Spalten muss in die Karte passen: bei 1032 px lagen die
+   Zeilenaktionen auf einem 1600er Bildschirm rechts ausserhalb, erreichbar
+   nur ueber eine Scrollleiste unter der Tabelle. */
 .layer-table th:last-child,
 .layer-table td:last-child {
-  width: 104px;
+  width: 96px;
   white-space: nowrap;
 }
 
@@ -2048,17 +2076,16 @@ table td.num,
 }
 
 .layer-table .quantity {
-  width: 125px;
+  width: 112px;
 }
 
 /* min-width (not just max-width): a <select> imposes almost no minimum
    content width of its own, so without this floor a width-constrained
-   layout would happily size it down toward zero. 128px comfortably fits the
-   longest current label ("Max. Spannung", ~101px) plus the native dropdown
-   arrow. */
+   layout would happily size it down toward zero. 120px fits the longest
+   current label ("Max. Spannung", ~101px) plus the native dropdown arrow. */
 .layer-table select {
   width: 100%;
-  min-width: 128px;
+  min-width: 120px;
   max-width: 160px;
 }
 
@@ -2216,8 +2243,8 @@ tr:focus-within .row-actions,
 }
 
 .row-actions .icon-button {
-  width: 26px;
-  min-width: 26px;
+  width: 24px;
+  min-width: 24px;
   min-height: 26px;
 }
 
@@ -2233,7 +2260,7 @@ tr:focus-within .row-actions,
 
 .editor-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) 260px;
   gap: 20px;
   align-items: start;
 }
@@ -2294,13 +2321,16 @@ tr:focus-within .row-actions,
   margin-bottom: var(--s-3);
 }
 
+/* Derselbe Kartenkopf wie bei .panel (Titel, Trennlinie), eine Stufe
+   kleiner, weil die Karten nur 290 px breit sind. Vorher war es eine
+   Versalien-Marke - ein zweiter Stil fuer dieselbe Rolle. */
 .tool-group-title {
-  font-size: var(--fs-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--ls-caps);
+  margin: calc(var(--s-3) * -1) calc(var(--s-3) * -1) var(--s-3);
+  padding: 8px var(--s-3);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-lg);
   font-weight: 600;
-  color: var(--text-muted);
-  margin-bottom: var(--s-2);
+  color: var(--text);
 }
 
 .tool-group > button {
@@ -2704,29 +2734,34 @@ table.matrix td.block-d {
 
 /* --- Modul-Liste (LaminatePage, Desktop+Mobile) --- */
 
+/* Kacheln statt einer Liste: eine Zeile je Modul endete bei 70 % der Karte,
+   und zehn Zeilen waren 650 px Hoehe fuer zehn Links. Auf dem Handy bleibt
+   es eine Spalte. */
 .module-list {
   list-style: none;
   margin: 0;
   padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: var(--s-2);
 }
 
 .module-row {
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  padding: var(--s-3) var(--s-2);
+  height: 100%;
+  box-sizing: border-box;
+  padding: var(--s-3);
+  border: 1px solid var(--border);
   border-radius: var(--radius-control);
   text-decoration: none;
   color: var(--text);
-  border-bottom: 1px solid var(--border);
-}
-
-.module-row:last-child {
-  border-bottom: none;
 }
 
 .module-row:hover {
   background: var(--inset);
+  border-color: var(--border-strong);
 }
 
 /* Das Modulsymbol bekommt eine eigene kleine Flaeche: in einer Liste aus
@@ -2753,7 +2788,6 @@ table.matrix td.block-d {
 .module-row .module-text {
   flex: 1;
   min-width: 0;
-  max-width: var(--measure);
 }
 
 .module-row .chevron {
@@ -3015,7 +3049,6 @@ table.matrix td.block-d {
 
 .format-settings-table {
   width: 100%;
-  max-width: 780px;
   border-collapse: collapse;
 }
 
@@ -4043,7 +4076,7 @@ table.matrix td.block-d {
    Monospace and pre-wrapped off: a Nastran card is column-sensitive, and a
    preview that reflows would hide the one thing worth looking at. */
 .deck-preview {
-  margin: 0.75rem 0 0;
+  margin: 0;
   padding: 0.75rem;
   max-height: 28rem;
   overflow: auto;

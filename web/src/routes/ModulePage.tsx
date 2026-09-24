@@ -107,7 +107,6 @@ export function ProjectModulePage() {
     case "optimization":
       return (
         <>
-          <h1 className="visually-hidden">{t(MODULE_REGISTRY.optimization.labelKey)}</h1>
           <OptimizationModuleContent />
         </>
       );

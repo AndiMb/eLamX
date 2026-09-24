@@ -4,7 +4,7 @@ import { ListChecks } from "lucide-react";
 import { CriteriaPopover } from "./CriteriaPopover";
 import { criterionName } from "../lib/types";
 import { useNavigate } from "react-router-dom";
-import { Play, Square, Trash2, Wand2 } from "lucide-react";
+import { Play, Square, Target, Trash2, Wand2 } from "lucide-react";
 import {
   defaultConstraint,
   geneticParametersAtom,
@@ -40,6 +40,7 @@ import { Quantity } from "./Quantity";
 import { BackLink } from "./BackLink";
 import { Sym } from "./Sym";
 import { formatSignificant } from "../lib/numberFormat";
+import { MODULE_REGISTRY } from "../lib/moduleRegistry";
 import { useLocale, useT, type MessageKey } from "../i18n";
 
 // The one module that searches instead of reporting.
@@ -132,7 +133,14 @@ export function OptimizationModuleContent() {
   return (
     <>
       <BackLink to="/" label={t("nav.project")} />
-      <p className="hint">{t("optimization.intro")}</p>
+      {/* The page head the other project pages - comparison, studies - have:
+          without a laminate there is no context bar to say where one is. */}
+      <header className="page-header">
+        <div className="page-header-text">
+          <h1>{t(MODULE_REGISTRY.optimization.labelKey)}</h1>
+          <p className="page-header-sub">{t("optimization.intro")}</p>
+        </div>
+      </header>
 
       <div className="module-split">
         <section className="panel module-input">
@@ -391,6 +399,18 @@ export function OptimizationModuleContent() {
             </div>
           )}
           {state.status === "cancelled" && <p className="hint">{t("optimization.cancelled")}</p>}
+
+          {/* Until the first search the results column was simply empty - a
+              white half of the page beside a long form. It says what will
+              appear there and how to get it. */}
+          {!result && state.status !== "running" && state.status !== "failed" && (
+            <section className="panel">
+              <div className="empty-state">
+                <Target size={32} strokeWidth={1.25} />
+                <p>{t("optimization.empty")}</p>
+              </div>
+            </section>
+          )}
 
           {result && (
             <section className="panel">

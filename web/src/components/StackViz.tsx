@@ -11,6 +11,7 @@ import {
   midplaneIndex,
   placePlies,
 } from "../lib/stackLayout";
+import { ToggleGroup } from "./ToggleGroup";
 import { useT } from "../i18n";
 import { useChartWidth } from "../lib/useChartWidth";
 
@@ -263,24 +264,20 @@ export function StackViz({
             </button>
           ))}
         </div>
-        <label>
-          <input
-            type="checkbox"
-            checked={options.showGlyphs}
-            onChange={(e) => setOptions((o) => ({ ...o, showGlyphs: e.target.checked }))}
-          />
-          {t("layers.viz.glyphs")}
-        </label>
-        {symmetric && (
-          <label>
-            <input
-              type="checkbox"
-              checked={options.showMirror}
-              onChange={(e) => setOptions((o) => ({ ...o, showMirror: e.target.checked }))}
-            />
-            {t("layers.viz.mirror")}
-          </label>
-        )}
+        {/* View switches, so buttons like the colour switch beside them. */}
+        <ToggleGroup
+          label={t("layers.viz.show")}
+          items={[
+            { key: "glyphs" as const, label: t("layers.viz.glyphs") },
+            ...(symmetric ? [{ key: "mirror" as const, label: t("layers.viz.mirror") }] : []),
+          ]}
+          isOn={(k) => (k === "glyphs" ? options.showGlyphs : options.showMirror)}
+          onToggle={(k) =>
+            setOptions((o) =>
+              k === "glyphs" ? { ...o, showGlyphs: !o.showGlyphs } : { ...o, showMirror: !o.showMirror },
+            )
+          }
+        />
       </div>
       {view}
       {windowed && (

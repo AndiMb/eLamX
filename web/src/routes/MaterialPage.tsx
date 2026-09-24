@@ -79,7 +79,12 @@ export function MaterialPage() {
           page's own name is the h1 for heading navigation. */}
       <h1 className="visually-hidden">{material.name}</h1>
 
-      <section className="panel">
+      {/* Two columns of cards: each holds four or five fields, and at full
+          width they filled the left half of a 1270 px card. Stiffness beside
+          strength, the hygrothermal coefficients beside the micromechanics
+          they can be derived from. */}
+      <div className="dash">
+      <section className="panel span-6">
         <h2>
           <Diamond size={16} strokeWidth={1.75} />
           {t("material.properties")}
@@ -125,9 +130,44 @@ export function MaterialPage() {
             beta are the only things that turn a state change into a load. */}
       </section>
 
-      <MicroMechanicsPanel material={material} />
+      <section className="panel span-6">
+        <h2>{t("material.strengths")}</h2>
+        <div className="field-grid">
+          <label>
+            <span className="field-label">
+              R<sub>&#8741;,{t("material.sym.tension")}</sub>
+            </span>
+            <Quantity category="stress" value={material.r_par_ten} onChange={(v) => update("r_par_ten", v)} />
+          </label>
+          <label>
+            <span className="field-label">
+              R<sub>&#8741;,{t("material.sym.compression")}</sub>
+            </span>
+            <Quantity category="stress" value={material.r_par_com} onChange={(v) => update("r_par_com", v)} />
+          </label>
+          <label>
+            <span className="field-label">
+              R<sub>&perp;,{t("material.sym.tension")}</sub>
+            </span>
+            <Quantity category="stress" value={material.r_nor_ten} onChange={(v) => update("r_nor_ten", v)} />
+          </label>
+          <label>
+            <span className="field-label">
+              R<sub>&perp;,{t("material.sym.compression")}</sub>
+            </span>
+            <Quantity category="stress" value={material.r_nor_com} onChange={(v) => update("r_nor_com", v)} />
+          </label>
+          <label>
+            <span className="field-label">
+              R<sub>&#8741;&perp;</sub>
+            </span>
+            <Quantity category="stress" value={material.r_shear} onChange={(v) => update("r_shear", v)} />
+          </label>
+        </div>
 
-      <section className="panel">
+      </section>
+
+      <section className="panel span-6">
         <h2>{t("material.hygrothermal")}</h2>
         <p className="hint">{t("material.hygrothermal.hint")}</p>
         <div className="field-grid">
@@ -167,46 +207,14 @@ export function MaterialPage() {
 
       </section>
 
-      <section className="panel">
-        <h2>{t("material.strengths")}</h2>
-        <div className="field-grid">
-          <label>
-            <span className="field-label">
-              R<sub>&#8741;,{t("material.sym.tension")}</sub>
-            </span>
-            <Quantity category="stress" value={material.r_par_ten} onChange={(v) => update("r_par_ten", v)} />
-          </label>
-          <label>
-            <span className="field-label">
-              R<sub>&#8741;,{t("material.sym.compression")}</sub>
-            </span>
-            <Quantity category="stress" value={material.r_par_com} onChange={(v) => update("r_par_com", v)} />
-          </label>
-          <label>
-            <span className="field-label">
-              R<sub>&perp;,{t("material.sym.tension")}</sub>
-            </span>
-            <Quantity category="stress" value={material.r_nor_ten} onChange={(v) => update("r_nor_ten", v)} />
-          </label>
-          <label>
-            <span className="field-label">
-              R<sub>&perp;,{t("material.sym.compression")}</sub>
-            </span>
-            <Quantity category="stress" value={material.r_nor_com} onChange={(v) => update("r_nor_com", v)} />
-          </label>
-          <label>
-            <span className="field-label">
-              R<sub>&#8741;&perp;</sub>
-            </span>
-            <Quantity category="stress" value={material.r_shear} onChange={(v) => update("r_shear", v)} />
-          </label>
-        </div>
+      <MicroMechanicsPanel material={material} className="span-6" />
 
-      </section>
+
 
       <section className="panel">
         <h2>{t("material.criterionParams")}</h2>
         <p className="hint">{t("material.criterionParams.hint")}</p>
+        <div className="criterion-params-list">
 
         <details className="criterion-params">
           <summary>{t("criterion.max_strain")}</summary>
@@ -486,11 +494,13 @@ export function MaterialPage() {
             </label>
           </div>
         </details>
+        </div>
       </section>
 
       {/* Modules that are about the MATERIAL rather than a laminate - the
           scope the registry gained for exactly this. */}
       <ModuleList scope="material" ownerId={material.id} />
+      </div>
     </>
   );
 }

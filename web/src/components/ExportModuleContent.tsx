@@ -12,6 +12,7 @@ import { laminateConfigFamily } from "../store/laminateAtoms";
 import type { ExportOptionsDto, OffsetId, SolverId } from "../lib/types";
 import { SafeNumberInput } from "./SafeNumberInput";
 import { BackLink } from "./BackLink";
+import { Panel } from "./Panel";
 import { useT } from "../i18n";
 
 // Handing the laminate to the solver it will actually be analysed in.
@@ -193,22 +194,28 @@ export function ExportModuleContent({ laminateId }: { laminateId: string }) {
           )}
         </section>
 
-        <section className="panel module-result">
-          <h2>{t("export.preview.title")}</h2>
-          {error ? (
-            <p className="error">{error}</p>
-          ) : (
-            <>
-              <button type="button" className="primary" onClick={download} disabled={!deck}>
+        {/* The download in the head of the file it downloads, where every
+            other card keeps its export. */}
+        <Panel
+          className="module-result"
+          title={t("export.preview.title")}
+          tools={
+            !error && (
+              <button type="button" className="primary head-button" onClick={download} disabled={!deck}>
                 <Download size={16} aria-hidden="true" />
                 {t("export.download")}
               </button>
-              <pre className="deck-preview" aria-label={t("export.preview.title")}>
-                {deck ?? ""}
-              </pre>
-            </>
+            )
+          }
+        >
+          {error ? (
+            <p className="error">{error}</p>
+          ) : (
+            <pre className="deck-preview" aria-label={t("export.preview.title")}>
+              {deck ?? ""}
+            </pre>
           )}
-        </section>
+        </Panel>
       </div>
     </>
   );

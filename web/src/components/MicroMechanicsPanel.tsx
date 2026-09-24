@@ -31,7 +31,7 @@ import { useT } from "../i18n";
 // density, the stiffness along the fibre and the Poisson's ratio with the same
 // rule of mixtures, and differ only across the fibre and in shear.
 
-export function MicroMechanicsPanel({ material }: { material: MaterialDto }) {
+export function MicroMechanicsPanel({ material, className }: { material: MaterialDto; className?: string }) {
   const t = useT();
   const [materials, setMaterials] = useAtom(materialsAtom);
   const fibres = useAtomValue(fibresAtom);
@@ -56,7 +56,7 @@ export function MicroMechanicsPanel({ material }: { material: MaterialDto }) {
     (!fibres.some((f) => f.id === micro.fibre_id) || !matrices.some((m) => m.id === micro.matrix_id));
 
   return (
-    <section className="panel">
+    <section className={className ? `panel ${className}` : "panel"}>
       <h2>{t("micro.title")}</h2>
       <p className="hint">{t("micro.hint")}</p>
 

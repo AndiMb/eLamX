@@ -55,8 +55,11 @@ export function FormatSettingsPage() {
   const t = useT();
   const categories = Object.keys(CATEGORY_DEFINITIONS) as QuantityCategory[];
 
+  // Units beside the table export: the units table is 780 px of a
+  // 1270 px card, and the export settings were three selects below its end.
   return (
-    <section className="panel">
+    <div className="dash">
+    <section className="panel span-8">
       <h2>
         <Ruler size={16} strokeWidth={1.75} />
         {t("nav.formatSettings")}
@@ -77,8 +80,9 @@ export function FormatSettingsPage() {
           ))}
         </tbody>
       </table>
-      <TableExportSettingsPanel />
     </section>
+    <TableExportSettingsPanel />
+    </div>
   );
 }
 
@@ -93,8 +97,8 @@ function TableExportSettingsPanel() {
   const auto = (value: string) => t("format.export.auto", { value });
 
   return (
-    <>
-      <h3>{t("format.export.title")}</h3>
+    <section className="panel span-4">
+      <h2>{t("format.export.title")}</h2>
       <p className="hint">{t("format.export.hint")}</p>
       <div className="format-export-settings">
         <label>
@@ -122,6 +126,6 @@ function TableExportSettingsPanel() {
           </select>
         </label>
       </div>
-    </>
+    </section>
   );
 }
