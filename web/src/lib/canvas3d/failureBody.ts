@@ -104,15 +104,40 @@ export type FailureBodyAxisScale = "true" | "stretched";
  * An axis name, with `n_xy` written as n with xy set low and small - the
  * notation the rest of the app uses, where a canvas has no <sub>.
  */
-function fillLabel(ctx: CanvasRenderingContext2D, label: string, x: number, y: number) {
+function fillLabel(
+  ctx: CanvasRenderingContext2D,
+  label: string,
+  x: number,
+  y: number,
+  { halo, align = "left" }: { halo: string; align?: "left" | "right" | "center" },
+) {
   const [base, sub] = label.split("_", 2);
-  ctx.font = chartFont(CHART_FS_LABEL);
-  ctx.fillText(base, x, y);
-  if (!sub) return;
-  const at = x + ctx.measureText(base).width + 0.5;
-  ctx.font = chartFont(CHART_FS_TICK - 2);
-  ctx.fillText(sub, at, y + 3);
-  ctx.font = chartFont(CHART_FS_LABEL);
+  const baseFont = chartFont(CHART_FS_LABEL);
+  const subFont = chartFont(CHART_FS_TICK - 2);
+  ctx.font = baseFont;
+  const baseWidth = ctx.measureText(base).width;
+  ctx.font = subFont;
+  const subWidth = sub ? ctx.measureText(sub).width + 0.5 : 0;
+  const width = baseWidth + subWidth;
+  const left = align === "left" ? x : align === "right" ? x - width : x - width / 2;
+  // A halo in the canvas's own background, so a name that ends up over the
+  // body - a stretched body reaches into every corner of its box - stays
+  // readable instead of disappearing into the shading.
+  const draw = (text: string, font: string, at: number, dy: number) => {
+    ctx.font = font;
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = halo;
+    ctx.strokeText(text, at, y + dy);
+    ctx.restore();
+    ctx.fillText(text, at, y + dy);
+  };
+  ctx.textAlign = "left";
+  draw(base, baseFont, left, 0);
+  if (sub) draw(sub, subFont, left + baseWidth + 0.5, 3);
+  ctx.font = baseFont;
 }
 
 export interface FailureBodyDrawing {
@@ -186,7 +211,10 @@ export function drawFailureBody(
   // the surface. At true scale the short axes run on to a common length
   // instead of stopping just past a flat body, where their labels would pile
   // up at the origin.
-  const AXIS_REACH = 1.25;
+  // Stretched, the body fills its box to the corners, which lie at up to
+  // sqrt(3) along a diagonal - an axis stopping at 1.25 ended inside the
+  // picture of the body, and its name with it. There it runs on to 1.6.
+  const AXIS_REACH = axisScale === "true" ? 1.25 : 1.6;
   const reach = (span: number) => (axisScale === "true" ? Math.max(span * AXIS_REACH, spanMax * 0.75) : span * AXIS_REACH);
   const axes: { end: [number, number, number]; label: string }[] = [
     { end: [reach(spanPar), 0, 0], label: axisLabels[0] },
@@ -350,7 +378,19 @@ export function drawFailureBody(
     // The line recedes, its name does not: a faded label is the one thing
     // on this picture nobody can read.
     ctx.globalAlpha = 1;
-    fillLabel(ctx, axis.label, to.x + 4, to.y - 2);
+    // Beyond the end of the axis, in its direction on screen: to the left
+    // of an axis that points left, above one that points up.
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const ux = dx / length;
+    const uy = dy / length;
+    ctx.textBaseline = "middle";
+    fillLabel(ctx, axis.label, to.x + ux * 8, to.y + uy * 8, {
+      halo: background,
+      align: ux > 0.35 ? "left" : ux < -0.35 ? "right" : "center",
+    });
+    ctx.textBaseline = "alphabetic";
     ctx.globalAlpha = 0.55;
   }
   ctx.restore();

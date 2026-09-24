@@ -27,6 +27,15 @@ import { ChartSnapshotButton } from "./ChartSnapshotButton";
 
 export type { FailureBodySurface, StressMarker } from "../../lib/canvas3d/failureBody";
 
+/** The first non-transparent background from the element outwards. */
+function opaqueBackground(element: Element): string {
+  for (let e: Element | null = element; e; e = e.parentElement) {
+    const color = getComputedStyle(e).backgroundColor;
+    if (color && color !== "transparent" && !/^rgba\(.*,\s*0\)$/.test(color)) return color;
+  }
+  return "#fff";
+}
+
 export const FailureBody3D = memo(function FailureBody3D({
   bodies,
   markers,
@@ -81,7 +90,10 @@ export const FailureBody3D = memo(function FailureBody3D({
       camera,
       colors,
       ink: styles.color,
-      background: styles.backgroundColor || "#fff",
+      // The canvas itself is transparent; the colour behind it is the
+      // stage's (.plate3d), and a transparent "background" drew no ring and
+      // no halo at all.
+      background: opaqueBackground(canvas),
       axisScale,
     });
   }, [bodies, markers, camera, colors, axisLabels, axisScale]);
