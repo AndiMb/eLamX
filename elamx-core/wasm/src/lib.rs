@@ -297,6 +297,12 @@ pub fn compute_angle_sweep(request_json: &str, delta_angle_deg: f64) -> Result<S
 }
 
 fn compute_angle_sweep_impl(request_json: &str, delta_angle_deg: f64) -> Result<String, String> {
+    // The step sizes the result: 360 / step columns. Zero is a capacity
+    // overflow, a step of 1e-9 asks for gigabytes, and a negative one quietly
+    // returns nothing. A tenth of a degree is finer than any chart draws.
+    if !(0.1..=360.0).contains(&delta_angle_deg) {
+        return Err(format!("the angle step must be within 0.1..=360 degrees, not {delta_angle_deg}"));
+    }
     let request: AngleSweepRequest =
         serde_json::from_str(request_json).map_err(|e| e.to_string())?;
     let clt = CltLaminate::new(&request.laminate, &request.materials)
@@ -410,6 +416,31 @@ fn compute_buckling_impl(request_json: &str) -> Result<String, String> {
 ///
 /// Shaped by [`BucklingSurfaceRequest`]; the `shape` comes straight from a
 /// mode in [`compute_buckling`]'s response.
+/// What a mode surface request must satisfy before anything is sampled.
+///
+/// The shape has to be the m x n the input declares, m and n have to lie
+/// within the tabulated shape functions - term 21 is an index past the end of
+/// the tables, not a finer mode - and the grid has to be a grid without being
+/// a request for gigabytes: the same ceiling the plate field keeps.
+fn check_mode_grid(shape: &[Vec<f64>], m: usize, n: usize, samples: usize) -> Result<(), String> {
+    use elamx_core::plate::field::MAX_SAMPLES;
+    use elamx_core::plate::MAX_TERMS;
+    if !(2..=MAX_SAMPLES).contains(&samples) {
+        return Err(format!("samples must be within 2..={MAX_SAMPLES}, not {samples}"));
+    }
+    if !(1..=MAX_TERMS).contains(&m) || !(1..=MAX_TERMS).contains(&n) {
+        return Err(format!("m={m}, n={n}: the terms must be within 1..={MAX_TERMS}"));
+    }
+    if shape.len() != m || shape.iter().any(|row| row.len() != n) {
+        return Err(format!(
+            "mode shape is {}x{}, but the input declares m={m}, n={n}",
+            shape.len(),
+            shape.first().map_or(0, |r| r.len()),
+        ));
+    }
+    Ok(())
+}
+
 #[wasm_bindgen]
 pub fn compute_buckling_surface(request_json: &str) -> Result<String, JsValue> {
     compute_buckling_surface_impl(request_json).map_err(|e| JsValue::from_str(&e))
@@ -419,20 +450,7 @@ fn compute_buckling_surface_impl(request_json: &str) -> Result<String, String> {
     let request: BucklingSurfaceRequest =
         serde_json::from_str(request_json).map_err(|e| e.to_string())?;
 
-    if request.samples < 2 {
-        return Err("samples must be at least 2".to_string());
-    }
-    if request.shape.len() != request.input.m
-        || request.shape.iter().any(|row| row.len() != request.input.n)
-    {
-        return Err(format!(
-            "mode shape is {}x{}, but the input declares m={}, n={}",
-            request.shape.len(),
-            request.shape.first().map_or(0, |r| r.len()),
-            request.input.m,
-            request.input.n
-        ));
-    }
+    check_mode_grid(&request.shape, request.input.m, request.input.n, request.samples)?;
 
     let surface = mode_surface(&request.shape, &request.input, request.samples, request.samples);
     serde_json::to_string(&surface).map_err(|e| e.to_string())
@@ -649,6 +667,12 @@ fn compute_failure_envelope_impl(request_json: &str) -> Result<String, String> {
     let request: FailureEnvelopeRequest =
         serde_json::from_str(request_json).map_err(|e| e.to_string())?;
 
+    // 30 * quality samples around, twice that along: quality 10 is already
+    // 180 000 criterion evaluations, and the view asks for 1.
+    if !(0.1..=10.0).contains(&request.quality) {
+        return Err(format!("quality must be within 0.1..=10, not {}", request.quality));
+    }
+
     let criteria = default_criterion_registry();
     let criterion = criteria
         .get(&request.criterion_id)
@@ -729,20 +753,7 @@ fn compute_vibration_surface_impl(request_json: &str) -> Result<String, String> 
     let request: VibrationSurfaceRequest =
         serde_json::from_str(request_json).map_err(|e| e.to_string())?;
 
-    if request.samples < 2 {
-        return Err("samples must be at least 2".to_string());
-    }
-    if request.shape.len() != request.input.m
-        || request.shape.iter().any(|row| row.len() != request.input.n)
-    {
-        return Err(format!(
-            "mode shape is {}x{}, but the input declares m={}, n={}",
-            request.shape.len(),
-            request.shape.first().map_or(0, |r| r.len()),
-            request.input.m,
-            request.input.n
-        ));
-    }
+    check_mode_grid(&request.shape, request.input.m, request.input.n, request.samples)?;
 
     let surface =
         vibration_mode_surface(&request.shape, &request.input, request.samples, request.samples);
@@ -1665,6 +1676,43 @@ mod tests {
             "bc_x":"SS","bc_y":"SS","m":1,"n":1,"d_matrix":"standard"},
             "shape": [[1.0]], "samples": 1}"#;
         assert!(compute_buckling_surface_impl(too_coarse).is_err());
+    }
+
+    /// The shape functions are tabulated for 20 terms, so term 21 was an index
+    /// past the end of the tables - a panic, which in the browser is a trap
+    /// of the whole module - and the sample count had no ceiling at all.
+    #[test]
+    fn mode_surfaces_refuse_terms_past_the_tables_and_unbounded_grids() {
+        let shape = |m: usize, n: usize| serde_json::to_string(&vec![vec![0.1; n]; m]).unwrap();
+        let request = |m: usize, n: usize, samples: usize| {
+            format!(
+                r#"{{"input": {{"length":400.0,"width":400.0,"n_x":-1.0,"n_y":0.0,"n_xy":0.0,
+                    "bc_x":"SS","bc_y":"SS","m":{m},"n":{n},"d_matrix":"standard"}},
+                    "shape": {}, "samples": {samples}}}"#,
+                shape(m, n)
+            )
+        };
+        assert!(compute_buckling_surface_impl(&request(20, 20, 11)).is_ok());
+        assert!(compute_buckling_surface_impl(&request(21, 20, 11)).is_err());
+        assert!(compute_buckling_surface_impl(&request(20, 21, 11)).is_err());
+        assert!(compute_buckling_surface_impl(&request(6, 6, 1_000_000)).is_err());
+        assert!(compute_vibration_surface_impl(&request(21, 20, 11)).is_err());
+        assert!(compute_vibration_surface_impl(&request(6, 6, 1_000_000)).is_err());
+    }
+
+    /// Zero was a capacity-overflow panic, a tiny step a request for
+    /// gigabytes and a negative one an empty answer.
+    #[test]
+    fn the_angle_sweep_refuses_a_step_it_cannot_take() {
+        for step in [0.0, -5.0, 1e-9, f64::NAN, 400.0] {
+            assert!(compute_angle_sweep_impl(&sample_angle_sweep_request(), step).is_err(), "{step}");
+        }
+    }
+
+    #[test]
+    fn the_failure_envelope_refuses_a_quality_without_bound() {
+        assert!(compute_failure_envelope_impl(&envelope_request("max_stress", 1000.0)).is_err());
+        assert!(compute_failure_envelope_impl(&envelope_request("max_stress", 0.0)).is_err());
     }
 
     #[test]

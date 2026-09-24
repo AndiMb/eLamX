@@ -116,6 +116,11 @@ pub struct CutoutResult {
     pub peak_m_theta_alpha: f64,
 }
 
+/// The most points the hole's edge is sampled at: every tenth of a degree,
+/// the same ceiling the module's input field keeps. A file can ask for more,
+/// and each point is a closed-form evaluation of its own.
+pub const MAX_VALUES: usize = 3601;
+
 /// The guards both solutions share, from `cutoutui/ControlPanel.checkInput`
 /// plus the ones the original leaves implicit.
 fn check_input(laminate: &CltLaminate, input: &CutoutInput) -> Result<(), CutoutError> {
@@ -124,6 +129,9 @@ fn check_input(laminate: &CltLaminate, input: &CutoutInput) -> Result<(), Cutout
     }
     if input.values < 5 {
         return Err(CutoutError::TooFewValues { values: input.values });
+    }
+    if input.values > MAX_VALUES {
+        return Err(CutoutError::TooManyValues { values: input.values, maximum: MAX_VALUES });
     }
     if input.geometry.a() <= 0.0 || input.geometry.b() <= 0.0 {
         return Err(CutoutError::NonPositiveGeometry);
@@ -798,6 +806,10 @@ mod tests {
         assert_eq!(
             calculate_symmetric(&plate, &CutoutInput { values: 3, ..Default::default() }),
             Err(CutoutError::TooFewValues { values: 3 })
+        );
+        assert_eq!(
+            calculate_symmetric(&plate, &CutoutInput { values: MAX_VALUES + 1, ..Default::default() }),
+            Err(CutoutError::TooManyValues { values: MAX_VALUES + 1, maximum: MAX_VALUES })
         );
         assert_eq!(
             calculate_symmetric(

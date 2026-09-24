@@ -78,6 +78,9 @@ pub enum CutoutError {
     EmptyLaminate,
     /// Not enough sample points to describe a closed contour.
     TooFewValues { values: usize },
+    /// More sample points than any chart can show - a tenth of a degree is
+    /// the frontend's own ceiling - and each one is a full evaluation.
+    TooManyValues { values: usize, maximum: usize },
     /// The hole is longer than the mapping was fitted for.
     AspectRatioTooLarge { ratio: f64, maximum: f64 },
     /// A side, radius or semi-axis that is zero or negative.
@@ -110,6 +113,9 @@ impl std::fmt::Display for CutoutError {
             CutoutError::EmptyLaminate => write!(f, "the laminate has no layers"),
             CutoutError::TooFewValues { values } => {
                 write!(f, "a contour needs at least 5 points, got {values}")
+            }
+            CutoutError::TooManyValues { values, maximum } => {
+                write!(f, "{values} contour points is more than the {maximum} a contour is sampled at")
             }
             CutoutError::AspectRatioTooLarge { ratio, maximum } => write!(
                 f,

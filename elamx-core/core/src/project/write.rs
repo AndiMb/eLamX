@@ -298,22 +298,19 @@ fn write_optimization(optimization: &NamedOptimization, out: &mut String) {
         escape(&optimization.name)
     ));
     tag(out, 12, "angletype", &optimization.angle_type.to_string());
-    tag(
-        out,
-        12,
-        "optimizer",
-        naming::optimizer_to_java(&optimization.optimizer)
-            .expect("every optimizer has a Java class name"),
-    );
+    // Both codes arrive as text in the project JSON, so an unknown one is the
+    // caller's data, not a broken invariant, and panicking here would take
+    // the whole save with it. Fallen back on the format's defaults instead,
+    // as a layer's criterion is: the first search the original lists, and
+    // Puck.
+    let optimizer = naming::optimizer_to_java(&optimization.optimizer)
+        .unwrap_or_else(|| naming::optimizer_to_java("sequential").unwrap());
+    tag(out, 12, "optimizer", optimizer);
     tag(out, 12, "thickness", &num(input.thickness));
     tag(out, 12, "material", &escape(&input.material_id));
-    tag(
-        out,
-        12,
-        "criterion",
-        naming::criterion_to_java(&input.criterion_id)
-            .expect("every ported criterion has a Java class name"),
-    );
+    let criterion = naming::criterion_to_java(&input.criterion_id)
+        .unwrap_or_else(|| naming::criterion_to_java(crate::failure::PUCK_ID).unwrap());
+    tag(out, 12, "criterion", criterion);
     tag(out, 12, "symmetriclaminat", &input.symmetric.to_string());
 
     out.push_str(&format!(

@@ -35,6 +35,7 @@
 use std::collections::HashMap;
 
 use super::boundary::Boundary;
+use super::boundary_tables::MAX_TERMS;
 use super::deformation::DeformationInput;
 use super::ritz::{self, Derivative, SurfaceScale};
 use crate::clt::{CltLaminate, LayerPosition};
@@ -119,6 +120,8 @@ pub struct PlateFieldResult {
 pub enum PlateFieldError {
     LayerOutOfRange { layer: usize, layers: usize },
     SampleCountOutOfRange { samples: usize },
+    /// m or n outside 1..=MAX_TERMS, or coefficients of another shape.
+    TermCountOutOfRange { m: usize, n: usize, max: usize },
     MissingMaterial(String),
     MissingCriterion(String),
 }
@@ -132,6 +135,10 @@ impl std::fmt::Display for PlateFieldError {
             PlateFieldError::SampleCountOutOfRange { samples } => write!(
                 f,
                 "grid resolution {samples} must be within {MIN_SAMPLES}..={MAX_SAMPLES}"
+            ),
+            PlateFieldError::TermCountOutOfRange { m, n, max } => write!(
+                f,
+                "coefficients for {m}x{n} terms, but the shape functions are tabulated for 1..={max}"
             ),
             PlateFieldError::MissingMaterial(id) => write!(f, "material '{id}' not found"),
             PlateFieldError::MissingCriterion(id) => {
@@ -166,6 +173,16 @@ pub fn evaluate(
     let samples = selection.samples;
     if !(MIN_SAMPLES..=MAX_SAMPLES).contains(&samples) {
         return Err(PlateFieldError::SampleCountOutOfRange { samples });
+    }
+    // The shape functions come from tables of MAX_TERMS entries, so a term
+    // beyond them is an index out of bounds, not a finer answer.
+    let m = coefficients.len();
+    let n = coefficients.first().map_or(0, Vec::len);
+    if !(1..=MAX_TERMS).contains(&m)
+        || !(1..=MAX_TERMS).contains(&n)
+        || coefficients.iter().any(|row| row.len() != n)
+    {
+        return Err(PlateFieldError::TermCountOutOfRange { m, n, max: MAX_TERMS });
     }
 
     let bx = Boundary::new(input.bc_x, input.length);

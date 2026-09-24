@@ -103,6 +103,9 @@ pub enum LaminateEnvelopeError {
     MissingCriterion(String),
     /// Fewer than two steps in a direction leaves no surface to draw.
     ResolutionTooLow { alpha_steps: usize, beta_steps: usize },
+    /// More than [`MAX_STEPS`] in a direction: each grid point is a
+    /// degradation sequence of its own, so the cost grows with the product.
+    ResolutionTooHigh { alpha_steps: usize, beta_steps: usize },
     /// A ray was asked for through the origin, which has no direction.
     ZeroLoad,
 }
@@ -117,12 +120,20 @@ impl std::fmt::Display for LaminateEnvelopeError {
                 f,
                 "alpha_steps={alpha_steps}, beta_steps={beta_steps}: both must be at least 2"
             ),
+            LaminateEnvelopeError::ResolutionTooHigh { alpha_steps, beta_steps } => write!(
+                f,
+                "alpha_steps={alpha_steps}, beta_steps={beta_steps}: neither may exceed {MAX_STEPS}"
+            ),
             LaminateEnvelopeError::ZeroLoad => write!(f, "the load is zero and has no direction"),
         }
     }
 }
 
 impl std::error::Error for LaminateEnvelopeError {}
+
+/// The finest grid a direction may be swept at. The module's "fine" setting
+/// is 80 x 160; this is four times that in beta.
+pub const MAX_STEPS: usize = 720;
 
 /// How close to the governing reserve factor a ply has to be to count as
 /// failing in the same step. The Java's own tolerance.
@@ -138,6 +149,12 @@ pub fn laminate_envelope(
 ) -> Result<LaminateEnvelope, LaminateEnvelopeError> {
     if input.alpha_steps < 2 || input.beta_steps < 2 {
         return Err(LaminateEnvelopeError::ResolutionTooLow {
+            alpha_steps: input.alpha_steps,
+            beta_steps: input.beta_steps,
+        });
+    }
+    if input.alpha_steps > MAX_STEPS || input.beta_steps > MAX_STEPS {
+        return Err(LaminateEnvelopeError::ResolutionTooHigh {
             alpha_steps: input.alpha_steps,
             beta_steps: input.beta_steps,
         });
@@ -379,6 +396,7 @@ fn along(
         // step - several can go at once, which is why this is a loop and not
         // a single index.
         let mut fibre_failure = false;
+        let broken_before = broken_count;
         for (index, (rf, failure)) in per_ply.iter().enumerate() {
             if governing * (1.0 + EPS) <= *rf {
                 continue;
@@ -404,7 +422,14 @@ fn along(
             }
         }
 
-        if fibre_failure || broken_count == ply_count {
+        // A step that broke nothing leaves the stack as it was, and the next
+        // step would compute the same factors and break nothing again - for
+        // ever. It happens when the governing ply reports neither fibre nor
+        // matrix failure (a criterion that sees no stress in this direction
+        // answers Undamaged at f64::MAX), or when the governing ply is one
+        // already degraded. The original has no way out of that loop; here
+        // the load reached so far is the answer.
+        if fibre_failure || broken_count == ply_count || broken_count == broken_before {
             break;
         }
     }
@@ -601,6 +626,15 @@ mod tests {
             ),
             Err(LaminateEnvelopeError::ResolutionTooLow { .. })
         ));
+        assert!(matches!(
+            laminate_envelope(
+                &laminate,
+                &materials,
+                &registry,
+                &LaminateEnvelopeInput { alpha_steps: 4, beta_steps: MAX_STEPS + 1, ..Default::default() }
+            ),
+            Err(LaminateEnvelopeError::ResolutionTooHigh { .. })
+        ));
 
         let empty = Laminate::new("e", "e");
         assert!(matches!(
@@ -671,5 +705,24 @@ mod tests {
             laminate_rf_along(&laminate, &materials, &registry, LaminateFailureKind::FirstPly, [0.0; 3]),
             Err(LaminateEnvelopeError::ZeroLoad)
         );
+    }
+
+    /// The case that used to hang: a criterion that sees nothing in the
+    /// direction it is asked about. Fibre failure on a single 0 degree ply
+    /// under pure shear flow answers Undamaged at f64::MAX, so no step broke a
+    /// ply and every step repeated the one before. It has to come back, and
+    /// come back as no failure found along that ray.
+    #[test]
+    fn a_direction_the_criterion_cannot_see_ends_instead_of_repeating() {
+        let (mut laminate, materials) = stack(&[0.0]);
+        laminate.layers[0].criterion_id = Some(crate::failure::FIBRE_FAILURE_ID.to_string());
+        let envelope = laminate_envelope(
+            &laminate,
+            &materials,
+            &default_criterion_registry(),
+            &LaminateEnvelopeInput { kind: LaminateFailureKind::Final, alpha_steps: 2, beta_steps: 4 },
+        )
+        .unwrap();
+        assert_eq!(envelope.points.len(), 3);
     }
 }

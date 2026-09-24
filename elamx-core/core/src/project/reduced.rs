@@ -29,7 +29,7 @@ use super::{NamedBuckling, NamedCalculation, NamedLastPlyFailure, Project, Proje
 use crate::clt::{CltLaminate, LastPlyFailureInput, Loads, Strains};
 use crate::model::{Laminate, Layer, Material};
 use crate::plate::{BoundaryCondition, BucklingInput, DMatrixKind};
-use roxmltree::{Document, Node};
+use roxmltree::Node;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -58,7 +58,7 @@ struct MaterialEntry {
 /// The result is an ordinary project: there is nothing reduced about it once it
 /// is open, which is the point - the shorthand is for writing, not for holding.
 pub fn read_elamxb(xml: &str) -> Result<Project> {
-    let doc = Document::parse(xml).map_err(|e| ReadError::Xml(e.to_string()))?;
+    let doc = super::read::parse_document(xml)?;
     let root = doc.root_element();
     if root.tag_name().name() != "elamx" {
         return Err(ReadError::NotAnElamxFile);
@@ -453,10 +453,10 @@ fn read_buckling(node: Node, case: &LoadCase, name: &str) -> Result<BucklingInpu
         match tag.as_str() {
             "length" => input.length = number(value_node, name)?,
             "width" => input.width = number(value_node, name)?,
-            "bcx" => input.bc_x = boundary(number(value_node, name)? as i64, name)?,
-            "bcy" => input.bc_y = boundary(number(value_node, name)? as i64, name)?,
-            "m" => m = Some(number(value_node, name)? as usize),
-            "n" => n = Some(number(value_node, name)? as usize),
+            "bcx" => input.bc_x = boundary(whole(value_node, name)?, name)?,
+            "bcy" => input.bc_y = boundary(whole(value_node, name)?, name)?,
+            "m" => m = Some(term_count(value_node, name)?),
+            "n" => n = Some(term_count(value_node, name)?),
             _ => {}
         }
     }
@@ -466,8 +466,24 @@ fn read_buckling(node: Node, case: &LoadCase, name: &str) -> Result<BucklingInpu
     Ok(input)
 }
 
+/// A code or a count: a number, and a whole one - see `read::whole_number`.
+fn whole(node: Node, context: &str) -> Result<i64> {
+    let value = number(node, context)?;
+    let context = format!("{context}/<{}>", node.tag_name().name());
+    super::read::whole_number(value, &context, &text(node))
+}
+
+fn term_count(node: Node, context: &str) -> Result<usize> {
+    let value = whole(node, context)?;
+    usize::try_from(value).map_err(|_| ReadError::NotAWholeNumber {
+        context: format!("{context}/<{}>", node.tag_name().name()),
+        text: text(node),
+    })
+}
+
 fn boundary(code: i64, context: &str) -> Result<BoundaryCondition> {
-    naming::boundary_from_index(code as usize).ok_or_else(|| ReadError::Unknown {
+    let index = usize::try_from(code).unwrap_or(usize::MAX);
+    naming::boundary_from_index(index).ok_or_else(|| ReadError::Unknown {
         context: context.to_string(),
         value: format!("Randbedingung {code}"),
     })

@@ -842,6 +842,74 @@ fn reports_malformed_and_foreign_documents() {
     assert!(matches!(read_elamx(&nan), Err(ReadError::NotANumber { .. })));
 }
 
+/// A document that exists only to be deep. Ten thousand levels are forty
+/// kilobytes and used to overflow the parser's stack - an abort, not an
+/// error, in the browser's worker as on the desktop.
+#[test]
+fn refuses_a_document_nested_deeper_than_any_elamx_file() {
+    let depth = 100_000;
+    let xml = format!("<elamx>{}{}</elamx>", "<a>".repeat(depth), "</a>".repeat(depth));
+    assert!(matches!(read_elamx(&xml), Err(ReadError::TooDeep { .. })));
+    assert!(matches!(
+        elamx_core::project::read_elamxb(&xml),
+        Err(ReadError::TooDeep { .. })
+    ));
+
+    // The count must not be fooled by what only looks like an element, nor
+    // count an empty element as a level: the reference file still opens.
+    let reference = reference_xml();
+    assert!(read_elamx(&reference).is_ok());
+    let many = "<a>".repeat(100);
+    let decorated = reference.replacen(
+        "<laminates>",
+        &format!("<laminates><!-- {many} --><x attr=\"{}\"/><![CDATA[{many}]]>", ">".repeat(100)),
+        1,
+    );
+    assert!(read_elamx(&decorated).is_ok());
+}
+
+/// The count of `<angles number="N">` is the file's say-so. Reserving N
+/// entries up front aborted on the allocation for a large N before the
+/// missing `<angle0>` could be reported.
+#[test]
+fn an_absurd_angle_count_is_a_missing_angle_not_an_abort() {
+    let xml = reference_xml().replacen("<angles number=\"4\">", "<angles number=\"99999999999999\">", 1);
+    assert!(matches!(read_elamx(&xml), Err(ReadError::Missing { .. })));
+}
+
+/// Counts, indices and codes have to be whole numbers. Cast with `as`, an
+/// edge condition of -1 became index 0 - simply supported - and a term count
+/// of 2.5 became 2, both without a word.
+#[test]
+fn counts_and_codes_must_be_whole_numbers() {
+    let reference = reference_xml();
+    for (from, to) in [("<m>10</m>", "<m>2.5</m>"), ("<bcx>0</bcx>", "<bcx>-1</bcx>")] {
+        let xml = reference.replacen(from, to, 1);
+        assert!(
+            matches!(read_elamx(&xml), Err(ReadError::NotAWholeNumber { .. })),
+            "{to}: {:?}",
+            read_elamx(&xml).err()
+        );
+    }
+    // Written as a float, a whole number is still one.
+    assert!(read_elamx(&reference.replacen("<m>10</m>", "<m>10.0</m>", 1)).is_ok());
+}
+
+/// The optimiser and its criterion arrive as text in the project JSON, so an
+/// unknown one is data, not a broken invariant. The writer used to `expect`
+/// on both and take the whole save down; it now falls back on the format's
+/// defaults, as it always has for a layer's criterion.
+#[test]
+fn an_unknown_optimizer_or_criterion_is_written_as_the_default() {
+    let mut project = read_elamx(&reference_xml()).unwrap();
+    assert!(!project.optimizations.is_empty());
+    project.optimizations[0].optimizer = "bogus".into();
+    project.optimizations[0].input.criterion_id = "bogus".into();
+    let xml = write_elamx(&project);
+    assert!(xml.contains("<optimizer>de.elamx.clt.optimization.sda.SequentialDecisionApproach</optimizer>"));
+    assert!(read_elamx(&xml).is_ok());
+}
+
 /// An empty project is a valid document, and the round trip has to hold for it
 /// too - that is the state a new session starts from.
 #[test]

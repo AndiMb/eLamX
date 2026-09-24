@@ -38,6 +38,10 @@ pub enum ReadError {
     Missing { context: String, what: String },
     /// An element's text is not a number.
     NotANumber { context: String, text: String },
+    /// A count, an index or a code that is a number but not a whole one.
+    NotAWholeNumber { context: String, text: String },
+    /// Elements nested deeper than any eLamX file nests them.
+    TooDeep { limit: usize },
     /// A criterion / D-matrix class name or edge-condition index the format
     /// defines but this crate does not know.
     Unknown { context: String, value: String },
@@ -54,6 +58,12 @@ impl std::fmt::Display for ReadError {
             ReadError::NotANumber { context, text } => {
                 write!(f, "{context}: '{text}' ist keine Zahl")
             }
+            ReadError::NotAWholeNumber { context, text } => {
+                write!(f, "{context}: '{text}' ist keine ganze Zahl")
+            }
+            ReadError::TooDeep { limit } => {
+                write!(f, "die Elemente sind tiefer als {limit} Ebenen verschachtelt")
+            }
             ReadError::Unknown { context, value } => {
                 write!(f, "{context}: '{value}' ist unbekannt")
             }
@@ -69,9 +79,119 @@ impl std::error::Error for ReadError {}
 
 type Result<T> = std::result::Result<T, ReadError>;
 
+/// How deep an element may sit. eLamX's own files reach about eight levels
+/// (`<elamx>`, `<laminates>`, `<laminat>`, a module element, its constraint,
+/// ...); the limit leaves room for foreign modules carried through and
+/// refuses the kind of document that exists only to be deep.
+pub const MAX_DEPTH: usize = 64;
+
+/// Parses XML the way both readers need it: refused, not crashed on, when it
+/// nests deeper than [`MAX_DEPTH`].
+///
+/// The parser descends one call per level, and so does the pass-through of
+/// unknown elements, so a document of ten thousand nested empty elements -
+/// forty kilobytes - overflows the stack. A stack overflow is not an error
+/// anything can catch: in the browser it kills the calculation worker, on the
+/// desktop the whole process. Hence a count before the parse, over the raw
+/// text, which needs no recursion and no well-formedness - whatever is not
+/// well-formed the parser still reports as such.
+pub(super) fn parse_document(xml: &str) -> Result<Document<'_>> {
+    if nesting_exceeds(xml, MAX_DEPTH) {
+        return Err(ReadError::TooDeep { limit: MAX_DEPTH });
+    }
+    Document::parse(xml).map_err(|e| ReadError::Xml(e.to_string()))
+}
+
+/// Whether any element in `xml` sits deeper than `limit`.
+///
+/// Comments, CDATA, processing instructions and declarations are skipped
+/// whole, since they may contain `<` of their own; a start tag is read to its
+/// `>` with quoted attribute values honoured, since they may contain `>`.
+fn nesting_exceeds(xml: &str, limit: usize) -> bool {
+    let bytes = xml.as_bytes();
+    let skip_to = |from: usize, end: &[u8]| {
+        bytes
+            .get(from..)
+            .and_then(|tail| tail.windows(end.len()).position(|w| w == end))
+            .map_or(bytes.len(), |p| from + p + end.len())
+    };
+    let mut depth = 0usize;
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] != b'<' {
+            i += 1;
+            continue;
+        }
+        let rest = &bytes[i..];
+        if rest.starts_with(b"<!--") {
+            i = skip_to(i + 4, b"-->");
+        } else if rest.starts_with(b"<![CDATA[") {
+            i = skip_to(i + 9, b"]]>");
+        } else if rest.starts_with(b"<?") {
+            i = skip_to(i + 2, b"?>");
+        } else if rest.starts_with(b"<!") {
+            i = skip_to(i + 2, b">");
+        } else if rest.starts_with(b"</") {
+            depth = depth.saturating_sub(1);
+            i = skip_to(i + 2, b">");
+        } else {
+            let mut j = i + 1;
+            let mut quote = None;
+            while j < bytes.len() {
+                let c = bytes[j];
+                match quote {
+                    Some(q) if c == q => quote = None,
+                    Some(_) => {}
+                    None if c == b'"' || c == b'\'' => quote = Some(c),
+                    None if c == b'>' => break,
+                    None => {}
+                }
+                j += 1;
+            }
+            if bytes[j - 1] != b'/' {
+                depth += 1;
+                if depth > limit {
+                    return true;
+                }
+            }
+            i = j + 1;
+        }
+    }
+    false
+}
+
+/// A number the format uses as a count, an index or a code.
+///
+/// Read as a float, because that is what eLamX's writers put there for some
+/// of them, and then held to being whole: `as usize` would make -1 an index
+/// of 0 and 2.7 a term count of 2 without a word.
+pub(super) fn whole_number(value: f64, context: &str, text: &str) -> Result<i64> {
+    // 2^53: beyond it a float no longer tells whole numbers apart.
+    if value.is_finite() && value.fract() == 0.0 && value.abs() <= 9_007_199_254_740_992.0 {
+        Ok(value as i64)
+    } else {
+        Err(ReadError::NotAWholeNumber {
+            context: context.to_string(),
+            text: text.to_string(),
+        })
+    }
+}
+
+/// A whole, non-negative number from an element's text.
+fn count(node: Node, tag: &str, context: &str) -> Result<usize> {
+    let value = number(node, tag, context)?;
+    let context = format!("{context}, <{tag}>");
+    let raw = text(node, tag).unwrap_or_default();
+    let whole = whole_number(value, &context, raw)?;
+    usize::try_from(whole).map_err(|_| ReadError::NotAWholeNumber {
+        context,
+        text: raw.to_string(),
+    })
+}
+
 /// Parses an `.elamx` document.
 pub fn read_elamx(xml: &str) -> Result<Project> {
-    let doc = Document::parse(xml).map_err(|e| ReadError::Xml(e.to_string()))?;
+    let doc = parse_document(xml)?;
     let root = doc.root_element();
     if root.tag_name().name() != "elamx" {
         return Err(ReadError::NotAnElamxFile);
@@ -519,8 +639,8 @@ fn read_buckling_input(node: Node, ctx: &str) -> Result<BucklingInput> {
         n_xy: number(node, "n_xy", ctx)?,
         bc_x: boundary(node, "bcx", ctx)?,
         bc_y: boundary(node, "bcy", ctx)?,
-        m: number(node, "m", ctx)? as usize,
-        n: number(node, "n", ctx)? as usize,
+        m: count(node, "m", ctx)?,
+        n: count(node, "n", ctx)?,
         d_matrix: d_matrix(node, ctx)?,
         stiffeners: read_stiffeners(node, ctx)?,
     })
@@ -591,8 +711,8 @@ fn read_deformation_input(node: Node, ctx: &str) -> Result<DeformationInput> {
         width: number(node, "width", ctx)?,
         bc_x: boundary(node, "bcx", ctx)?,
         bc_y: boundary(node, "bcy", ctx)?,
-        m: number(node, "m", ctx)? as usize,
-        n: number(node, "n", ctx)? as usize,
+        m: count(node, "m", ctx)?,
+        n: count(node, "n", ctx)?,
         d_matrix: d_matrix(node, ctx)?,
         loads,
         stiffeners: read_stiffeners(node, ctx)?,
@@ -611,7 +731,7 @@ fn read_deformation(node: Node, parent: &str) -> Result<NamedDeformation> {
 
 /// An edge condition, stored as the index into eLamX's own array.
 fn boundary(node: Node, tag: &str, ctx: &str) -> Result<crate::plate::BoundaryCondition> {
-    let index = number(node, tag, ctx)? as usize;
+    let index = count(node, tag, ctx)?;
     naming::boundary_from_index(index).ok_or_else(|| ReadError::Unknown {
         context: format!("{ctx}, <{tag}>"),
         value: index.to_string(),
@@ -648,8 +768,8 @@ fn read_vibration(node: Node, parent: &str) -> Result<NamedVibration> {
             width: number(node, "width", &ctx)?,
             bc_x: boundary(node, "bcx", &ctx)?,
             bc_y: boundary(node, "bcy", &ctx)?,
-            m: number(node, "m", &ctx)? as usize,
-            n: number(node, "n", &ctx)? as usize,
+            m: count(node, "m", &ctx)?,
+            n: count(node, "n", &ctx)?,
             d_matrix: d_matrix(node, &ctx)?,
             stiffeners: read_stiffeners(node, &ctx)?,
         },
@@ -730,7 +850,7 @@ fn read_cutout(node: Node, parent: &str) -> Result<NamedCutout> {
     let a = number(shape_node, "A", &ctx)?;
     // `Terme` is the German property name, capital and all - it is what the
     // reflection wrote, so it is what the file says.
-    let terms = |ctx: &str| -> Result<usize> { Ok(number(shape_node, "Terme", ctx)? as usize) };
+    let terms = |ctx: &str| -> Result<usize> { count(shape_node, "Terme", ctx) };
     let geometry = match code {
         "circular" => CutoutGeometry::Circular { a },
         "elliptical" => CutoutGeometry::Elliptical { a, b: number(shape_node, "B", &ctx)? },
@@ -752,7 +872,7 @@ fn read_cutout(node: Node, parent: &str) -> Result<NamedCutout> {
             m_x: number(node, "m_xx", &ctx)?,
             m_y: number(node, "m_yy", &ctx)?,
             m_xy: number(node, "m_xy", &ctx)?,
-            values: number(node, "val", &ctx)? as usize,
+            values: count(node, "val", &ctx)?,
         },
     })
 }
@@ -799,7 +919,11 @@ fn read_optimizations(root: Node) -> Result<Vec<NamedOptimization>> {
                 context: ctx.clone(),
                 what: "angles/number".to_string(),
             })?;
-        let mut angles = Vec::with_capacity(count);
+        // No `with_capacity(count)`: the count is the file's say-so, and a
+        // file saying 10^14 would abort on the allocation before the missing
+        // `<angle0>` could be reported. Each angle is an element in the file,
+        // so the loop itself cannot outrun the input.
+        let mut angles = Vec::new();
         for i in 0..count {
             angles.push(number(angles_node, &format!("angle{i}"), &ctx)?);
         }
@@ -883,7 +1007,8 @@ fn read_stiffeners(node: Node, parent: &str) -> Result<Vec<Stiffener>> {
                 value: class.to_string(),
             })?;
 
-        let index = number(element, "direction", &ctx)? as i32;
+        let raw = number(element, "direction", &ctx)?;
+        let index = i32::try_from(whole_number(raw, &ctx, &raw.to_string())?).unwrap_or(i32::MAX);
         let direction =
             StiffenerDirection::from_java_index(index).ok_or_else(|| ReadError::Unknown {
                 context: format!("{ctx}, <direction>"),
@@ -949,7 +1074,8 @@ fn read_stiffeners(node: Node, parent: &str) -> Result<Vec<Stiffener>> {
 fn read_pressure_vessel_input(node: Node, ctx: &str) -> Result<PressureVesselInput> {
     // The format stores the radius type as the Java constant's own value
     // (1/2/4), not as an index - see PressureVesselInput.
-    let radius_type = match number(node, "radiustype", ctx)? as i64 {
+    let raw = number(node, "radiustype", ctx)?;
+    let radius_type = match whole_number(raw, ctx, &raw.to_string())? {
         1 => RadiusType::Inner,
         2 => RadiusType::Mean,
         4 => RadiusType::Outer,
