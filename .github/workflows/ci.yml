@@ -32,6 +32,12 @@ on:
   workflow_dispatch:
 
 # A newer push to the same branch makes the older run's answer irrelevant.
+# Read-only unless a job says otherwise: `npm ci` runs install scripts of
+# every dependency, and what they can do with the token should not depend on
+# a repository setting.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -44,19 +50,18 @@ jobs:
     name: Rust core
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      # Cargo.lock is not committed (see elamx-core/.gitignore), so the cache
-      # key follows the manifests instead. A dependency bump therefore starts
-      # from a cold cache rather than from a stale one.
+      # Keyed by the lockfile: a dependency bump starts from a cold cache
+      # rather than from a stale one.
       - name: Cache cargo registry and build output
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             elamx-core/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('elamx-core/**/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('elamx-core/Cargo.lock') }}
           restore-keys: cargo-${{ runner.os }}-
 
       # Clippy was not run anywhere, and had drifted into failing: 17 errors,
@@ -66,11 +71,11 @@ jobs:
       # up unseen.
       - name: cargo clippy
         working-directory: elamx-core
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
       - name: cargo test
         working-directory: elamx-core
-        run: cargo test --workspace
+        run: cargo test --workspace --locked
 
       # web/src/lib/generated/ is written by ts-rs from the Rust structs and
       # committed, so the frontend builds without a Rust toolchain. This step
@@ -80,38 +85,51 @@ jobs:
       - name: TypeScript bindings are up to date
         working-directory: elamx-core
         run: |
-          cargo test --workspace --features ts
+          cargo test --workspace --locked --features ts
           git diff --exit-code -- ../web/src/lib/generated
 
   web:
     name: Web frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Cache cargo registry and build output
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             elamx-core/target
-          key: wasm-${{ runner.os }}-${{ hashFiles('elamx-core/**/Cargo.toml') }}
+          key: wasm-${{ runner.os }}-${{ hashFiles('elamx-core/Cargo.lock') }}
           restore-keys: wasm-${{ runner.os }}-
 
+      # A fixed release, checked against its published digest, rather than
+      # `curl ... | sh` of an installer script: what builds the shipped wasm
+      # should be the same bytes every run. The project moved from rustwasm to
+      # wasm-bindgen; the old installer URL still answers, with 0.13.1.
       - name: Install wasm toolchain
+        env:
+          WASM_PACK_VERSION: v0.15.0
+          WASM_PACK_SHA256: c09f971ecaed9a2efc80fdcea7a00ef6b53c7fadc8c57d1f61b53a6aa66b668a
         run: |
           rustup target add wasm32-unknown-unknown
-          curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+          archive="wasm-pack-${WASM_PACK_VERSION}-x86_64-unknown-linux-musl"
+          curl -sSfL -o wasm-pack.tar.gz \
+            "https://github.com/wasm-bindgen/wasm-pack/releases/download/${WASM_PACK_VERSION}/${archive}.tar.gz"
+          echo "${WASM_PACK_SHA256}  wasm-pack.tar.gz" | sha256sum --check
+          tar xzf wasm-pack.tar.gz
+          install -m 755 "${archive}/wasm-pack" ~/.cargo/bin/wasm-pack
+          rm -rf wasm-pack.tar.gz "${archive}"
 
       # web/src/wasm-pkg/ is gitignored, so the frontend cannot typecheck
       # before this step has run - which also means this workflow exercises the
       # exact build command the README documents.
       - name: Build the WASM core
         working-directory: elamx-core/wasm
-        run: wasm-pack build --target web --out-dir ../../web/src/wasm-pkg
+        run: wasm-pack build --target web --out-dir ../../web/src/wasm-pkg -- --locked
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: npm

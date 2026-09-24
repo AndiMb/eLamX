@@ -21,6 +21,12 @@ on:
   push:
     tags: ["v*"]
 
+# Read-only unless a job says otherwise: `npm ci` runs install scripts of
+# every dependency, and what they can do with the token should not depend on
+# a repository setting.
+permissions:
+  contents: read
+
 concurrency:
   group: desktop-${{ github.ref }}
   cancel-in-progress: true
@@ -30,30 +36,43 @@ jobs:
     name: WASM core
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Cache cargo registry and build output
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             elamx-core/target
-          key: wasm-${{ runner.os }}-${{ hashFiles('elamx-core/**/Cargo.toml') }}
+          key: wasm-${{ runner.os }}-${{ hashFiles('elamx-core/Cargo.lock') }}
           restore-keys: wasm-${{ runner.os }}-
 
+      # A fixed release, checked against its published digest, rather than
+      # `curl ... | sh` of an installer script: what builds the shipped wasm
+      # should be the same bytes every run. The project moved from rustwasm to
+      # wasm-bindgen; the old installer URL still answers, with 0.13.1.
       - name: Install wasm toolchain
+        env:
+          WASM_PACK_VERSION: v0.15.0
+          WASM_PACK_SHA256: c09f971ecaed9a2efc80fdcea7a00ef6b53c7fadc8c57d1f61b53a6aa66b668a
         run: |
           rustup target add wasm32-unknown-unknown
-          curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+          archive="wasm-pack-${WASM_PACK_VERSION}-x86_64-unknown-linux-musl"
+          curl -sSfL -o wasm-pack.tar.gz \
+            "https://github.com/wasm-bindgen/wasm-pack/releases/download/${WASM_PACK_VERSION}/${archive}.tar.gz"
+          echo "${WASM_PACK_SHA256}  wasm-pack.tar.gz" | sha256sum --check
+          tar xzf wasm-pack.tar.gz
+          install -m 755 "${archive}/wasm-pack" ~/.cargo/bin/wasm-pack
+          rm -rf wasm-pack.tar.gz "${archive}"
 
       - name: Build the WASM core
         working-directory: elamx-core/wasm
-        run: wasm-pack build --target web --out-dir ../../web/src/wasm-pkg
+        run: wasm-pack build --target web --out-dir ../../web/src/wasm-pkg -- --locked
 
       # web/src/wasm-pkg/ is gitignored, so the packaging jobs cannot check it
       # out - they take it from here instead.
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: wasm-pkg
           path: web/src/wasm-pkg
@@ -86,14 +105,14 @@ jobs:
             smoke: false
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: wasm-pkg
           path: web/src/wasm-pkg
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: npm
@@ -146,7 +165,7 @@ jobs:
         working-directory: desktop
         run: node scripts/smoke.mjs
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: elamx-${{ matrix.label }}
           retention-days: 30
@@ -170,13 +189,19 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           path: artifacts
           pattern: elamx-*
           merge-multiple: true
+
+      # Unsigned builds, so the least a reader can check is that the file on
+      # their disk is the one this run made.
+      - name: Checksums
+        working-directory: artifacts
+        run: sha256sum -- * > SHA256SUMS
 
       # `gh` rather than a third-party action: it is on the runner already, and
       # a release is one command. No `--generate-notes`: on a first release it
@@ -203,6 +228,9 @@ jobs:
           | Windows | `eLamX Setup <version>.exe` (installer) or `eLamX-<version>-portable.exe` |
           | Linux | `.AppImage` (mark executable and run) or `.deb` |
           | macOS | `.dmg` - `arm64` for Apple silicon, `x64` for Intel |
+
+          `SHA256SUMS` lists every file's checksum: `sha256sum --check SHA256SUMS`
+          on Linux, `Get-FileHash` in PowerShell.
 
           EOF
           gh release create "${GITHUB_REF_NAME}"             --title "eLamX ${GITHUB_REF_NAME}"             --notes-file notes.md             artifacts/*

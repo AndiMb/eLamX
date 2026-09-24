@@ -66,7 +66,7 @@ bar, tables become cards and the heavier panels fold away.
 
 ### Prerequisites
 
-- [Rust](https://rustup.rs/) (stable) + [`wasm-pack`](https://rustwasm.github.io/wasm-pack/installer/)
+- [Rust](https://rustup.rs/) (stable) + [`wasm-pack`](https://github.com/wasm-bindgen/wasm-pack) 0.15 (what CI builds with)
 - [Node.js](https://nodejs.org/) 22 (what CI uses; Vite 8 needs 20.19 at the least)
 
 ### Build the WASM core
