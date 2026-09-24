@@ -3198,6 +3198,50 @@ table.matrix td.block-d {
   border-color: var(--accent);
 }
 
+/* Achsenmassstab des Versagenskoerpers: oben links, gegenueber dem
+   Zuruecksetzen - ein Umschalter aus zwei Haelften, die gedrueckte ist die
+   aktive. */
+.plate3d-axis-scale {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  overflow: hidden;
+}
+
+.plate3d-axis-scale button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.plate3d-axis-scale button + button {
+  border-left: 1px solid var(--border);
+}
+
+.plate3d-axis-scale button:hover {
+  color: var(--text);
+}
+
+.plate3d-axis-scale button[aria-pressed="true"] {
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .plate3d-axis-scale button {
+    min-height: var(--touch-min);
+  }
+}
+
 /* Das Achsenkreuz sitzt in der freien Ecke - unten rechts, gegenueber den
    Ueberhoehungsfaktoren. */
 .plate3d-axes {

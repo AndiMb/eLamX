@@ -1,7 +1,12 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { CAMERA_GESTURES, DEFAULT_CAMERA, type Camera } from "../../lib/plate3d";
-import { drawFailureBody, type FailureBodySurface, type StressMarker } from "../../lib/canvas3d/failureBody";
+import {
+  drawFailureBody,
+  type FailureBodyAxisScale,
+  type FailureBodySurface,
+  type StressMarker,
+} from "../../lib/canvas3d/failureBody";
 import { useOrbitControls } from "../../lib/useOrbitControls";
 import { useChartColors } from "../../lib/chartColors";
 import { useT } from "../../i18n";
@@ -47,6 +52,11 @@ export const FailureBody3D = memo(function FailureBody3D({
   const colors = useChartColors();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [camera, setCamera] = useState<Camera>(DEFAULT_CAMERA);
+  // True scale first: the proportions ARE the material - a UD ply is strong
+  // along its fibres and nowhere else, and a picture that makes every body a
+  // cube hides exactly that. Stretched stays one click away for reading a
+  // state in the transverse and shear region.
+  const [axisScale, setAxisScale] = useState<FailureBodyAxisScale>("true");
   const controls = useOrbitControls(canvasRef, camera, setCamera, CAMERA_GESTURES);
 
   const draw = useCallback(() => {
@@ -72,8 +82,9 @@ export const FailureBody3D = memo(function FailureBody3D({
       colors,
       ink: styles.color,
       background: styles.backgroundColor || "#fff",
+      axisScale,
     });
-  }, [bodies, markers, camera, colors, axisLabels]);
+  }, [bodies, markers, camera, colors, axisLabels, axisScale]);
 
   useEffect(() => {
     draw();
@@ -96,6 +107,20 @@ export const FailureBody3D = memo(function FailureBody3D({
         aria-label={t("failureBody.aria")}
         {...controls}
       />
+      <div className="plate3d-axis-scale" role="group" aria-label={t("failureBody.axisScale")}>
+        {(["true", "stretched"] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            aria-pressed={axisScale === mode}
+            onClick={() => setAxisScale(mode)}
+            title={t(mode === "true" ? "failureBody.axisScale.true.hint" : "failureBody.axisScale.stretched.hint")}
+          >
+            {t(mode === "true" ? "failureBody.axisScale.true" : "failureBody.axisScale.stretched")}
+          </button>
+        ))}
+      </div>
+      {axisScale === "stretched" && <p className="plate3d-scales">{t("failureBody.axisScale.stretched.note")}</p>}
       <button
         type="button"
         className="plate3d-reset"
