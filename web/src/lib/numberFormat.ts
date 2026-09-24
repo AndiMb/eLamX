@@ -8,10 +8,25 @@ export function parseLocaleNumber(text: string): number | null {
   const trimmed = text.trim();
   if (trimmed === "") return null;
   const normalized = trimmed.replace(",", ".");
-  if (!/^-?\d*\.?\d*(e-?\d+)?$/i.test(normalized)) return null;
+  // `e+21` as well as `e21`: String() writes large numbers with the plus.
+  if (!/^-?\d*\.?\d*(e[+-]?\d+)?$/i.test(normalized)) return null;
   if (!/\d/.test(normalized)) return null; // "-", ".", "-." aren't numbers yet
   const value = Number(normalized);
   return Number.isFinite(value) ? value : null;
+}
+
+/**
+ * A number as it stands in an input field: every digit it has - nothing
+ * rounded away that the user did not type - but with the decimal separator
+ * of the app's language. `String(value)` alone put "0.000001" into a German
+ * form whose every other field reads "0,0030". The exponent form String()
+ * picks for very small or large values stays, and parseLocaleNumber reads
+ * it back.
+ */
+export function formatEditable(value: number, locale: string): string {
+  const text = String(value);
+  const separator = new Intl.NumberFormat(locale).formatToParts(1.5).find((p) => p.type === "decimal")?.value ?? ".";
+  return separator === "." ? text : text.replace(".", separator);
 }
 
 // JSON has no representation for NaN/Infinity, and serde_json writes `null`

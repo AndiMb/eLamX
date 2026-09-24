@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatEditable,
   formatFixed,
   formatMatrixEntry,
   formatNumber,
@@ -11,6 +12,21 @@ import {
   NO_VALUE,
   parseLocaleNumber,
 } from "./numberFormat";
+
+describe("formatEditable", () => {
+  it("keeps every digit and only swaps the decimal separator", () => {
+    expect(formatEditable(0.000001, "de")).toBe("0,000001");
+    expect(formatEditable(0.000001, "en")).toBe("0.000001");
+    expect(formatEditable(1000, "de")).toBe("1000");
+    expect(formatEditable(-0.1234567891234, "de")).toBe("-0,1234567891234");
+  });
+
+  it("round-trips through parseLocaleNumber, exponent form included", () => {
+    for (const value of [0.0003, 1e-7, 2.5e21, -12.75]) {
+      expect(parseLocaleNumber(formatEditable(value, "de"))).toBe(value);
+    }
+  });
+});
 
 describe("parseLocaleNumber", () => {
   it("accepts both decimal separators regardless of the UI language", () => {

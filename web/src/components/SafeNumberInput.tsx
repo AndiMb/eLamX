@@ -1,11 +1,12 @@
 import { useEditBuffer } from "./useEditBuffer";
-import { parseLocaleNumber } from "../lib/numberFormat";
+import { formatEditable, parseLocaleNumber } from "../lib/numberFormat";
+import { useLocale } from "../i18n";
 
 // For numeric fields that don't cleanly map onto any QuantityCategory (line
 // loads/moments, curvatures, dimensionless criterion-fitting coefficients
 // like Tsai-Wu's F12*) - same safe text/inputMode="decimal" + local-buffer
 // editing behavior as Quantity (see there for why), just without unit
-// conversion or Intl formatting.
+// conversion or rounding: only the decimal separator follows the language.
 export function SafeNumberInput({
   value,
   onChange,
@@ -20,7 +21,8 @@ export function SafeNumberInput({
    *  at all for a screen reader. */
   "aria-label"?: string;
 }) {
-  const buffer = useEditBuffer(value, String);
+  const locale = useLocale();
+  const buffer = useEditBuffer(value, (v) => formatEditable(v, locale));
 
   return (
     <input
