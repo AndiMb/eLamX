@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { useStore } from "jotai";
-import { Download, FileImage, FileCode2, FileSpreadsheet } from "lucide-react";
+import { Download, FileBox, FileImage, FileCode2, FileSpreadsheet } from "lucide-react";
 import { saveChartPng, saveChartSvg } from "../../lib/chartSnapshot";
 import type { TableModel } from "../../lib/export/table";
 import { csvOptions, saveTableCsv } from "../../lib/export/tableExport";
@@ -22,6 +22,7 @@ export function ChartSnapshotButton({
   name,
   title,
   data,
+  extra,
 }: {
   /** The chart: an SVG, a canvas, or an element holding several SVGs that
    *  make one chart together. */
@@ -33,6 +34,10 @@ export function ChartSnapshotButton({
   title?: string;
   /** The series the chart draws, as a table - offered as CSV. */
   data?: () => TableModel | null;
+  /** Further formats of the same view, in the same menu - the VTK file of a
+   *  3D body. One menu per view, rather than a PNG in the picture's corner
+   *  and a second export as a button somewhere under it. */
+  extra?: readonly { key: string; label: string; run: () => void | Promise<void> }[];
 }) {
   const t = useT();
   const locale = useLocale();
@@ -122,6 +127,11 @@ export function ChartSnapshotButton({
               <FileSpreadsheet size={14} aria-hidden="true" /> {t("chart.export.csv")}
             </button>
           )}
+          {extra?.map((entry) => (
+            <button key={entry.key} type="button" role="menuitem" onClick={() => run(async () => entry.run())}>
+              <FileBox size={14} aria-hidden="true" /> {entry.label}
+            </button>
+          ))}
         </div>
       )}
     </div>

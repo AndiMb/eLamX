@@ -12,6 +12,7 @@ import { MobileCollapse } from "./MobileCollapse";
 import { useChartColors } from "../lib/chartColors";
 import { parseVtkSurface, type VtkSurface } from "../lib/vtkSurface";
 import { SafeNumberInput } from "./SafeNumberInput";
+import { Panel } from "./Panel";
 import { useT } from "../i18n";
 
 // The failure body of a MATERIAL, independent of any laminate - the Java
@@ -69,43 +70,57 @@ export function FailureBodyModuleContent({ materialId }: { materialId: string })
       <BackLink to={`/materials/${materialId}`} label={t("nav.material")} />
       <p className="hint">{t("failureBody.intro")}</p>
 
-      <section className="panel failure-body">
-        <h2>{t("failureBody.title", { material: material.name })}</h2>
+      <div className="dash">
+      <Panel className="failure-body" title={t("failureBody.title", { material: material.name })}>
+        {/* The criteria as a list beside the body rather than twenty-four
+            checkboxes flowing across three lines above it: a list is read
+            top to bottom, and it stands where there was only white beside a
+            body capped at 780 px. On a phone it folds away, and the summary
+            says what is chosen. */}
+        <div className="failure-body-layout">
+          <MobileCollapse
+            title={`${t("failureBody.criteria")}: ${selected
+              .map((id) => {
+                const criterion = CRITERIA.find((c) => c.id === id);
+                return criterion ? t(criterion.labelKey) : id;
+              })
+              .join(", ")}`}
+          >
+            <div className="criteria-list" role="group" aria-label={t("failureBody.criteria")}>
+              <p className="criteria-list-title">
+                {t("failureBody.criteria")} <span>{selected.length} / {MAX_SHOWN}</span>
+              </p>
+              {CRITERIA.map((criterion) => {
+                const on = selected.includes(criterion.id);
+                return (
+                  <button
+                    key={criterion.id}
+                    type="button"
+                    aria-pressed={on}
+                    className={on ? "active" : undefined}
+                    disabled={!on && selected.length >= MAX_SHOWN}
+                    onClick={() => toggle(criterion.id)}
+                  >
+                    {t(criterion.labelKey)}
+                  </button>
+                );
+              })}
+            </div>
+          </MobileCollapse>
 
-        {/* Twenty-four criteria are three lines on a desktop and twelve
-            touch-sized rows on a phone, between the title and the body they
-            choose for. There they fold away, and the summary says what is
-            chosen. */}
-        <MobileCollapse
-          title={`${t("failureBody.criteria")}: ${selected
-            .map((id) => {
-              const criterion = CRITERIA.find((c) => c.id === id);
-              return criterion ? t(criterion.labelKey) : id;
-            })
-            .join(", ")}`}
-        >
-        <div className="polar-series-picker" role="group" aria-label={t("failureBody.criteria")}>
-          {CRITERIA.map((criterion) => (
-            <label key={criterion.id}>
-              <input
-                type="checkbox"
-                checked={selected.includes(criterion.id)}
-                disabled={!selected.includes(criterion.id) && selected.length >= MAX_SHOWN}
-                onChange={() => toggle(criterion.id)}
-              />
-              {t(criterion.labelKey)}
-            </label>
-          ))}
+          <div className="failure-body-view">
+            {selected.length === 0 ? (
+              <p className="hint">{t("failureBody.none")}</p>
+            ) : (
+              <FailureBodies materialId={materialId} selected={selected} imported={imported?.surface} />
+            )}
+            <p className="hint">{t("failureBody.hint")}</p>
+            {selected.length > 1 && <p className="hint">{t("failureBody.overlay.hint")}</p>}
+          </div>
         </div>
-        </MobileCollapse>
+      </Panel>
 
-        {selected.length === 0 ? (
-          <p className="hint">{t("failureBody.none")}</p>
-        ) : (
-          <FailureBodies materialId={materialId} selected={selected} imported={imported?.surface} />
-        )}
-
-        <h3>{t("failureBody.import")}</h3>
+      <Panel title={t("failureBody.import")}>
         <p className="hint">{t("failureBody.import.hint")}</p>
         <div className="field-grid">
           <label>
@@ -145,9 +160,8 @@ export function FailureBodyModuleContent({ materialId }: { materialId: string })
           </p>
         )}
 
-        <p className="hint">{t("failureBody.hint")}</p>
-        {selected.length > 1 && <p className="hint">{t("failureBody.overlay.hint")}</p>}
-      </section>
+      </Panel>
+      </div>
     </>
   );
 }
@@ -214,24 +228,22 @@ function FailureBodies({
           shape: index === 0 ? "swatch" : "line",
         }))}
       />
-      <FailureBody3D bodies={bodies} markers={[]} />
-      <div className="flags">
-        {/* The scene as a file, the way the original's 3D views export it: one
-            four-cornered cell per face, points listed per corner. The importer
-            next door reads exactly this, which is the only reason it can now be
-            checked against a file rather than against a description of one. */}
-        <button
-          type="button"
-          onClick={() =>
-            downloadVtk(
-              quadsToVtk(bodies.flatMap((body) => body.quads ?? gridToQuads(body.points ?? []))),
-              exportName,
-            )
-          }
-        >
-          {t("failureBody.export")}
-        </button>
-      </div>
+      {/* The scene as a file, the way the original's 3D views export it: one
+          four-cornered cell per face, points listed per corner. The importer
+          beside it reads exactly this, which is the only reason it can be
+          checked against a file rather than against a description of one. */}
+      <FailureBody3D
+        bodies={bodies}
+        markers={[]}
+        exports={[
+          {
+            key: "vtk",
+            label: t("failureBody.export.vtk"),
+            run: () =>
+              downloadVtk(quadsToVtk(bodies.flatMap((body) => body.quads ?? gridToQuads(body.points ?? []))), exportName),
+          },
+        ]}
+      />
     </>
   );
 }

@@ -19,6 +19,9 @@ import { Sym } from "./Sym";
 import { ResponsiveTable, type ResponsiveTableColumn } from "./ResponsiveTable";
 import { MobileCollapse } from "./MobileCollapse";
 import { HowWasThisComputed } from "./HowWasThisComputed";
+import { Panel } from "./Panel";
+import { TableActions } from "./TableActions";
+import { recordsTableModel } from "../lib/export/records";
 import { failureModeLabel, useLocale, useT } from "../i18n";
 
 // The content behind the "pressureVessel" entry in MODULE_REGISTRY: a
@@ -249,11 +252,18 @@ export function PressureVesselModuleContent({ laminateId }: { laminateId: string
           )}
 
           {layers && layers.length > 0 && (
-            <section className="panel">
-              {/* Per ply, so it grows with the stack - same reason as the CLT
-                  page's ply results. */}
-              <MobileCollapse title={t("vessel.layers.title")}>
-                <h2>{t("vessel.layers.title")}</h2>
+            /* Per ply, so it grows with the stack - same reason as the CLT
+               page's ply results. */
+            <MobileCollapse title={t("vessel.layers.title")}>
+              <Panel
+                title={t("vessel.layers.title")}
+                tools={
+                  <TableActions
+                    table={() => recordsTableModel(t("vessel.layers.title"), columns, layers)}
+                    name="druckbehaelter-lagen"
+                  />
+                }
+              >
                 <ResponsiveTable
                   variant="records"
                   className="layer-results-table"
@@ -261,11 +271,10 @@ export function PressureVesselModuleContent({ laminateId }: { laminateId: string
                   rows={layers}
                   rowKey={(l) => l.layer_number}
                   rowClassName={(l) => (l.failed ? "failed" : undefined)}
-                  actions={{ title: t("vessel.layers.title"), name: "druckbehaelter-lagen" }}
                 />
                 <p className="hint">{t("vessel.layers.hint")}</p>
-              </MobileCollapse>
-            </section>
+              </Panel>
+            </MobileCollapse>
           )}
 
           {!summary && !error && loadableState.state !== "loading" && (

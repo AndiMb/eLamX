@@ -21,6 +21,8 @@ import { ResponsiveTable, type ResponsiveTableColumn } from "./ResponsiveTable";
 import { MobileCollapse } from "./MobileCollapse";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { NO_VALUE } from "../lib/numberFormat";
+import { Panel } from "./Panel";
+import { TableActions } from "./TableActions";
 import { failureModeLabel, useLocale, useT, type MessageKey } from "../i18n";
 import { lpfPathTable } from "../lib/tables";
 
@@ -244,23 +246,24 @@ export function LastPlyFailureModuleContent({ laminateId }: { laminateId: string
       )}
 
       {path && path.length > 0 && (
-        <section className="panel">
-          {/* One row per degradation step, so it grows with the stack: a
-              16-ply laminate degrades in 21 steps, which is 3700 px of cards
-              on a phone below the load factors that answer the question. */}
-          <MobileCollapse title={t("lpf.path.title")}>
-            <h2>{t("lpf.path.title")}</h2>
+        /* One row per degradation step, so it grows with the stack: a
+           16-ply laminate degrades in 21 steps, which is 3700 px of cards
+           on a phone below the load factors that answer the question. */
+        <MobileCollapse title={t("lpf.path.title")}>
+          <Panel
+            title={t("lpf.path.title")}
+            tools={<TableActions table={() => lpfPathTable(path, t, locale)} name="lpf-pfad" />}
+          >
             <ResponsiveTable
               variant="records"
               className="layer-results-table"
               columns={columns}
               rows={path}
               rowKey={(r) => r.index}
-              actions={{ table: () => lpfPathTable(path, t, locale), name: "lpf-pfad" }}
             />
             <p className="hint">{t("lpf.path.hint")}</p>
-          </MobileCollapse>
-        </section>
+          </Panel>
+        </MobileCollapse>
       )}
       </div>
       </div>

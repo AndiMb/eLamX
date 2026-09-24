@@ -805,7 +805,7 @@ export const de: Messages = {
   "layerDetail.qGlobal": "Q global (Laminatsystem)",
   "layerDetail.sLocal": "q lokal (Nachgiebigkeit)",
   "layerDetail.sGlobal": "q global (Nachgiebigkeit)",
-  "failureBody.export": "Als VTK exportieren",
+  "failureBody.export.vtk": "3D-Körper (VTK)",
   "chart.snapshot": "Als Bild speichern",
   "module.export.label": "FE-Export",
   "module.export.description": "Werkstoffkarten und Lagenaufbau als Eingabe für Nastran, Abaqus, ANSYS oder LS-DYNA.",

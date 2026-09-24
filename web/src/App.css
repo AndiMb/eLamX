@@ -757,6 +757,24 @@ input[type="checkbox"] {
   width: 100%;
 }
 
+/* Eine Form (Beulform, Eigenform) und die Liste der Formen in einer Karte:
+   die Ansicht bekommt den groesseren Teil. */
+.grid.shape-and-list {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  align-items: start;
+  margin-bottom: 0;
+}
+
+@container content (min-width: 1100px) {
+  .grid.shape-and-list {
+    grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr);
+  }
+}
+
+.shape-and-list > .chart {
+  margin-top: 0;
+}
+
 /* Diagrammkarten: die Grafik steht mittig in ihrer Spalte, die Erklaerung
    darunter nimmt die Kartenbreite. */
 .chart-card .chart-svg-wrap {
@@ -774,6 +792,14 @@ input[type="checkbox"] {
   height: auto;
   aspect-ratio: 1 / 1;
   max-height: 460px;
+}
+
+/* Ein Textknopf im Kartenkopf, so klein wie die Ansichtsschalter daneben. */
+.panel-tools .head-button,
+.panel-tools .chart-table-toggle {
+  min-height: 28px;
+  padding: 0 var(--s-2);
+  font-size: var(--fs-sm);
 }
 
 .chart-card-controls {
@@ -1899,7 +1925,7 @@ table.compare-table thead th {
    Gesetzt wird die Klasse zentral in ResponsiveTable aus `numeric` der
    Spaltendefinition, nicht von Hand je Zelle. */
 /* `table th.num` statt nur `.num`: die Tabellenregeln weiter unten setzen
-   `text-align: left` ueber `.layer-results-table th` (Spezifitaet 0,1,1) und
+   `text-align: left` ueber `.data-table th` (Spezifitaet 0,1,1) und
    schlagen eine reine Klasse. Die Elementqualifizierung hier gewinnt gegen
    sie, unabhaengig von der Reihenfolge im Stylesheet. */
 table th.num,
@@ -1911,6 +1937,7 @@ table td.num,
 
 /* Auch die Werte, die nicht in einer .num-Spalte stehen, sollen beim Tippen
    und Nachrechnen nicht springen. */
+.data-table,
 .layer-results-table,
 .chart-table,
 .format-settings-table,
@@ -1924,7 +1951,7 @@ table td.num,
 
 /* Kopfzeilen bleiben stehen, wenn eine 16-zeilige Lagentabelle gescrollt
    wird - sonst raet man ab Lage 8, welche Spalte welche war. */
-.layer-results-table thead th,
+.data-table thead th,
 .layer-table thead th {
   position: sticky;
   top: 0;
@@ -2451,7 +2478,6 @@ tr:focus-within .row-actions,
   border-left: 3px solid var(--warn);
   border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--warn) 8%, var(--card));
-  max-width: var(--measure);
 }
 
 .warning svg {
@@ -2470,7 +2496,6 @@ tr:focus-within .row-actions,
   border-left: 3px solid var(--danger);
   border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--danger) 7%, var(--card));
-  max-width: var(--measure);
 }
 
 .error svg {
@@ -2639,21 +2664,24 @@ table.matrix td.block-d {
 
 /* --- Lagenergebnisse --- */
 
-.layer-results-table {
+/* Jede Datentabelle aus ResponsiveTable (Klasse .data-table), nicht nur die
+   Lagenergebnisse: Eigenfrequenzen, Achsenschnittpunkte und Randwerte hatten
+   vorher gar keine Tabellenformatierung. */
+.data-table {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 8px;
   font-size: 13px;
 }
 
-.layer-results-table th,
-.layer-results-table td {
+.data-table th,
+.data-table td {
   padding: var(--s-2) var(--s-3);
   text-align: left;
   border-bottom: 1px solid var(--border);
 }
 
-.layer-results-table th {
+.data-table th {
   color: var(--text-muted);
   font-weight: 600;
   font-size: var(--fs-sm);
@@ -2661,7 +2689,7 @@ table.matrix td.block-d {
   white-space: nowrap;
 }
 
-.layer-results-table tbody tr:hover td {
+.data-table tbody tr:hover td {
   background: var(--inset);
 }
 
@@ -3131,6 +3159,33 @@ table.matrix td.block-d {
   margin: 12px 0;
 }
 
+/* Der Export-Knopf eines Diagramms steht rechts auf der Titelzeile statt in
+   einer eigenen Zeile unter der Grafik. */
+.chart {
+  position: relative;
+}
+
+.chart > .chart-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0;
+  z-index: 1;
+}
+
+.chart > .chart-title {
+  padding-right: 40px;
+}
+
+/* In einer 3D-Buehne sitzt er in der Ecke unten rechts, gegenueber der
+   Massstabsangabe unten links, und kostet keine eigene Zeile. */
+.plate3d > .chart-actions {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  margin: 0;
+}
+
 .chart-title {
   font-size: 13px;
   font-weight: 600;
@@ -3277,6 +3332,100 @@ table.matrix td.block-d {
   margin-inline: auto;
 }
 
+/* Kriterienliste links, Koerper rechts. */
+.failure-body-layout {
+  display: grid;
+  gap: var(--s-4);
+  align-items: start;
+}
+
+@container content (min-width: 900px) {
+  .failure-body-layout {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+
+  .failure-body-layout .criteria-list {
+    position: sticky;
+    top: calc(var(--topbar-height) + var(--s-4));
+  }
+}
+
+.failure-body-layout .plate3d {
+  max-width: none;
+}
+
+.failure-body-view > .chart-legend:first-child {
+  margin-top: 0;
+}
+
+/* Eine Auswahlliste aus Umschaltern: ein Eintrag je Zeile, der gewaehlte mit
+   Akzentflaeche und Haken. Dieselbe Rolle wie .toggle-group, nur senkrecht,
+   weil es zu viele Eintraege fuer eine Zeile sind. */
+.criteria-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.criteria-list-title {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 var(--s-1);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.criteria-list-title span {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.criteria-list button {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 28px;
+  padding: 2px var(--s-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.criteria-list button::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+.criteria-list button:hover:not(:disabled) {
+  background: var(--inset);
+}
+
+.criteria-list button.active {
+  background: var(--accent-bg);
+  color: var(--text);
+}
+
+.criteria-list button.active::before {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--card);
+}
+
+.criteria-list button:disabled {
+  opacity: 0.45;
+}
+
 /* Die 3D-Ansichten bekommen eine eigene, abgesetzte Flaeche. Ein frei in der
    Karte schwebender Koerper laesst den Rest der Karte leer aussehen; als
    erkennbare Buehne ist derselbe Platz ein Fenster, in dem etwas gedreht
@@ -3291,10 +3440,18 @@ table.matrix td.block-d {
   margin: var(--s-3) 0;
 }
 
+/* Hoehe aus der Breite statt fest 340 px: in einer 1240 px breiten Karte war
+   das ein 3,6:1-Band, in dem ein Koerper oder eine Platte ein Fuenftel der
+   Flaeche einnahm; in einer schmalen Spalte ist es dasselbe Verhaeltnis wie
+   in einer breiten. Die Grenzen halten eine volle Kartenbreite unter einer
+   Bildschirmhoehe und eine schmale Spalte ueber Daumenhoehe. */
 .plate3d-canvas {
   display: block;
   width: 100%;
-  height: 340px;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  min-height: 280px;
+  max-height: min(520px, 62vh);
   /* The gesture handlers own dragging and pinching; without this the browser
      pans and zooms the PAGE instead on touch devices. */
   touch-action: none;
@@ -3307,7 +3464,7 @@ table.matrix td.block-d {
 
 @media (max-width: 640px) {
   .plate3d-canvas {
-    height: 260px;
+    min-height: 240px;
   }
 }
 
@@ -3698,11 +3855,17 @@ table.matrix td.block-d {
 }
 
 .plate-field-bounds-toggle {
-  display: inline-flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
+  align-self: flex-end;
+  min-height: var(--control-h);
+  padding: 0 var(--s-3);
+  font-size: var(--fs-sm);
   white-space: nowrap;
+}
+
+.plate-field-bounds-toggle.active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--text);
 }
 
 .plate-field-controls .hint {
@@ -4303,6 +4466,14 @@ table.matrix td.block-d {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Mehrere An/Aus-Felder untereinander, wie im Laminat-Editor. */
+.check-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: var(--s-3) 0;
 }
 
 /* The governing ply: a marker icon beside its number, and a tinted row -

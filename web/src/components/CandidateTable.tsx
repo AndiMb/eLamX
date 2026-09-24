@@ -75,7 +75,7 @@ export function CandidateTable({
         <TableActions table={table} name="kandidaten" />
       </div>
       <div className="responsive-table-scroll">
-        <table className="layer-results-table">
+        <table className="data-table layer-results-table">
           <thead>
             <tr>
               {header("rank", "#")}

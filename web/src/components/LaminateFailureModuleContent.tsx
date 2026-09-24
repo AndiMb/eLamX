@@ -21,11 +21,14 @@ import { LAMINATE_FAILURE_KINDS, type LaminateFailureKindId } from "../lib/types
 import { FailureBody3D, type FailureBodySurface } from "./charts/FailureBody3D";
 import { downloadVtk, gridToQuads, quadsToVtk } from "../lib/vtkExport";
 import { ChartLegend } from "./charts/ChartLegend";
-import { ResponsiveTable } from "./ResponsiveTable";
+import { ResponsiveTable, type ResponsiveTableColumn } from "./ResponsiveTable";
 import { BackLink } from "./BackLink";
 import { Sym } from "./Sym";
 import { useChartColors } from "../lib/chartColors";
 import { formatSignificant } from "../lib/numberFormat";
+import { Panel } from "./Panel";
+import { TableActions } from "./TableActions";
+import { recordsTableModel } from "../lib/export/records";
 import { useLocale, useT } from "../i18n";
 
 // Which load flows this stacking sequence can carry - the original's
@@ -120,14 +123,43 @@ export function LaminateFailureModuleContent({ laminateId }: { laminateId: strin
     ];
   }, [envelope]);
 
+  const axisColumns: ResponsiveTableColumn<(typeof axisRows)[number]>[] = [
+    {
+      key: "flow",
+      label: t("laminateFailure.axes.flow"),
+      render: (row) => <Sym base="n" sub={row.sub} />,
+      value: (row) => `n${row.sub}`,
+    },
+    {
+      key: "positive",
+      label: t("laminateFailure.axes.positive"),
+      numeric: true,
+      render: (row) => formatSignificant(row.positive, 5, locale),
+      value: (row) => row.positive,
+    },
+    {
+      key: "negative",
+      label: t("laminateFailure.axes.negative"),
+      numeric: true,
+      render: (row) => formatSignificant(row.negative, 5, locale),
+      value: (row) => row.negative,
+    },
+  ];
+
   return (
     <>
       <BackLink to={`/laminates/${laminateId}`} label={t("nav.laminate")} />
       <p className="hint">{t("laminateFailure.intro")}</p>
       <LoadCaseBar laminateId={laminateId} />
 
-      <section className="panel">
-        <h2>{t("laminateFailure.title")}</h2>
+      {/* The body and the table of its axis intersections side by side: the
+          table is three rows of two numbers, and below a full-width 3D view
+          it stood alone in a card of its own width. */}
+      <div className="dash">
+      <Panel
+        className="span-8"
+        title={t("laminateFailure.title")}
+      >
 
         <div className="field-grid">
           <label className="wide">
@@ -177,62 +209,49 @@ export function LaminateFailureModuleContent({ laminateId }: { laminateId: strin
                 shape: "swatch",
               }))}
             />
-            <FailureBody3D bodies={bodies} markers={markers} axisLabels={AXES} />
-            <RayNote data={rayData} />
-            <div className="flags">
-              <button
-                type="button"
-                onClick={() =>
-                  downloadVtk(
-                    quadsToVtk(
-                      bodies.flatMap((body) => body.quads ?? gridToQuads(body.points ?? [])),
+            <FailureBody3D
+              bodies={bodies}
+              markers={markers}
+              axisLabels={AXES}
+              exports={[
+                {
+                  key: "vtk",
+                  label: t("failureBody.export.vtk"),
+                  run: () =>
+                    downloadVtk(
+                      quadsToVtk(bodies.flatMap((body) => body.quads ?? gridToQuads(body.points ?? []))),
+                      `laminatversagenskoerper-${laminateId}`,
                     ),
-                    `laminatversagenskoerper-${laminateId}`,
-                  )
-                }
-              >
-                {t("failureBody.export")}
-              </button>
-            </div>
+                },
+              ]}
+            />
+            <RayNote data={rayData} />
             <p className="hint">{t("laminateFailure.hint")}</p>
           </>
         )}
-      </section>
+      </Panel>
 
       {envelope && (
-        <section className="panel">
-          <h2>{t("laminateFailure.axes.title")}</h2>
+        <Panel
+          className="span-4"
+          title={t("laminateFailure.axes.title")}
+          tools={
+            <TableActions
+              table={() => recordsTableModel(t("laminateFailure.axes.title"), axisColumns, axisRows)}
+              name="laminatversagen-achsen"
+            />
+          }
+        >
           <ResponsiveTable
             variant="records"
-            columns={[
-              {
-                key: "flow",
-                label: t("laminateFailure.axes.flow"),
-                render: (row) => <Sym base="n" sub={row.sub} />,
-                value: (row) => `n${row.sub}`,
-              },
-              {
-                key: "positive",
-                label: t("laminateFailure.axes.positive"),
-                numeric: true,
-                render: (row) => formatSignificant(row.positive, 5, locale),
-                value: (row) => row.positive,
-              },
-              {
-                key: "negative",
-                label: t("laminateFailure.axes.negative"),
-                numeric: true,
-                render: (row) => formatSignificant(row.negative, 5, locale),
-                value: (row) => row.negative,
-              },
-            ]}
+            columns={axisColumns}
             rows={axisRows}
             rowKey={(row) => row.key}
-            actions={{ title: t("laminateFailure.axes.title"), name: "laminatversagen-achsen" }}
           />
           <p className="hint">{t("laminateFailure.axes.hint")}</p>
-        </section>
+        </Panel>
       )}
+      </div>
     </>
   );
 }

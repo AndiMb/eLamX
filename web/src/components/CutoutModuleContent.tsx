@@ -17,6 +17,8 @@ import { HowWasThisComputed } from "./HowWasThisComputed";
 import { ResponsiveTable } from "./ResponsiveTable";
 import { MobileCollapse } from "./MobileCollapse";
 import { formatSignificant, NEGLIGIBLE_FRACTION } from "../lib/numberFormat";
+import { Panel } from "./Panel";
+import { TableActions } from "./TableActions";
 import { useLocale, useT } from "../i18n";
 
 // What a hole does to the load path.
@@ -218,11 +220,30 @@ export function CutoutModuleContent({ laminateId }: { laminateId: string }) {
                 </HowWasThisComputed>
               </section>
 
-              <section className="panel">
-                {/* 25 records of six rows each: on a phone that is the page,
-                    below the chart that already says it. */}
-                <MobileCollapse title={t("cutout.table.title")}>
-                <h2>{t("cutout.table.title")}</h2>
+              {/* 25 records of six rows each: on a phone that is the page,
+                  below the chart that already says it. */}
+              <MobileCollapse title={t("cutout.table.title")}>
+                <Panel
+                  title={t("cutout.table.title")}
+                  tools={
+                    <TableActions
+                      // Every point, not the thinned rows the screen lists.
+                      table={() => ({
+                        title: t("cutout.table.title"),
+                        columns: [
+                          { key: "alpha", label: t("cutout.table.alpha"), category: "angle" },
+                          { key: "n_theta", label: t("cutout.series.nTheta") },
+                          { key: "m_theta", label: t("cutout.series.mTheta") },
+                          { key: "n_x", label: t("cutout.table.nx") },
+                          { key: "n_y", label: t("cutout.table.ny") },
+                          { key: "n_xy", label: t("cutout.table.nxy") },
+                        ],
+                        rows: result.points.map((p) => [p.alpha, p.n_theta, p.m_theta, p.n_x, p.n_y, p.n_xy]),
+                      })}
+                      name="ausschnitt-rand"
+                    />
+                  }
+                >
                 <ResponsiveTable
                   variant="records"
                   columns={[
@@ -264,26 +285,10 @@ export function CutoutModuleContent({ laminateId }: { laminateId: string }) {
                   ]}
                   rows={everySoOften(result.points)}
                   rowKey={(row) => row.alpha}
-                  actions={{
-                    // Every point, not the thinned rows the screen lists.
-                    table: () => ({
-                      title: t("cutout.table.title"),
-                      columns: [
-                        { key: "alpha", label: t("cutout.table.alpha"), category: "angle" },
-                        { key: "n_theta", label: t("cutout.series.nTheta") },
-                        { key: "m_theta", label: t("cutout.series.mTheta") },
-                        { key: "n_x", label: t("cutout.table.nx") },
-                        { key: "n_y", label: t("cutout.table.ny") },
-                        { key: "n_xy", label: t("cutout.table.nxy") },
-                      ],
-                      rows: result.points.map((p) => [p.alpha, p.n_theta, p.m_theta, p.n_x, p.n_y, p.n_xy]),
-                    }),
-                    name: "ausschnitt-rand",
-                  }}
                 />
                 <p className="hint">{t("cutout.table.hint", { total: result.points.length })}</p>
-                </MobileCollapse>
-              </section>
+                </Panel>
+              </MobileCollapse>
             </>
           )}
         </div>

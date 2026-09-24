@@ -40,6 +40,7 @@ export const FailureBody3D = memo(function FailureBody3D({
   bodies,
   markers,
   axisLabels = ["σ∥", "σ⊥", "τ"],
+  exports,
 }: {
   /**
    * The bodies to draw, in order. The FIRST is drawn as a solid shaded
@@ -56,6 +57,8 @@ export const FailureBody3D = memo(function FailureBody3D({
   markers: StressMarker[];
   /** What the three axes are. Stress for a ply, load flows for a laminate. */
   axisLabels?: [string, string, string];
+  /** Further entries for the export menu, beside the PNG. */
+  exports?: readonly { key: string; label: string; run: () => void | Promise<void> }[];
 }) {
   const t = useT();
   const colors = useChartColors();
@@ -143,7 +146,7 @@ export const FailureBody3D = memo(function FailureBody3D({
         <RotateCcw size={14} />
       </button>
       <div className="chart-actions">
-        <ChartSnapshotButton target={canvasRef} name="versagenskoerper" />
+        <ChartSnapshotButton target={canvasRef} name="versagenskoerper" extra={exports} />
       </div>
     </div>
   );

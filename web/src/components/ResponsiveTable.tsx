@@ -183,7 +183,7 @@ function RecordsTable<T>(props: Extract<ResponsiveTableProps<T>, { variant: "rec
 
   return (
     <div className="responsive-table-scroll">
-      <table className={className}>
+      <table className={className ? `data-table ${className}` : "data-table"}>
         <thead>
           <tr>
             {columns.map((col) => (

@@ -822,7 +822,7 @@ export const en = {
   "layerDetail.qGlobal": "Q global (laminate system)",
   "layerDetail.sLocal": "q local (compliance)",
   "layerDetail.sGlobal": "q global (compliance)",
-  "failureBody.export": "Export as VTK",
+  "failureBody.export.vtk": "3D body (VTK)",
   "chart.snapshot": "Save as image",
   "module.export.label": "FE export",
   "module.export.description": "Material cards and the layup, as input for Nastran, Abaqus, ANSYS or LS-DYNA.",

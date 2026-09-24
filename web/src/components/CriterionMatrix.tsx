@@ -61,7 +61,7 @@ export const CriterionMatrix = memo(function CriterionMatrix({ laminateId }: { l
         <TableActions table={() => criterionMatrixTable(layerResults, { metric, t })} name="kriterienmatrix" />
       </div>
       <div className="responsive-table-scroll">
-        <table className="layer-results-table criterion-matrix-table">
+        <table className="data-table layer-results-table criterion-matrix-table">
           <caption className="visually-hidden">
             {t("criterionMatrix.caption", { metric: t(METRIC_LABEL_KEYS[metric]) })}
           </caption>

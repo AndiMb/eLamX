@@ -101,32 +101,36 @@ export const SpringInOutlineView = memo(function SpringInOutlineView({
   }, [draw]);
 
   return (
+    /* Legend and exaggeration on one line above the picture, the export in
+       the picture's corner - the arrangement of the other 3D stages. */
     <div className="chart viz spring-in-outline">
-      <ChartLegend
-        items={[
-          { key: "tool", label: t("springIn.legend.tool"), color: colors.series[3], shape: "line" },
-          { key: "part", label: t("springIn.legend.part"), color: colors.series[0], shape: "line" },
-        ]}
-      />
+      <div className="chart-card-controls">
+        <ChartLegend
+          items={[
+            { key: "tool", label: t("springIn.legend.tool"), color: colors.series[3], shape: "line" },
+            { key: "part", label: t("springIn.legend.part"), color: colors.series[0], shape: "line" },
+          ]}
+        />
+        <label className="inline-field">
+          <span className="field-label">{t("springIn.exaggeration")}</span>
+          <select
+            value={exaggeration}
+            onChange={(e) => setExaggeration(Number(e.target.value))}
+          >
+            {EXAGGERATIONS.map((factor) => (
+              <option key={factor} value={factor}>
+                {factor === 1 ? t("springIn.exaggeration.none") : `${factor}×`}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <div className="plate3d">
         <canvas ref={canvasRef} className="plate3d-canvas" />
+        <div className="chart-actions">
+          <ChartSnapshotButton target={canvasRef} name="spring-in" />
+        </div>
       </div>
-      <div className="chart-actions">
-        <ChartSnapshotButton target={canvasRef} name="spring-in" />
-      </div>
-      <label className="inline-field">
-        <span className="field-label">{t("springIn.exaggeration")}</span>
-        <select
-          value={exaggeration}
-          onChange={(e) => setExaggeration(Number(e.target.value))}
-        >
-          {EXAGGERATIONS.map((factor) => (
-            <option key={factor} value={factor}>
-              {factor === 1 ? t("springIn.exaggeration.none") : `${factor}×`}
-            </option>
-          ))}
-        </select>
-      </label>
     </div>
   );
 });

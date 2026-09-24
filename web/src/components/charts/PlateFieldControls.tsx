@@ -82,19 +82,21 @@ export function PlateFieldControls({ laminateId, currentBounds }: PlateFieldCont
         </select>
       </label>
 
-      <label className="plate-field-bounds-toggle">
-        <input
-          type="checkbox"
-          checked={manual}
-          onChange={(e) =>
-            setView({
-              ...view,
-              bounds: e.target.checked ? (currentBounds ?? [0, 1]) : "auto",
-            })
-          }
-        />
-        <span>{t("plateView.bounds.manual")}</span>
-      </label>
+      {/* A switch for the view, so a button like the view switches beside
+          the picture, not a checkbox like a field of the calculation. */}
+      <button
+        type="button"
+        className={manual ? "plate-field-bounds-toggle active" : "plate-field-bounds-toggle"}
+        aria-pressed={manual}
+        onClick={() =>
+          setView({
+            ...view,
+            bounds: manual ? "auto" : (currentBounds ?? [0, 1]),
+          })
+        }
+      >
+        {t("plateView.bounds.manual")}
+      </button>
 
       {manual && view.bounds !== "auto" && (
         <>

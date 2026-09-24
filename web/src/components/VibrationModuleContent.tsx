@@ -27,7 +27,10 @@ import { HowWasThisComputed } from "./HowWasThisComputed";
 import { PlateCheckList } from "./PlateCheckList";
 import { hasBlockingCheck, plateChecks } from "../lib/plateChecks";
 import { formatSignificant } from "../lib/numberFormat";
-import { ResponsiveTable } from "./ResponsiveTable";
+import { ResponsiveTable, type ResponsiveTableColumn } from "./ResponsiveTable";
+import { Panel } from "./Panel";
+import { TableActions } from "./TableActions";
+import { recordsTableModel } from "../lib/export/records";
 import { useLocale, useT } from "../i18n";
 
 // Free vibration of a rectangular plate cut from this laminate.
@@ -38,6 +41,8 @@ import { useLocale, useT } from "../i18n";
 // term counts and the eigensolver. What stands in the load's place is the
 // laminate's mass, which comes from the ply densities - so a material without
 // one makes this module, and only this module, refuse to compute.
+
+type ModeRow = { nr: number; frequency: number; ratio: number };
 
 export function VibrationModuleContent({ laminateId }: { laminateId: string }) {
   const t = useT();
@@ -57,6 +62,37 @@ export function VibrationModuleContent({ laminateId }: { laminateId: string }) {
 
   const clampTerms = (value: number) =>
     Math.max(1, Math.min(MAX_RITZ_TERMS, Math.round(value)));
+
+  const modeColumns: ResponsiveTableColumn<ModeRow>[] = [
+    {
+      key: "nr",
+      label: t("vibration.modes.nr"),
+      render: (row) => row.nr,
+      value: (row) => row.nr,
+      decimals: 0,
+    },
+    {
+      key: "frequency",
+      label: t("vibration.modes.frequency"),
+      numeric: true,
+      render: (row) => formatSignificant(row.frequency, 5, locale),
+      value: (row) => row.frequency,
+    },
+    {
+      key: "ratio",
+      label: t("vibration.modes.ratio"),
+      numeric: true,
+      render: (row) => formatSignificant(row.ratio, 3, locale),
+      value: (row) => row.ratio,
+    },
+  ];
+  const modeRows: ModeRow[] = modes
+    ? modes.map((mode, index) => ({
+        nr: index + 1,
+        frequency: mode.frequency,
+        ratio: mode.frequency / modes[0].frequency,
+      }))
+    : [];
 
   return (
     <>
@@ -209,51 +245,33 @@ export function VibrationModuleContent({ laminateId }: { laminateId: string }) {
             </section>
           )}
 
+          {/* The shape and the list of modes in one card, side by side - the
+              layout the buckling page has for the same pair. As two cards,
+              the second a full width for three narrow columns, they read as
+              two unrelated results. */}
           {modes && modes.length > 0 && (
-            <section className="panel">
-              <h2>{t("vibration.shape.title")}</h2>
-              <VibrationShapeView laminateId={laminateId} />
-            </section>
-          )}
-
-          {modes && modes.length > 1 && (
-            <section className="panel">
-              <h2>{t("vibration.modes.title")}</h2>
-              <ResponsiveTable
-                variant="records"
-                columns={[
-                  {
-                    key: "nr",
-                    label: t("vibration.modes.nr"),
-                    render: (row) => row.nr,
-                    value: (row) => row.nr,
-                    decimals: 0,
-                  },
-                  {
-                    key: "frequency",
-                    label: t("vibration.modes.frequency"),
-                    numeric: true,
-                    render: (row) => formatSignificant(row.frequency, 5, locale),
-                    value: (row) => row.frequency,
-                  },
-                  {
-                    key: "ratio",
-                    label: t("vibration.modes.ratio"),
-                    numeric: true,
-                    render: (row) => formatSignificant(row.ratio, 3, locale),
-                    value: (row) => row.ratio,
-                  },
-                ]}
-                rows={modes.map((mode, index) => ({
-                  nr: index + 1,
-                  frequency: mode.frequency,
-                  ratio: mode.frequency / modes[0].frequency,
-                }))}
-                rowKey={(row) => row.nr}
-                actions={{ title: t("vibration.modes.title"), name: "eigenfrequenzen" }}
-              />
-              <p className="hint">{t("vibration.modes.hint")}</p>
-            </section>
+            <Panel
+              title={t("vibration.shape.title")}
+              tools={
+                modes.length > 1 && (
+                  <TableActions
+                    table={() => recordsTableModel(t("vibration.modes.title"), modeColumns, modeRows)}
+                    name="eigenfrequenzen"
+                  />
+                )
+              }
+            >
+              <div className="grid shape-and-list">
+                <VibrationShapeView laminateId={laminateId} />
+                {modes.length > 1 && (
+                  <div className="chart">
+                    <p className="chart-title">{t("vibration.modes.title")}</p>
+                    <ResponsiveTable variant="records" columns={modeColumns} rows={modeRows} rowKey={(row) => row.nr} />
+                    <p className="hint">{t("vibration.modes.hint")}</p>
+                  </div>
+                )}
+              </div>
+            </Panel>
           )}
         </div>
       </div>

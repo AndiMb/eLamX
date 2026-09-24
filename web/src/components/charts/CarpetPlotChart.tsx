@@ -16,9 +16,7 @@ import { useChartWidth } from "../../lib/useChartWidth";
 // and a legend beside the frame would make the reader count curves instead.
 
 const DEFAULT_WIDTH = 680;
-const HEIGHT = 380;
 const MARGIN = { top: 16, right: 64, bottom: 40, left: 66 };
-const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 
 export const CarpetPlotChart = memo(function CarpetPlotChart({ plot }: { plot: CarpetPlotDto }) {
   const t = useT();
@@ -27,6 +25,10 @@ export const CarpetPlotChart = memo(function CarpetPlotChart({ plot }: { plot: C
   const colors = useChartColors();
   const { ref: boxRef, width: WIDTH } = useChartWidth(DEFAULT_WIDTH);
   const PLOT_W = WIDTH - MARGIN.left - MARGIN.right;
+  // Half as high as wide, within limits: at a fixed 380 px a full-width card
+  // drew the curves into a 3:1 strip in which eleven of them crowd together.
+  const HEIGHT = Math.round(Math.min(560, Math.max(340, WIDTH * 0.5)));
+  const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 
   const { paths, low, high, y, x } = useMemo(() => {
     const values = plot.curves.flatMap((c) => c.values);
@@ -50,7 +52,7 @@ export const CarpetPlotChart = memo(function CarpetPlotChart({ plot }: { plot: C
         .join(" "),
     }));
     return { paths, low, high, y, x };
-  }, [plot, PLOT_W]);
+  }, [plot, PLOT_W, PLOT_H]);
 
   const gridValues = [0, 0.25, 0.5, 0.75, 1];
 

@@ -148,25 +148,24 @@ export function ExportModuleContent({ laminateId }: { laminateId: string }) {
             </label>
           </div>
 
-          <div className="field-grid">
-            {/* Label first, control second, like every other field on the
-                page - a checkbox under its own caption reads as a caption for
-                the field below it. */}
-            <label>
-              <span className="field-label">{t("export.hygrothermal")}</span>
+          {/* Two switches of what goes into the file, written the way every
+              other on/off field in the app is: box first, words after. */}
+          <div className="check-list">
+            <label className="inline-check">
               <input
                 type="checkbox"
                 checked={options.hygrothermal}
                 onChange={(e) => updateOption("hygrothermal", e.target.checked)}
               />
+              {t("export.hygrothermal")}
             </label>
-            <label>
-              <span className="field-label">{t("export.strength")}</span>
+            <label className="inline-check">
               <input
                 type="checkbox"
                 checked={options.strength}
                 onChange={(e) => updateOption("strength", e.target.checked)}
               />
+              {t("export.strength")}
             </label>
           </div>
 

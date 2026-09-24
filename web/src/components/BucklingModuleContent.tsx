@@ -29,6 +29,7 @@ import { PlateCheckList } from "./PlateCheckList";
 import { StiffenerPanel } from "./StiffenerPanel";
 import { hasBlockingCheck, plateChecks } from "../lib/plateChecks";
 import { formatFixed, formatSignificant, isFiniteResult } from "../lib/numberFormat";
+import { Panel } from "./Panel";
 import { useLocale, useT } from "../i18n";
 import { bucklingModesTable } from "../lib/tables";
 import { TableActions } from "./TableActions";
@@ -257,19 +258,23 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
       )}
 
       {summary?.criticalFactor != null && (
-        <section className="panel">
-          <h2>{t("buckling.modes.title")}</h2>
-          <div className="grid">
+        <Panel
+          title={t("buckling.modes.title")}
+          tools={
+            modes &&
+            modes.length > 1 && (
+              <TableActions
+                table={() => bucklingModesTable(modes.map((m) => m.eigenvalue), t)}
+                name="beuleigenwerte"
+              />
+            )
+          }
+        >
+          <div className="grid shape-and-list">
             <BucklingShapeView laminateId={laminateId} />
             {modes && modes.length > 1 && (
               <div className="chart">
-                <div className="chart-title-row">
-                  <p className="chart-title">{t("buckling.modes.list")}</p>
-                  <TableActions
-                    table={() => bucklingModesTable(modes.map((m) => m.eigenvalue), t)}
-                    name="beuleigenwerte"
-                  />
-                </div>
+                <p className="chart-title">{t("buckling.modes.list")}</p>
                 {/* Rows double as a mode picker, so the table and the 3D
                     view's dropdown drive the same selection. */}
                 <table className="chart-table selectable-rows">
@@ -299,7 +304,7 @@ export function BucklingModuleContent({ laminateId }: { laminateId: string }) {
               </div>
             )}
           </div>
-        </section>
+        </Panel>
       )}
       </div>
       </div>
