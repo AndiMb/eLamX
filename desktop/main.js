@@ -14,7 +14,7 @@
 // origin, so localStorage - where the whole project state lives - persists
 // under a stable key instead of an opaque one.
 
-const { app, BrowserWindow, Menu, dialog, ipcMain, net, protocol, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, ipcMain, net, protocol, session, shell } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs/promises");
 const { pathToFileURL } = require("node:url");
@@ -33,6 +33,26 @@ const WEB_ROOT = app.isPackaged
   : path.resolve(__dirname, "..", "web", "dist");
 const SCHEME = "app";
 const START_URL = `${SCHEME}://elamx/index.html`;
+
+// What the page may load and run. Everything the app needs comes from its own
+// origin; the exceptions are the wasm module, which needs 'wasm-unsafe-eval' to
+// compile, inline styles (KaTeX and React write style attributes), and the
+// data:/blob: URLs the charts, fonts and exports are built from. Sent as a
+// header here and as a meta tag by the web build, which is the part a browser
+// tab sees - the header also carries frame-ancestors, which a meta tag cannot.
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self' data: blob:",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'",
+].join("; ");
 
 const PROJECT_FILTERS = [
   { name: "eLamX", extensions: ["elamx"] },
@@ -96,6 +116,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(() => {
+    denyPermissions();
     serveWebRoot();
     createWindow();
     app.on("activate", () => {
@@ -126,8 +147,26 @@ function serveWebRoot() {
     if (!type) return response;
     const headers = new Headers(response.headers);
     headers.set("Content-Type", type);
+    if (type === "text/html") headers.set("Content-Security-Policy", CONTENT_SECURITY_POLICY);
     return new Response(response.body, { status: response.status, headers });
   });
+}
+
+/**
+ * Refuses every permission a page can ask for.
+ *
+ * Electron grants them all unless told otherwise - camera, microphone,
+ * location, notifications, serial ports - and a laminate calculator needs none.
+ * Writing to the clipboard is the one exception the app uses (copying a table
+ * or a layup); reading it happens through the paste event, which needs no
+ * permission.
+ */
+function denyPermissions() {
+  const allowed = new Set(["clipboard-sanitized-write"]);
+  session.defaultSession.setPermissionRequestHandler((_contents, permission, callback) =>
+    callback(allowed.has(permission)),
+  );
+  session.defaultSession.setPermissionCheckHandler((_contents, permission) => allowed.has(permission));
 }
 
 /** What may be handed to the operating system to open. */
@@ -199,10 +238,50 @@ function createWindow() {
 
 // --- what the renderer may ask for ----------------------------------------
 
-ipcMain.handle("project:open", async (_event, suggested) => {
+/**
+ * Whether a message comes from the app's own page.
+ *
+ * There is one window and it cannot navigate away from `app://`, so today every
+ * message does. The check is here so that a frame nobody planned for - an
+ * embedded document, a navigation this file failed to stop - cannot use the
+ * channels below.
+ */
+function fromApp(event) {
+  const url = event.senderFrame?.url;
+  if (!url) return false;
+  try {
+    const { protocol: scheme, host } = new URL(url);
+    return scheme === `${SCHEME}:` && host === "elamx";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The files this process has handed the page or had the user choose, and so
+ * the only ones Save may overwrite without asking.
+ *
+ * The page names the file to save to, and without this list whatever runs in
+ * the page could name any file at all - a start-up script, say - and have it
+ * written with no dialog in between. With it, a path the shell never gave out
+ * is answered with the Save As dialog instead, which is what the user sees
+ * anyway the first time a project is saved.
+ */
+const grantedPaths = new Set();
+
+function grant(filePath) {
+  grantedPaths.add(path.resolve(filePath));
+}
+
+function isGranted(filePath) {
+  return typeof filePath === "string" && grantedPaths.has(path.resolve(filePath));
+}
+
+ipcMain.handle("project:open", async (event, suggested) => {
+  if (!fromApp(event)) return null;
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: label("de", "open"),
-    defaultPath: suggested ?? undefined,
+    title: label(menuLocale, "open"),
+    defaultPath: typeof suggested === "string" ? suggested : undefined,
     filters: PROJECT_FILTERS,
     properties: ["openFile"],
   });
@@ -210,18 +289,23 @@ ipcMain.handle("project:open", async (_event, suggested) => {
   return readProject(result.filePaths[0]);
 });
 
-ipcMain.handle("project:save", async (_event, { xml, filePath, suggestedName }) => {
+ipcMain.handle("project:save", async (event, request) => {
+  if (!fromApp(event)) return null;
+  const { xml, filePath, suggestedName } = request ?? {};
+  if (typeof xml !== "string") throw new TypeError("project:save expects the project as text");
   // With a path we already own, Save means save - no dialog. That is the whole
   // difference from the browser, where every save is a fresh download.
-  let target = filePath;
+  let target = isGranted(filePath) ? filePath : null;
   if (!target) {
+    const name = typeof suggestedName === "string" && suggestedName ? suggestedName : "eLamX";
     const result = await dialog.showSaveDialog(mainWindow, {
-      title: label("de", "saveAs"),
-      defaultPath: `${suggestedName || "eLamX"}.elamx`,
+      title: label(menuLocale, "saveAs"),
+      defaultPath: `${name}.elamx`,
       filters: PROJECT_FILTERS,
     });
     if (result.canceled || !result.filePath) return null;
     target = result.filePath;
+    grant(target);
   }
   await fs.writeFile(target, xml, "utf8");
   return { filePath: target, name: path.basename(target, ".elamx") };
@@ -252,35 +336,41 @@ async function saveFile(data, suggestedName, kinds) {
   return result.filePath;
 }
 
-ipcMain.handle("file:save", (_event, { data, suggestedName, kinds }) =>
-  saveFile(data, suggestedName, kinds),
+ipcMain.handle("file:save", (event, { data, suggestedName, kinds }) =>
+  fromApp(event) ? saveFile(data, suggestedName, kinds) : null,
 );
 
 // The channel from before `file:save`, kept as what it always was - a PNG.
-ipcMain.handle("image:save", (_event, { data, suggestedName }) =>
-  saveFile(data, suggestedName, ["png"]),
+ipcMain.handle("image:save", (event, { data, suggestedName }) =>
+  fromApp(event) ? saveFile(data, suggestedName, ["png"]) : null,
 );
 
 // The menu is built in this process, which has none of the app's message
 // catalogs - so the renderer tells it which language it is in, and the menu is
 // rebuilt when that changes. One language setting, not two.
-ipcMain.on("desktop:locale", (_event, locale) => buildMenu(locale === "en" ? "en" : "de"));
+ipcMain.on("desktop:locale", (event, locale) => {
+  if (fromApp(event)) buildMenu(locale === "en" ? "en" : "de");
+});
 
 // Undo or redo that belongs to a text field rather than to the project: the
 // renderer decided so, and only the shell can run the field's own editing.
 ipcMain.on("desktop:nativeEdit", (event, action) => {
+  if (!fromApp(event)) return;
   if (action === "undo") event.sender.undo();
   else if (action === "redo") event.sender.redo();
 });
 
-ipcMain.on("desktop:ready", () => {
+ipcMain.on("desktop:ready", (event) => {
+  if (!fromApp(event)) return;
   if (pendingOpen) void deliverProject(pendingOpen);
   pendingOpen = null;
 });
 
 async function readProject(filePath) {
+  const xml = await fs.readFile(filePath, "utf8");
+  grant(filePath);
   return {
-    xml: await fs.readFile(filePath, "utf8"),
+    xml,
     filePath,
     name: path.basename(filePath, path.extname(filePath)),
   };

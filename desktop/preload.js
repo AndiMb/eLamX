@@ -22,8 +22,9 @@ contextBridge.exposeInMainWorld("elamxDesktop", {
   openProject: (suggestedPath) => ipcRenderer.invoke("project:open", suggestedPath ?? null),
 
   /**
-   * Writes the project. With a `filePath` it overwrites that file silently -
-   * which is what Save means outside a browser; without one it asks where.
+   * Writes the project. With a `filePath` the shell handed out - one that was
+   * opened or chosen in its dialogs - it overwrites that file silently, which
+   * is what Save means outside a browser; otherwise it asks where.
    */
   saveProject: (xml, filePath, suggestedName) =>
     ipcRenderer.invoke("project:save", { xml, filePath: filePath ?? null, suggestedName }),

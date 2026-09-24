@@ -213,6 +213,29 @@ async function main() {
       "the shell can save files",
       await evaluate(session, "typeof window.elamxDesktop?.saveFile === 'function'"),
     );
+    // The hardening in main.js, checked where it has to hold: in the package.
+    // A path the shell never handed out is not a path Save may write to, and
+    // what is written has to be text - asked with a non-string so that the
+    // refusal comes before the dialog a headless run could never answer.
+    check(
+      "a project save must be text",
+      await evaluate(
+        session,
+        "window.elamxDesktop.saveProject(42, 'x.elamx', 'x').then(() => false, (e) => /as text/.test(String(e)))",
+      ),
+    );
+    const policy = await evaluate(
+      session,
+      "fetch('/index.html').then((r) => r.headers.get('content-security-policy') ?? '')",
+    );
+    check("the page is served with a content security policy", /wasm-unsafe-eval/.test(policy), policy);
+    check(
+      "permissions are refused",
+      (await evaluate(
+        session,
+        "navigator.permissions.query({ name: 'geolocation' }).then((s) => s.state)",
+      )) === "denied",
+    );
     // Not a failure: a build machine without a GPU falls back to the 2D view,
     // which is what that fallback is for. Worth reporting all the same.
     console.log(
