@@ -5,6 +5,7 @@ import type { CarpetPlotDto } from "../../lib/types";
 import { useLocale, useT } from "../../i18n";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
 import { carpetTable } from "../../lib/tables/charts";
+import { useChartWidth } from "../../lib/useChartWidth";
 
 // The carpet, drawn as the carpet it is named after.
 //
@@ -14,10 +15,9 @@ import { carpetTable } from "../../lib/tables/charts";
 // stiffness you need on the vertical axis, then read off which mix reaches it -
 // and a legend beside the frame would make the reader count curves instead.
 
-const WIDTH = 680;
+const DEFAULT_WIDTH = 680;
 const HEIGHT = 380;
-const MARGIN = { top: 16, right: 52, bottom: 40, left: 66 };
-const PLOT_W = WIDTH - MARGIN.left - MARGIN.right;
+const MARGIN = { top: 16, right: 64, bottom: 40, left: 66 };
 const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 
 export const CarpetPlotChart = memo(function CarpetPlotChart({ plot }: { plot: CarpetPlotDto }) {
@@ -25,6 +25,8 @@ export const CarpetPlotChart = memo(function CarpetPlotChart({ plot }: { plot: C
   const svgRef = useRef<SVGSVGElement>(null);
   const locale = useLocale();
   const colors = useChartColors();
+  const { ref: boxRef, width: WIDTH } = useChartWidth(DEFAULT_WIDTH);
+  const PLOT_W = WIDTH - MARGIN.left - MARGIN.right;
 
   const { paths, low, high, y, x } = useMemo(() => {
     const values = plot.curves.flatMap((c) => c.values);
@@ -48,7 +50,7 @@ export const CarpetPlotChart = memo(function CarpetPlotChart({ plot }: { plot: C
         .join(" "),
     }));
     return { paths, low, high, y, x };
-  }, [plot]);
+  }, [plot, PLOT_W]);
 
   const gridValues = [0, 0.25, 0.5, 0.75, 1];
 
@@ -60,7 +62,7 @@ export const CarpetPlotChart = memo(function CarpetPlotChart({ plot }: { plot: C
   const labelled = plot.value !== "g_xy";
 
   return (
-    <div className="chart">
+    <div className="chart" ref={boxRef}>
       <svg
         ref={svgRef}
         className="chart-svg"

@@ -12,11 +12,11 @@ import { failureModeLabel, useLocale, useT, type Locale } from "../../i18n";
 import type { MessageKey } from "../../i18n";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
 import { layerResultsTable } from "../../lib/tables";
+import { useChartWidth } from "../../lib/useChartWidth";
 
-const WIDTH = 600;
+const DEFAULT_WIDTH = 600;
 const HEIGHT = 240;
 const MARGIN = { top: 10, right: 10, bottom: 30, left: 40 };
-const PLOT_W = WIDTH - MARGIN.left - MARGIN.right;
 const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 const BAR_MAX_W = 20;
 
@@ -47,11 +47,15 @@ export interface ReserveFactorChartViewProps {
   locale: Locale;
   t: Translate;
   svgRef?: Ref<SVGSVGElement>;
+  /** Drawn at this width instead of the width it has on screen - the report. */
+  width?: number;
 }
 
 /** The chart itself - title, legend and bars - pure, everything through its
  *  props, so the report can draw it for any laminate and load case. */
-export function ReserveFactorChartView({ layerResults, metric, locale, t, svgRef }: ReserveFactorChartViewProps) {
+export function ReserveFactorChartView({ layerResults, metric, locale, t, svgRef, width }: ReserveFactorChartViewProps) {
+  const { ref: boxRef, width: WIDTH } = useChartWidth(DEFAULT_WIDTH, width);
+  const PLOT_W = WIDTH - MARGIN.left - MARGIN.right;
   const [hover, setHover] = useState<{
     layerNumber: number;
     position: "lower" | "upper";
@@ -97,7 +101,7 @@ export function ReserveFactorChartView({ layerResults, metric, locale, t, svgRef
       <ChartLegend
         items={usedTypes.map((ft) => ({ key: ft, label: t(FAILURE_LABEL_KEYS[ft]), color: FAILURE_COLORS[ft] }))}
       />
-      <div className="chart-svg-wrap">
+      <div className="chart-svg-wrap" ref={boxRef}>
         <svg
           ref={svgRef}
           className="chart-svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" role="img" aria-label={t("chart.reserveFactor.aria")}>

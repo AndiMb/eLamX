@@ -10,6 +10,7 @@ import type { AngleSweepResponse } from "../../lib/types";
 import { Sym } from "../Sym";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
 import { angleSweepTable } from "../../lib/tables/charts";
+import { useChartWidth } from "../../lib/useChartWidth";
 
 // How a laminate's stiffness depends on the direction it is loaded from, as a
 // POLAR diagram - which is what eLamX 3.x draws, and for a good reason: the
@@ -24,10 +25,10 @@ import { angleSweepTable } from "../../lib/tables/charts";
 // four A terms on, B and D off - including A12, which the cartesian version
 // computed and never drew.
 
-const SIZE = 420;
-const CENTRE = SIZE / 2;
-/** Room for the angle labels outside the outer circle. */
-const R_MAX = CENTRE - 34;
+/** The side it is designed at, and the most it grows to: a polar diagram
+ *  wider than this is only more empty rings, not more information. */
+const DEFAULT_SIZE = 420;
+const MAX_SIZE = 480;
 
 interface SeriesDef {
   key:
@@ -72,11 +73,20 @@ export interface PolarChartViewProps {
   locale: string;
   aria: string;
   svgRef?: Ref<SVGSVGElement>;
+  /** Drawn at this side length instead of fitting the screen - the report. */
+  size?: number;
 }
 
 /** The polar diagram itself: pure, everything through its props. */
-export function PolarChartView({ data, keys, locale, aria, svgRef }: PolarChartViewProps) {
+export function PolarChartView({ data, keys, locale, aria, svgRef, size }: PolarChartViewProps) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  // Square, as wide as it may be up to MAX_SIZE, and drawn at that size in
+  // pixels (see useChartWidth) so its labels are the charts' type scale.
+  const { ref: boxRef, width: available } = useChartWidth(DEFAULT_SIZE, size);
+  const SIZE = Math.min(available, size ?? MAX_SIZE);
+  const CENTRE = SIZE / 2;
+  /** Room for the angle labels outside the outer circle. */
+  const R_MAX = CENTRE - 34;
   const shown = SERIES.filter((s) => keys.includes(s.key));
 
   // One radial scale PER MATRIX, not one for the picture.
@@ -151,12 +161,13 @@ export function PolarChartView({ data, keys, locale, aria, svgRef }: PolarChartV
   };
 
   return (
-          <div className="chart-svg-wrap">
+          <div className="chart-svg-wrap" ref={boxRef}>
             <svg
               ref={svgRef}
               className="chart-svg polar"
               viewBox={`0 0 ${SIZE} ${SIZE}`}
-              width="100%"
+              width={SIZE}
+              height={SIZE}
               role="img"
               aria-label={aria}
             >

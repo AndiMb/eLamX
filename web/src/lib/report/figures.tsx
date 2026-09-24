@@ -54,6 +54,7 @@ function view(request: SvgRequest, t: Translate, locale: Locale): ReactNode {
     case "stack":
       return (
         <StackVizView
+          width={320}
           layers={request.layers}
           symmetric={request.symmetric}
           withMiddleLayer={request.withMiddleLayer}
@@ -69,12 +70,13 @@ function view(request: SvgRequest, t: Translate, locale: Locale): ReactNode {
         <AbdHeatmapView abd={request.abd} colors={LIGHT_CHART_COLORS} locale={locale} aria={t("chart.abdHeatmap.aria")} />
       );
     case "polar":
-      return <PolarChartView data={request.sweep} keys={request.keys} locale={locale} aria={t("chart.angleSweep.aria")} />;
+      return <PolarChartView data={request.sweep} keys={request.keys} locale={locale} aria={t("chart.angleSweep.aria")} size={420} />;
     case "reserveFactor":
-      return <ReserveFactorChartView layerResults={request.layers} metric={request.metric} locale={locale} t={t} />;
+      return <ReserveFactorChartView layerResults={request.layers} metric={request.metric} locale={locale} t={t} width={600} />;
     case "sheet":
       return (
         <ThroughThicknessSheetView
+          fixedWidths
           plies={request.plies}
           options={{ component: 0, system: "local", axis: "z", columns: { stack: true, strain: true, stress: true, metric: true } }}
           metric={request.metric}
@@ -95,6 +97,7 @@ function view(request: SvgRequest, t: Translate, locale: Locale): ReactNode {
     case "sequence":
       return (
         <FailureSequenceChartView
+          width={600}
           plies={request.plies}
           events={request.events}
           fpf={request.fpf}
@@ -118,6 +121,7 @@ function view(request: SvgRequest, t: Translate, locale: Locale): ReactNode {
       const y = outputLabel(output, metric, t);
       return (
         <SweepChartView
+          width={640}
           layout={layout}
           points={request.points}
           output={output}

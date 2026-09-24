@@ -12,6 +12,7 @@ import {
   placePlies,
 } from "../lib/stackLayout";
 import { useT } from "../i18n";
+import { useChartWidth } from "../lib/useChartWidth";
 
 const WIDTH = 320;
 /** The height of a stack of a few plies. */
@@ -50,6 +51,8 @@ export interface StackVizViewProps {
    *  thumbnail of the whole stack rather than a drawing to read plies off. */
   compact?: boolean;
   ariaLabel: string;
+  /** Drawn at this width instead of the width it has on screen - the report. */
+  width?: number;
 }
 
 /**
@@ -74,10 +77,15 @@ export function StackVizView({
   variant = "full",
   compact = false,
   ariaLabel,
+  width: fixedWidth,
 }: StackVizViewProps) {
+  // The SVG's own box is set by CSS (the full width, at most WIDTH), so it can
+  // be measured without feeding back into itself; the drawing then uses that
+  // width as its viewBox, which keeps the angle labels at the charts' size.
+  const { ref, width: measured } = useChartWidth<SVGSVGElement>(WIDTH, fixedWidth, 120);
   if (layers.length === 0) return null;
   const strip = variant === "strip";
-  const width = strip ? STRIP_WIDTH : WIDTH;
+  const width = strip ? STRIP_WIDTH : Math.min(WIDTH, measured);
   const mirror = showMirror || strip;
 
   const all = drawnPlies(layers, symmetric, withMiddleLayer, mirror);
@@ -117,6 +125,7 @@ export function StackVizView({
 
   return (
     <svg
+      ref={strip ? undefined : ref}
       className={strip ? "stack-viz stack-strip viz" : "stack-viz viz"}
       viewBox={`0 0 ${width} ${totalHeight}`}
       width={strip ? STRIP_WIDTH : "100%"}
@@ -137,7 +146,7 @@ export function StackVizView({
           strokeDasharray="5 4"
         />
       )}
-      <style>{`.stack-viz text { fill: var(--viz-text-primary); font-size: 10px; }`}</style>
+      <style>{`.stack-viz text { fill: var(--viz-text-primary); font-size: var(--chart-fs-tick, 11px); }`}</style>
     </svg>
   );
 }

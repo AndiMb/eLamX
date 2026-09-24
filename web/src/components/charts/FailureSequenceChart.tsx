@@ -9,6 +9,7 @@ import { ChartSnapshotButton } from "./ChartSnapshotButton";
 import { lpfPathTable } from "../../lib/tables";
 import { formatFixed, formatSignificant } from "../../lib/numberFormat";
 import { failureModeLabel, useLocale, useT, type MessageKey } from "../../i18n";
+import { useChartWidth } from "../../lib/useChartWidth";
 
 // The order in which the plies give way (F2.5): one row per ply of the
 // expanded stack, the load factor of each degradation step on the x-axis, a
@@ -51,9 +52,11 @@ export interface FailureSequenceChartViewProps {
     mode: (name: string) => string;
   };
   svgRef?: Ref<SVGSVGElement>;
+  /** Drawn at this width instead of the width it has on screen - the report. */
+  width?: number;
 }
 
-const WIDTH = 600;
+const DEFAULT_WIDTH = 600;
 const ROW = 18;
 const MARGIN = { top: 22, right: 16, bottom: 30, left: 78 };
 
@@ -72,8 +75,9 @@ function Mark({ type, x, y }: { type: FailureType; x: number; y: number }) {
 }
 
 /** Pure: everything through its props, so the report can draw it too. */
-export function FailureSequenceChartView({ plies, events, fpf, lpf, locale, labels, svgRef }: FailureSequenceChartViewProps) {
+export function FailureSequenceChartView({ plies, events, fpf, lpf, locale, labels, svgRef, width }: FailureSequenceChartViewProps) {
   const [hover, setHover] = useState<{ event: SequenceEvent; x: number; y: number } | null>(null);
+  const { ref: boxRef, width: WIDTH } = useChartWidth(DEFAULT_WIDTH, width);
   if (plies.length === 0 || events.length === 0) return null;
   const plotH = plies.length * ROW;
   const height = MARGIN.top + plotH + MARGIN.bottom;
@@ -95,7 +99,7 @@ export function FailureSequenceChartView({ plies, events, fpf, lpf, locale, labe
   for (const e of events) byPly.set(e.layerNumber, [...(byPly.get(e.layerNumber) ?? []), e]);
 
   return (
-    <div className="chart-svg-wrap">
+    <div className="chart-svg-wrap" ref={boxRef}>
       <svg
         ref={svgRef}
         className="chart-svg seq-chart"

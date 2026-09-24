@@ -38,6 +38,7 @@ import { HowWasThisComputed } from "./HowWasThisComputed";
 import { failureModeLabel, useLocale, useT } from "../i18n";
 import { ChartSnapshotButton } from "./charts/ChartSnapshotButton";
 import { throughThicknessTable } from "../lib/tables/charts";
+import { useChartWidth } from "../lib/useChartWidth";
 
 // The sampling-point sheet (F2.6): the stack and its state on one shared
 // z-axis - the plies, a strain component, a stress component and the
@@ -100,8 +101,8 @@ const TOP = 26;
 const BOTTOM = 30;
 const LEFT = 46;
 const RIGHT = 10;
-const COL_W = 230;
-const STACK_W = 150;
+const COL_W_DEFAULT = 230;
+const STACK_W_DEFAULT = 150;
 
 /** The shape of a failure type's marker - the second signal beside the
  *  colour (N7). */
@@ -142,6 +143,20 @@ export interface ThroughThicknessSheetViewProps {
   labels: { stack: string; strain: string; stress: string; metric: string; z: string; aria: string };
   /** The element holding the columns' SVGs - what an export takes. */
   containerRef?: Ref<HTMLDivElement>;
+  /** Draw every column at its design width instead of the width it has on
+   *  screen - the report, which must draw the same figure every time. */
+  fixedWidths?: boolean;
+}
+
+/** One column, drawn at the width it actually has (see useChartWidth). */
+function SheetColumn({ name, fixed, children }: { name: ColumnKey; fixed?: boolean; children: (width: number) => ReactNode }) {
+  const design = name === "stack" ? STACK_W_DEFAULT : COL_W_DEFAULT;
+  const { ref, width } = useChartWidth(design, fixed ? design : undefined, name === "stack" ? 110 : 150);
+  return (
+    <div className={`tt-col tt-col-${name}`} ref={ref}>
+      {children(width)}
+    </div>
+  );
 }
 
 /** The sheet itself: pure, everything through its props. */
@@ -155,6 +170,7 @@ export function ThroughThicknessSheetView({
   locale,
   labels,
   containerRef,
+  fixedWidths,
 }: ThroughThicknessSheetViewProps) {
   const scale = useMemo(() => verticalScale(plies, options.axis, PLOT_H), [plies, options.axis]);
   if (plies.length === 0) return null;
@@ -193,8 +209,8 @@ export function ThroughThicknessSheetView({
     </g>
   );
 
-  const interfaces = scale.bands.slice(1).map((b) => (
-    <line key={b.ply.number} x1={LEFT} x2={COL_W - RIGHT} y1={TOP + b.top} y2={TOP + b.top} className="chart-gridline" />
+  const interfaces = (colW: number) => scale.bands.slice(1).map((b) => (
+    <line key={b.ply.number} x1={LEFT} x2={colW - RIGHT} y1={TOP + b.top} y2={TOP + b.top} className="chart-gridline" />
   ));
 
   const crosshair = (width: number) =>
@@ -212,18 +228,18 @@ export function ThroughThicknessSheetView({
     onPointerLeave: () => onHoverZ(null),
   });
 
-  const valueColumn = (quantity: "strain" | "stress", title: string) => {
+  const valueColumn = (quantity: "strain" | "stress", title: string) => (colW: number) => {
     const [lo, hi] = valueRange(plies, quantity, system, component);
-    const x = (v: number) => LEFT + ((v - lo) / (hi - lo)) * (COL_W - LEFT - RIGHT);
+    const x = (v: number) => LEFT + ((v - lo) / (hi - lo)) * (colW - LEFT - RIGHT);
     const fmt = (v: number) => (quantity === "strain" ? formatScientific(v, 1, locale) : formatSignificant(v, 3, locale));
     const hoverPly = hoverZ !== null ? plyAt(plies, hoverZ) : null;
     return (
-      <svg {...svgProps(COL_W, title)}>
+      <svg {...svgProps(colW, title)}>
         <text x={LEFT} y={14} className="tt-col-title">
           {title}
         </text>
         {zAxis}
-        {interfaces}
+        {interfaces(colW)}
         <line x1={x(0)} x2={x(0)} y1={TOP} y2={TOP + PLOT_H} className="chart-axis" />
         {[lo, hi].map((v, i) => (
           <text key={i} x={x(v)} y={TOP + PLOT_H + 16} textAnchor={i === 0 ? "start" : "end"}>
@@ -244,7 +260,7 @@ export function ThroughThicknessSheetView({
             />
           );
         })}
-        {crosshair(COL_W)}
+        {crosshair(colW)}
         {hoverPly && hoverZ !== null && (
           <circle cx={x(valueAt(hoverPly, quantity, system, component, hoverZ))} cy={TOP + scale.y(hoverZ)} r={3.5} className="tt-hover-dot" />
         )}
@@ -252,8 +268,8 @@ export function ThroughThicknessSheetView({
     );
   };
 
-  const stackColumn = (
-    <svg {...svgProps(STACK_W, labels.stack)}>
+  const stackColumn = (stackW: number) => (
+    <svg {...svgProps(stackW, labels.stack)}>
       <text x={LEFT} y={14} className="tt-col-title">
         {labels.stack}
       </text>
@@ -263,15 +279,15 @@ export function ThroughThicknessSheetView({
         const index = plies.indexOf(b.ply);
         return (
           <g key={b.ply.number}>
-            <rect x={LEFT} y={TOP + b.top} width={STACK_W - LEFT - RIGHT} height={Math.max(h - 1, 0.5)} rx={2} fill={angleColor(b.ply.angle)} opacity={0.35} />
+            <rect x={LEFT} y={TOP + b.top} width={stackW - LEFT - RIGHT} height={Math.max(h - 1, 0.5)} rx={2} fill={angleColor(b.ply.angle)} opacity={0.35} />
             {h >= 11 && (
-              <text x={LEFT + (STACK_W - LEFT - RIGHT) / 2} y={TOP + b.top + h / 2} textAnchor="middle" dominantBaseline="central">
+              <text x={LEFT + (stackW - LEFT - RIGHT) / 2} y={TOP + b.top + h / 2} textAnchor="middle" dominantBaseline="central">
                 {b.ply.angle}°
               </text>
             )}
             {index === critical && h >= 9 && (
               // The governing ply: a crosshair symbol, not only a colour (N7).
-              <g className="tt-critical" transform={`translate(${STACK_W - RIGHT - 9}, ${TOP + b.top + h / 2})`}>
+              <g className="tt-critical" transform={`translate(${stackW - RIGHT - 9}, ${TOP + b.top + h / 2})`}>
                 <circle r={5} fill="none" />
                 <line x1={-7} x2={7} y1={0} y2={0} />
                 <line x1={0} x2={0} y1={-7} y2={7} />
@@ -281,25 +297,29 @@ export function ThroughThicknessSheetView({
         );
       })}
       {zTop > 0 && zBottom < 0 && (
-        <line x1={LEFT} x2={STACK_W - RIGHT} y1={TOP + scale.y(0)} y2={TOP + scale.y(0)} className="tt-midplane" />
+        <line x1={LEFT} x2={stackW - RIGHT} y1={TOP + scale.y(0)} y2={TOP + scale.y(0)} className="tt-midplane" />
       )}
-      {crosshair(STACK_W)}
+      {crosshair(stackW)}
     </svg>
   );
 
-  const metricColumn = (() => {
+  const metricColumn = (colW: number) => {
     const [lo, hi] = metricRange(plies, metric);
     const limit = metricLimit(metric);
-    const x = (v: number) => LEFT + ((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo)) * (COL_W - LEFT - RIGHT);
+    const x = (v: number) => LEFT + ((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo)) * (colW - LEFT - RIGHT);
     return (
-      <svg {...svgProps(COL_W, labels.metric)}>
+      <svg {...svgProps(colW, labels.metric)}>
         <text x={LEFT} y={14} className="tt-col-title">
           {labels.metric}
         </text>
         {zAxis}
-        {interfaces}
+        {interfaces(colW)}
         <line x1={x(limit)} x2={x(limit)} y1={TOP} y2={TOP + PLOT_H} className="tt-limit" />
-        {Array.from(new Set([lo, limit, hi])).map((v, i) => (
+        {/* The limit is named only where it does not collide with an end
+            of the axis - 1,0 beside 1,1 read as one number. */}
+        {Array.from(new Set([lo, limit, hi]))
+          .filter((v) => v === lo || v === hi || (Math.abs(x(v) - x(lo)) > 32 && Math.abs(x(hi) - x(v)) > 32))
+          .map((v, i) => (
           <text key={i} x={x(v)} y={TOP + PLOT_H + 16} textAnchor={v === lo ? "start" : v === hi ? "end" : "middle"}>
             {formatFixed(v, 1, locale)}
           </text>
@@ -332,12 +352,12 @@ export function ThroughThicknessSheetView({
             </g>
           );
         })}
-        {crosshair(COL_W)}
+        {crosshair(colW)}
       </svg>
     );
-  })();
+  };
 
-  const columns: Record<ColumnKey, ReactNode> = {
+  const columns: Record<ColumnKey, (width: number) => ReactNode> = {
     stack: stackColumn,
     strain: valueColumn("strain", labels.strain),
     stress: valueColumn("stress", labels.stress),
@@ -363,9 +383,9 @@ export function ThroughThicknessSheetView({
   return (
     <div className="tt-sheet viz" tabIndex={0} onKeyDown={onKey} aria-label={labels.aria} ref={containerRef}>
       {COLUMN_KEYS.filter((k) => options.columns[k]).map((k) => (
-        <div key={k} className={`tt-col tt-col-${k}`}>
+        <SheetColumn key={k} name={k} fixed={fixedWidths}>
           {columns[k]}
-        </div>
+        </SheetColumn>
       ))}
     </div>
   );

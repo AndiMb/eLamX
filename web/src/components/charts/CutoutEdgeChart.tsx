@@ -6,6 +6,7 @@ import type { CutoutPointDto } from "../../lib/types";
 import { useLocale, useT } from "../../i18n";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
 import { cutoutEdgeTable } from "../../lib/tables/charts";
+import { useChartWidth } from "../../lib/useChartWidth";
 
 // What the load does as it runs round the hole.
 //
@@ -19,10 +20,9 @@ import { cutoutEdgeTable } from "../../lib/tables/charts";
 // being read off is a peak and the angle it sits at - which a curve over an
 // axis states and a closed loop only implies.
 
-const WIDTH = 640;
+const DEFAULT_WIDTH = 640;
 const HEIGHT = 260;
 const MARGIN = { top: 12, right: 14, bottom: 32, left: 58 };
-const PLOT_W = WIDTH - MARGIN.left - MARGIN.right;
 const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 
 type SeriesId = "n_theta" | "m_theta";
@@ -39,6 +39,8 @@ export const CutoutEdgeChart = memo(function CutoutEdgeChart({
   const locale = useLocale();
   const colors = useChartColors();
   const [series, setSeries] = useState<SeriesId>("n_theta");
+  const { ref: boxRef, width: WIDTH } = useChartWidth(DEFAULT_WIDTH);
+  const PLOT_W = WIDTH - MARGIN.left - MARGIN.right;
 
   const { path, min, max, zeroY } = useMemo(() => {
     const values = points.map((p) => (series === "n_theta" ? p.n_theta : p.m_theta));
@@ -64,7 +66,7 @@ export const CutoutEdgeChart = memo(function CutoutEdgeChart({
       max: high,
       zeroY: y(0),
     };
-  }, [points, series]);
+  }, [points, series, PLOT_W]);
 
   const xOf = (alpha: number) => MARGIN.left + (alpha / 360) * PLOT_W;
   const color = series === "n_theta" ? colors.series[0] : colors.series[2];
@@ -85,6 +87,7 @@ export const CutoutEdgeChart = memo(function CutoutEdgeChart({
         </select>
       </label>
 
+      <div ref={boxRef}>
       <svg
         ref={svgRef}
         className="chart-svg"
@@ -104,13 +107,13 @@ export const CutoutEdgeChart = memo(function CutoutEdgeChart({
               y2={MARGIN.top + PLOT_H}
               className={alpha % 90 === 0 ? "chart-axis" : "chart-gridline"}
             />
-            <text
-              x={xOf(alpha)}
-              y={MARGIN.top + PLOT_H + 18}
-              textAnchor="middle"
-            >
-              {alpha}°
-            </text>
+            {/* Narrow, only the quadrants are named: nine labels of "225°"
+                do not fit under a phone-wide plot without touching. */}
+            {(alpha % 90 === 0 || PLOT_W >= 420) && (
+              <text x={xOf(alpha)} y={MARGIN.top + PLOT_H + 18} textAnchor="middle">
+                {alpha}°
+              </text>
+            )}
           </g>
         ))}
 
@@ -155,6 +158,7 @@ export const CutoutEdgeChart = memo(function CutoutEdgeChart({
 
         <path d={path} fill="none" stroke={color} strokeWidth={1.75} />
       </svg>
+      </div>
       <div className="chart-actions">
         <ChartSnapshotButton target={svgRef} name="ausschnitt" title={t("cutout.chart.aria")} data={() => cutoutEdgeTable(points, t)} />
       </div>

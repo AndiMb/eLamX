@@ -2891,20 +2891,20 @@ table.matrix td.block-d {
 
 .chart-svg text {
   fill: var(--viz-text-muted);
-  font-size: 10px;
+  font-size: var(--chart-fs-tick);
 }
 
 /* A label sitting ON a curve rather than beside the frame - the carpet plot's
    curves are told apart by the number written on each one, not by a legend. */
 .chart-svg text.chart-inline-label {
   fill: var(--viz-text-primary);
-  font-size: 10px;
+  font-size: var(--chart-fs-tick);
   font-weight: 600;
 }
 
 .chart-svg text.chart-axis-label {
   fill: var(--viz-text-primary);
-  font-size: 11px;
+  font-size: var(--chart-fs-label);
 }
 
 .chart-gridline {
@@ -2922,7 +2922,7 @@ table.matrix td.block-d {
   flex-wrap: wrap;
   gap: 12px;
   margin: 6px 0;
-  font-size: 12px;
+  font-size: var(--chart-fs-label);
   color: var(--viz-text-secondary);
 }
 
@@ -3071,7 +3071,7 @@ table.matrix td.block-d {
   border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--card) 78%, transparent);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--chart-fs-tick);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
@@ -3086,7 +3086,7 @@ table.matrix td.block-d {
   left: 0;
   padding: 1px 6px;
   border-radius: var(--radius-control);
-  font-size: 11px;
+  font-size: var(--chart-fs-tick);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   pointer-events: none;
@@ -3217,7 +3217,7 @@ table.matrix td.block-d {
 
 .plate3d-axes text {
   fill: var(--viz-text-secondary);
-  font-size: 11px;
+  font-size: var(--chart-fs-tick);
   text-anchor: middle;
   dominant-baseline: middle;
 }
@@ -3239,7 +3239,7 @@ table.matrix td.block-d {
   border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--card) 82%, transparent);
   color: var(--text);
-  font-size: 11px;
+  font-size: var(--chart-fs-tick);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   pointer-events: none;
@@ -3312,13 +3312,13 @@ table.matrix td.block-d {
   gap: 6px;
   width: 128px;
   margin: var(--s-3) 0;
-  font-size: 11px;
+  font-size: var(--chart-fs-tick);
   color: var(--text-muted);
 }
 
 .plate3d-legend-title {
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--chart-fs-label);
   line-height: 1.25;
 }
 
@@ -4168,18 +4168,18 @@ table.matrix td.block-d {
 }
 
 .tt-svg text {
-  font-size: 10px;
+  font-size: var(--chart-fs-tick);
   fill: var(--viz-text-secondary);
 }
 
 .tt-svg .tt-col-title {
-  font-size: 11px;
+  font-size: var(--chart-fs-label);
   font-weight: 600;
   fill: var(--viz-text-primary);
 }
 
 .tt-svg .tt-axis-title {
-  font-size: 9px;
+  font-size: var(--chart-fs-tick);
 }
 
 .tt-line {
@@ -4282,12 +4282,12 @@ table.matrix td.block-d {
 /* --- Versagensreihenfolge (F2.5) --- */
 
 .seq-chart text {
-  font-size: 10px;
+  font-size: var(--chart-fs-tick);
   fill: var(--viz-text-secondary);
 }
 
 .seq-chart .seq-axis-title {
-  font-size: 10px;
+  font-size: var(--chart-fs-label);
   fill: var(--viz-text-muted);
 }
 
@@ -4327,7 +4327,7 @@ table.matrix td.block-d {
 }
 
 .seq-chart .seq-step {
-  font-size: 9px;
+  font-size: var(--chart-fs-tick);
   fill: var(--viz-text-muted);
 }
 

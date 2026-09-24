@@ -14,6 +14,7 @@
 
 import type { PlateScene } from "./scene";
 import { sampleColormap } from "./colormap";
+import { CHART_FS_LABEL, CHART_FS_TICK, chartFont } from "../chartType";
 
 export interface PlateImageLegend {
   title: string;
@@ -98,7 +99,7 @@ export function composePlateImage(
 
   for (const [index, line] of captions.entries()) {
     context.fillStyle = style.muted;
-    context.font = `${11 * scale}px system-ui, sans-serif`;
+    context.font = chartFont(CHART_FS_TICK, { scale });
     context.textBaseline = "bottom";
     context.fillText(line, PADDING * scale, height - (PADDING + index * 15) * scale);
   }
@@ -126,7 +127,7 @@ function drawLegend(
   const barHeight = bottom - top;
 
   context.fillStyle = style.ink;
-  context.font = `${12 * scale}px system-ui, sans-serif`;
+  context.font = chartFont(CHART_FS_LABEL, { scale });
   context.textBaseline = "top";
   context.fillText(legend.title, left, PADDING * scale, LEGEND_WIDTH * scale - PADDING * scale);
 
@@ -155,7 +156,7 @@ function drawLegend(
   }
 
   context.fillStyle = style.muted;
-  context.font = `${11 * scale}px system-ui, sans-serif`;
+  context.font = chartFont(CHART_FS_TICK, { scale });
   context.textBaseline = "middle";
   for (const tick of legend.ticks) {
     context.fillText(tick.text, left + barWidth + 6 * scale, top + (1 - tick.t) * barHeight);

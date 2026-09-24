@@ -81,6 +81,14 @@
   --fs-3xl: 26px;
   --ls-caps: 0.06em;
 
+  /* Schrift in Diagrammen und 3D-Ansichten - EINE Skala fuer beide. Die
+     SVG-Diagramme werden in ihrer echten Pixelbreite gezeichnet (siehe
+     lib/useChartWidth.ts), damit diese Werte auf dem Bildschirm auch genau
+     so gross ankommen; die Canvas-Ansichten lesen dieselben Zahlen aus
+     lib/chartType.ts, das diese Werte spiegelt. */
+  --chart-fs-tick: 11px;
+  --chart-fs-label: 12px;
+
   --sans: system-ui, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
 

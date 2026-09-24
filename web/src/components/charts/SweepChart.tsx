@@ -5,6 +5,7 @@ import { formatSignificant } from "../../lib/numberFormat";
 import type { PointResult, StudyOutput } from "../../lib/study/evaluate";
 import { OUTPUT_INFO, outputValue, variationValue } from "../../lib/study/outputs";
 import type { SweepLayout } from "../../lib/study/sweep";
+import { useChartWidth } from "../../lib/useChartWidth";
 
 // One output of a sweep over its input: a line for one varied input, a family
 // of lines - one per value of the second input, labelled on the line - for
@@ -17,10 +18,9 @@ import type { SweepLayout } from "../../lib/study/sweep";
 // takes the keyboard too: the arrow keys move a cursor over the points, and
 // Enter picks the one under it, like a click.
 
-const WIDTH = 640;
+const DEFAULT_WIDTH = 640;
 const HEIGHT = 300;
 const MARGIN = { top: 14, right: 104, bottom: 40, left: 64 };
-const PLOT_W = WIDTH - MARGIN.left - MARGIN.right;
 const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 
 export interface SweepChartLabels {
@@ -43,6 +43,8 @@ export interface SweepChartViewProps {
   svgRef?: RefObject<SVGSVGElement | null>;
   /** A point was picked: x index, y index (0 for one input). */
   onPick?: (i: number, j: number) => void;
+  /** Drawn at this width instead of the width it has on screen - the report. */
+  width?: number;
 }
 
 function ticks(low: number, high: number, count = 5): number[] {
@@ -56,7 +58,12 @@ function ticks(low: number, high: number, count = 5): number[] {
   return out;
 }
 
-export function SweepChartView({ layout, points, output, metric, locale, colors, labels, svgRef, onPick }: SweepChartViewProps) {
+export function SweepChartView({ layout, points, output, metric, locale, colors, labels, svgRef, onPick, width }: SweepChartViewProps) {
+  const { ref: boxRef, width: WIDTH } = useChartWidth(DEFAULT_WIDTH, width);
+  // The end labels need their right margin only when there is a family to
+  // name; a single curve gets the width back.
+  const right = layout.y ? MARGIN.right : 16;
+  const PLOT_W = WIDTH - MARGIN.left - right;
   const own = useRef<SVGSVGElement>(null);
   const ref = svgRef ?? own;
   const [cursor, setCursor] = useState<[number, number] | null>(null);
@@ -95,7 +102,7 @@ export function SweepChartView({ layout, points, output, metric, locale, colors,
       y: (v: number) => MARGIN.top + PLOT_H - ((v - low) / (high - low)) * PLOT_H,
       xInv: (px: number) => xLow + ((px - MARGIN.left) / PLOT_W) * xSpan,
     };
-  }, [series, xs, limit]);
+  }, [series, xs, limit, PLOT_W]);
 
   // Each curve as runs of computed points: a gap breaks the line.
   const paths = series.map((values) => {
@@ -199,7 +206,7 @@ export function SweepChartView({ layout, points, output, metric, locale, colors,
   const seriesName = (j: number) => (ys[j] === null ? "" : labels.series(fmt(variationValue(layout.y!.variation, ys[j]!))));
 
   return (
-    <div className="chart viz sweep-chart">
+    <div className="chart viz sweep-chart" ref={boxRef}>
       <svg
         ref={ref}
         className="chart-svg"
