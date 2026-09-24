@@ -555,6 +555,7 @@ export const en = {
   "compare.row.lpfFirstMatrix": "RF first inter-fibre failure",
   "compare.row.lpfFinal": "Load factor at final failure",
   "compare.notConfigured": "This laminate has no such analysis set up — a number here would be about a plate that does not exist.",
+  "compare.columnError": "Not computed: {message}",
   "compare.hint": "Highlighted cells differ from the first column.",
   "compare.group.layup": "Layup",
   "compare.group.stiffness": "Stiffness",

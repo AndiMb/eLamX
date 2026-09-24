@@ -545,6 +545,7 @@ export const de: Messages = {
   "compare.row.lpfFirstMatrix": "RF erster Zwischenfaserbruch",
   "compare.row.lpfFinal": "Lastfaktor beim Endversagen",
   "compare.notConfigured": "Für dieses Laminat ist das Modul nicht eingerichtet — eine Zahl dafür wäre über eine Platte, die es nicht gibt.",
+  "compare.columnError": "Nicht berechnet: {message}",
   "compare.hint": "Hervorgehobene Zellen weichen von der ersten Spalte ab.",
   "compare.group.layup": "Aufbau",
   "compare.group.stiffness": "Steifigkeit",

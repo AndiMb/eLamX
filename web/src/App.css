@@ -5071,3 +5071,13 @@ table.matrix td.block-d {
   color: var(--danger);
   border-color: color-mix(in srgb, var(--danger) 50%, var(--border));
 }
+
+/* Eine Vergleichsspalte, die der Kern abgelehnt hat, sagt das - statt
+   auszusehen wie eine, die noch rechnet. */
+.compare-column-error {
+  display: block;
+  color: var(--danger);
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  white-space: normal;
+}

@@ -276,6 +276,15 @@ function useResult(variant: Variant): CltResponse | null {
   return state.state === "hasData" ? state.data : null;
 }
 
+/** Why a column has no numbers, when the core refused them. Without it a
+ *  failed column - a ply pointing at a deleted material, say - looked exactly
+ *  like one still computing. */
+function useResultError(variant: Variant): string | null {
+  const state = useAtomValue(loadableVariantFamily(columnKey(variant)));
+  if (state.state !== "hasError") return null;
+  return state.error instanceof Error ? state.error.message : String(state.error);
+}
+
 /** Pins a laminate under a load case as a snapshot (F4.3): its figures now,
  *  computed here, and the module figures the laminate has. */
 function usePin() {
@@ -313,6 +322,7 @@ function ColumnHeader({ variant, onRemove }: { variant: Variant; onRemove: () =>
   const t = useT();
   const facts = useFacts(variant);
   const pin = usePin();
+  const error = useResultError(variant);
   return (
     <>
       <span className="compare-column-title">
@@ -321,6 +331,11 @@ function ColumnHeader({ variant, onRemove }: { variant: Variant; onRemove: () =>
       <span className="compare-column-sub">
         {variant.snapshotId ? t("compare.snapshot.column", { loadCase: facts.loadCaseName }) : facts.loadCaseName}
       </span>
+      {error && (
+        <span className="compare-column-error" role="alert" title={error}>
+          {t("compare.columnError", { message: error })}
+        </span>
+      )}
       {!variant.snapshotId && (
         <button
           type="button"
