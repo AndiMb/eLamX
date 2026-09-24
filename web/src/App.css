@@ -924,6 +924,9 @@ table.compare-table thead th {
   box-shadow: var(--shadow-sm);
 }
 
+/* display:flex nimmt dem summary seinen Aufklapp-Pfeil; ohne ihn sah der
+   eingeklappte Bereich aus wie eine leere Karte mit Ueberschrift. Der
+   Chevron rechts ersetzt ihn und dreht sich beim Oeffnen. */
 .mobile-collapse > summary {
   padding: var(--s-3) var(--s-4);
   font-weight: 600;
@@ -931,10 +934,58 @@ table.compare-table thead th {
   min-height: var(--touch-min);
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  list-style: none;
+}
+
+.mobile-collapse > summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-collapse > summary::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-right: 2px;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform 0.15s ease;
+}
+
+.mobile-collapse[open] > summary::after {
+  transform: rotate(225deg) translate(-2px, -2px);
 }
 
 .mobile-collapse[open] > summary {
   border-bottom: 1px solid var(--border);
+}
+
+/* In einer Karte ist der Bereich eine Zeile dieser Karte, keine zweite Karte
+   darin: kein eigener Rahmen, kein Schatten, nur eine Trennlinie. */
+.panel .mobile-collapse {
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  margin-bottom: 0;
+}
+
+.panel .mobile-collapse > summary {
+  padding-inline: 0;
+}
+
+.panel .mobile-collapse:first-child {
+  border-top: none;
+}
+
+/* Die Ueberschrift, die der Bereich auf breiten Schirmen traegt, steht hier
+   schon im summary - aufgeklappt stuende sie doppelt. */
+.mobile-collapse > summary + h2 {
+  display: none;
 }
 
 /* The panels inside lose their own frame - the collapse already is one. */
@@ -1112,6 +1163,17 @@ table.compare-table thead th {
   gap: var(--s-1);
   font-size: var(--fs-sm);
   color: var(--text-2);
+}
+
+/* Ein Kontrollkaestchen im Feldraster steht neben seinem Text und auf der
+   Hoehe der Eingabefelder daneben - als Spalte gesetzt stand das Kaestchen
+   ueber dem Text und ueber der Feldkante. */
+.field-grid label.checkbox {
+  flex-direction: row;
+  align-items: center;
+  align-self: end;
+  gap: var(--s-2);
+  min-height: var(--control-h);
 }
 
 /* Innerhalb eines Feldrasters darf ein Select seine Spalte fuellen - die
@@ -3513,14 +3575,22 @@ table.matrix td.block-d {
   touch-action: auto;
 }
 
-.spring-in-outline .inline-field {
+/* Beschriftung und Auswahl in einer Zeile - Carpet-Plot, Ausschnitt und
+   Spring-In teilen sich das; ohne Abstand klebte das Wort am Feld. */
+.inline-field {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
 }
 
-.spring-in-outline .inline-field .field-label {
+.inline-field .field-label {
   white-space: nowrap;
+}
+
+.inline-field select {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Zwei gleichrangige Schaltflaechen nebeneinander - "neues Material" und

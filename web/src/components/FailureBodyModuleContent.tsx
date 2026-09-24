@@ -8,6 +8,7 @@ import { FailureBody3D, type FailureBodySurface } from "./charts/FailureBody3D";
 import { downloadVtk, gridToQuads, quadsToVtk } from "../lib/vtkExport";
 import { ChartLegend } from "./charts/ChartLegend";
 import { BackLink } from "./BackLink";
+import { MobileCollapse } from "./MobileCollapse";
 import { useChartColors } from "../lib/chartColors";
 import { parseVtkSurface, type VtkSurface } from "../lib/vtkSurface";
 import { SafeNumberInput } from "./SafeNumberInput";
@@ -71,6 +72,18 @@ export function FailureBodyModuleContent({ materialId }: { materialId: string })
       <section className="panel failure-body">
         <h2>{t("failureBody.title", { material: material.name })}</h2>
 
+        {/* Twenty-four criteria are three lines on a desktop and twelve
+            touch-sized rows on a phone, between the title and the body they
+            choose for. There they fold away, and the summary says what is
+            chosen. */}
+        <MobileCollapse
+          title={`${t("failureBody.criteria")}: ${selected
+            .map((id) => {
+              const criterion = CRITERIA.find((c) => c.id === id);
+              return criterion ? t(criterion.labelKey) : id;
+            })
+            .join(", ")}`}
+        >
         <div className="polar-series-picker" role="group" aria-label={t("failureBody.criteria")}>
           {CRITERIA.map((criterion) => (
             <label key={criterion.id}>
@@ -84,6 +97,7 @@ export function FailureBodyModuleContent({ materialId }: { materialId: string })
             </label>
           ))}
         </div>
+        </MobileCollapse>
 
         {selected.length === 0 ? (
           <p className="hint">{t("failureBody.none")}</p>

@@ -15,7 +15,8 @@ import { Sym } from "./Sym";
 import { CutoutEdgeChart } from "./charts/CutoutEdgeChart";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { ResponsiveTable } from "./ResponsiveTable";
-import { formatSignificant } from "../lib/numberFormat";
+import { MobileCollapse } from "./MobileCollapse";
+import { formatSignificant, NEGLIGIBLE_FRACTION } from "../lib/numberFormat";
 import { useLocale, useT } from "../i18n";
 
 // What a hole does to the load path.
@@ -53,6 +54,13 @@ export function CutoutModuleContent({ laminateId }: { laminateId: string }) {
   const error = useAtomValue(cutoutErrorFamily(laminateId));
   const state = useAtomValue(loadableCutoutFamily(laminateId));
   const result = state.state === "hasData" ? state.data : null;
+  // A resultant that is exactly zero at an angle comes back as ~1e-17 and
+  // printed as 0,0000000000000000083 - noise, set to the zero it is, against
+  // the largest value in its own column (see NEGLIGIBLE_FRACTION).
+  const columnScale = (key: CutoutColumn) =>
+    result ? Math.max(0, ...result.points.map((p) => Math.abs(p[key])).filter(Number.isFinite)) : 0;
+  const clean = (value: number, key: CutoutColumn) =>
+    Math.abs(value) < NEGLIGIBLE_FRACTION * columnScale(key) ? 0 : value;
 
   const update = <K extends keyof CutoutInputDto>(key: K, value: CutoutInputDto[K]) => {
     setInput((current) => ({ ...current, [key]: value }));
@@ -211,6 +219,9 @@ export function CutoutModuleContent({ laminateId }: { laminateId: string }) {
               </section>
 
               <section className="panel">
+                {/* 25 records of six rows each: on a phone that is the page,
+                    below the chart that already says it. */}
+                <MobileCollapse title={t("cutout.table.title")}>
                 <h2>{t("cutout.table.title")}</h2>
                 <ResponsiveTable
                   variant="records"
@@ -224,31 +235,31 @@ export function CutoutModuleContent({ laminateId }: { laminateId: string }) {
                       key: "n_theta",
                       label: t("cutout.series.nTheta"),
                       numeric: true,
-                      render: (row) => formatSignificant(row.n_theta, 5, locale),
+                      render: (row) => formatSignificant(clean(row.n_theta, "n_theta"), 5, locale),
                     },
                     {
                       key: "m_theta",
                       label: t("cutout.series.mTheta"),
                       numeric: true,
-                      render: (row) => formatSignificant(row.m_theta, 5, locale),
+                      render: (row) => formatSignificant(clean(row.m_theta, "m_theta"), 5, locale),
                     },
                     {
                       key: "n_x",
                       label: t("cutout.table.nx"),
                       numeric: true,
-                      render: (row) => formatSignificant(row.n_x, 5, locale),
+                      render: (row) => formatSignificant(clean(row.n_x, "n_x"), 5, locale),
                     },
                     {
                       key: "n_y",
                       label: t("cutout.table.ny"),
                       numeric: true,
-                      render: (row) => formatSignificant(row.n_y, 5, locale),
+                      render: (row) => formatSignificant(clean(row.n_y, "n_y"), 5, locale),
                     },
                     {
                       key: "n_xy",
                       label: t("cutout.table.nxy"),
                       numeric: true,
-                      render: (row) => formatSignificant(row.n_xy, 5, locale),
+                      render: (row) => formatSignificant(clean(row.n_xy, "n_xy"), 5, locale),
                     },
                   ]}
                   rows={everySoOften(result.points)}
@@ -271,6 +282,7 @@ export function CutoutModuleContent({ laminateId }: { laminateId: string }) {
                   }}
                 />
                 <p className="hint">{t("cutout.table.hint", { total: result.points.length })}</p>
+                </MobileCollapse>
               </section>
             </>
           )}
@@ -279,6 +291,8 @@ export function CutoutModuleContent({ laminateId }: { laminateId: string }) {
     </>
   );
 }
+
+type CutoutColumn = "n_theta" | "m_theta" | "n_x" | "n_y" | "n_xy";
 
 /**
  * Every fifteen degrees, whatever the sample count.
