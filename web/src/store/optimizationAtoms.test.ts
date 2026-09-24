@@ -29,7 +29,7 @@ describe("the optimisation on the batch worker", () => {
       await elamx.optimize(
         JSON.stringify({
           materials: { [material.id]: material },
-          input: defaultOptimizationInput(material.id),
+          input: { ...defaultOptimizationInput(material.id), n_candidates: 10 },
           optimizer: "sequential",
           genetic: defaultGeneticParameters(),
           budget: DEFAULT_BUDGET,

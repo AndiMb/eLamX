@@ -1395,4 +1395,11 @@ export const en = {
   "compare.source": "Column source",
   "compare.source.laminate": "Laminate",
   "compare.source.snapshot": "Snapshot",
+  "optimization.candidates": "Best stacks",
+  "optimization.candidates.count": "Candidates",
+  "optimization.candidates.hint": "Rank 1 is the search's answer; it had computed the others already when it stopped – more candidates cost no extra computation. Only stacks that carry the load. The rules column counts the stacking rules met; the tooltip names the ones broken.",
+  "optimization.candidates.mass": "Mass per area",
+  "optimization.candidates.rules": "Rules",
+  "optimization.candidates.sequential": "The sequential decision yields exactly one stack by construction: it fixes one ply after the other and drops every other choice at once. The other three searches give a ranking.",
+  "optimization.candidates.stack": "Stack",
 } as const;

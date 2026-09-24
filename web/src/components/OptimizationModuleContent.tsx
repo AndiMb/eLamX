@@ -14,7 +14,11 @@ import {
   resolvedOptimizationInputAtom,
   runOptimizationAtom,
   cancelOptimizationAtom,
+  candidateCountAtom,
 } from "../store/optimizationAtoms";
+import { CandidateTable } from "./CandidateTable";
+import { historyStep } from "../lib/history";
+import type { Candidate } from "../lib/generated/Candidate";
 import { materialsAtom } from "../store/materialsAtoms";
 import { addLaminateAtom, laminateConfigFamily } from "../store/laminateAtoms";
 import { useStore } from "jotai";
@@ -68,6 +72,7 @@ export function OptimizationModuleContent() {
   const state = useAtomValue(optimizationStateAtom);
   const run = useSetAtom(runOptimizationAtom);
   const cancel = useSetAtom(cancelOptimizationAtom);
+  const [candidateCount, setCandidateCount] = useAtom(candidateCountAtom);
   const materials = useAtomValue(materialsAtom);
   const addLaminate = useSetAtom(addLaminateAtom);
   const store = useStore();
@@ -96,8 +101,13 @@ export function OptimizationModuleContent() {
    * symmetric laminate with half the plies written down - which is how it
    * would have been typed in.
    */
-  const adopt = () => {
-    if (!result) return;
+  const adopt = (chosen: Pick<Candidate, "angles" | "symmetric"> | undefined = result ?? undefined) => {
+    if (!chosen) return;
+    const id = historyStep(t("optimization.adopt"), () => adoptInto(chosen));
+    navigate(`/laminates/${id}`);
+  };
+
+  const adoptInto = (result: Pick<Candidate, "angles" | "symmetric">) => {
     const id = addLaminate(materialId);
     const config = store.get(laminateConfigFamily(id));
     store.set(laminateConfigFamily(id), {
@@ -116,7 +126,7 @@ export function OptimizationModuleContent() {
           : {}),
       })),
     });
-    navigate(`/laminates/${id}`);
+    return id;
   };
 
   return (
@@ -343,6 +353,15 @@ export function OptimizationModuleContent() {
           <p className="hint">
             {t(OPTIMIZERS.find((o) => o.id === optimizer)?.hintKey ?? "optimizer.sequential.hint")}
           </p>
+          <div className="field-grid">
+            <label>
+              <span className="field-label">{t("optimization.candidates.count")}</span>
+              <SafeNumberInput
+                value={candidateCount}
+                onChange={(v) => setCandidateCount(Math.min(50, Math.max(1, Math.round(v))))}
+              />
+            </label>
+          </div>
 
           <div className="button-row">
             <button type="button" onClick={() => run()} disabled={state.status === "running"}>
@@ -418,10 +437,21 @@ export function OptimizationModuleContent() {
               )}
 
               <div className="button-row">
-                <button type="button" onClick={adopt}>
+                <button type="button" onClick={() => adopt()}>
                   <Wand2 size={16} /> {t("optimization.adopt")}
                 </button>
               </div>
+              {optimizer === "sequential" ? (
+                <p className="hint">{t("optimization.candidates.sequential")}</p>
+              ) : (
+                result.candidates.length > 1 && (
+                  <CandidateTable
+                    candidates={result.candidates}
+                    density={materials.find((m) => m.id === materialId)?.rho ?? 0}
+                    onAdopt={(c) => adopt(c)}
+                  />
+                )
+              )}
             </section>
           )}
         </div>

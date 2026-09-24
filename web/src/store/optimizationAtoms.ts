@@ -176,7 +176,7 @@ export const runOptimizationAtom = atom(null, async (get, set) => {
     args: [
       JSON.stringify({
         materials: Object.fromEntries(materials.map((m) => [m.id, m])),
-        input,
+        input: { ...input, n_candidates: get(candidateCountAtom) },
         optimizer,
         genetic: get(geneticParametersAtom),
         budget: DEFAULT_BUDGET,
@@ -206,6 +206,16 @@ export const runOptimizationAtom = atom(null, async (get, set) => {
     if (runningSearch === handle) runningSearch = null;
   }
 });
+
+/** How many of the best stacks a search reports (F4.4). The file's
+ *  `<optimization>` has no place for it, so it is a setting of this app
+ *  rather than part of the project. */
+export const candidateCountAtom = atomWithStorage<number>(
+  "elamx.optimization.candidates",
+  10,
+  createJSONStorage<number>(() => localStorage),
+  { getOnInit: true },
+);
 
 /** Stops the running search, if there is one. */
 export const cancelOptimizationAtom = atom(null, () => {

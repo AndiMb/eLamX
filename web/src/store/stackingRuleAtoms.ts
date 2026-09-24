@@ -51,3 +51,11 @@ export const stackingRulesFamily = atomFamily((laminateId: string) =>
 export const loadableStackingRulesFamily = atomFamily((laminateId: string) =>
   loadableWithLastValue(stackingRulesFamily(laminateId)),
 );
+
+/** The rules of a stack given directly, by its request - for stacks that are
+ *  not laminates of the project, like the optimisation's candidates. */
+export const rulesOfFamily = atomFamily((request: string) =>
+  atom<Promise<RuleResult[]>>(async () => JSON.parse(await elamx.check_stacking_rules(request)) as RuleResult[]),
+);
+
+export const loadableRulesOfFamily = atomFamily((request: string) => loadableWithLastValue(rulesOfFamily(request)));

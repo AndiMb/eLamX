@@ -4833,3 +4833,54 @@ table.matrix td.block-d {
   flex: 1 1 14rem;
   max-width: 28rem;
 }
+
+/* --- Kandidaten der Optimierung (P4.7) --- */
+
+.candidate-table {
+  margin-top: var(--s-4);
+}
+
+.candidate-table h3 {
+  margin: 0;
+}
+
+.candidate-table td.numeric,
+.candidate-table th.numeric {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.candidate-table td.failing {
+  color: var(--danger);
+}
+
+.candidate-table tr.candidate-best td {
+  font-weight: 600;
+}
+
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.rule-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rule-compact.passed svg {
+  color: var(--ok);
+}
+
+.rule-compact.unmet svg {
+  color: var(--warn);
+}

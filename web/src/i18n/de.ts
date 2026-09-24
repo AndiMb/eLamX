@@ -1374,4 +1374,11 @@ export const de: Messages = {
   "compare.source": "Quelle der Spalte",
   "compare.source.laminate": "Laminat",
   "compare.source.snapshot": "Snapshot",
+  "optimization.candidates": "Beste Aufbauten",
+  "optimization.candidates.count": "Kandidaten",
+  "optimization.candidates.hint": "Rang 1 ist die Antwort der Suche; die übrigen hatte sie beim Anhalten schon gerechnet – mehr Kandidaten kosten keine zusätzliche Rechnung. Nur Aufbauten, die die Last tragen. Die Regelspalte zählt erfüllte Aufbauregeln; der Tooltip nennt die verletzten.",
+  "optimization.candidates.mass": "Flächengewicht",
+  "optimization.candidates.rules": "Regeln",
+  "optimization.candidates.sequential": "Die sequentielle Entscheidung liefert per Konstruktion genau einen Aufbau: Sie legt Lage für Lage fest und verwirft jede andere Wahl sofort. Eine Rangliste liefern die anderen drei Verfahren.",
+  "optimization.candidates.stack": "Aufbau",
 };

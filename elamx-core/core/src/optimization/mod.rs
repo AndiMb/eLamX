@@ -156,6 +156,17 @@ pub struct OptimizationInput {
     /// Not in the original, which loops until the reserve factor reaches 1 and
     /// therefore never returns on a load no stack of these angles can carry.
     pub max_layers: usize,
+    /// How many of the best stacks to report in `candidates` (F4.4); `None`
+    /// is one. Not in the file format - the web keeps it as a setting.
+    ///
+    /// It changes what is reported, never what is searched: every search
+    /// already has its candidates in hand when it stops - the exhaustive one
+    /// enumerates the whole last level, Todoroki's keeps every survivor, the
+    /// genetic one its population - so none evaluates a laminate more for it,
+    /// and the best stack and every count stay what they were.
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub n_candidates: Option<usize>,
 }
 
 impl Default for OptimizationInput {
@@ -170,7 +181,14 @@ impl Default for OptimizationInput {
             constraints: Vec::new(),
             symmetric: false,
             max_layers: 200,
+            n_candidates: None,
         }
+    }
+}
+
+impl OptimizationInput {
+    fn candidate_count(&self) -> usize {
+        self.n_candidates.unwrap_or(1).max(1)
     }
 }
 
@@ -208,6 +226,23 @@ pub struct OptimizationResult {
     /// that have no generations.
     #[serde(default)]
     pub last_improvement: Option<usize>,
+    /// The best stacks found, best first and without duplicates - at most
+    /// `n_candidates` of them, and the first is always the one above. Only
+    /// stacks that carry the load.
+    #[serde(default)]
+    pub candidates: Vec<Candidate>,
+}
+
+/// One of the stacks a search reports.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export, export_to = "../../../web/src/lib/generated/"))]
+pub struct Candidate {
+    /// The STORED sequence, as in `OptimizationResult::angles`.
+    pub angles: Vec<f64>,
+    pub symmetric: bool,
+    pub layer_count: usize,
+    pub min_reserve_factor: f64,
+    pub thickness: f64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -429,9 +464,11 @@ pub fn exhaustive(
             }
         }
 
+        let mut worsts: Vec<f64> = Vec::with_capacity(next.len());
         for candidate in &next {
             let worst =
                 worst_case(candidate, input, materials, criteria, symmetric, &mut evaluations);
+            worsts.push(worst);
             checked += 1;
             if worst > best {
                 best = worst;
@@ -443,7 +480,15 @@ pub fn exhaustive(
         }
 
         if best >= 1.0 {
-            return Ok(finish(best_angles, best, input, materials, symmetric, checked, evaluations));
+            let mut result = finish(best_angles, best, input, materials, symmetric, checked, evaluations);
+            // The whole level is evaluated already: its other feasible stacks
+            // are the runners-up, at no extra cost.
+            let n = input.candidate_count();
+            if n > 1 {
+                let pool = next.iter().cloned().zip(worsts).collect();
+                result.candidates = ranked_candidates(pool, n, input, materials, symmetric);
+            }
+            return Ok(result);
         }
         level = next;
     }
@@ -568,15 +613,22 @@ pub fn todoroki(
     // 3. The best of the survivors - all real plies by now.
     let mut best = f64::NEG_INFINITY;
     let mut best_angles = survivors[0].clone();
+    let mut pool: Vec<(Vec<f64>, f64)> = Vec::with_capacity(survivors.len());
     for survivor in &survivors {
         let worst = worst_case(survivor, input, materials, criteria, true, &mut evaluations);
+        pool.push((survivor.clone(), worst));
         if worst > best {
             best = worst;
             best_angles = survivor.clone();
         }
     }
 
-    Ok(finish(best_angles, best, input, materials, true, checked, evaluations))
+    let mut result = finish(best_angles, best, input, materials, true, checked, evaluations);
+    let n = input.candidate_count();
+    if n > 1 {
+        result.candidates = ranked_candidates(pool, n, input, materials, true);
+    }
+    Ok(result)
 }
 
 /// Whether a ply in a mixed stack is a real one or a super layer.
@@ -697,7 +749,62 @@ fn finish(
         constraint_evaluations: evaluations,
         succeeded: min_reserve_factor >= 1.0,
         last_improvement: None,
+        candidates: Vec::new(),
     }
+    .with_best_as_candidate()
+}
+
+impl OptimizationResult {
+    /// The result as the only candidate - what a search that reports one
+    /// stack reports.
+    fn with_best_as_candidate(mut self) -> Self {
+        self.candidates = if self.succeeded {
+            vec![Candidate {
+                angles: self.angles.clone(),
+                symmetric: self.symmetric,
+                layer_count: self.layer_count,
+                min_reserve_factor: self.min_reserve_factor,
+                thickness: self.thickness,
+            }]
+        } else {
+            Vec::new()
+        };
+        self
+    }
+}
+
+/// The candidates of a pool, best first: the pool is in the search's own
+/// order, and a stable sort by reserve factor keeps the first of equals
+/// first - which is the one the search itself picked, since every search
+/// here takes the first of equal stacks. Only stacks that carry the load,
+/// each sequence once, at most `n`.
+fn ranked_candidates(
+    pool: Vec<(Vec<f64>, f64)>,
+    n: usize,
+    input: &OptimizationInput,
+    materials: &HashMap<String, Material>,
+    symmetric: bool,
+) -> Vec<Candidate> {
+    let mut pool: Vec<(Vec<f64>, f64)> = pool.into_iter().filter(|(_, rf)| *rf >= 1.0).collect();
+    pool.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    let mut out: Vec<Candidate> = Vec::with_capacity(n);
+    for (angles, rf) in pool {
+        if out.len() >= n {
+            break;
+        }
+        if out.iter().any(|c| c.angles == angles) {
+            continue;
+        }
+        let layer_count = build(&angles, input, materials, symmetric).map_or(angles.len(), |l| l.layers().len());
+        out.push(Candidate {
+            thickness: input.thickness * layer_count as f64,
+            angles,
+            symmetric,
+            layer_count,
+            min_reserve_factor: rf,
+        });
+    }
+    out
 }
 
 /// The knobs of the genetic search.
@@ -957,6 +1064,36 @@ pub fn genetic(
         evaluations,
     );
     result.last_improvement = Some(generation_of_last_change);
+    let n = input.candidate_count();
+    if n > 1 && result.succeeded {
+        // The best first, then the rest of the population as `pick_best`
+        // would rank it: carrying the load, thinner, more margin.
+        let mut others: Vec<&Individual> = parents.iter().filter(|p| p.min_reserve_factor >= 1.0).collect();
+        others.sort_by(|a, b| {
+            a.layers
+                .cmp(&b.layers)
+                .then(b.min_reserve_factor.partial_cmp(&a.min_reserve_factor).unwrap_or(std::cmp::Ordering::Equal))
+        });
+        let mut candidates = result.candidates.clone();
+        for other in others {
+            if candidates.len() >= n {
+                break;
+            }
+            let stack = other.angles[..other.layers].to_vec();
+            if candidates.iter().any(|c| c.angles == stack) {
+                continue;
+            }
+            let layer_count = build(&stack, input, materials, symmetric).map_or(stack.len(), |l| l.layers().len());
+            candidates.push(Candidate {
+                thickness: input.thickness * layer_count as f64,
+                angles: stack,
+                symmetric,
+                layer_count,
+                min_reserve_factor: other.min_reserve_factor,
+            });
+        }
+        result.candidates = candidates;
+    }
     Ok(result)
 }
 
@@ -1647,5 +1784,59 @@ mod tests {
         };
         let expected = on_listed_stack("max_stress").min(on_listed_stack("hashin"));
         assert_eq!(listed.min_reserve_factor.to_bits(), expected.to_bits());
+    }
+
+    /// F4.4: asking for more candidates changes what is reported, never what
+    /// is found - with one (or none said) every search answers exactly as
+    /// before, and with ten the first candidate is that same answer, the
+    /// rest ranked behind it, feasible, and each sequence once.
+    #[test]
+    fn candidates_do_not_change_the_search() {
+        let materials = carbon();
+        let criteria = default_criterion_registry();
+        let input = OptimizationInput {
+            angles: vec![0.0, 45.0, -45.0, 90.0],
+            constraints: vec![Constraint::Clt { loads: loads(300.0, 150.0, 60.0) }],
+            max_layers: 40,
+            ..base(vec![])
+        };
+        let with = |n: Option<usize>| OptimizationInput { n_candidates: n, ..input.clone() };
+        let genetic_params = GeneticParameters { max_generations: 25, ..GeneticParameters::default() };
+        type Search<'a> = Box<dyn Fn(&OptimizationInput) -> OptimizationResult + 'a>;
+        let searches: Vec<(&str, Search)> = vec![
+            ("sequential", Box::new(|i| sequential_decision(i, &materials, &criteria).unwrap())),
+            ("exhaustive", Box::new(|i| exhaustive(i, &materials, &criteria, 200_000).unwrap())),
+            (
+                "todoroki",
+                Box::new(|i| todoroki(&OptimizationInput { symmetric: true, ..i.clone() }, &materials, &criteria, 200_000).unwrap()),
+            ),
+            ("genetic", Box::new(|i| genetic(i, &materials, &criteria, &genetic_params, 1_000_000).unwrap())),
+        ];
+        for (name, search) in &searches {
+            let before = search(&with(None));
+            let one = search(&with(Some(1)));
+            assert_eq!(one, before, "{name}: n_candidates = 1 must be today's answer");
+            assert_eq!(before.candidates.len(), 1, "{name}");
+            assert_eq!(before.candidates[0].angles, before.angles, "{name}");
+
+            let ten = search(&with(Some(10)));
+            assert_eq!(OptimizationResult { candidates: before.candidates.clone(), ..ten.clone() }, before, "{name}: same best, same counts");
+            assert_eq!(ten.candidates[0], before.candidates[0], "{name}");
+            assert!(ten.candidates.len() <= 10, "{name}");
+            for (i, c) in ten.candidates.iter().enumerate() {
+                assert!(c.min_reserve_factor >= 1.0, "{name}: candidate {i} does not carry the load");
+                assert!(ten.candidates[..i].iter().all(|d| d.angles != c.angles), "{name}: duplicate {:?}", c.angles);
+                // Each candidate's figure is the stack's own.
+                let check = worst_case(&c.angles, &input, &materials, &criteria, c.symmetric, &mut 0);
+                assert_eq!(check, c.min_reserve_factor, "{name}: candidate {i}");
+            }
+            if *name == "exhaustive" || *name == "todoroki" {
+                assert!(ten.candidates.len() > 1, "{name} has runners-up in hand");
+                assert!(
+                    ten.candidates.windows(2).all(|w| w[0].min_reserve_factor >= w[1].min_reserve_factor),
+                    "{name}: best first"
+                );
+            }
+        }
     }
 }

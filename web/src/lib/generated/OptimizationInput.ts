@@ -32,4 +32,15 @@ symmetric: boolean,
  * Not in the original, which loops until the reserve factor reaches 1 and
  * therefore never returns on a load no stack of these angles can carry.
  */
-max_layers: number, };
+max_layers: number, 
+/**
+ * How many of the best stacks to report in `candidates` (F4.4); `None`
+ * is one. Not in the file format - the web keeps it as a setting.
+ *
+ * It changes what is reported, never what is searched: every search
+ * already has its candidates in hand when it stops - the exhaustive one
+ * enumerates the whole last level, Todoroki's keeps every survivor, the
+ * genetic one its population - so none evaluates a laminate more for it,
+ * and the best stack and every count stay what they were.
+ */
+n_candidates?: number, };

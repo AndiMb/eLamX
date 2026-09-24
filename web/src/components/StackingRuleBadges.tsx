@@ -4,6 +4,7 @@ import { CircleCheck, CircleAlert, Ruler } from "lucide-react";
 import {
   DEFAULT_RULE_SETTINGS,
   effectiveRuleSettingsAtom,
+  loadableRulesOfFamily,
   loadableStackingRulesFamily,
   stackingRuleSettingsAtom,
 } from "../store/stackingRuleAtoms";
@@ -102,6 +103,26 @@ export function StackingRuleBadges({ laminateId }: { laminateId: string }) {
       </ul>
       {open && <StackingRulesDialog results={results} focus={open} onClose={() => setOpen(null)} />}
     </>
+  );
+}
+
+/** The rules of any stack - a candidate of the optimisation, say - as icons
+ *  with a count, the unmet ones named in the tooltip and for screen readers. */
+export function CompactRuleBadges({ angles, symmetric }: { angles: number[]; symmetric: boolean }) {
+  const t = useT();
+  const settings = useAtomValue(effectiveRuleSettingsAtom);
+  const { label, detail } = useRuleText();
+  const request = JSON.stringify({ angles, symmetric, with_middle_layer: false, settings });
+  const loadable = useAtomValue(loadableRulesOfFamily(request));
+  if (loadable.state !== "hasData") return null;
+  const results = loadable.data;
+  const unmet = results.filter((r) => !r.passed);
+  const text = unmet.length === 0 ? t("rules.allPassed") : unmet.map((r) => `${label(r.rule)}: ${detail(r)}`).join("; ");
+  return (
+    <span className={unmet.length === 0 ? "rule-compact passed" : "rule-compact unmet"} title={text} aria-label={text}>
+      {unmet.length === 0 ? <CircleCheck size={13} aria-hidden="true" /> : <CircleAlert size={13} aria-hidden="true" />}
+      {results.length - unmet.length}/{results.length}
+    </span>
   );
 }
 
