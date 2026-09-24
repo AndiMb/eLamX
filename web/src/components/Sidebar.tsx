@@ -21,9 +21,9 @@ import {
   duplicateLaminateAtom,
   laminateConfigFamily,
   laminateIdsAtom,
-  removeLaminateAtom,
   usedMaterialIdsAtom,
 } from "../store/laminateAtoms";
+import { deleteLaminateAtom } from "../store/projectAtoms";
 import { materialsAtom } from "../store/materialsAtoms";
 import {
   dependentMaterialsAtom,
@@ -88,7 +88,7 @@ function LaminateTreeItem({ id }: { id: string }) {
   const t = useT();
   const [config, setConfig] = useAtom(laminateConfigFamily(id));
   const [expandedIds, setExpandedIds] = useAtom(expandedLaminateIdsAtom);
-  const removeLaminate = useSetAtom(removeLaminateAtom);
+  const removeLaminate = useSetAtom(deleteLaminateAtom);
   const duplicateLaminate = useSetAtom(duplicateLaminateAtom);
   const navigate = useNavigate();
   const expanded = expandedIds.has(id);

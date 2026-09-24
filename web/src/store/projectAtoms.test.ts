@@ -146,3 +146,25 @@ describe("das Projekt und seine Web-Erweiterung", () => {
     expect(store.get(importNoticesAtom)).toEqual([]);
   });
 });
+
+describe("ein gelöschtes Laminat", () => {
+  it("nimmt mit, was seine Module gespeichert haben", async () => {
+    const { deleteLaminateAtom } = await import("./projectAtoms");
+    const { addLaminateAtom, laminateIdsAtom } = await import("./laminateAtoms");
+    const { bucklingInputFamily, bucklingStorageKey, defaultBucklingInput } = await import("./bucklingAtoms");
+    const { plateViewFamily, plateViewStorageKey } = await import("./plateViewAtoms");
+    localStorage.clear();
+    const store = createStore();
+    const id = store.set(addLaminateAtom, "");
+    store.set(bucklingInputFamily(id), { ...defaultBucklingInput(), length: 123 });
+    store.set(plateViewFamily(id), { ...store.get(plateViewFamily(id)) });
+    expect(localStorage.getItem(bucklingStorageKey(id))).not.toBeNull();
+    expect(localStorage.getItem(plateViewStorageKey(id))).not.toBeNull();
+
+    store.set(deleteLaminateAtom, id);
+
+    expect(store.get(laminateIdsAtom)).not.toContain(id);
+    const left = Object.keys(localStorage).filter((key) => key.endsWith(`.${id}`));
+    expect(left).toEqual([]);
+  });
+});

@@ -48,8 +48,10 @@ import {
   forgetStoredLaminate,
   laminateConfigFamily,
   laminateIdsAtom,
+  removeLaminateAtom,
   type LaminateConfig,
 } from "./laminateAtoms";
+import { plateViewFamily, plateViewStorageKey } from "./plateViewAtoms";
 import { materialsAtom } from "./materialsAtoms";
 import { DEFAULT_LAMINATE_ID, DEFAULT_MATERIAL_ID, defaultMaterial } from "../lib/constants";
 import { t } from "../i18n";
@@ -185,21 +187,7 @@ export const projectGenerationAtom = atom(0);
 export const loadProjectAtom = atom(null, (get, set, project: ProjectSnapshot) => {
   for (const id of get(laminateIdsAtom)) {
     laminateConfigFamily.remove(id);
-    bucklingInputFamily.remove(id);
-    lastPlyFailureInputFamily.remove(id);
-    pressureVesselInputFamily.remove(id);
-    deformationInputFamily.remove(id);
-    vibrationInputFamily.remove(id);
-    springInInputFamily.remove(id);
-    cutoutInputFamily.remove(id);
-    forgetStoredLaminate(id);
-    forgetStored(bucklingStorageKey(id));
-    forgetStored(lastPlyFailureStorageKey(id));
-    forgetStored(pressureVesselStorageKey(id));
-    forgetStored(deformationStorageKey(id));
-    forgetStored(vibrationStorageKey(id));
-    forgetStored(springInStorageKey(id));
-    forgetStored(cutoutStorageKey(id));
+    forgetLaminateModules(id);
   }
 
   set(materialsAtom, project.materials);
@@ -293,6 +281,39 @@ export const newProjectAtom = atom(null, (_get, set) => {
   set(optimizationMetaAtom, RESET);
   set(projectNameAtom, "eLamX");
   set(projectFilePathAtom, null);
+});
+
+/** Everything a laminate's modules keep, in memory and in storage.
+ *
+ *  Every module stores its input under the laminate's id, and `atomFamily.remove`
+ *  only drops the atom: without this the stored inputs outlive the laminate,
+ *  one set per laminate ever deleted, and a later laminate that happened to
+ *  get the same id would find them. Undo is unaffected - its snapshots hold
+ *  the inputs themselves and write them back. */
+function forgetLaminateModules(id: string) {
+  bucklingInputFamily.remove(id);
+  lastPlyFailureInputFamily.remove(id);
+  pressureVesselInputFamily.remove(id);
+  deformationInputFamily.remove(id);
+  vibrationInputFamily.remove(id);
+  springInInputFamily.remove(id);
+  cutoutInputFamily.remove(id);
+  plateViewFamily.remove(id);
+  forgetStoredLaminate(id);
+  forgetStored(bucklingStorageKey(id));
+  forgetStored(lastPlyFailureStorageKey(id));
+  forgetStored(pressureVesselStorageKey(id));
+  forgetStored(deformationStorageKey(id));
+  forgetStored(vibrationStorageKey(id));
+  forgetStored(springInStorageKey(id));
+  forgetStored(cutoutStorageKey(id));
+  forgetStored(plateViewStorageKey(id));
+}
+
+/** Deletes a laminate with everything its modules stored for it. */
+export const deleteLaminateAtom = atom(null, (_get, set, id: string) => {
+  set(removeLaminateAtom, id);
+  forgetLaminateModules(id);
 });
 
 function forgetStored(key: string) {
