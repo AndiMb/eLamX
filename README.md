@@ -12,10 +12,23 @@ stack: how stiff it is, what each ply carries, whether it fails, how far a plate
 of it bends, and at what load it buckles. eLamX Web does that arithmetic and
 then draws the answer.
 
-- **Six analyses per laminate** — layer-by-layer CLT with the ABD matrix and a
-  failure check per ply, last-ply-failure, plate buckling, plate deflection,
-  thin-walled pressure vessels, and the 3D failure body of a criterion. A
-  comparison view puts several laminates' key figures side by side.
+- **Analyses per laminate** — layer-by-layer CLT with the ABD matrix and a
+  failure check per ply, last-ply failure with the failure sequence from the
+  first ply to the last, the laminate failure body with the current load as a
+  point on it, plate buckling, deflection and free vibration (with
+  stiffeners), spring-in of a cured corner, the stress field around a cutout,
+  thin-walled pressure vessels, and material cards for Nastran, Abaqus, ANSYS
+  and LS-DYNA.
+- **Per material and per project** — micromechanics from fibre and matrix, the
+  carpet plot, the 3D failure body of any of 26 criteria (24 for composites,
+  von Mises and Tresca for metals) drawn to scale, a stacking-sequence search
+  with the other analyses as constraints, a comparison of laminates and load
+  cases side by side, and studies: a criteria matrix and parameter sweeps.
+- **Work with the results** — undo across the whole project, a layup pasted
+  from Excel or typed as `[0/±45/90]2s`, several failure criteria per ply with
+  the governing one named, RF, inverse RF or margin of safety, every table to
+  Excel or CSV, every chart as PNG, SVG or CSV, and a PDF report with the
+  derivations in it.
 - **A plate you can actually look at** — the deflected laminate as a solid with
   its real thickness and its plies visible at the cut edge, coloured by any of
   eight result quantities, in any ply, at any face of it. The supports and the
@@ -23,6 +36,8 @@ then draws the answer.
   plate reads off the value.
 - **It answers to the original** — the calculation core is checked against
   numbers produced by eLamX 3.x itself, and those numbers are in the repository.
+  Projects stay `.elamx` files that eLamX 3.x opens: what only the web version
+  knows sits in a `<webExtension>` element the original reads past.
 
 Nothing leaves the machine it is opened on: the core is WebAssembly, there is
 no server and no account. The same build runs in a browser tab and, wrapped in
@@ -35,12 +50,14 @@ unsigned, so your system will ask whether you meant it.
 | ![The stacking editor: sixteen plies with their angles, thicknesses and materials, beside a preview of the stack](docs/images/laminate.png) | ![The first buckling mode of a plate under uniaxial compression, with the load arrows on its edges](docs/images/buckling.png) |
 | The stack, edited where it is read. | The first buckling mode, and the load that causes it. |
 
-The interface is German and English; the screenshots show German.
+The interface is German and English; the screenshots show German. It works on
+a phone as well as on a desktop: below 640 px the laminate tree becomes a tab
+bar, tables become cards and the heavier panels fold away.
 
 ## Structure
 
 - **`elamx-core/`** — Rust workspace.
-  - `core/` — the CLT calculation engine itself (materials, layers, laminates, ABD-matrix assembly, failure criteria (fifteen for composites plus Tresca and von Mises for a metal ply) and their 3D failure envelopes, reserve factors, last-ply-failure, pressure vessels, `micromechanics/` for predicting a ply's stiffness from its fibre and matrix, `spring_in/` for the residual angle a cured corner keeps, `cutout/` for the closed-form stress field around a hole, and `optimization/` for searching out a stacking sequence with the other modules as constraints), plus `plate/` for rectangular-plate analyses on top of a laminate (buckling, deformation and free vibration, sharing the Ritz machinery in `plate/ritz.rs` and the beam stiffeners in `plate/stiffener.rs`).
+  - `core/` — the CLT calculation engine itself (materials, layers, laminates, ABD-matrix assembly, failure criteria (twenty-four for composites plus Tresca and von Mises for a metal ply) and their 3D failure envelopes, reserve factors, last-ply-failure, pressure vessels, `micromechanics/` for predicting a ply's stiffness from its fibre and matrix, `spring_in/` for the residual angle a cured corner keeps, `cutout/` for the closed-form stress field around a hole, and `optimization/` for searching out a stacking sequence with the other modules as constraints), plus `plate/` for rectangular-plate analyses on top of a laminate (buckling, deformation and free vibration, sharing the Ritz machinery in `plate/ritz.rs` and the beam stiffeners in `plate/stiffener.rs`).
   - `wasm/` — thin `wasm-bindgen` bindings exposing `core` to the browser (JSON in, JSON out).
 - **`web/`** — React + TypeScript + Vite frontend. State is managed with Jotai (one reactive atom family per laminate/material), all calculations run client-side via the WASM module. `scripts/generate-material-catalog.mjs` extracts eLamX's bundled material database from the Java source into `src/lib/materialCatalog.ts`; both are committed.
 - **`desktop/`** — an Electron shell that packages the built frontend as a desktop program for Windows, Linux and macOS. It adds nothing to the app: the same bundle runs in a browser tab, and the shell only supplies what a page cannot have — a real Open dialog, a Save that writes back to the file it opened, and a file association for `.elamx`.
@@ -50,7 +67,7 @@ The interface is German and English; the screenshots show German.
 ### Prerequisites
 
 - [Rust](https://rustup.rs/) (stable) + [`wasm-pack`](https://rustwasm.github.io/wasm-pack/installer/)
-- [Node.js](https://nodejs.org/) 20+
+- [Node.js](https://nodejs.org/) 22 (what CI uses; Vite 8 needs 20.19 at the least)
 
 ### Build the WASM core
 
@@ -73,7 +90,8 @@ Other useful commands (run from `web/`): `npm run build` (typecheck + production
 
 The frontend suite covers the parts that are arithmetic or state rather than
 pixels: stacking notation, number formatting, unit round-trips, the store's
-migrations and the comparison's bookkeeping. It runs in Node with a small
+migrations, the comparison's bookkeeping, the project file's round trip and
+the report's structure. It runs in Node with a small
 `localStorage` stand-in (`src/test/setup.ts`) rather than a DOM - what needs a
 real browser is checked in one, where a jsdom stub would prove nothing.
 
