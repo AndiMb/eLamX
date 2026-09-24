@@ -2861,6 +2861,24 @@ table.matrix td.block-d {
   gap: 6px;
 }
 
+/* Die Symbole behalten ihre Groesse: bricht der Titel auf einem schmalen
+   Schirm um, drueckte der Flex-Container sie sonst auf ein paar Pixel -
+   vom Hut blieb ein Punkt. */
+.how-computed-toggle svg {
+  flex: 0 0 auto;
+}
+
+.how-computed-toggle .how-computed-icon {
+  color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .how-computed-toggle {
+    width: 100%;
+    min-height: var(--touch-min);
+  }
+}
+
 .how-computed-toggle:hover {
   background: none;
   color: var(--text);

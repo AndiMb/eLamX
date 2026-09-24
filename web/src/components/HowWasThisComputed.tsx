@@ -40,7 +40,7 @@ export function HowWasThisComputed({ title, formula, substituted, children }: Ho
     <div className="how-computed">
       <button type="button" className="how-computed-toggle" onClick={() => setOpen((o) => !o)}>
         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        <GraduationCap size={14} strokeWidth={1.75} />
+        <GraduationCap size={16} strokeWidth={1.75} className="how-computed-icon" aria-hidden="true" />
         {t("howComputed.toggle", { title })}
       </button>
       {open && (
