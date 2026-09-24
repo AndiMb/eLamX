@@ -68,6 +68,11 @@ export function LayerDetailPanel({
     <section className="panel layer-detail">
       <h3>
         {t("layerDetail.title", { nr: result.layer_number })}
+        <span className="layer-detail-tools">
+        <TableActions
+          table={() => (stressTable.current ? domTableModel(stressTable.current, t("layerDetail.title", { nr: result.layer_number })) : null)}
+          name={`lage-${result.layer_number}`}
+        />
         <button
           type="button"
           className="icon-button"
@@ -77,6 +82,7 @@ export function LayerDetailPanel({
         >
           <X size={16} />
         </button>
+        </span>
       </h3>
 
       <p className="hint">
@@ -102,7 +108,10 @@ export function LayerDetailPanel({
           </p>
         )}
 
-      <div className="grid">
+      {/* The body on the left, the numbers it is drawn from on the right -
+          the stresses, and under them the ply's own stiffness, which used to
+          sit folded away below while the right column stood empty. */}
+      <div className="layer-detail-grid">
         <div>
           {body.state === "hasError" && (
             <p className="error">{t("layerDetail.error", { message: String(body.error) })}</p>
@@ -118,12 +127,6 @@ export function LayerDetailPanel({
         </div>
 
         <div>
-          <div className="table-toolbar">
-            <TableActions
-              table={() => (stressTable.current ? domTableModel(stressTable.current, t("layerDetail.title", { nr: result.layer_number })) : null)}
-              name={`lage-${result.layer_number}`}
-            />
-          </div>
           <table className="chart-table" ref={stressTable}>
             <thead>
               <tr>
@@ -155,44 +158,43 @@ export function LayerDetailPanel({
               ))}
             </tbody>
           </table>
+          {/* The ply's own stiffness, which the original shows in a dialog of its
+              own off the layer. Four 3x3 matrices: stiffness and compliance, in the
+              fibre system and in the laminate's. The interesting one is Q global -
+              its 16 and 26 terms are zero at 0 and 90 degrees and nowhere else, and
+              they are why an unbalanced stack twists when it is pulled. */}
+          {stiffness.state === "hasData" && (
+            <div className="layer-stiffness">
+              <h4>{t("layerDetail.stiffness")}</h4>
+              <div className="layer-stiffness-grid">
+                {(
+                  [
+                    ["layerDetail.qLocal", stiffness.data.q_local, 1],
+                    ["layerDetail.qGlobal", stiffness.data.q_global, 1],
+                    ["layerDetail.sLocal", stiffness.data.s_local, 3],
+                    ["layerDetail.sGlobal", stiffness.data.s_global, 3],
+                  ] as const
+                ).map(([labelKey, matrix, digits]) => (
+                  <div key={labelKey}>
+                    <h5>{t(labelKey)}</h5>
+                    <table className="chart-table">
+                      <tbody>
+                        {matrix.map((row, i) => (
+                          <tr key={i}>
+                            {row.map((value, j) => (
+                              <td key={j}>{formatScientific(value, digits + 2, locale)}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
-      {/* The ply's own stiffness, which the original shows in a dialog of its
-          own off the layer. Four 3x3 matrices: stiffness and compliance, in the
-          fibre system and in the laminate's. The interesting one is Q global -
-          its 16 and 26 terms are zero at 0 and 90 degrees and nowhere else, and
-          they are why an unbalanced stack twists when it is pulled. */}
-      {stiffness.state === "hasData" && (
-        <details className="layer-stiffness">
-          <summary>{t("layerDetail.stiffness")}</summary>
-          <div className="grid">
-            {(
-              [
-                ["layerDetail.qLocal", stiffness.data.q_local, 1],
-                ["layerDetail.qGlobal", stiffness.data.q_global, 1],
-                ["layerDetail.sLocal", stiffness.data.s_local, 3],
-                ["layerDetail.sGlobal", stiffness.data.s_global, 3],
-              ] as const
-            ).map(([labelKey, matrix, digits]) => (
-              <div key={labelKey}>
-                <h4>{t(labelKey)}</h4>
-                <table className="chart-table">
-                  <tbody>
-                    {matrix.map((row, i) => (
-                      <tr key={i}>
-                        {row.map((value, j) => (
-                          <td key={j}>{formatScientific(value, digits + 2, locale)}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
-
     </section>
   );
 }

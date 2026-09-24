@@ -5,6 +5,7 @@ import { QuantityDisplay } from "./QuantityDisplay";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { exFormula, nuxyFormula } from "../lib/formulas";
 import { Sym } from "./Sym";
+import { Panel } from "./Panel";
 import type { QuantityCategory } from "../lib/units";
 import { useLocale, useT } from "../i18n";
 
@@ -33,8 +34,7 @@ export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminat
   const nuxy = nuxyFormula(abdInv, ec, { t, locale });
 
   return (
-    <>
-      <h3>{t("summary.title")}</h3>
+    <Panel title={t("summary.title")}>
       <div className="stat-tiles">
         <StatTile label={<Sym base="t" sub="ges" />} category="thickness" value={summary.tges} />
         <div className="stat-tile">
@@ -56,6 +56,6 @@ export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminat
         <p className="hint">{t("summary.ex.hint")}</p>
       </HowWasThisComputed>
       <HowWasThisComputed title={nuxy.title} formula={nuxy.tex} substituted={nuxy.substituted} />
-    </>
+    </Panel>
   );
 });

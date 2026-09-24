@@ -1,7 +1,6 @@
-import { memo, useMemo, useState, useRef, type Ref } from "react";
+import { Fragment, memo, useMemo, useState, useRef, type Ref } from "react";
 import { useAtomValue } from "jotai";
 import { loadableAngleSweepFamily } from "../../store/derivedAtoms";
-import { ChartLegend } from "./ChartLegend";
 import { ChartTooltip } from "./ChartTooltip";
 import { formatFixed, formatScientific } from "../../lib/numberFormat";
 import { useLocale, useT } from "../../i18n";
@@ -11,6 +10,7 @@ import { Sym } from "../Sym";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
 import { angleSweepTable } from "../../lib/tables/charts";
 import { useChartWidth } from "../../lib/useChartWidth";
+import { Panel } from "../Panel";
 
 // How a laminate's stiffness depends on the direction it is loaded from, as a
 // POLAR diagram - which is what eLamX 3.x draws, and for a good reason: the
@@ -285,7 +285,10 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
   const data = loadableState.state === "hasData" ? loadableState.data : null;
   const shown = SERIES.filter((s) => selected.has(s.key));
 
-  if (!data || shown.length === 0) return null;
+  // Only missing DATA hides the card. An empty selection used to as well, and
+  // took the picker with it - switching off the last component left no way to
+  // switch one back on short of reloading the page.
+  if (!data) return null;
   // The rings of each matrix shown have their own scale - see PolarChartView.
   const groups = (["A", "B", "D"] as const).filter((g) => shown.some((s) => s.group === g));
 
@@ -298,39 +301,26 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
     });
 
   return (
-    <div className="chart viz">
-      <p className="chart-title">{t("chart.angleSweep.title")}</p>
-      <div className="chart-controls">
+    <Panel
+      className="viz chart-card span-4"
+      title={t("chart.angleSweep.card")}
+      tools={
+        <div className="chart-actions">
+          <ChartSnapshotButton target={svgRef} name="winkelsweep" title={t("chart.angleSweep.title")} data={() => angleSweepTable(data, t)} />
+        </div>
+      }
+    >
+      <div className="chart-card-controls">
+        <SeriesPicker selected={selected} onToggle={toggle} label={t("chart.angleSweep.series")} />
         <button type="button" className="chart-table-toggle" onClick={() => setShowTable((v) => !v)}>
           {t(showTable ? "chart.showChart" : "chart.showTable")}
         </button>
-      </div>
-
-      <div className="polar-series-picker" role="group" aria-label={t("chart.angleSweep.series")}>
-        {SERIES.map((s) => (
-          <label key={s.key}>
-            <input
-              type="checkbox"
-              checked={selected.has(s.key)}
-              onChange={() => toggle(s.key)}
-            />
-            <Sym {...s.sym} />
-          </label>
-        ))}
       </div>
 
       {shown.length === 0 && <p className="hint">{t("chart.angleSweep.none")}</p>}
 
       {!showTable && shown.length > 0 && (
         <>
-          <ChartLegend
-            items={shown.map((s) => ({
-              key: s.key,
-              label: <Sym {...s.sym} />,
-              color: s.color,
-              shape: "line",
-            }))}
-          />
           <PolarChartView data={data} keys={shown.map((s) => s.key)} locale={locale} aria={t("chart.angleSweep.aria")} svgRef={svgRef} />
           <p className="hint">{t("chart.angleSweep.hint")}</p>
           {groups.length > 1 && <p className="hint">{t("chart.angleSweep.scales.hint")}</p>}
@@ -338,32 +328,93 @@ export const AngleSweepChart = memo(function AngleSweepChart({ laminateId }: { l
       )}
 
       {showTable && shown.length > 0 && (
-        <table className="chart-table">
-          <thead>
-            <tr>
-              <th>{t("chart.angleSweep.column.angle")}</th>
-              {shown.map((s) => (
-                <th key={s.key}>
-                  <Sym {...s.sym} />
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.angle_deg.map((angle, i) => (
-              <tr key={angle}>
-                <td>{formatFixed(angle, 0, locale)}°</td>
+        <div className="responsive-table-scroll">
+          <table className="chart-table">
+            <thead>
+              <tr>
+                <th>{t("chart.angleSweep.column.angle")}</th>
                 {shown.map((s) => (
-                  <td key={s.key}>{formatScientific(data[s.key][i], 3, locale)}</td>
+                  <th key={s.key}>
+                    <Sym {...s.sym} />
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.angle_deg.map((angle, i) => (
+                <tr key={angle}>
+                  <td>{formatFixed(angle, 0, locale)}°</td>
+                  {shown.map((s) => (
+                    <td key={s.key}>{formatScientific(data[s.key][i], 3, locale)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-      <div className="chart-actions">
-        <ChartSnapshotButton target={svgRef} name="winkelsweep" title={t("chart.angleSweep.title")} data={() => angleSweepTable(data, t)} />
-      </div>
-    </div>
+    </Panel>
   );
 });
+
+const COMPONENTS = ["11", "12", "22", "66"] as const;
+
+/** The twelve components as the matrix they come from: a row per matrix, a
+ *  column per index pair. Each switch draws the line it stands for - colour
+ *  from the index pair, dash from the matrix - so the picker is the legend as
+ *  well, and a second legend under it would only repeat it. */
+function SeriesPicker({
+  selected,
+  onToggle,
+  label,
+}: {
+  selected: ReadonlySet<string>;
+  onToggle: (key: string) => void;
+  label: string;
+}) {
+  return (
+    <div className="series-matrix" role="group" aria-label={label}>
+      <span aria-hidden="true" />
+      {COMPONENTS.map((c) => (
+        <span key={c} className="series-matrix-col" aria-hidden="true">
+          {c}
+        </span>
+      ))}
+      {(["A", "B", "D"] as const).map((group) => (
+        <Fragment key={group}>
+          <span className="series-matrix-row" aria-hidden="true">
+            {group}
+          </span>
+          {COMPONENTS.map((c) => {
+            const series = SERIES.find((s) => s.key === `${group.toLowerCase()}${c}`)!;
+            const on = selected.has(series.key);
+            return (
+              <button
+                key={series.key}
+                type="button"
+                className={on ? "active" : undefined}
+                aria-pressed={on}
+                aria-label={`${series.sym.base}${series.sym.sub}`}
+                title={`${series.sym.base}${series.sym.sub}`}
+                onClick={() => onToggle(series.key)}
+              >
+                <svg width="22" height="6" aria-hidden="true">
+                  <line
+                    x1="1"
+                    x2="21"
+                    y1="3"
+                    y2="3"
+                    stroke={on ? series.color : "currentColor"}
+                    strokeWidth="2"
+                    strokeDasharray={DASH[series.group]}
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            );
+          })}
+        </Fragment>
+      ))}
+    </div>
+  );
+}

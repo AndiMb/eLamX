@@ -1,4 +1,6 @@
 import { memo, useMemo, useRef, type KeyboardEvent, type PointerEvent, type ReactNode, type Ref } from "react";
+import { Panel } from "./Panel";
+import { ToggleGroup } from "./ToggleGroup";
 import { sheetFormula, howProps } from "../lib/formulas";
 import { useAtom, useAtomValue } from "jotai";
 import { atomWithStorage } from "jotai/utils";
@@ -428,8 +430,33 @@ export const ThroughThicknessSheet = memo(function ThroughThicknessSheet({ lamin
     setOptions((o) => ({ ...o, [key]: value }));
 
   return (
-    <div className="chart tt-panel">
-      <p className="chart-title">{t("sheet.title")}</p>
+    <Panel
+      className="tt-panel viz"
+      title={t("sheet.title")}
+      tools={
+            <div className="chart-actions">
+              <ChartSnapshotButton
+                target={sheetRef}
+                name="arbeitsblatt"
+                title={t("sheet.title")}
+                data={() =>
+                  throughThicknessTable(
+                    plies.map((p) => ({
+                      number: p.number,
+                      zLower: p.zLower,
+                      zUpper: p.zUpper,
+                      strain: p.strain[options.system],
+                      stress: p.stress[options.system],
+                      rf: { lower: p.rf.lower.minimal_reserve_factor, upper: p.rf.upper.minimal_reserve_factor },
+                    })),
+                    options.system,
+                    t,
+                  )
+                }
+              />
+            </div>
+      }
+    >
       <div className="chart-controls tt-controls">
         <div className="segmented" role="radiogroup" aria-label={t("sheet.component")}>
           {([0, 1, 2] as const).map((c) => (
@@ -473,18 +500,12 @@ export const ThroughThicknessSheet = memo(function ThroughThicknessSheet({ lamin
             </button>
           ))}
         </div>
-        <span className="tt-column-toggles">
-          {COLUMN_KEYS.map((k) => (
-            <label key={k} className="inline-check">
-              <input
-                type="checkbox"
-                checked={options.columns[k]}
-                onChange={(e) => setOption("columns", { ...options.columns, [k]: e.target.checked })}
-              />
-              {k === "metric" ? metricName : t(`sheet.column.${k}`)}
-            </label>
-          ))}
-        </span>
+        <ToggleGroup
+          label={t("sheet.columns")}
+          items={COLUMN_KEYS.map((k) => ({ key: k, label: k === "metric" ? metricName : t(`sheet.column.${k}`) }))}
+          isOn={(k) => options.columns[k]}
+          onToggle={(k) => setOption("columns", { ...options.columns, [k]: !options.columns[k] })}
+        />
       </div>
 
       <ThroughThicknessSheetView
@@ -522,27 +543,6 @@ export const ThroughThicknessSheet = memo(function ThroughThicknessSheet({ lamin
         </span>
         <span>{t("sheet.hint")}</span>
       </p>
-      <div className="chart-actions">
-        <ChartSnapshotButton
-          target={sheetRef}
-          name="arbeitsblatt"
-          title={t("sheet.title")}
-          data={() =>
-            throughThicknessTable(
-              plies.map((p) => ({
-                number: p.number,
-                zLower: p.zLower,
-                zUpper: p.zUpper,
-                strain: p.strain[options.system],
-                stress: p.stress[options.system],
-                rf: { lower: p.rf.lower.minimal_reserve_factor, upper: p.rf.upper.minimal_reserve_factor },
-              })),
-              options.system,
-              t,
-            )
-          }
-        />
-      </div>
 
       {strains && (
         <HowWasThisComputed
@@ -551,7 +551,7 @@ export const ThroughThicknessSheet = memo(function ThroughThicknessSheet({ lamin
           <p className="hint">{t("sheet.howHint", { nr: example.number })}</p>
         </HowWasThisComputed>
       )}
-    </div>
+    </Panel>
   );
 });
 

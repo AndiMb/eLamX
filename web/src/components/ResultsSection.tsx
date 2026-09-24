@@ -11,6 +11,7 @@ import { AbdHeatmap } from "./charts/AbdHeatmap";
 import { ThroughThicknessSheet } from "./ThroughThicknessSheet";
 import { StrainShapeView } from "./charts/StrainShapeView";
 import { solvedStrainsFamily } from "../store/derivedAtoms";
+import { Panel } from "./Panel";
 import { useT } from "../i18n";
 
 // Grouped into separate cards by topic (Kennzahlen / ABD-Visualisierung /
@@ -34,58 +35,57 @@ export function ResultsSection({ laminateId }: { laminateId: string }) {
       {error && <p className="error">{t("results.error", { message: error })}</p>}
       {loadableState.state === "loading" && <p className="hint">{t("results.computing")}</p>}
       {loadableState.state === "hasData" && (
-        <>
+        <div className="dash">
           {/* The answer first. Everything below explains it - which is the
               order a phone needs and a wide screen does not mind. */}
           <VerdictPanel laminateId={laminateId} />
 
           <MobileCollapse title={t("results.derivation")}>
-            <AbdExplanation laminateId={laminateId} />
+            <div className="how-group">
+              <AbdExplanation laminateId={laminateId} />
+            </div>
           </MobileCollapse>
 
-          <section className="panel">
-            <SummaryPanel laminateId={laminateId} />
-          </section>
+          <SummaryPanel laminateId={laminateId} />
+
+          {/* What this load case does ply by ply comes before what the
+              laminate is regardless of the load: the verdict above points at
+              a ply, and the next thing a reader looks for is that ply. */}
+          {/* Behind a tap on a narrow screen for the same reason the ABD is:
+              this one GROWS with the stack. Sixteen plies were 2800 px of
+              cards between the load and the next thing worth reading. */}
+          <MobileCollapse title={t("layerResults.title")}>
+            <LayerResultsPanel laminateId={laminateId} />
+          </MobileCollapse>
+          {/* The sheet replaces the through-thickness chart and the ply bar
+              chart that stood here (O4): both showed one column of it, on
+              axes of their own. They remain as components. */}
+          <MobileCollapse title={t("sheet.title")}>
+            <ThroughThicknessSheet laminateId={laminateId} />
+          </MobileCollapse>
+
+          {/* Three views of the laminate's stiffness side by side, each in a
+              card of a third: none of them needs more, and as full-width
+              cards the heatmap took a quarter of its card and the deformed
+              square a fifth of a 3.6:1 canvas. The deformed square is the one
+              load-case view among them - it draws the six numbers the ABD
+              produced, nothing per ply - which is why it stands here. */}
+          <MobileCollapse title={t("results.abdVisualization")}>
+            <AbdHeatmap laminateId={laminateId} />
+          </MobileCollapse>
+          <MobileCollapse title={t("chart.angleSweep.card")}>
+            <AngleSweepChart laminateId={laminateId} />
+          </MobileCollapse>
+          <MobileCollapse title={t("strainShape.title")}>
+            <Panel className="span-4 strain-card" title={t("strainShape.title")}>
+              <DeformedSquare laminateId={laminateId} />
+            </Panel>
+          </MobileCollapse>
 
           <MobileCollapse title={t("results.laminateInfo")}>
             <LaminateInfoPanel laminateId={laminateId} />
           </MobileCollapse>
-
-          <MobileCollapse title={t("results.abdVisualization")}>
-            <section className="panel">
-              <h2>{t("results.abdVisualization")}</h2>
-              <div className="grid">
-                <AbdHeatmap laminateId={laminateId} />
-                <AngleSweepChart laminateId={laminateId} />
-              </div>
-            </section>
-          </MobileCollapse>
-
-          {/* Beside the ABD, not beside the ply results: what it draws is the
-              laminate's answer to this load case as a whole - the six numbers
-              the ABD produced - and not anything per ply. */}
-          <MobileCollapse title={t("strainShape.title")}>
-            <section className="panel">
-              <h2>{t("strainShape.title")}</h2>
-              <DeformedSquare laminateId={laminateId} />
-            </section>
-          </MobileCollapse>
-
-          <section className="panel">
-            {/* Behind a tap on a narrow screen for the same reason the ABD is:
-                this one GROWS with the stack. Sixteen plies were 2800 px of
-                cards between the load and the next thing worth reading. */}
-            <MobileCollapse title={t("layerResults.title")}>
-              <LayerResultsPanel laminateId={laminateId} />
-            </MobileCollapse>
-            {/* The sheet replaces the through-thickness chart and the ply bar
-                chart that stood here (O4): both showed one column of it, on
-                axes of their own. They remain as components. */}
-            <MobileCollapse title={t("sheet.title")}>
-              <ThroughThicknessSheet laminateId={laminateId} />
-            </MobileCollapse>
-          </section>
-        </>
+        </div>
       )}
     </>
   );

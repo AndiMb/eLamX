@@ -17,6 +17,7 @@ import { LayerDetailPanel } from "./LayerDetailPanel";
 import { MetricToggle } from "./MetricToggle";
 import { CriterionMatrix } from "./CriterionMatrix";
 import { TableActions } from "./TableActions";
+import { Panel } from "./Panel";
 import { layerResultsTable } from "../lib/tables";
 import { failureModeLabel, useLocale, useT } from "../i18n";
 
@@ -133,21 +134,33 @@ export const LayerResultsPanel = memo(function LayerResultsPanel({ laminateId }:
   const rows: Row[] = layerResults.map((l, index) => ({ ...l, index }));
 
   return (
-    <>
-      <div className="results-heading">
-        <h3>{t("layerResults.title")}</h3>
-        <div className="results-heading-tools">
-          <label className="inline-check">
-            <input type="checkbox" checked={minOnly} onChange={(e) => setMinOnly(e.target.checked)} />
-            {t("layerResults.minOnly")}
-          </label>
+    <Panel
+      className="layer-results-card"
+      title={t("layerResults.title")}
+      tools={
+        <>
+          <div className="segmented" role="radiogroup" aria-label={t("layerResults.surfaces")}>
+            {([false, true] as const).map((value) => (
+              <button
+                key={String(value)}
+                type="button"
+                role="radio"
+                aria-checked={minOnly === value}
+                className={minOnly === value ? "active" : undefined}
+                onClick={() => setMinOnly(value)}
+              >
+                {t(value ? "layerResults.minOnly" : "layerResults.bothSurfaces")}
+              </button>
+            ))}
+          </div>
           <MetricToggle />
           <TableActions
             table={() => layerResultsTable(layerResults, { metric, minOnly, t, locale })}
             name="lagenergebnisse"
           />
-        </div>
-      </div>
+        </>
+      }
+    >
       <ResponsiveTable
         variant="records"
         className="layer-results-table selectable-rows"
@@ -176,6 +189,6 @@ export const LayerResultsPanel = memo(function LayerResultsPanel({ laminateId }:
           onClose={() => setSelected(null)}
         />
       )}
-    </>
+    </Panel>
   );
 });

@@ -653,6 +653,142 @@ input[type="checkbox"] {
   border-bottom: 1px solid var(--border);
 }
 
+/* Derselbe Kartenkopf mit Werkzeugen rechts (siehe Panel.tsx): Kopieren,
+   CSV, Export und Ansichtsschalter stehen in der Kopfzeile statt in einer
+   eigenen Leerzeile ueber der Tabelle oder unter dem Diagramm. */
+.panel > .panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-3);
+  margin: calc(var(--s-4) * -1) calc(var(--s-4) * -1) var(--s-4);
+  padding: 8px var(--s-4);
+  min-height: 46px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-head h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  font-size: var(--fs-xl);
+}
+
+.panel-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-left: auto;
+}
+
+/* Der Download-Knopf eines Diagramms im Kopf: keine eigene Zeile mehr. */
+.panel-tools .chart-actions {
+  margin: 0;
+}
+
+/* --- Ergebnisraster ---
+   Die Karten einer Modulseite liegen in einem 12-Spalten-Raster. Auf
+   schmalem Platz nimmt jede die volle Breite; sobald die ARBEITSFLAECHE
+   (nicht das Fenster - der Baum links frisst davon unterschiedlich viel)
+   breit genug ist, stehen Karten mit schmalem Inhalt nebeneinander statt je
+   eine 1270 px breite Karte um eine 360 px breite Tabelle zu legen. Die
+   Karten einer Zeile werden gleich hoch, damit die Zeile als Zeile lesbar
+   bleibt. */
+.content {
+  container: content / inline-size;
+}
+
+.dash {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+
+.dash > * {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+/* Doppelt qualifiziert, damit es die eigenen Aussenraender der Karten und
+   Aufklappboxen schlaegt, die weiter unten im Stylesheet stehen: im Raster
+   haelt der Spaltenabstand die Karten auseinander, nicht ihr Rand. */
+.content .dash > * {
+  margin: 0;
+}
+
+.how-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.how-group > .how-computed {
+  margin: 0;
+}
+
+/* Zwei Spalten ab 900 px Arbeitsflaeche (ein 1280er Laptop hat mit Baum und
+   Scrollleiste gut 950), drei ab 1100 px. Drittel stehen darunter als
+   Haelften. */
+@container content (min-width: 900px) {
+  .dash > .span-6,
+  .dash > .span-4 {
+    grid-column: span 6;
+  }
+}
+
+@container content (min-width: 1100px) {
+  .dash > .span-4 {
+    grid-column: span 4;
+  }
+
+  .dash > .span-8 {
+    grid-column: span 8;
+  }
+}
+
+/* Eine Tabelle in einer Rasterkarte fuellt die Karte: sonst endet sie nach
+   einem Drittel und der Rest der Karte ist weiss. */
+.dash .fill-table table.matrix {
+  width: 100%;
+}
+
+/* Diagrammkarten: die Grafik steht mittig in ihrer Spalte, die Erklaerung
+   darunter nimmt die Kartenbreite. */
+.chart-card .chart-svg-wrap {
+  margin-inline: auto;
+}
+
+.abd-heatmap-stage {
+  max-width: 340px;
+  margin: 0 auto var(--s-3);
+}
+
+/* Das verformte Quadrat ist ein Quadrat: seine Buehne auch. Vorher war sie
+   1240 x 340 px, und das Quadrat nahm ein Fuenftel davon ein. */
+.strain-card .plate3d-canvas {
+  height: auto;
+  aspect-ratio: 1 / 1;
+  max-height: 460px;
+}
+
+.chart-card-controls {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+/* In der breiten Gleichungszeile fuellt die ABD-Matrix ihre Spalte, statt
+   eine Luecke bis zum Mal-Zeichen zu lassen. */
+.equation-abd table.matrix {
+  width: 100%;
+}
+
 /* Karten, die nur eine Ueberschrift und ein Diagramm tragen, brauchen keine
    Trennlinie - die wuerde die Karte in zwei fast leere Haelften schneiden. */
 .panel.plain > h2 {
@@ -770,21 +906,49 @@ input[type="checkbox"] {
   margin: 0;
 }
 
-/* Die Komponentenauswahl des Polardiagramms: zwoelf kurze Marken, die in
-   Zeilen umbrechen duerfen, statt einer Liste, die das Diagramm wegschiebt. */
-.polar-series-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2) var(--s-4);
+/* Die zwoelf Komponenten des Polardiagramms als die Matrix, aus der sie
+   kommen: Zeilen A/B/D, Spalten 11/12/22/66. Jeder Schalter zeichnet die
+   Linie, fuer die er steht - er ist zugleich die Legende. */
+.series-matrix {
+  display: inline-grid;
+  grid-template-columns: auto repeat(4, 38px);
+  gap: 3px;
+  align-items: center;
   margin-bottom: var(--s-3);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
 }
 
-.polar-series-picker label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.85rem;
-  white-space: nowrap;
+.series-matrix-col {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.series-matrix-row {
+  padding-right: 6px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.series-matrix button {
+  display: grid;
+  place-items: center;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  background: none;
+  color: var(--border-strong);
+}
+
+.series-matrix button:hover {
+  border-color: var(--accent);
+}
+
+.series-matrix button.active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
 }
 
 /* --- Vergleichsflaeche --- */
@@ -1708,6 +1872,12 @@ table.compare-table thead th {
     display: none;
   }
 
+  /* Gestapelt hat die Matrix die volle Kartenbreite - gestreckt waeren das
+     sechs 200 px breite Zellen. */
+  .equation-abd table.matrix {
+    width: auto;
+  }
+
   .equation-block {
     gap: 6px;
   }
@@ -2336,6 +2506,9 @@ table.matrix th {
 table.matrix td {
   border: 1px solid var(--border);
   text-align: right;
+  /* Eine Zahl bricht nicht um: "-3,0450E-" und "6" auf zwei Zeilen ist
+     keine Zahl mehr. Wird es eng, scrollt die Matrix in ihrer Karte. */
+  white-space: nowrap;
 }
 
 table.matrix th {
@@ -3584,6 +3757,40 @@ table.matrix td.block-d {
   justify-content: space-between;
   gap: 8px;
   margin-top: 0;
+}
+
+.layer-detail-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+}
+
+.layer-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: var(--s-5);
+  align-items: start;
+}
+
+.layer-detail-grid .plate3d {
+  margin-top: 0;
+}
+
+.layer-stiffness h4 {
+  margin-top: var(--s-5);
+}
+
+.layer-stiffness-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--s-3) var(--s-4);
+}
+
+.layer-stiffness h5 {
+  margin: 0 0 var(--s-1);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 /* Die Spring-In-Ansicht ist flach und wird nicht gedreht - der Greif-Cursor

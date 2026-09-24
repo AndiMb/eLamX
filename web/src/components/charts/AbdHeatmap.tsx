@@ -9,6 +9,7 @@ import type { SymbolSpec } from "../../lib/symbols";
 import { Sym } from "../Sym";
 import { ChartSnapshotButton } from "./ChartSnapshotButton";
 import { abdTable } from "../../lib/tables";
+import { Panel } from "../Panel";
 
 const CELL = 40;
 const GAP = 2;
@@ -46,11 +47,15 @@ export interface AbdHeatmapViewProps {
   locale: string;
   aria: string;
   svgRef?: Ref<SVGSVGElement>;
+  /** Fills the width it is given (up to a limit) instead of drawing at its
+   *  fixed 320 px - for the page, where it has a card of its own. The report
+   *  keeps the fixed size. */
+  fluid?: boolean;
 }
 
 /** The heatmap itself: pure, everything through its props - so the report
  *  can draw it for a laminate nobody has open. */
-export function AbdHeatmapView({ abd, colors, locale, aria, svgRef }: AbdHeatmapViewProps) {
+export function AbdHeatmapView({ abd, colors, locale, aria, svgRef, fluid = false }: AbdHeatmapViewProps) {
   const [hover, setHover] = useState<{ i: number; j: number; x: number; y: number } | null>(null);
 
   const blockMax = (rows: number[], cols: number[]) =>
@@ -81,7 +86,7 @@ export function AbdHeatmapView({ abd, colors, locale, aria, svgRef }: AbdHeatmap
           ref={svgRef}
           className="chart-svg"
           viewBox={`0 0 ${size} ${size}`}
-          width={Math.min(size, 320)}
+          width={fluid ? "100%" : Math.min(size, 320)}
           role="img"
           aria-label={aria}
         >
@@ -133,13 +138,24 @@ export const AbdHeatmap = memo(function AbdHeatmap({ laminateId }: { laminateId:
 
   if (!abd) return null;
 
+  // Its own card, with the export in the head: in a card of its own the
+  // heatmap sits in a grid column of the right width instead of in the left
+  // half of a full-width card whose right half the polar diagram only fills
+  // at the top.
   return (
-    <div className="chart viz">
-      <p className="chart-title">{t("chart.abdHeatmap.title")}</p>
-      <AbdHeatmapView abd={abd} colors={colors} locale={locale} aria={t("chart.abdHeatmap.aria")} svgRef={svgRef} />
-      <div className="chart-actions">
-        <ChartSnapshotButton target={svgRef} name="abd-matrix" title={t("chart.abdHeatmap.title")} data={() => abdTable(abd, t)} />
+    <Panel
+      className="viz chart-card span-4"
+      title={t("chart.abdHeatmap.card")}
+      tools={
+        <div className="chart-actions">
+          <ChartSnapshotButton target={svgRef} name="abd-matrix" title={t("chart.abdHeatmap.title")} data={() => abdTable(abd, t)} />
+        </div>
+      }
+    >
+      <div className="abd-heatmap-stage">
+        <AbdHeatmapView abd={abd} colors={colors} locale={locale} aria={t("chart.abdHeatmap.aria")} svgRef={svgRef} fluid />
       </div>
-    </div>
+      <p className="hint">{t("chart.abdHeatmap.hint")}</p>
+    </Panel>
   );
 });

@@ -2,6 +2,8 @@ import { memo } from "react";
 import { useAtomValue } from "jotai";
 import { laminateInfoFamily } from "../store/derivedAtoms";
 import { ResponsiveTable } from "./ResponsiveTable";
+import { Panel } from "./Panel";
+import { TableActions } from "./TableActions";
 import { Sym } from "./Sym";
 import { QuantityDisplay } from "./QuantityDisplay";
 import {
@@ -96,17 +98,20 @@ export const LaminateInfoPanel = memo(function LaminateInfoPanel({
   const ec = info.engineeringConstants;
   const invScale = matrixScale(info.abdInv);
 
+  // One card per table rather than one card around all of them: each of these
+  // is 200 to 500 px wide, and stacked in a single full-width card they left
+  // two thirds of it white. As cards they pair up in the results grid, and
+  // each gets its copy and CSV in its own head.
   return (
-    <section className="panel">
-      <h2>{t("info.title")}</h2>
-
-      <h3>{t("info.constants")}</h3>
+    <>
+    <Panel
+      className="span-6 fill-table"
+      title={t("info.constants")}
+      tools={<TableActions table={() => engineeringConstantsTable(ec, t)} name="ingenieurkonstanten" />}
+    >
       <p className="hint">{t("info.constants.hint")}</p>
       <p className="hint">{t("info.constants.poissonNote")}</p>
-      <ResponsiveTable
-        variant="matrix"
-        actions={{ table: () => engineeringConstantsTable(ec, t), name: "ingenieurkonstanten" }}
-      >
+      <ResponsiveTable variant="matrix">
         <table className="matrix info-constants">
           <thead>
             <tr>
@@ -142,13 +147,47 @@ export const LaminateInfoPanel = memo(function LaminateInfoPanel({
           </tbody>
         </table>
       </ResponsiveTable>
+    </Panel>
 
-      <h3>{t("info.expansion")}</h3>
+    <Panel
+      className="span-6 fill-table"
+      title={t("info.abdInv")}
+      tools={<TableActions table={() => abdInverseTable(info.abdInv, t)} name="abd-invers" />}
+    >
+      <p className="hint">{t("info.abdInv.hint")}</p>
+      <ResponsiveTable variant="matrix">
+        <table className="matrix">
+          <thead>
+            <tr>
+              <th />
+              {AXIS_LABELS.map((label, j) => (
+                <th key={`col-${j}`}>{label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {info.abdInv.map((row, i) => (
+              <tr key={`row-${i}`}>
+                <th scope="row">{AXIS_LABELS[i]}</th>
+                {row.map((value, j) => (
+                  <td key={`cell-${i}-${j}`}>
+                    {formatMatrixEntry(value, invScale, 4, locale)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </ResponsiveTable>
+    </Panel>
+
+    <Panel
+      className="span-6 fill-table"
+      title={t("info.expansion")}
+      tools={<TableActions table={() => expansionTable(info.alphaGlobal, info.betaGlobal, t)} name="ausdehnung" />}
+    >
       <p className="hint">{t("info.expansion.hint")}</p>
-      <ResponsiveTable
-        variant="matrix"
-        actions={{ table: () => expansionTable(info.alphaGlobal, info.betaGlobal, t), name: "ausdehnung" }}
-      >
+      <ResponsiveTable variant="matrix">
         <table className="matrix">
           <thead>
             <tr>
@@ -176,8 +215,9 @@ export const LaminateInfoPanel = memo(function LaminateInfoPanel({
           </tbody>
         </table>
       </ResponsiveTable>
+    </Panel>
 
-      <h3>{t("info.nonDimensional")}</h3>
+    <Panel className="span-6" title={t("info.nonDimensional")}>
       <p className="hint">{t("info.nonDimensional.hint")}</p>
       <div className="stat-tiles">
         {NON_DIMENSIONAL.map((entry) => (
@@ -209,33 +249,7 @@ export const LaminateInfoPanel = memo(function LaminateInfoPanel({
           </div>
         </>
       )}
-
-      <h3>{t("info.abdInv")}</h3>
-      <p className="hint">{t("info.abdInv.hint")}</p>
-      <ResponsiveTable variant="matrix" actions={{ table: () => abdInverseTable(info.abdInv, t), name: "abd-invers" }}>
-        <table className="matrix">
-          <thead>
-            <tr>
-              <th />
-              {AXIS_LABELS.map((label, j) => (
-                <th key={`col-${j}`}>{label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {info.abdInv.map((row, i) => (
-              <tr key={`row-${i}`}>
-                <th scope="row">{AXIS_LABELS[i]}</th>
-                {row.map((value, j) => (
-                  <td key={`cell-${i}-${j}`}>
-                    {formatMatrixEntry(value, invScale, 4, locale)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </ResponsiveTable>
-    </section>
+    </Panel>
+    </>
   );
 });
