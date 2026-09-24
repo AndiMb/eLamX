@@ -199,9 +199,17 @@ jobs:
 
       # Unsigned builds, so the least a reader can check is that the file on
       # their disk is the one this run made.
+      # GitHub replaces the spaces in an asset's name with dots on upload
+      # ("eLamX Setup 0.3.2.exe" arrives as "eLamX.Setup.0.3.2.exe"), so the
+      # files are renamed the same way first - otherwise the list names a file
+      # nobody can download and `sha256sum --check` cannot find it.
       - name: Checksums
         working-directory: artifacts
-        run: sha256sum -- * > SHA256SUMS
+        run: |
+          for file in *' '*; do
+            [ -e "$file" ] && mv -- "$file" "${file// /.}"
+          done
+          sha256sum -- * > SHA256SUMS
 
       # `gh` rather than a third-party action: it is on the runner already, and
       # a release is one command. No `--generate-notes`: on a first release it
