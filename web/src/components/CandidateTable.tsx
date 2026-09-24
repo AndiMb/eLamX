@@ -3,14 +3,13 @@ import { useAtomValue } from "jotai";
 import { ArrowDown, ArrowUp, Wand2 } from "lucide-react";
 import type { Candidate } from "../lib/generated/Candidate";
 import { shortStackNotation } from "../lib/angleStack";
-import { formatScientific } from "../lib/numberFormat";
 import { failureMetricAtom } from "../store/settingsAtoms";
 import { isFailing, METRIC_LABEL_KEYS, toMetric } from "../lib/failureMetric";
 import type { TableModel } from "../lib/export/table";
 import { QuantityDisplay } from "./QuantityDisplay";
 import { CompactRuleBadges } from "./StackingRuleBadges";
 import { TableActions } from "./TableActions";
-import { useLocale, useT, type MessageKey } from "../i18n";
+import { useT, type MessageKey } from "../i18n";
 
 // The optimisation's best stacks side by side (F4.4): how thick, how heavy,
 // how much margin, which design rules each keeps - and any of them can
@@ -30,7 +29,6 @@ export function CandidateTable({
   onAdopt: (candidate: Candidate) => void;
 }) {
   const t = useT();
-  const locale = useLocale();
   const metric = useAtomValue(failureMetricAtom);
   const [sort, setSort] = useState<{ key: SortKey; descending: boolean }>({ key: "rank", descending: false });
 
@@ -64,7 +62,7 @@ export function CandidateTable({
       { key: "stack", label: t("optimization.candidates.stack") },
       { key: "plies", label: t("optimization.layers"), decimals: 0 },
       { key: "thickness", label: t("optimization.thickness"), category: "thickness" },
-      { key: "mass", label: t("optimization.candidates.mass") },
+      { key: "mass", label: t("optimization.candidates.mass"), category: "arealMass" },
       { key: "rf", label: metricName, category: "reserveFactor" },
     ],
     rows: rows.map(({ c, rank }) => [rank, notation(c), c.layer_count, c.thickness, c.thickness * density, toMetric(c.min_reserve_factor, metric)]),
@@ -109,7 +107,9 @@ export function CandidateTable({
                   <td className="numeric">
                     <QuantityDisplay category="thickness" value={c.thickness} />
                   </td>
-                  <td className="numeric">{formatScientific(c.thickness * density, 3, locale)}</td>
+                  <td className="numeric">
+                    <QuantityDisplay category="arealMass" value={c.thickness * density} />
+                  </td>
                   <td className={`numeric${isFailing(shown, metric) ? " failing" : ""}`}>
                     <QuantityDisplay category="reserveFactor" value={shown} />
                   </td>

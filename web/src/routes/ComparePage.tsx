@@ -632,7 +632,7 @@ function buildRows(
       key: "areaWeight",
       group: "compare.group.layup",
       label: t("compare.row.areaWeight"),
-      render: (r) => (r ? formatScientific(r.area_weight, 3, locale) : NO_VALUE),
+      render: (r) => (r ? <QuantityDisplay category="arealMass" value={r.area_weight} /> : NO_VALUE),
       compare: (r) => (r ? r.area_weight.toExponential(6) : "-"),
       value: (r) => (r ? r.area_weight : null),
     },

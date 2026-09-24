@@ -1,7 +1,6 @@
 // The laminate itself: its stack, its stiffness, its load cases.
 
 import { shortStackNotation } from "../../angleStack";
-import { formatScientific } from "../../numberFormat";
 import { criterionName } from "../../types";
 import { abdTable, engineeringConstantsTable, expansionTable, layupTable, loadCasesTable } from "../../tables";
 import { aMatrixFormula, exFormula, localQFormula, nuxyFormula, qBarFormula } from "../../formulas";
@@ -40,8 +39,7 @@ export function laminateSection(results: LaminateResults, materials: MaterialDto
     rows.push(
       [t("report.laminate.thickness"), quantity(ctx, "thickness", base.tges)],
       [t("summary.symmetric"), t(base.is_symmetric ? "common.yes" : "common.no")],
-      // Without a unit, as on screen: the core's mass per area in its own units.
-      [t("summary.areaWeight"), formatScientific(base.area_weight, 3, ctx.locale)],
+      [t("summary.areaWeight"), quantity(ctx, "arealMass", base.area_weight)],
     );
   }
   rows.push([t("report.laminate.criteria"), laminateCriteria(results, ctx).join(", ")]);

@@ -863,6 +863,7 @@ export const en = {
   "quantity.thickness": "Thickness",
   "quantity.angle": "Angle",
   "quantity.density": "Density",
+  "quantity.arealMass": "Areal weight",
   "quantity.force": "Force",
   "quantity.strain": "Strain",
   "quantity.temperature": "Temperature",

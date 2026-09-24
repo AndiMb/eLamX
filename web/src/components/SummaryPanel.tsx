@@ -4,7 +4,6 @@ import { summaryFamily } from "../store/derivedAtoms";
 import { QuantityDisplay } from "./QuantityDisplay";
 import { HowWasThisComputed } from "./HowWasThisComputed";
 import { exFormula, nuxyFormula } from "../lib/formulas";
-import { formatScientific } from "../lib/numberFormat";
 import { Sym } from "./Sym";
 import type { QuantityCategory } from "../lib/units";
 import { useLocale, useT } from "../i18n";
@@ -51,12 +50,7 @@ export const SummaryPanel = memo(function SummaryPanel({ laminateId }: { laminat
         <StatTile label={<Sym base="G" />} category="stiffness" value={ec.g_simple} />
         <StatTile label={<Sym base="ν" sub="xy" />} category="poissonRatio" value={ec.nuxy_simple} />
         <StatTile label={<Sym base="ν" sub="yx" />} category="poissonRatio" value={ec.nuyx_simple} />
-        <div className="stat-tile">
-          <span className="label">{t("summary.areaWeight")}</span>
-          <span className="value">
-            {formatScientific(summary.areaWeight, 3, locale)}
-          </span>
-        </div>
+        <StatTile label={t("summary.areaWeight")} category="arealMass" value={summary.areaWeight} />
       </div>
       <HowWasThisComputed title={ex.title} formula={ex.tex} substituted={ex.substituted}>
         <p className="hint">{t("summary.ex.hint")}</p>

@@ -846,6 +846,7 @@ export const de: Messages = {
   "quantity.thickness": "Dicke",
   "quantity.angle": "Winkel",
   "quantity.density": "Dichte",
+  "quantity.arealMass": "Flächengewicht",
   "quantity.force": "Kraft",
   "quantity.strain": "Dehnung",
   "quantity.temperature": "Temperatur",

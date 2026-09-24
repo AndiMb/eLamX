@@ -21,6 +21,7 @@ export type QuantityCategory =
   | "thickness"
   | "angle"
   | "density"
+  | "arealMass"
   | "force"
   | "stress"
   | "strain"
@@ -109,6 +110,16 @@ const densityUnits: UnitOption[] = [
   identity("t_mm3", "t/mm³"),
   scaling("kg_m3", "kg/m³", 1e-12),
   scaling("g_cm3", "g/cm³", 1e-9),
+];
+
+// Mass per area, canonical t/mm² - what the core's area_weight comes back in
+// (rho in t/mm³ times a thickness in mm). 1 kg/m² is 1e-3 t over 1e6 mm².
+// The core's number alone, 6.4E-10 for a 0.4 mm CFRP laminate, told nobody
+// anything; 0,640 kg/m² is what the same laminate weighs.
+const arealMassUnits: UnitOption[] = [
+  identity("t_mm2", "t/mm²"),
+  scaling("kg_m2", "kg/m²", 1e-9),
+  scaling("g_m2", "g/m²", 1e-12),
 ];
 
 const forceUnits: UnitOption[] = [
@@ -207,6 +218,14 @@ export const CATEGORY_DEFINITIONS: Record<QuantityCategory, CategoryDefinition> 
     labelKey: "quantity.density",
     units: densityUnits,
     defaultUnitId: "g_cm3",
+    defaultDecimals: 3,
+    defaultNotation: "fixed",
+  },
+  arealMass: {
+    category: "arealMass",
+    labelKey: "quantity.arealMass",
+    units: arealMassUnits,
+    defaultUnitId: "kg_m2",
     defaultDecimals: 3,
     defaultNotation: "fixed",
   },
