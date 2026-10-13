@@ -21,8 +21,8 @@
     "jotai-family": "^1.0.2",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
-    "katex": "^0.18.7",
-    "lucide-react": "^1.47.0",
+    "katex": "^0.19.0",
+    "lucide-react": "^1.55.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4",
@@ -30,14 +30,14 @@
   },
   "devDependencies": {
     "@types/jsdom": "^30.0.0",
-    "@types/node": "^26.6.2",
+    "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.0.3",
-    "jsdom": "^30.1.1",
-    "oxlint": "^1.83.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "jsdom": "^30.1.2",
+    "oxlint": "^1.87.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.0",
-    "vitest": "^5.0.1"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3"
   }
 }
